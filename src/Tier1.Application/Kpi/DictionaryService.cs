@@ -39,6 +39,8 @@ public sealed record SaveDefinitionRequest(
     string Unit, Direction Direction, Frequency Frequency, CollectionLevel Level, Aggregation Aggregation, string? AggregationNote,
     string? DataSource, Guid? OwnerUnitId, string? EvidenceRequired, string? ChangeReason, uint? Version);
 
+public sealed record CreateIndicatorRequest(string StandardCode, string NameAr, string? Unit, CollectionLevel? Level, string? Reason);
+
 public sealed record CommitteeDecisionRequest(string? DecisionRef, string? Note);
 
 /// <summary>
@@ -124,6 +126,43 @@ public sealed class DictionaryService(IAppDb db, IClock clock, ICurrentUser curr
             ToDto(current, owners), indicator.Effective is { } eff && eff.Id != current.Id ? ToDto(eff, owners) : null,
             indicator.Versions.OrderByDescending(v => v.Number).Select(v => new VersionSummaryDto(v.Number, v.Status, v.ChangeReason, v.CreatedAt, v.ApprovedAt, v.DecisionRef)).ToList(),
             conflictCodes, actions);
+    }
+
+    /// <summary>
+    /// مؤشر جديد في معيار: رمزه التالي في المعيار (S04-11 مثلًا) لا يتغير بعدها، ويبدأ مسودة باسمه فقط
+    /// تكمل بياناتها من صفحته ثم ترسل للاعتماد كأي تعريف.
+    /// </summary>
+    public async Task<IndicatorDetailDto> CreateAsync(CreateIndicatorRequest req, CancellationToken ct)
+    {
+        await access.RequireAsync(Feature, Cap.Add, ct);
+        var standard = await db.Standards.FirstOrDefaultAsync(s => s.Code == req.StandardCode, ct)
+                       ?? throw new DomainException("standard_not_found", "المعيار غير موجود.", "Standard not found.", 400);
+        var name = Text(req.NameAr, 300, "اسم المؤشر") ?? throw new DomainException("name_required", "اكتب اسم المؤشر.", "Enter the indicator name.", 400);
+        var siblings = await db.Indicators.Where(i => i.StandardId == standard.Id).Select(i => new { i.Id, i.Code, i.SortOrder }).ToListAsync(ct);
+        var siblingIds = siblings.Select(x => x.Id).ToList();
+        if (await db.IndicatorVersions.AnyAsync(v => siblingIds.Contains(v.IndicatorId) && v.NameAr == name, ct))
+            throw new DomainException("duplicate_name", "يوجد مؤشر بالاسم نفسه في هذا المعيار.", "An indicator with this name exists in the standard.");
+        var next = siblings.Select(x => int.TryParse(x.Code.Split('-').LastOrDefault(), out var n) ? n : 0).DefaultIfEmpty(0).Max() + 1;
+        var now = clock.UtcNow;
+        var indicator = new Indicator
+        {
+            Code = $"{standard.Code}-{next:00}", StandardId = standard.Id, SortOrder = siblings.Select(x => x.SortOrder).DefaultIfEmpty(0).Max() + 1, CreatedAt = now,
+        };
+        var version = new IndicatorVersion
+        {
+            IndicatorId = indicator.Id, Number = 1, Status = DefinitionStatus.Draft, NameAr = name, Unit = Text(req.Unit, 50, "وحدة القياس") ?? "%",
+            Level = req.Level ?? CollectionLevel.College, Frequency = Frequency.Annual, EditedBy = current.UserId, EditedAt = now, CreatedAt = now,
+            ChangeReason = Require.Optional(req.Reason, 500),
+        };
+        db.Indicators.Add(indicator);
+        db.IndicatorVersions.Add(version);
+        audit.Record(AuditEvents.Audit("kpi", Feature, "kpi.indicator_created", "إضافة مؤشر جديد", "Added an indicator") with
+        {
+            Target = new AuditTarget("indicator", indicator.Id.ToString(), indicator.Code),
+            Reason = version.ChangeReason,
+        });
+        await db.SaveChangesAsync(ct);
+        return await GetAsync(indicator.Code, ct);
     }
 
     public async Task<IndicatorDetailDto> SaveAsync(string code, SaveDefinitionRequest req, CancellationToken ct)

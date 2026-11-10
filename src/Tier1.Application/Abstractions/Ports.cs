@@ -72,6 +72,18 @@ public interface IAppDb
 
     DbSet<DataConflict> Conflicts { get; }
 
+    DbSet<Domain.Collection.CollectionCycle> Cycles { get; }
+
+    DbSet<Domain.Collection.CycleIndicator> CycleIndicators { get; }
+
+    DbSet<Domain.Collection.Submission> Submissions { get; }
+
+    DbSet<Domain.Collection.SubmittedValue> SubmittedValues { get; }
+
+    DbSet<Domain.Collection.SubmissionEvent> SubmissionEvents { get; }
+
+    DbSet<Domain.Collection.StoredDocument> Documents { get; }
+
     DatabaseFacade Database { get; }
 
     /// <summary>لمحو ما تتبعه العملية بعد خطوة فاشلة اختيارية، فتكمل بحالة القاعدة.</summary>
@@ -132,7 +144,8 @@ public interface ISecretProtector
 /// </summary>
 public interface IMailOutbox
 {
-    void Enqueue(string kind, string to, string subject, string body);
+    /// <param name="dedupKey">مفتاح فريد يمنع تكرار الرسالة نفسها (التذكير اليومي).</param>
+    void Enqueue(string kind, string to, string subject, string body, string? dedupKey = null);
 }
 
 /// <summary>تخزين الملفات (الأدلة وقرارات التشكيل) خارج القاعدة بمفتاح لا باسم الملف الأصلي.</summary>

@@ -23,7 +23,8 @@ export default function IndicatorPage() {
   const { code = "" } = useParams();
   const qc = useQueryClient();
   const { message } = App.useApp();
-  const [editing, setEditing] = useState(false);
+  // «مؤشر جديد» يفتح الصفحة ومحرر التعريف مباشرة لإكماله.
+  const [editing, setEditing] = useState(() => new URLSearchParams(window.location.search).get("edit") === "1");
   const [decision, setDecision] = useState<"approve" | "return" | null>(null);
   const detail = useQuery({ queryKey: ["indicator", code], queryFn: () => api.get<IndicatorDetail>(`/api/kpi/indicators/${code}`) });
   const units = useQuery({ queryKey: ["units"], queryFn: () => api.get<OrgUnit[]>("/api/org/units") });

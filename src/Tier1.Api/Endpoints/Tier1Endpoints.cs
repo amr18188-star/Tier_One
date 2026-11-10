@@ -71,6 +71,8 @@ public static class Tier1Endpoints
         g.MapGet("/indicators", async (string? standard, DefinitionStatus? status, string? q, bool? withConflicts, DictionaryService svc, CancellationToken ct) =>
                 Results.Ok(await svc.ListAsync(standard, status, q, withConflicts, ct)))
             .RequirePermission(Features.Dictionary, Cap.View);
+        g.MapPost("/indicators", async (CreateIndicatorRequest req, DictionaryService svc, CancellationToken ct) => Results.Ok(await svc.CreateAsync(req, ct)))
+            .RequirePermission(Features.Dictionary, Cap.Add);
         g.MapGet("/indicators/{code}", async (string code, DictionaryService svc, CancellationToken ct) => Results.Ok(await svc.GetAsync(code, ct)))
             .RequirePermission(Features.Dictionary, Cap.View);
         g.MapPut("/indicators/{code}/definition", async (string code, SaveDefinitionRequest req, DictionaryService svc, CancellationToken ct) => Results.Ok(await svc.SaveAsync(code, req, ct)))

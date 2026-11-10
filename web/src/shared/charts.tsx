@@ -150,7 +150,7 @@ export function HBarChart({ rows, unit, title, sort = true, reference }: { rows:
 export interface Segment { key: string; label: string; count: number; color: string }
 
 /** شريط مكدس لتوزيع الحالات (المسودة والمعتمد...)، بعدد كل فئة ونسبتها مكتوبين. */
-export function SegmentBar({ segments, label }: { segments: Segment[]; label: string }) {
+export function SegmentBar({ segments, label, compact }: { segments: Segment[]; label: string; compact?: boolean }) {
   const total = segments.reduce((s, x) => s + x.count, 0);
   return (
     <div className="ch-seg">
@@ -161,11 +161,11 @@ export function SegmentBar({ segments, label }: { segments: Segment[]; label: st
           </Tooltip>
         ))}
       </div>
-      <ul className="ch-seg-legend">
+      {!compact && <ul className="ch-seg-legend">
         {segments.map((s) => (
           <li key={s.key}><i style={{ background: s.color }} />{s.label} <b className="ltr">{s.count}</b>{total > 0 && <small className="ltr"> ({Math.round((100 * s.count) / total)}%)</small>}</li>
         ))}
-      </ul>
+      </ul>}
     </div>
   );
 }

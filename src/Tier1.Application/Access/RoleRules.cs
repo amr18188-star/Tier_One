@@ -33,7 +33,7 @@ public static class RoleRules
     ];
 
     /// <summary>وحدات محتوى العمل (المؤشرات والمستهدفات واللوحات) التي لا تمنح لمسؤول النظام.</summary>
-    private static readonly HashSet<string> BusinessModules = new(StringComparer.Ordinal) { "dash", "kpi" };
+    private static readonly HashSet<string> BusinessModules = new(StringComparer.Ordinal) { "dash", "kpi", "dc" };
 
     /// <summary>
     /// خصائص محتوى خارج تلك الوحدات لا تمنح لمسؤول النظام أيضًا: أعضاء الهياكل وبياناتهم، وسجل العمليات والاطلاع.

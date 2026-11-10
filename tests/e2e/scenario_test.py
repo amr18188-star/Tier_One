@@ -7,6 +7,7 @@
     python tests/e2e/scenario_test.py
 كلمة مرور الحسابات التجريبية تقرأ من .env (T1_DEMO_PASSWORD).
 """
+import datetime
 import http.cookiejar
 import json
 import os
@@ -151,12 +152,18 @@ def main():
 
     # ---------------------------------------------------------------- المستهدفات
     step("3. المستهدفات: نطاق الكليات والتوزيع وفصل المهام في الاعتماد")
-    code2 = "S04-09"  # مجموع: المشروعات المشتركة مع الصناعة
-    existing = {t["year"] for t in planner.get(f"/api/kpi/indicators/{code2}/targets")["colleges"] if t["unitId"] == eng["id"]}
-    year = next((y for y in range(2027, 2032) if y not in existing), None)
-    if year is None:
-        raise SystemExit("Every year already has an engineering target; reset the demo database.")
-    print(f"  (السنة: {year})")
+    # مؤشر مجموع على مستوى الكلية وسنة بلا مستهدف للهندسة بعد، فيتكرر الاختبار على قاعدة واحدة.
+    code2, year = None, None
+    sums = [r["code"] for r in planner.get("/api/kpi/indicators") if r["aggregation"] == "Sum" and r["level"] == "College" and not r["suspended"]]
+    for candidate in ["S04-09"] + [c for c in sums if c != "S04-09"]:
+        existing = {t["year"] for t in planner.get(f"/api/kpi/indicators/{candidate}/targets")["colleges"] if t["unitId"] == eng["id"]}
+        free = next((y for y in range(2027, 2032) if y not in existing), None)
+        if free is not None:
+            code2, year = candidate, free
+            break
+    if code2 is None:
+        raise SystemExit("Every sum indicator already has engineering targets; reset the demo database.")
+    print(f"  (المؤشر {code2}، السنة {year})")
     dist = planner.get(f"/api/kpi/indicators/{code2}/distribution?year={year}")
     check(dist["result"]["status"] in ("Covers", "Short", "Incomplete"), f"التوزيع: {dist['result']['summaryAr']}")
     status, _ = dean.call("PUT", f"/api/kpi/indicators/{code2}/targets", {"unitId": cs["id"], "year": year, "kind": "Target", "value": 3})
@@ -211,7 +218,11 @@ def main():
         status, err = college.call("POST", "/api/structure/members", body)
         check(status == 409 and err.get("code") == "position_taken", "المنصب المشغول يطلب «استبدال الحالي»")
         body["replaceCurrent"] = True
-        body["startDate"] = f"2026-11-{10 + len(chart['members']) % 15:02d}"
+        # بعد بداية الشاغل الحالي بيوم، فيتكرر الاختبار على قاعدة واحدة.
+        # الاستبدال في تشغيل سابق قد يبدأ غدًا فلا يظهر في هيكل اليوم؛ أحدث بداية من هيكل تاريخ بعيد.
+        future = college.get(f"/api/structure/colleges/{eng['id']}?asOf=2099-12-31")
+        current_start = max(m["startDate"] for m in chart["members"] + future["members"] if m["positionId"] == dean_pos["id"])
+        body["startDate"] = (datetime.date.fromisoformat(current_start) + datetime.timedelta(days=1)).isoformat()
     m = college.call("POST", "/api/structure/members", body, expect=200)[1]
     check(m["fullName"] == name and m["phone"] == "01000000000", "أضيف العميد بالهاتف بعد توحيده")
     status, _ = viewer.call("GET", f"/api/structure/colleges/{eng['id']}")

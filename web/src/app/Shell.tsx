@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { AutoComplete, Button, Drawer, Dropdown, Input } from "antd";
 import {
-  ApartmentOutlined, AuditOutlined, BranchesOutlined, ClusterOutlined, GlobalOutlined, HomeOutlined, LogoutOutlined, MenuOutlined,
+  ApartmentOutlined, AuditOutlined, BarChartOutlined, BranchesOutlined, CalendarOutlined, ClusterOutlined, FormOutlined, GlobalOutlined, HomeOutlined, LogoutOutlined, MenuOutlined,
   SafetyCertificateOutlined, SearchOutlined, SettingOutlined, TeamOutlined, UnorderedListOutlined, WarningOutlined,
 } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
@@ -9,6 +9,7 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { RbacChange } from "../api/types";
 import type { IndicatorRow, OrgUnit } from "../api/tier1";
+import type { FormRow } from "../api/collection";
 import { L, setLang, useLang } from "../shared/i18n";
 import { usePermissions, useSession } from "../shared/session";
 import { initials } from "../shared/ui";
@@ -37,11 +38,28 @@ export function Shell({ children }: { children: ReactNode }) {
     refetchInterval: 60_000,
   });
   const waiting = pending.data?.filter((c) => c.canDecide).length ?? 0;
+  const mine = useQuery({
+    queryKey: ["forms", "mine"],
+    queryFn: () => api.get<FormRow[]>("/api/forms?awaitingMe=true"),
+    enabled: perms.can("dc.forms", "V"),
+    refetchInterval: 120_000,
+  });
+  const awaiting = mine.data?.length ?? 0;
   const anyLog = ["log.audit", "log.security", "log.access", "log.tech"].some((f) => perms.can(f, "V"));
 
   // الأيقونات زخرفية؛ اسم الرابط نصه.
   const groups: NavGroup[] = [
     { key: "home", items: [{ to: "/", icon: <HomeOutlined aria-hidden />, label: L("الرئيسية", "Home"), end: true, tab: true }] },
+    {
+      key: "data", title: L("جمع البيانات والنتائج", "Data and results"), items: [
+        perms.can("dc.forms", "V") && {
+          to: "/forms", icon: <FormOutlined aria-hidden />, label: L("نماذج الجهات", "Unit forms"), tab: true,
+          badge: awaiting, badgeText: L(`${awaiting} نموذج ينتظرك`, `${awaiting} forms waiting for you`),
+        },
+        perms.can("dc.results", "V") && { to: "/results", icon: <BarChartOutlined aria-hidden />, label: L("النتائج والمقارنات", "Results"), tab: true },
+        perms.can("dc.cycles", "E") && { to: "/cycles", icon: <CalendarOutlined aria-hidden />, label: L("دورات جمع البيانات", "Collection cycles") },
+      ],
+    },
     {
       key: "plan", title: L("الخطة والمؤشرات", "Plan and indicators"), items: [
         perms.can("kpi.dictionary", "V") && { to: "/indicators", icon: <UnorderedListOutlined aria-hidden />, label: L("قاموس المؤشرات", "Indicators"), tab: true },

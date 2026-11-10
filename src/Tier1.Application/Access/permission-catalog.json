@@ -17,6 +17,11 @@
       "en": "Indicators and targets"
     },
     {
+      "key": "dc",
+      "ar": "جمع البيانات والنتائج",
+      "en": "Data collection and results"
+    },
+    {
       "key": "adm",
       "ar": "الإدارة والأمان",
       "en": "Administration and security"
@@ -321,6 +326,137 @@
         "QA": "VPE:A",
         "DEAN": "V:A",
         "CTC": "V:A",
+        "AUD": "VP:A"
+      }
+    },
+    {
+      "key": "dc.cycles",
+      "module": "dc",
+      "ar": "دورات جمع البيانات",
+      "en": "Collection cycles",
+      "caps": {
+        "V": "الدورات ومتابعة تقدمها",
+        "P": "طباعة متابعة الدورة",
+        "E": "تعديل الدورة وفتحها",
+        "A": "إنشاء دورة",
+        "D": "إغلاق الدورة"
+      },
+      "specials": [
+        {
+          "key": "reopen",
+          "ar": "إعادة فتح نموذج معتمد بسبب",
+          "en": "Reopen an approved form",
+          "roles": [
+            "PM"
+          ]
+        }
+      ],
+      "defaults": {
+        "PRES": "VP:A",
+        "VP": "V:A",
+        "HC": "V:A",
+        "PM": "VPEAD:A",
+        "QA": "VP:A",
+        "DEAN": "V:A",
+        "CTC": "V:A",
+        "DREP": "V:A",
+        "DE": "V:A",
+        "VIEW": "V:A",
+        "AUD": "V:A"
+      }
+    },
+    {
+      "key": "dc.forms",
+      "module": "dc",
+      "ar": "نماذج الجهات وقيمها",
+      "en": "Unit forms and values",
+      "caps": {
+        "V": "نماذج الجهات في نطاقه",
+        "P": "طباعة النموذج",
+        "E": "إدخال القيم والأدلة وإرسال النموذج"
+      },
+      "specials": [
+        {
+          "key": "review_department",
+          "ar": "مراجعة نموذج القسم (ممثل Tier 1)",
+          "en": "Department review",
+          "roles": [
+            "DREP"
+          ]
+        },
+        {
+          "key": "review_college",
+          "ar": "مراجعة لجنة Tier 1 بالكلية",
+          "en": "College committee review",
+          "roles": [
+            "CTC"
+          ]
+        },
+        {
+          "key": "approve_college",
+          "ar": "اعتماد العميد",
+          "en": "Dean approval",
+          "roles": [
+            "DEAN"
+          ]
+        },
+        {
+          "key": "approve_final",
+          "ar": "الاعتماد النهائي (الجودة المركزية)",
+          "en": "Final approval (quality)",
+          "roles": [
+            "QA"
+          ]
+        }
+      ],
+      "defaults": {
+        "PRES": "VP:A",
+        "VP": "VP:U",
+        "HC": "V:A",
+        "PM": "VP:A",
+        "QA": "VP:A",
+        "DEAN": "VP:U",
+        "CTC": "VPE:U",
+        "DREP": "VPE:U",
+        "DE": "VPE:U",
+        "VIEW": "V:U",
+        "AUD": "V:A"
+      }
+    },
+    {
+      "key": "dc.results",
+      "module": "dc",
+      "ar": "النتائج واللوحات والتقارير",
+      "en": "Results, dashboards and reports",
+      "caps": {
+        "V": "النتائج المعتمدة مقابل المستهدف",
+        "P": "طباعة التقرير"
+      },
+      "specials": [
+        {
+          "key": "export",
+          "ar": "تصدير Excel",
+          "en": "Export to Excel",
+          "roles": [
+            "PRES",
+            "PM",
+            "QA",
+            "AUD"
+          ]
+        }
+      ],
+      "defaults": {
+        "PRES": "VP:A",
+        "VP": "VP:U",
+        "HC": "VP:A",
+        "PM": "VP:A",
+        "QA": "VP:A",
+        "DEAN": "VP:U",
+        "CTC": "VP:U",
+        "DREP": "V:U",
+        "DE": "V:U",
+        "INIT": "V:A",
+        "VIEW": "V:U",
         "AUD": "VP:A"
       }
     },

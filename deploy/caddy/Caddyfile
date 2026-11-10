@@ -1,0 +1,19 @@
+# الوكيل العكسي: HTTPS بشهادة الجامعة (أو شهادة داخلية)، وتحويل HTTP إلى HTTPS، ورؤوس الأمان من التطبيق نفسه.
+{
+	admin off
+}
+
+{$TIER1_HOST} {
+	tls /certs/tier1.crt /certs/tier1.key
+	encode zstd gzip
+	request_body {
+		max_size 25MB
+	}
+	reverse_proxy app:8080 {
+		header_up X-Forwarded-Proto https
+	}
+	log {
+		output stdout
+		format json
+	}
+}

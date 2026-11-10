@@ -23,12 +23,27 @@ public sealed record HomeDto(
 /// الصفحة الأولى: «مطلوب منك» بحسب صلاحيات المستخدم ونطاقه، ثم الصورة العامة للقاموس والتعارضات والهيكل.
 /// كل مهمة تحمل رابطًا مباشرًا، فيصل المستخدم إلى ما يريده بنقرة.
 /// </summary>
-public sealed class HomeService(IAppDb db, ICurrentUser current, IAccessService access, DictionaryService dictionary, StructureService structure)
+public sealed class HomeService(IAppDb db, ICurrentUser current, IAccessService access, DictionaryService dictionary, StructureService structure, Collection.FormsService forms)
 {
     public async Task<HomeDto> GetAsync(CancellationToken ct)
     {
         var me = await access.CurrentAsync(ct);
         var tasks = new List<TaskItem>();
+
+        // النماذج أولًا: هي العمل اليومي في الدورة المفتوحة.
+        if (me.Has(Features.Forms, Cap.View))
+        {
+            var mine = await forms.ListAsync(null, true, null, null, ct);
+            var returned = mine.Count(f => f.Status == Domain.Collection.SubmissionStatus.Returned);
+            if (returned > 0)
+                tasks.Add(new("forms_returned", "نماذج أعيدت للتصحيح", "صحح المؤشرات المميزة بملاحظات المراجع ثم أعد الإرسال.", returned, "/forms?view=Returned", "bad"));
+            var fill = mine.Count(f => f.Status is Domain.Collection.SubmissionStatus.NotStarted or Domain.Collection.SubmissionStatus.InProgress);
+            if (fill > 0)
+                tasks.Add(new("forms_fill", "نماذج تنتظر إدخال بياناتك", mine.Any(f => f.Overdue) ? "بعضها تجاوز موعده النهائي." : "أدخل القيم وأرفق الأدلة ثم أرسل.", fill, "/forms", mine.Any(f => f.Overdue) ? "bad" : "brand"));
+            var review = mine.Count(f => f.Status == Domain.Collection.SubmissionStatus.InReview);
+            if (review > 0)
+                tasks.Add(new("forms_review", "نماذج تنتظر مراجعتك", "راجع القيم والأدلة، ثم اعتمد أو أعد بملاحظات.", review, "/forms", "brand"));
+        }
 
         var versions = await db.IndicatorVersions.AsNoTracking().Where(v => v.Status == DefinitionStatus.Draft || v.Status == DefinitionStatus.UnderReview).ToListAsync(ct);
         if (me.Has(Features.Dictionary, Cap.Edit))

@@ -1,0 +1,83 @@
+// أنواع ردود جمع البيانات: الدورات ونماذج الجهات والأدلة والاستيراد والنتائج.
+import type { Aggregation, CollectionLevel, Direction, OrgUnitKind } from "./tier1";
+
+export type CycleStatus = "Draft" | "Open" | "Closed";
+export type ApprovalStep = "Entry" | "DepartmentReview" | "CollegeCommittee" | "Dean" | "Quality" | "Done";
+export type SubmissionStatus = "NotStarted" | "InProgress" | "InReview" | "Returned" | "Approved";
+export type ValueKind = "Number" | "NotAvailable" | "NotApplicable";
+export type IssueSeverity = "Error" | "Warning";
+export type SubmissionAction = "Submitted" | "Approved" | "Returned" | "Reopened";
+export type Performance = "Achieved" | "Near" | "Behind" | "NoTarget" | "NoData" | "NotJudged";
+
+export interface Cycle {
+  id: string; name: string; periodLabel: string; targetYear: number; opensOn: string; dueOn: string; status: CycleStatus; trial: boolean;
+  indicators: number; forms: number; formsByStatus: Partial<Record<SubmissionStatus, number>>; overdue: number; version: number;
+}
+
+export interface SaveCycle { name: string; periodLabel: string; targetYear: number; opensOn: string; dueOn: string; trial: boolean; version: number | null }
+
+export interface OpenPreview { indicators: number; forms: number; departments: number; colleges: number; central: number; skipped: string[] }
+
+export interface FormRow {
+  id: string; cycleId: string; cycleName: string; unitId: string; unitName: string; unitKind: OrgUnitKind; parentName: string | null;
+  step: ApprovalStep; stepName: string; status: SubmissionStatus; dueOn: string; overdue: boolean; completed: number; required: number; awaitingMe: boolean;
+}
+
+export interface Issue { code: string; severity: IssueSeverity; messageAr: string }
+
+export interface Doc { id: string; fileName: string; contentType: string; sizeBytes: number; uploadedAt: string; description: string | null; voided: boolean; voidReason: string | null }
+
+export interface Value {
+  kind: ValueKind; value: number | null; numerator: number | null; denominator: number | null; reason: string | null; explanation: string | null;
+  reviewNote: string | null; editedAt: string; version: number;
+}
+
+export interface FormItem {
+  indicatorId: string; code: string; name: string; unit: string; aggregation: Aggregation; usesRatio: boolean; numeratorLabel: string | null; denominatorLabel: string | null;
+  definition: string | null; dataSource: string | null; evidenceRequired: string | null; direction: Direction; previous: number | null; target: number | null;
+  value: Value | null; issues: Issue[]; evidence: Doc[];
+}
+
+export interface FormSection { standardCode: string; standardName: string; items: FormItem[] }
+
+export interface PathStep { step: ApprovalStep; name: string; state: "done" | "current" | "pending" }
+
+export interface FormEvent { action: SubmissionAction; fromStep: ApprovalStep; toStep: ApprovalStep; byName: string | null; at: string; note: string | null }
+
+export interface Form {
+  id: string; cycleId: string; cycleName: string; periodLabel: string; cycleStatus: CycleStatus; trial: boolean; targetYear: number;
+  unitId: string; unitName: string; unitKind: OrgUnitKind; step: ApprovalStep; status: SubmissionStatus; dueOn: string; overdue: boolean;
+  path: PathStep[]; nextStepName: string | null; returnNote: string | null; lastEditedAt: string | null;
+  completed: number; required: number; sections: FormSection[]; blocking: string[]; events: FormEvent[];
+  actions: { canEdit: boolean; canSubmit: boolean; canReview: boolean; canReopen: boolean }; version: number;
+}
+
+export interface SaveValue {
+  indicatorId: string; kind: ValueKind; value: number | null; numerator: number | null; denominator: number | null;
+  reason: string | null; explanation: string | null; version: number | null;
+}
+
+export interface ImportRow { row: number; code: string; name: string | null; status: "new" | "changed" | "same" | "skip" | "error"; display: string | null; issues: Issue[] }
+export interface ImportPreview { rows: number; changes: number; errors: number; warnings: number; canApply: boolean; items: ImportRow[] }
+
+// ----- النتائج -----
+export interface ResultUnit { id: string; name: string; kind: OrgUnitKind }
+export interface ResultsCycle { id: string; name: string; periodLabel: string; targetYear: number; status: CycleStatus; trial: boolean }
+
+export interface IndicatorResult {
+  indicatorId: string; code: string; name: string; standardCode: string; unit: string; direction: Direction; level: CollectionLevel;
+  actual: number | null; target: number | null; baseline: number | null; previous: number | null; achievement: number | null; performance: Performance;
+  reported: number; expected: number; note: string | null; summary: string;
+}
+
+export interface StandardResult { code: string; name: string; indicators: number; achieved: number; near: number; behind: number; noData: number; noTarget: number }
+export interface HeatCell { unitId: string; standardCode: string; indicators: number; achieved: number; near: number; behind: number; noData: number }
+
+export interface Results {
+  cycle: ResultsCycle; unit: ResultUnit; units: ResultUnit[]; previousCycle: ResultsCycle | null; formsApproved: number; formsTotal: number;
+  standards: StandardResult[]; indicators: IndicatorResult[]; heatUnits: ResultUnit[]; heat: HeatCell[]; canExport: boolean;
+}
+
+export interface UnitResult { unitId: string; unitName: string; actual: number | null; target: number | null; achievement: number | null; performance: Performance; reported: number; expected: number; note: string | null }
+export interface TrendPoint { cycleId: string; label: string; actual: number | null; target: number | null }
+export interface IndicatorResults { university: IndicatorResult; colleges: UnitResult[]; trend: TrendPoint[] }

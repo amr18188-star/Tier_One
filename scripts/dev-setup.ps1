@@ -40,6 +40,9 @@ $settings = [ordered]@{
     Seed = @{ Demo = $true; DemoPassword = $vars.T1_DEMO_PASSWORD }
     DataProtection = @{ KeysPath = (Join-Path $root 'data/keys') }
     Files = @{ Root = (Join-Path $root 'data/files') }
+    # لا خادم بريد في التطوير: كل رسالة تكتب ملفًا في data/mail لمراجعتها.
+    Email = [ordered]@{ PickupDirectory = (Join-Path $root 'data/mail'); From = 'tier1@capu.local' }
+    App = @{ PublicUrl = 'http://localhost:5150' }
     Cookies = @{ Secure = $false }
     # التحقق بخطوتين موقوف في التطوير؛ غير التطوير يرفض البدء به موقوفًا.
     Auth = @{ RequireMfa = $false }

@@ -58,6 +58,7 @@ api.MapIam();
 api.MapLogs();
 api.MapSettings();
 api.MapTier1();
+api.MapCollection();
 
 app.MapGet("/health/live", () => Results.Ok(new { status = "live" })).AllowAnonymous();
 app.MapGet("/health/ready", async (NpgsqlDataSource pg, CancellationToken ct) =>

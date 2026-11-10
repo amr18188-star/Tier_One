@@ -1,0 +1,12 @@
+# لا يدخل سياق البناء: مخرجات البناء والحزم والبيانات والأسرار.
+**/bin
+**/obj
+**/node_modules
+data
+.env
+**/appsettings.Development.json
+src/Tier1.Api/wwwroot
+reference
+tools
+tests
+.git

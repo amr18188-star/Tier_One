@@ -1,11 +1,15 @@
-import { Badge, Input, Segmented, Select, Switch, Tag, Tooltip } from "antd";
+import { useState } from "react";
+import { Badge, Button, Input, Segmented, Select, Switch, Tag, Tooltip } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, query } from "../../api/client";
 import type { DefinitionStatus, IndicatorRow, Standard } from "../../api/tier1";
 import { L } from "../../shared/i18n";
 import { definitionStatus, num, withUnit } from "../../shared/labels";
+import { usePermissions } from "../../shared/session";
 import { DataTable, oneOf, PageHeader, Panel } from "../../shared/ui";
+import { NewIndicatorModal } from "./NewIndicatorModal";
 
 const STATUSES: DefinitionStatus[] = ["Draft", "UnderReview", "Approved"];
 
@@ -17,6 +21,8 @@ export default function IndicatorsPage() {
   const status = oneOf(params.get("status"), STATUSES);
   const q = params.get("q") ?? "";
   const withConflicts = params.get("conflicts") === "1";
+  const canAdd = usePermissions().can("kpi.dictionary", "A");
+  const [adding, setAdding] = useState(false);
 
   const set = (key: string, value: string | undefined) => {
     const next = new URLSearchParams(params);
@@ -36,7 +42,9 @@ export default function IndicatorsPage() {
     <>
       <PageHeader title={L("قاموس المؤشرات", "Indicator dictionary")}
         subtitle={L("كل مؤشر بتعريفه ومستهدفاته وتعارضاته في صفحة واحدة. اختر معيارًا أو ابحث بالكود أو الاسم.",
-          "Each indicator's definition, targets and conflicts on one page. Pick a standard or search by code or name.")} />
+          "Each indicator's definition, targets and conflicts on one page. Pick a standard or search by code or name.")}
+        extra={canAdd && <Button type="primary" icon={<PlusOutlined />} onClick={() => setAdding(true)}>{L("مؤشر جديد", "New indicator")}</Button>} />
+      {adding && standards.data && <NewIndicatorModal standards={standards.data} standard={standard} onClose={() => setAdding(false)} />}
 
       <Panel>
         <div className="lcp-filters">

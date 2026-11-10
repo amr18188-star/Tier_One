@@ -41,6 +41,13 @@ public static class DependencyInjection
         services.AddScoped<Kpi.TargetsService>();
         services.AddScoped<Kpi.ConflictsService>();
         services.AddScoped<Home.HomeService>();
+
+        // جمع البيانات: الدورات والنماذج ومسار الاعتماد والأدلة والنتائج.
+        services.AddScoped<Collection.FormNotifier>();
+        services.AddScoped<Collection.CyclesService>();
+        services.AddScoped<Collection.FormsService>();
+        services.AddScoped<Collection.DocumentsService>();
+        services.AddScoped<Collection.ResultsService>();
         return services;
     }
 }

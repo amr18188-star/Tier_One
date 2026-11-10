@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Tier1.Application.Abstractions;
 using Tier1.Application.Access;
 using Tier1.Domain.Access;
+using Tier1.Domain.Common;
 using Tier1.Domain.Identity;
 using Tier1.Domain.Organization;
 
@@ -87,6 +88,43 @@ public sealed class Seeder(Tier1DbContext db, IPasswordHasher hasher, ISecretPro
             log.LogInformation("Seeded role {Code} with {Grants} grants.", def.Code, role.Grants.Count);
         }
         await db.SaveChangesAsync(ct);
+        await SeedNewFeatureGrantsAsync(now, ct);
+    }
+
+    /// <summary>
+    /// خاصية أضيفت إلى الكتالوج في إصدار لاحق تأخذ منحها الافتراضية في أدوار الكتالوج القائمة، مرة واحدة لكل خاصية:
+    /// تسجل في الإعدادات فلا تعاد إن سحبها المدير بعد ذلك من المصفوفة.
+    /// </summary>
+    private async Task SeedNewFeatureGrantsAsync(DateTimeOffset now, CancellationToken ct)
+    {
+        const string prefix = "catalog:";
+        var seeded = (await db.Settings.Where(s => s.Key.StartsWith(prefix)).Select(s => s.Key).ToListAsync(ct)).ToHashSet(StringComparer.Ordinal);
+        var roles = await db.Roles.Include(r => r.Grants).Where(r => r.IsSystem).ToListAsync(ct);
+        var changed = false;
+        foreach (var f in PermissionCatalog.Features.Where(f => !seeded.Contains(prefix + f.Key)))
+        {
+            foreach (var role in roles.Where(r => r.Grants.All(g => g.Feature != f.Key)))
+            {
+                if (role.Code == PermissionCatalog.SuperAdminRole)
+                {
+                    db.RoleGrants.Add(new RoleGrant { RoleId = role.Id, Feature = f.Key, Caps = f.AllowedCaps, Scope = AccessScope.All, Specials = [.. f.Specials.Select(s => s.Key)] });
+                    changed = true;
+                    continue;
+                }
+                var caps = f.Defaults.TryGetValue(role.Code, out var d) ? d.Caps : Cap.None;
+                var specials = f.Specials.Where(s => s.DefaultRoles.Contains(role.Code)).Select(s => s.Key).ToList();
+                if (caps == Cap.None && specials.Count == 0) continue;
+                db.RoleGrants.Add(new RoleGrant { RoleId = role.Id, Feature = f.Key, Caps = caps, Scope = d?.Scope ?? AccessScope.All, Specials = specials });
+                changed = true;
+            }
+            db.Settings.Add(new SystemSetting { Key = prefix + f.Key, Value = "1", UpdatedAt = now });
+        }
+        await db.SaveChangesAsync(ct);
+        if (changed)
+        {
+            await db.AccessStates.Where(s => s.Id == 1).ExecuteUpdateAsync(s => s.SetProperty(x => x.Version, x => x.Version + 1), ct);
+            log.LogInformation("Granted newly added catalog features to the existing roles.");
+        }
     }
 
     private async Task SeedDemoCollegesAsync(DateTimeOffset now, CancellationToken ct)

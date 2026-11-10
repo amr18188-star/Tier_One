@@ -1,0 +1,116 @@
+# التشغيل على خادم الجامعة (On-Premises). الأسرار في deploy/.env (انسخ .env.example واملأه)، ولا يدخل المستودع.
+#   docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
+# أول مرة فقط (بعد أن تعمل القاعدتان):
+#   docker compose -f deploy/docker-compose.yml --env-file deploy/.env run --rm app --migrate
+#   docker compose -f deploy/docker-compose.yml --env-file deploy/.env run --rm -e ConnectionStrings__MongoAdmin="$MONGO_ADMIN_URL" app --mongo-setup
+#   docker compose -f deploy/docker-compose.yml --env-file deploy/.env run --rm app --create-superadmin admin@capu.edu.eg "اسم المدير"
+name: tier1
+
+x-app-env: &app-env
+  ASPNETCORE_ENVIRONMENT: Production
+  ConnectionStrings__Tier1: "Host=postgres;Port=5432;Database=tier1;Username=tier1;Password=${POSTGRES_PASSWORD:?}"
+  ConnectionStrings__Mongo: "mongodb://tier1_app:${MONGO_APP_PASSWORD:?}@mongo:27017/tier1_logs?authSource=tier1_logs"
+  MongoLogs__ChainKey: "${T1_CHAIN_KEY:?}"
+  MongoLogs__CheckpointDirectory: /data/checkpoints
+  MongoLogs__CheckpointEmails__0: "${CHECKPOINT_EMAIL:?}"
+  DataProtection__KeysPath: /data/keys
+  DataProtection__CertificatePath: /run/secrets/dp.pfx
+  DataProtection__CertificatePassword: "${DP_CERT_PASSWORD:?}"
+  Files__Root: /data/files
+  Files__MaxMb: "20"
+  Email__Host: "${SMTP_HOST:?}"
+  Email__Port: "${SMTP_PORT:-587}"
+  Email__User: "${SMTP_USER:-}"
+  Email__Password: "${SMTP_PASSWORD:-}"
+  Email__From: "${SMTP_FROM:?}"
+  App__PublicUrl: "https://${TIER1_HOST:?}"
+  Cookies__Session: __Host-t1_session
+  Cookies__Antiforgery: __Host-t1_af
+  Network__TrustedProxies__0: 172.30.0.10
+  Database__MigrateOnStartup: "false"
+
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tier1
+      POSTGRES_USER: tier1
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+    volumes:
+      - pgdata:/var/lib/postgresql
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tier1 -d tier1"]
+      interval: 10s
+      retries: 10
+
+  mongo:
+    image: mongo:8
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: tier1_root
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:?}
+      MONGO_READER_PASSWORD: ${MONGO_READER_PASSWORD:?}
+    volumes:
+      - mongodata:/data/db
+      - ./mongo-init:/docker-entrypoint-initdb.d:ro
+    networks: [internal]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      retries: 10
+
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: tier1:latest
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+      mongo: { condition: service_healthy }
+    environment: *app-env
+    volumes:
+      - appdata:/data
+    secrets:
+      - source: dp_cert
+        target: dp.pfx
+    networks:
+      internal:
+        ipv4_address: 172.30.0.20
+
+  # الوحيد المنشور على الشبكة: HTTPS على 443 وتحويل 80 إليه.
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on: [app]
+    environment:
+      TIER1_HOST: ${TIER1_HOST:?}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${TLS_CERT_DIR:?}:/certs:ro
+      - caddydata:/data
+    networks:
+      internal:
+        ipv4_address: 172.30.0.10
+
+secrets:
+  dp_cert:
+    file: ${DP_CERT_FILE:?}
+
+networks:
+  internal:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+
+volumes:
+  pgdata:
+  mongodata:
+  appdata:
+  caddydata:

@@ -42,7 +42,7 @@ public static class PermissionCatalog
     public static readonly IReadOnlySet<string> ReservedRoles = new HashSet<string>(StringComparer.Ordinal) { "SA", "SYS", "AUD", "PRES", "HC" };
 
     /// <summary>الإجراءات الخاصة التي تعني اعتمادًا أو قرارًا؛ لا تمنح لمسؤول النظام (SOD-11).</summary>
-    public static readonly IReadOnlySet<string> DecisionSpecials = new HashSet<string>(StringComparer.Ordinal) { "approve", "approve_void", "execute", "publish", "decide", "review", "confirm", "reissue" };
+    public static readonly IReadOnlySet<string> DecisionSpecials = new HashSet<string>(StringComparer.Ordinal) { "approve", "approve_void", "execute", "publish", "decide", "review", "confirm", "reissue", "review_department", "review_college", "approve_college", "approve_final", "reopen" };
 
     /// <summary>
     /// إجراءات للمدير الأعلى وحده: لا تمنح لدور ولا بمنح فردي. اعتماد المصفوفة لو مُنح لغيره لسقط شرط «مدير أعلى ثانٍ».
@@ -199,6 +199,9 @@ public static class Features
     public const string Dictionary = "kpi.dictionary";
     public const string Targets = "kpi.targets";
     public const string Conflicts = "kpi.conflicts";
+    public const string Cycles = "dc.cycles";
+    public const string Forms = "dc.forms";
+    public const string Results = "dc.results";
 }
 
 public static class Specials

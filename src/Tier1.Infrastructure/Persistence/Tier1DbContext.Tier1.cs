@@ -39,6 +39,7 @@ public sealed partial class Tier1DbContext
         ConfigureOrganization(b);
         ConfigureDictionary(b);
         ConfigureTargets(b);
+        ConfigureCollection(b);
     }
 
     private static void ConfigureOrganization(ModelBuilder b)

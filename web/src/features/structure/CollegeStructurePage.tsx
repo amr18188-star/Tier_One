@@ -12,6 +12,7 @@ import { L, useLang } from "../../shared/i18n";
 import { QueryState } from "../../shared/QueryState";
 import { initials, PageHeader, Panel } from "../../shared/ui";
 import { EndModal, MemberModal, PartnerModal } from "./MemberForms";
+import { StructureDocs } from "./StructureDocs";
 
 type Dialog =
   | { kind: "add"; position: Position; departmentId: string | null; occupiedBy: string | null }
@@ -138,6 +139,8 @@ export default function CollegeStructurePage() {
                 </>
               )}
             </div>
+
+            {!asOf && <StructureDocs collegeId={c!.collegeId} editable={!!c!.canEdit} />}
 
             {card && <MemberCard card={card} editable={editable} onClose={() => setCard(null)}
               onEdit={() => { setDialog({ kind: "edit", position: card.position, member: card.member }); setCard(null); }}

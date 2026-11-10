@@ -19,12 +19,20 @@ public sealed record SettingDefinition(string Key, int Default, int Min, int Max
 
 public static class SettingKeys
 {
-    /// <summary>مدة حجز المقعد المؤقت لطلب من البوابة قبل السداد (D12).</summary>
-    public const string SeatHoldHours = "seat_hold_hours";
+    /// <summary>حد «قريب من المستهدف» في ألوان الأداء: نسبة الإنجاز من المستهدف التي تعد أصفر لا أحمر.</summary>
+    public const string NearTargetPercent = "near_target_percent";
+
+    /// <summary>حد تحذير الاختلاف الكبير عن آخر قيمة معتمدة؛ يطلب تفسيرًا ولا يرفض القيمة.</summary>
+    public const string BigChangePercent = "big_change_percent";
+
+    /// <summary>كم يومًا قبل الموعد النهائي يبدأ تذكير الجهات المتأخرة بالبريد.</summary>
+    public const string ReminderDaysBeforeDue = "reminder_days_before_due";
 
     public static readonly IReadOnlyList<SettingDefinition> All =
     [
-        new(SeatHoldHours, 48, 1, 168, "مهلة سداد المقعد المحجوز مؤقتًا", "Payment window for a temporarily held seat", "ساعة", "hours"),
+        new(NearTargetPercent, 90, 50, 99, "حد «قريب من المستهدف» (اللون الأصفر)", "Near-target threshold (amber)", "% من المستهدف", "% of target"),
+        new(BigChangePercent, 50, 10, 500, "حد تحذير الاختلاف عن آخر قيمة معتمدة", "Large-change warning threshold", "%", "%"),
+        new(ReminderDaysBeforeDue, 3, 1, 14, "بدء تذكير الجهات قبل الموعد النهائي", "Start reminders before the deadline", "يوم", "days"),
     ];
 
     public static SettingDefinition? Find(string key) => All.FirstOrDefault(d => d.Key == key);

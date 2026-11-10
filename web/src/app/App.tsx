@@ -39,6 +39,10 @@ const ConflictsPage = load(() => import("../features/conflicts/ConflictsPage"));
 const AgendaPage = load(() => import("../features/conflicts/AgendaPage"));
 const StructurePage = load(() => import("../features/structure/StructurePage"));
 const CollegeStructurePage = load(() => import("../features/structure/CollegeStructurePage"));
+const CyclesPage = load(() => import("../features/cycles/CyclesPage"));
+const FormsPage = load(() => import("../features/forms/FormsPage"));
+const FormPage = load(() => import("../features/forms/FormPage"));
+const ResultsPage = load(() => import("../features/results/ResultsPage"));
 const UnitsPage = load(() => import("../features/units/UnitsPage"));
 const MatrixPage = load(() => import("../features/matrix/MatrixPage"));
 const ChangesPage = load(() => import("../features/matrix/ChangesPage"));
@@ -121,6 +125,10 @@ function Gate() {
             <Route path="/conflicts/agenda" element={<AgendaPage />} />
             <Route path="/structure" element={<StructurePage />} />
             <Route path="/structure/:id" element={<CollegeStructurePage />} />
+            <Route path="/cycles" element={<CyclesPage />} />
+            <Route path="/forms" element={<FormsPage />} />
+            <Route path="/forms/:id" element={<FormPage />} />
+            <Route path="/results" element={<ResultsPage />} />
             <Route path="/units" element={<UnitsPage />} />
             <Route path="/matrix" element={<MatrixPage />} />
             <Route path="/matrix/:roleId" element={<MatrixPage />} />

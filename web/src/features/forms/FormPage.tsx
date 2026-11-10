@@ -1,0 +1,257 @@
+import { useMemo, useState } from "react";
+import { Alert, App, Button, DatePicker, Form as AntForm, Input, Modal, Popover, Progress, Segmented, Space, Tag, Timeline } from "antd";
+import dayjs, { type Dayjs } from "dayjs";
+import {
+  CalendarOutlined, CheckOutlined, DownloadOutlined, FileExcelOutlined, HistoryOutlined, RollbackOutlined, SendOutlined, UnlockOutlined, WarningOutlined,
+} from "@ant-design/icons";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useParams } from "react-router-dom";
+import { api } from "../../api/client";
+import type { Form, FormItem } from "../../api/collection";
+import { DecisionModal } from "../../shared/DecisionModal";
+import { errorText, formatDate, formatDateTime } from "../../shared/format";
+import { L } from "../../shared/i18n";
+import { submissionStatus, unitKind } from "../../shared/labels";
+import { usePermissions } from "../../shared/session";
+import { PageHeader, Panel, Stepper } from "../../shared/ui";
+import { ImportModal } from "./ImportModal";
+import { ValueRow, type ReturnMark } from "./ValueRow";
+
+type Filter = "all" | "missing" | "issues" | "flagged";
+
+/**
+ * نموذج الجهة: الإدخال والمراجعة في صفحة واحدة. المسار أعلاها يقول أين النموذج ومن عليه الإجراء،
+ * وشريط الإجراء أسفلها ثابت (إرسال، أو اعتماد وإعادة)، والمرشحات تعرض الناقص أو ما به ملاحظات فقط.
+ */
+export default function FormPage() {
+  const { id } = useParams<{ id: string }>();
+  const qc = useQueryClient();
+  const { message } = App.useApp();
+  const key = ["form", id];
+  const form = useQuery({ queryKey: key, queryFn: () => api.get<Form>(`/api/forms/${id}`) });
+  const [filter, setFilter] = useState<Filter>("all");
+  const [marks, setMarks] = useState<Record<string, ReturnMark>>({});
+  const [dialog, setDialog] = useState<"approve" | "return" | "reopen" | "import" | "extend" | null>(null);
+  const canExtend = usePermissions().can("dc.cycles", "E");
+
+  const refresh = () => qc.invalidateQueries({ queryKey: key });
+  const onSaved = (item: FormItem) => {
+    qc.setQueryData<Form>(key, (f) => f && {
+      ...f,
+      sections: f.sections.map((s) => ({ ...s, items: s.items.map((i) => (i.indicatorId === item.indicatorId ? item : i)) })),
+    });
+    void refresh();
+  };
+
+  const submit = useMutation({
+    mutationFn: () => api.post<Form>(`/api/forms/${id}/submit`),
+    onSuccess: (f) => {
+      qc.setQueryData(key, f);
+      void qc.invalidateQueries({ queryKey: ["forms"] });
+      message.success(L(`أرسل النموذج إلى «${f.path.find((p) => p.state === "current")?.name ?? ""}»`, "Form sent for review"));
+    },
+  });
+
+  const f = form.data;
+  const items = useMemo(() => f?.sections.flatMap((s) => s.items) ?? [], [f]);
+  const flaggedCount = Object.values(marks).filter((m) => m.checked).length;
+  const visible = (i: FormItem) =>
+    filter === "all" ? true
+      : filter === "missing" ? !i.value
+        : filter === "issues" ? i.issues.length > 0 || (!!i.evidenceRequired && i.evidence.every((e) => e.voided) && i.value?.kind === "Number")
+          : !!i.value?.reviewNote || !!marks[i.indicatorId]?.checked;
+
+  if (!f) return <Panel query={form}>{null}</Panel>;
+  const editable = f.actions.canEdit;
+  const reviewing = f.actions.canReview;
+  const current = f.path.findIndex((p) => p.state === "current");
+
+  return (
+    <>
+      <PageHeader back={{ to: "/forms", label: L("النماذج", "Forms") }}
+        title={<>{f.unitName} <Tag color={submissionStatus[f.status].color}>{submissionStatus[f.status].text}</Tag>{f.trial && <Tag color="purple">{L("بروفة", "Rehearsal")}</Tag>}</>}
+        subtitle={<>{unitKind[f.unitKind]} · {f.cycleName} · {L("الموعد النهائي", "Due")} <b className="ltr">{formatDate(f.dueOn)}</b>{f.overdue && <Tag color="error" className="ms">{L("متأخر", "Overdue")}</Tag>}</>}
+        extra={
+          <Space wrap>
+            <Button icon={<DownloadOutlined />} href={`/api/forms/${f.id}/template.xlsx`}>{L("تنزيل Excel", "Download Excel")}</Button>
+            {editable && <Button icon={<FileExcelOutlined />} onClick={() => setDialog("import")}>{L("إدخال من Excel", "Import from Excel")}</Button>}
+            {canExtend && f.cycleStatus === "Open" && f.status !== "Approved" && (
+              <Button icon={<CalendarOutlined />} onClick={() => setDialog("extend")}>{L("تمديد موعد الجهة", "Extend deadline")}</Button>
+            )}
+          </Space>
+        } />
+
+      <Panel>
+        <Stepper current={current < 0 ? f.path.length : current} steps={f.path.map((p) => ({ title: p.name }))} />
+      </Panel>
+
+      {f.status === "Returned" && f.returnNote && (
+        <Alert type="error" showIcon className="mb" icon={<RollbackOutlined />} message={L("أعيد النموذج للتصحيح", "The form was returned")} description={f.returnNote} />
+      )}
+      {f.status === "InProgress" && f.returnNote && f.events.at(-1)?.action === "Reopened" && (
+        <Alert type="warning" showIcon className="mb" icon={<UnlockOutlined />} message={L("أعيد فتح النموذج بعد اعتماده", "The form was reopened")} description={f.returnNote} />
+      )}
+      {f.cycleStatus === "Closed" && <Alert type="info" showIcon className="mb" message={L("الدورة مغلقة؛ النموذج للاطلاع فقط.", "The cycle is closed; read only.")} />}
+      {reviewing && (
+        <Alert type="info" showIcon className="mb"
+          message={L(`النموذج ينتظر مراجعتك (${f.path[current]?.name}). اعتمده لينتقل إلى ${f.nextStepName ?? "الاعتماد النهائي"}، أو علّم المؤشرات التي تحتاج تصحيحًا وأعده.`,
+            "This form is waiting for your review.")} />
+      )}
+
+      <Panel>
+        <div className="f-head">
+          <div className="f-progress">
+            <span>{L("أدخلت", "Entered")} <b className="ltr">{f.completed}/{f.required}</b></span>
+            <Progress percent={f.required ? Math.round((100 * f.completed) / f.required) : 0} showInfo={false} />
+          </div>
+          <Segmented value={filter} onChange={(v) => setFilter(v as Filter)}
+            options={[
+              { value: "all", label: L("الكل", "All") },
+              { value: "missing", label: L(`الناقص (${items.filter((i) => !i.value).length})`, "Missing") },
+              { value: "issues", label: L("به تنبيهات", "With issues") },
+              { value: "flagged", label: L("ملاحظات المراجعة", "Review notes") },
+            ]} />
+        </div>
+        <nav className="f-std-nav" aria-label={L("المعايير", "Standards")}>
+          {f.sections.map((s) => (
+            <a key={s.standardCode} href={`#s-${s.standardCode}`} className={s.items.every((i) => i.value) ? "done" : undefined}>
+              {s.standardCode} <span className="ltr">{s.items.filter((i) => i.value).length}/{s.items.length}</span>
+            </a>
+          ))}
+        </nav>
+      </Panel>
+
+      {f.sections.map((s) => {
+        const rows = s.items.filter(visible);
+        if (rows.length === 0) return null;
+        return (
+          <Panel key={s.standardCode} id={`s-${s.standardCode}`} title={<><code className="ltr">{s.standardCode}</code> {s.standardName}</>}>
+            {rows.map((i) => (
+              <ValueRow key={`${i.indicatorId}:${i.value?.version ?? 0}:${i.evidence.length}`} formId={f.id} item={i} editable={editable} reviewing={reviewing}
+                mark={marks[i.indicatorId]} onMark={(m) => setMarks((x) => ({ ...x, [i.indicatorId]: m }))} onSaved={onSaved} />
+            ))}
+          </Panel>
+        );
+      })}
+
+      {f.events.length > 0 && (
+        <Panel title={L("سجل النموذج", "Form history")} icon={<HistoryOutlined />}>
+          <Timeline items={[...f.events].reverse().map((e) => ({
+            color: e.action === "Returned" ? "red" : e.action === "Approved" ? "green" : e.action === "Reopened" ? "orange" : "blue",
+            children: (
+              <>
+                <b>{eventText(e.action)}</b> — {e.byName} <small className="muted ltr">{formatDateTime(e.at)}</small>
+                {e.note && <div className="muted">{e.note}</div>}
+              </>
+            ),
+          }))} />
+        </Panel>
+      )}
+
+      {(editable || reviewing || f.actions.canReopen) && (
+        <div className="f-actions no-print">
+          <span className="grow">
+            {editable && (f.blocking.length === 0
+              ? L("كل المؤشرات مكتملة. أرسل النموذج للمراجعة.", "Everything is complete. Send it for review.")
+              : <Popover title={L("ما يمنع الإرسال", "What blocks sending")} content={<ul style={{ maxWidth: 420, maxHeight: 300, overflow: "auto" }}>{f.blocking.map((b) => <li key={b}>{b}</li>)}</ul>}>
+                  <span className="f-issue warn"><WarningOutlined /> {L(`${f.blocking.length} أمر يمنع الإرسال — اعرضها`, `${f.blocking.length} items block sending`)}</span>
+                </Popover>)}
+            {reviewing && (flaggedCount > 0
+              ? L(`علّمت ${flaggedCount} مؤشرًا للتصحيح.`, `${flaggedCount} marked for correction.`)
+              : L("راجع القيم والأدلة، ثم اعتمد أو أعد.", "Review values and evidence, then approve or return."))}
+          </span>
+          {submit.error && <span className="f-issue err">{errorText(submit.error)}</span>}
+          {editable && (
+            <Button type="primary" size="large" icon={<SendOutlined />} disabled={!f.actions.canSubmit} loading={submit.isPending}
+              onClick={() => Modal.confirm({
+                title: L("إرسال النموذج للمراجعة؟", "Send for review?"),
+                content: L(`سيقفل النموذج للتعديل وينتقل إلى «${f.path[1]?.name}». يعاد إليك إن احتاج تصحيحًا.`, "The form will be locked until returned."),
+                okText: L("إرسال", "Send"), cancelText: L("إلغاء", "Cancel"), onOk: () => submit.mutateAsync(),
+              })}>
+              {L("إرسال للمراجعة", "Send for review")}
+            </Button>
+          )}
+          {reviewing && (
+            <>
+              <Button danger size="large" icon={<RollbackOutlined />} onClick={() => setDialog("return")}>{L("إعادة للتصحيح", "Return")}</Button>
+              <Button type="primary" size="large" icon={<CheckOutlined />} disabled={flaggedCount > 0} onClick={() => setDialog("approve")}>
+                {f.nextStepName ? L("اعتماد وإحالة", "Approve") : L("اعتماد نهائي", "Final approval")}
+              </Button>
+            </>
+          )}
+          {f.actions.canReopen && <Button icon={<UnlockOutlined />} onClick={() => setDialog("reopen")}>{L("إعادة فتح للتصحيح", "Reopen")}</Button>}
+        </div>
+      )}
+
+      {dialog === "approve" && (
+        <ApproveModal form={f} onClose={() => setDialog(null)} onDone={(next) => { qc.setQueryData(key, next); void qc.invalidateQueries({ queryKey: ["forms"] }); }} />
+      )}
+      {dialog === "return" && (
+        <DecisionModal title={L("إعادة النموذج للتصحيح", "Return the form")} field="note" label={L("الملاحظة العامة لمدخل البيانات", "Note to the data entry")} okText={L("إعادة", "Return")} danger
+          explain={flaggedCount > 0
+            ? L(`ستصل ملاحظاتك على ${flaggedCount} مؤشرًا مميزة في النموذج، مع هذه الملاحظة العامة.`, `${flaggedCount} indicator notes will be sent.`)
+            : L("لم تعلّم مؤشرات بعينها؛ تكفي ملاحظة عامة واضحة. يمكنك تعليم المؤشرات بخانة «يحتاج تصحيحًا».", "No indicator marked; write a clear note.")}
+          onSubmit={async (note) => {
+            const next = await api.post<Form>(`/api/forms/${f.id}/return`, {
+              note, items: Object.entries(marks).filter(([, m]) => m.checked).map(([indicatorId, m]) => ({ indicatorId, note: m.note || note })),
+            });
+            setMarks({});
+            qc.setQueryData(key, next);
+            void qc.invalidateQueries({ queryKey: ["forms"] });
+          }}
+          onClose={() => setDialog(null)} />
+      )}
+      {dialog === "reopen" && (
+        <DecisionModal title={L("إعادة فتح نموذج معتمد", "Reopen an approved form")} field="note" label={L("سبب إعادة الفتح", "Reason")} okText={L("إعادة فتح", "Reopen")}
+          explain={L("يعود النموذج إلى الإدخال ثم يمر بخطوات الاعتماد كلها من جديد. القيم السابقة واعتماداتها تبقى في السجل.", "The form returns to entry and the full approval path.")}
+          onSubmit={async (note) => {
+            qc.setQueryData(key, await api.post<Form>(`/api/forms/${f.id}/reopen`, { note }));
+          }}
+          onClose={() => setDialog(null)} />
+      )}
+      {dialog === "extend" && <ExtendModal form={f} onClose={() => setDialog(null)} onDone={(next) => { qc.setQueryData(key, next); void qc.invalidateQueries({ queryKey: ["forms"] }); }} />}
+      {dialog === "import" && <ImportModal formId={f.id} onClose={() => setDialog(null)} onApplied={() => void refresh()} />}
+    </>
+  );
+}
+
+function ApproveModal({ form, onClose, onDone }: { form: Form; onClose: () => void; onDone: (f: Form) => void }) {
+  const run = useMutation({ mutationFn: () => api.post<Form>(`/api/forms/${form.id}/approve`, { note: null }), onSuccess: (f) => { onDone(f); onClose(); } });
+  const final = !form.nextStepName;
+  return (
+    <Modal open title={final ? L("الاعتماد النهائي", "Final approval") : L("اعتماد وإحالة", "Approve and forward")} onCancel={onClose} onOk={() => run.mutate()} confirmLoading={run.isPending}
+      okText={L("اعتماد", "Approve")} cancelText={L("إلغاء", "Cancel")}>
+      {run.error && <Alert type="error" showIcon message={errorText(run.error)} className="mb" />}
+      <p>{final
+        ? L(`تعتمد قيم ${form.unitName} نهائيًا فتدخل نتائج الجامعة، ويقفل النموذج.`, "Values become final and enter the results.")
+        : L(`ينتقل النموذج إلى «${form.nextStepName}».`, `The form moves to ${form.nextStepName}.`)}</p>
+    </Modal>
+  );
+}
+
+function ExtendModal({ form, onClose, onDone }: { form: Form; onClose: () => void; onDone: (f: Form) => void }) {
+  const [fields] = AntForm.useForm<{ dueOn: Dayjs; reason: string }>();
+  const run = useMutation({
+    mutationFn: (v: { dueOn: Dayjs; reason: string }) => api.post<Form>(`/api/forms/${form.id}/extend`, { dueOn: v.dueOn.format("YYYY-MM-DD"), reason: v.reason }),
+    onSuccess: (f) => { onDone(f); onClose(); },
+  });
+  return (
+    <Modal open title={L(`تمديد موعد ${form.unitName}`, `Extend ${form.unitName}`)} onCancel={onClose} onOk={() => fields.submit()} confirmLoading={run.isPending}
+      okText={L("تمديد", "Extend")} cancelText={L("إلغاء", "Cancel")} destroyOnHidden>
+      {run.error && <Alert type="error" showIcon message={errorText(run.error)} className="mb" />}
+      <p>{L("يمدد موعد هذه الجهة وحدها بقرار مسجل؛ موعد الدورة لبقية الجهات لا يتغير.", "Extends this unit only; the cycle deadline stays.")}</p>
+      <AntForm form={fields} layout="vertical" onFinish={(v) => run.mutate(v)} initialValues={{ dueOn: dayjs(form.dueOn).add(7, "day") }}>
+        <AntForm.Item name="dueOn" label={L("الموعد الجديد", "New deadline")} rules={[{ required: true }]}>
+          <DatePicker disabledDate={(d) => !d.isAfter(dayjs(form.dueOn), "day")} />
+        </AntForm.Item>
+        <AntForm.Item name="reason" label={L("السبب أو رقم القرار", "Reason or decision")} rules={[{ required: true, min: 5, message: L("اكتب السبب", "Enter the reason") }]}>
+          <Input maxLength={500} />
+        </AntForm.Item>
+      </AntForm>
+    </Modal>
+  );
+}
+
+function eventText(a: Form["events"][number]["action"]) {
+  return a === "Submitted" ? L("أرسل للمراجعة", "Submitted") : a === "Approved" ? L("اعتمد", "Approved") : a === "Returned" ? L("أعيد للتصحيح", "Returned") : L("أعيد فتحه", "Reopened");
+}

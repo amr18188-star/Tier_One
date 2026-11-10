@@ -79,6 +79,7 @@ public static class DependencyInjection
             services.AddHostedService<AccessVersionPoller>();
             services.AddHostedService<MailDispatcher>();
             services.AddHostedService<RetentionJob>();
+            services.AddHostedService<Email.FormReminderJob>();
         }
         return services;
     }

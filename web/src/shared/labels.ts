@@ -1,3 +1,4 @@
+import type { CycleStatus, Performance, SubmissionStatus } from "../api/collection";
 import type { Aggregation, CollectionLevel, ConflictSeverity, ConflictStatus, DefinitionStatus, Direction, DistributionStatus, Frequency, OrgUnitKind, TargetKind } from "../api/tier1";
 
 /** نصوص الحالات وألوانها في مكان واحد؛ اللون لا يأتي وحده أبدًا، بل مع نص يشرحه. */
@@ -73,4 +74,35 @@ export function num(v: number | null | undefined): string {
 export function withUnit(v: number | null | undefined, unit: string): string {
   if (v === null || v === undefined) return "—";
   return unit.trim() === "%" ? `${num(v)}%` : `${num(v)} ${unit}`;
+}
+
+// ----- جمع البيانات -----
+
+export const cycleStatus: Record<CycleStatus, { text: string; color: TagColor; hint: string }> = {
+  Draft: { text: "قيد الإعداد", color: "default", hint: "لم تفتح بعد؛ لا يراها مدخلو البيانات." },
+  Open: { text: "مفتوحة", color: "processing", hint: "النماذج متاحة للإدخال والمراجعة." },
+  Closed: { text: "مغلقة", color: "success", hint: "انتهت الدورة؛ النتائج من القيم المعتمدة فيها." },
+};
+
+export const submissionStatus: Record<SubmissionStatus, { text: string; color: TagColor }> = {
+  NotStarted: { text: "لم يبدأ", color: "default" },
+  InProgress: { text: "قيد الإدخال", color: "processing" },
+  InReview: { text: "قيد المراجعة", color: "gold" },
+  Returned: { text: "معاد للتصحيح", color: "error" },
+  Approved: { text: "معتمد", color: "success" },
+};
+
+/** حالة الأداء: نقص البيانات حالة مستقلة رمادية، لا تحسب ضعفًا. */
+export const performance: Record<Performance, { text: string; color: TagColor; tone: "good" | "near" | "bad" | "none" }> = {
+  Achieved: { text: "محقق", color: "success", tone: "good" },
+  Near: { text: "قريب من المستهدف", color: "warning", tone: "near" },
+  Behind: { text: "متأخر", color: "error", tone: "bad" },
+  NoTarget: { text: "بلا مستهدف", color: "default", tone: "none" },
+  NoData: { text: "لا بيانات معتمدة", color: "default", tone: "none" },
+  NotJudged: { text: "لا يحكم عليه", color: "default", tone: "none" },
+};
+
+/** حجم الملف مقروءًا. */
+export function fileSize(bytes: number): string {
+  return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }

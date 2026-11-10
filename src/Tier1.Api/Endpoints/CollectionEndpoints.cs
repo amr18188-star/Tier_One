@@ -1,0 +1,158 @@
+using Microsoft.AspNetCore.Http.Features;
+using Tier1.Api.Security;
+using Tier1.Api.Startup;
+using Tier1.Application.Abstractions;
+using Tier1.Application.Access;
+using Tier1.Application.Collection;
+using Tier1.Domain.Access;
+using Tier1.Domain.Collection;
+using Tier1.Domain.Common;
+
+namespace Tier1.Api.Endpoints;
+
+/// <summary>جمع البيانات: الدورات، ونماذج الجهات ومسار اعتمادها، والأدلة، والاستيراد من Excel، والنتائج.</summary>
+public static class CollectionEndpoints
+{
+    private const string Xlsx = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+    public static void MapCollection(this RouteGroupBuilder api)
+    {
+        MapCycles(api.MapGroup("/cycles"));
+        MapForms(api.MapGroup("/forms"));
+        MapDocuments(api);
+        MapResults(api.MapGroup("/results"));
+    }
+
+    private static void MapCycles(RouteGroupBuilder g)
+    {
+        g.MapGet("/", async (CyclesService svc, CancellationToken ct) => Results.Ok(await svc.ListAsync(ct)))
+            .RequireAnyPermission($"{Features.Cycles}:V", $"{Features.Forms}:V", $"{Features.Results}:V");
+        g.MapPost("/", async (SaveCycleRequest req, CyclesService svc, CancellationToken ct) => Results.Ok(await svc.CreateAsync(req, ct)))
+            .RequirePermission(Features.Cycles, Cap.Add);
+        g.MapPut("/{id:guid}", async (Guid id, SaveCycleRequest req, CyclesService svc, CancellationToken ct) => Results.Ok(await svc.UpdateAsync(id, req, ct)))
+            .RequirePermission(Features.Cycles, Cap.Edit);
+        g.MapGet("/{id:guid}/preview", async (Guid id, CyclesService svc, CancellationToken ct) => Results.Ok(await svc.PreviewOpenAsync(id, ct)))
+            .RequirePermission(Features.Cycles, Cap.Edit);
+        g.MapPost("/{id:guid}/open", async (Guid id, CyclesService svc, CancellationToken ct) => Results.Ok(await svc.OpenAsync(id, ct)))
+            .RequirePermission(Features.Cycles, Cap.Edit);
+        g.MapPost("/{id:guid}/close", async (Guid id, NoteRequest req, CyclesService svc, CancellationToken ct) => Results.Ok(await svc.CloseAsync(id, req.Note, ct)))
+            .RequirePermission(Features.Cycles, Cap.Delete);
+    }
+
+    private static void MapForms(RouteGroupBuilder g)
+    {
+        g.MapGet("/", async (Guid? cycleId, bool? awaitingMe, SubmissionStatus? status, string? q, FormsService svc, CancellationToken ct) =>
+                Results.Ok(await svc.ListAsync(cycleId, awaitingMe ?? false, status, q, ct)))
+            .RequirePermission(Features.Forms, Cap.View);
+        g.MapGet("/{id:guid}", async (Guid id, FormsService svc, CancellationToken ct) => Results.Ok(await svc.GetAsync(id, ct)))
+            .RequirePermission(Features.Forms, Cap.View);
+        g.MapPut("/{id:guid}/values", async (Guid id, SaveValueRequest req, FormsService svc, CancellationToken ct) => Results.Ok(await svc.SaveValueAsync(id, req, ct)))
+            .RequirePermission(Features.Forms, Cap.Edit);
+        g.MapDelete("/{id:guid}/values/{indicatorId:guid}", async (Guid id, Guid indicatorId, FormsService svc, CancellationToken ct) =>
+            {
+                await svc.ClearValueAsync(id, indicatorId, ct);
+                return Results.NoContent();
+            })
+            .RequirePermission(Features.Forms, Cap.Edit);
+        g.MapPost("/{id:guid}/submit", async (Guid id, FormsService svc, CancellationToken ct) => Results.Ok(await svc.SubmitAsync(id, ct)))
+            .RequirePermission(Features.Forms, Cap.Edit);
+        // المراجعة والاعتماد: الخدمة تفحص الإجراء الخاص لخطوة النموذج الحالية وفصل المهام.
+        g.MapPost("/{id:guid}/approve", async (Guid id, NoteRequest req, FormsService svc, CancellationToken ct) => Results.Ok(await svc.ApproveAsync(id, req, ct)))
+            .RequireAnyPermission(ReviewSpecials);
+        g.MapPost("/{id:guid}/return", async (Guid id, ReturnRequest req, FormsService svc, CancellationToken ct) => Results.Ok(await svc.ReturnAsync(id, req, ct)))
+            .RequireAnyPermission(ReviewSpecials);
+        g.MapPost("/{id:guid}/reopen", async (Guid id, NoteRequest req, FormsService svc, CancellationToken ct) => Results.Ok(await svc.ReopenAsync(id, req, ct)))
+            .RequireSpecial(Features.Cycles, ApprovalRules.Reopen);
+
+        g.MapPost("/{id:guid}/extend", async (Guid id, ExtendRequest req, FormsService svc, CancellationToken ct) => Results.Ok(await svc.ExtendAsync(id, req, ct)))
+            .RequirePermission(Features.Cycles, Cap.Edit);
+
+        g.MapGet("/{id:guid}/template.xlsx", async (Guid id, FormsService svc, ISpreadsheets sheets, CancellationToken ct) =>
+            {
+                var (content, name) = await svc.TemplateAsync(id, sheets, ct);
+                return Results.File(content, Xlsx, name);
+            })
+            .RequirePermission(Features.Forms, Cap.View);
+        g.MapPost("/{id:guid}/import", async (Guid id, bool? apply, HttpRequest request, FormsService svc, ISpreadsheets sheets, CancellationToken ct) =>
+            {
+                const long max = 5 * 1024 * 1024;
+                if (request.HttpContext.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit) limit.MaxRequestBodySize = max + 64 * 1024;
+                var file = await SingleFileAsync(request, max, ct);
+                await using var stream = file.OpenReadStream();
+                return Results.Ok(await svc.ImportAsync(id, stream, sheets, apply ?? false, ct));
+            })
+            .RequirePermission(Features.Forms, Cap.Edit);
+    }
+
+    private static readonly string[] ReviewSpecials =
+    [
+        $"{Features.Forms}:{ApprovalRules.ReviewDepartment}", $"{Features.Forms}:{ApprovalRules.ReviewCollege}",
+        $"{Features.Forms}:{ApprovalRules.ApproveCollege}", $"{Features.Forms}:{ApprovalRules.ApproveFinal}",
+    ];
+
+    private static void MapDocuments(RouteGroupBuilder api)
+    {
+        api.MapPost("/forms/{id:guid}/values/{indicatorId:guid}/evidence", async (Guid id, Guid indicatorId, HttpRequest request, DocumentsService svc, CancellationToken ct) =>
+            {
+                var (file, description) = await UploadAsync(request, svc.MaxBytes, ct);
+                await using var stream = file.OpenReadStream();
+                return Results.Ok(await svc.UploadEvidenceAsync(id, indicatorId, new UploadedFile(file.FileName, file.Length, stream, description), ct));
+            })
+            .RequirePermission(Features.Forms, Cap.Edit);
+
+        api.MapGet("/structure/colleges/{id:guid}/documents", async (Guid id, DocumentsService svc, CancellationToken ct) => Results.Ok(await svc.StructureDocsAsync(id, ct)))
+            .RequirePermission(Features.Structure, Cap.View);
+        api.MapPost("/structure/colleges/{id:guid}/documents", async (Guid id, HttpRequest request, DocumentsService svc, CancellationToken ct) =>
+            {
+                var (file, description) = await UploadAsync(request, svc.MaxBytes, ct);
+                await using var stream = file.OpenReadStream();
+                return Results.Ok(await svc.UploadStructureAsync(id, new UploadedFile(file.FileName, file.Length, stream, description), ct));
+            })
+            .RequirePermission(Features.Structure, Cap.Add);
+
+        // التنزيل والإبطال بصلاحية مالك المستند (نموذج الجهة أو هيكل الكلية)، تفحصها الخدمة.
+        api.MapGet("/documents/{id:guid}", async (Guid id, bool? inline, DocumentsService svc, CancellationToken ct) =>
+            {
+                var file = await svc.OpenAsync(id, ct);
+                var show = inline == true && file.ContentType is "application/pdf" or "image/png" or "image/jpeg";
+                return show ? Results.Stream(file.Content, file.ContentType) : Results.File(file.Content, file.ContentType, file.FileName);
+            })
+            .RequireAnyPermission($"{Features.Forms}:V", $"{Features.Structure}:V");
+        api.MapPost("/documents/{id:guid}/void", async (Guid id, NoteRequest req, DocumentsService svc, CancellationToken ct) => Results.Ok(await svc.VoidAsync(id, req.Note, ct)))
+            .RequireAnyPermission($"{Features.Forms}:E", $"{Features.Structure}:D");
+    }
+
+    private static void MapResults(RouteGroupBuilder g)
+    {
+        g.MapGet("/", async (Guid? cycleId, Guid? unitId, ResultsService svc, CancellationToken ct) =>
+                await svc.OverviewAsync(cycleId, unitId, ct) is { } r ? Results.Ok(r) : Results.NoContent())
+            .RequirePermission(Features.Results, Cap.View);
+        g.MapGet("/{cycleId:guid}/indicators/{indicatorId:guid}", async (Guid cycleId, Guid indicatorId, Guid? unitId, ResultsService svc, CancellationToken ct) =>
+                Results.Ok(await svc.IndicatorAsync(cycleId, indicatorId, unitId, ct)))
+            .RequirePermission(Features.Results, Cap.View);
+        g.MapGet("/{cycleId:guid}/export.xlsx", async (Guid cycleId, Guid? unitId, ResultsService svc, ISpreadsheets sheets, CancellationToken ct) =>
+            {
+                var (content, name) = await svc.ExportAsync(cycleId, unitId, sheets, ct);
+                return Results.File(content, Xlsx, name);
+            })
+            .RequireSpecial(Features.Results, "export").RequireRateLimiting(ApiSetup.SensitiveLimit);
+    }
+
+    private static async Task<(IFormFile File, string? Description)> UploadAsync(HttpRequest request, long maxBytes, CancellationToken ct)
+    {
+        if (request.HttpContext.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit) limit.MaxRequestBodySize = maxBytes + 64 * 1024;
+        var file = await SingleFileAsync(request, maxBytes, ct);
+        var form = await request.ReadFormAsync(ct);
+        return (file, form["description"].FirstOrDefault());
+    }
+
+    /// <summary>ملف واحد من نموذج multipart بحد حجم؛ يرفض ما عدا ذلك برسالة واضحة.</summary>
+    private static async Task<IFormFile> SingleFileAsync(HttpRequest request, long maxBytes, CancellationToken ct)
+    {
+        if (!request.HasFormContentType) throw new DomainException("file_required", "أرفق ملفًا.", "Attach a file.", 400);
+        var form = await request.ReadFormAsync(ct);
+        var file = form.Files.Count == 1 ? form.Files[0] : throw new DomainException("file_required", "أرفق ملفًا واحدًا.", "Attach exactly one file.", 400);
+        if (file.Length > maxBytes) throw new DomainException("file_too_large", $"الملف أكبر من {maxBytes / 1024 / 1024} ميجابايت.", $"The file is larger than {maxBytes / 1024 / 1024} MB.", 413);
+        return file;
+    }
+}

@@ -1,0 +1,189 @@
+using Microsoft.EntityFrameworkCore;
+using Tier1.Application.Abstractions;
+using Tier1.Application.Access;
+using Tier1.Application.Auditing;
+using Tier1.Domain.Access;
+using Tier1.Domain.Collection;
+using Tier1.Domain.Common;
+using Tier1.Domain.Kpi;
+using Tier1.Domain.Organization;
+
+namespace Tier1.Application.Collection;
+
+public sealed record CycleDto(
+    Guid Id, string Name, string PeriodLabel, int TargetYear, DateOnly OpensOn, DateOnly DueOn, CycleStatus Status, bool Trial,
+    int Indicators, int Forms, IReadOnlyDictionary<string, int> FormsByStatus, int Overdue, uint Version);
+
+public sealed record SaveCycleRequest(string Name, string PeriodLabel, int TargetYear, DateOnly OpensOn, DateOnly DueOn, bool Trial, uint? Version);
+
+public sealed record OpenCyclePreview(int Indicators, int Forms, int Departments, int Colleges, int Central, IReadOnlyList<string> Skipped);
+
+/// <summary>
+/// دورات جمع البيانات: الإنشاء والفتح والإغلاق. الفتح يأخذ لقطة من التعريفات المعتمدة (أو قيد العمل في الدورة التجريبية)،
+/// وينشئ نموذجًا لكل جهة تنطبق عليها مؤشرات بحسب مستوى جمع بياناتها: القسم، أو الكلية، أو الجهة المالكة للمؤشر المركزي.
+/// </summary>
+public sealed class CyclesService(IAppDb db, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit)
+{
+    private const string Feature = Features.Cycles;
+
+    public async Task<IReadOnlyList<CycleDto>> ListAsync(CancellationToken ct)
+    {
+        // قائمة الدورات يحتاجها من يتابع الدورات أو يدخل النماذج أو يطالع النتائج.
+        var me = await access.CurrentAsync(ct);
+        if (!me.Has(Feature, Cap.View) && !me.Has(Features.Forms, Cap.View) && !me.Has(Features.Results, Cap.View)) throw DomainException.Forbidden();
+        var cycles = await db.Cycles.AsNoTracking().OrderByDescending(c => c.CreatedAt).ToListAsync(ct);
+        // مدخلو البيانات لا يرون الدورة قيد الإعداد.
+        if (!me.Has(Feature, Cap.Edit)) cycles = cycles.Where(c => c.Status != CycleStatus.Draft).ToList();
+        var ids = cycles.Select(c => c.Id).ToList();
+        var forms = await db.Submissions.AsNoTracking().Where(s => ids.Contains(s.CycleId)).Select(s => new { s.CycleId, s.Status, s.DueOn }).ToListAsync(ct);
+        var indicators = await db.CycleIndicators.AsNoTracking().Where(i => ids.Contains(i.CycleId)).GroupBy(i => i.CycleId).Select(g => new { g.Key, Count = g.Count() }).ToListAsync(ct);
+        var today = CairoTime.DateOf(clock.UtcNow);
+        return cycles.Select(c =>
+        {
+            var mine = forms.Where(f => f.CycleId == c.Id).ToList();
+            return new CycleDto(c.Id, c.Name, c.PeriodLabel, c.TargetYear, c.OpensOn, c.DueOn, c.Status, c.Trial,
+                indicators.FirstOrDefault(i => i.Key == c.Id)?.Count ?? 0, mine.Count,
+                mine.GroupBy(f => f.Status.ToString()).ToDictionary(g => g.Key, g => g.Count()),
+                c.Status == CycleStatus.Open ? mine.Count(f => f.Status != SubmissionStatus.Approved && f.DueOn < today) : 0,
+                c.Version);
+        }).ToList();
+    }
+
+    public async Task<CycleDto> CreateAsync(SaveCycleRequest req, CancellationToken ct)
+    {
+        await access.RequireAsync(Feature, Cap.Add, ct);
+        var cycle = new CollectionCycle { CreatedBy = current.UserId, CreatedAt = clock.UtcNow };
+        Apply(cycle, req);
+        db.Cycles.Add(cycle);
+        audit.Record(AuditEvents.Audit("dc", Feature, "dc.cycle_created", "إنشاء دورة جمع بيانات", "Created a collection cycle") with
+        {
+            Target = new AuditTarget("cycle", cycle.Id.ToString(), cycle.Name),
+        });
+        await db.SaveChangesAsync(ct);
+        return (await ListAsync(ct)).First(c => c.Id == cycle.Id);
+    }
+
+    public async Task<CycleDto> UpdateAsync(Guid id, SaveCycleRequest req, CancellationToken ct)
+    {
+        await access.RequireAsync(Feature, Cap.Edit, ct);
+        var cycle = await db.Cycles.FirstOrDefaultAsync(c => c.Id == id, ct) ?? throw DomainException.NotFound();
+        Concurrency.Expect(db, cycle, req.Version);
+        if (cycle.Status == CycleStatus.Closed) throw new DomainException("cycle_closed", "الدورة مغلقة.", "The cycle is closed.");
+        if (cycle.Status == CycleStatus.Open && (req.TargetYear != cycle.TargetYear || req.Trial != cycle.Trial))
+            throw new DomainException("cycle_open", "بعد الفتح يعدل الاسم والمواعيد فقط.", "After opening only the name and dates can change.");
+        var oldDue = cycle.DueOn;
+        Apply(cycle, req);
+        if (cycle.Status == CycleStatus.Open && oldDue != cycle.DueOn)
+        {
+            // تمديد الدورة يمدد موعد النماذج التي لم تمدد لها مهلة خاصة.
+            await db.Submissions.Where(s => s.CycleId == id && s.DueOn == oldDue).ExecuteUpdateAsync(s => s.SetProperty(x => x.DueOn, cycle.DueOn), ct);
+        }
+        audit.Record(AuditEvents.Audit("dc", Feature, "dc.cycle_updated", "تعديل دورة جمع بيانات", "Updated a collection cycle") with
+        {
+            Target = new AuditTarget("cycle", cycle.Id.ToString(), cycle.Name),
+            Changes = new ChangeSet().Add("dueOn", oldDue, cycle.DueOn).ToList(),
+        });
+        await db.SaveChangesAsync(ct);
+        return (await ListAsync(ct)).First(c => c.Id == id);
+    }
+
+    /// <summary>ما سيحدث عند الفتح: عدد المؤشرات والنماذج، وما يستبعد ولماذا. يعرض قبل التأكيد.</summary>
+    public async Task<OpenCyclePreview> PreviewOpenAsync(Guid id, CancellationToken ct)
+    {
+        await access.RequireAsync(Feature, Cap.Edit, ct);
+        var cycle = await db.Cycles.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id, ct) ?? throw DomainException.NotFound();
+        var plan = await PlanAsync(cycle, ct);
+        return new OpenCyclePreview(plan.Indicators.Count, plan.Units.Count, plan.Units.Count(u => u.Kind == OrgUnitKind.Department),
+            plan.Units.Count(u => u.IsCollegeLevel), plan.Units.Count(u => u.Kind is not OrgUnitKind.Department && !u.IsCollegeLevel), plan.Skipped);
+    }
+
+    public async Task<CycleDto> OpenAsync(Guid id, CancellationToken ct)
+    {
+        await access.RequireAsync(Feature, Cap.Edit, ct);
+        var cycle = await db.Cycles.FirstOrDefaultAsync(c => c.Id == id, ct) ?? throw DomainException.NotFound();
+        if (cycle.Status != CycleStatus.Draft) throw new DomainException("cycle_not_draft", "تفتح الدورة قيد الإعداد فقط.", "Only a draft cycle can be opened.");
+        var plan = await PlanAsync(cycle, ct);
+        if (plan.Indicators.Count == 0)
+            throw new DomainException("no_indicators", cycle.Trial
+                ? "لا توجد مؤشرات قابلة للقياس (غير موقوفة)."
+                : "لا توجد مؤشرات معتمدة بعد. اعتمد التعريفات أولًا، أو اجعل الدورة بروفة داخلية.", "No indicators to measure.");
+        if (plan.Units.Count == 0) throw new DomainException("no_units", "لا توجد جهات نشطة تنطبق عليها المؤشرات.", "No active units apply.");
+
+        db.CycleIndicators.AddRange(plan.Indicators);
+        db.Submissions.AddRange(plan.Units.Select(u => new Submission { CycleId = cycle.Id, UnitId = u.Id, DueOn = cycle.DueOn }));
+        cycle.Status = CycleStatus.Open;
+        cycle.OpenedAt = clock.UtcNow;
+        audit.Record(AuditEvents.Audit("dc", Feature, "dc.cycle_opened", "فتح دورة جمع بيانات", "Opened a collection cycle") with
+        {
+            Target = new AuditTarget("cycle", cycle.Id.ToString(), cycle.Name),
+            Details = new { indicators = plan.Indicators.Count, forms = plan.Units.Count, cycle.Trial },
+        });
+        await db.SaveChangesAsync(ct);
+        return (await ListAsync(ct)).First(c => c.Id == id);
+    }
+
+    public async Task<CycleDto> CloseAsync(Guid id, string? reason, CancellationToken ct)
+    {
+        await access.RequireAsync(Feature, Cap.Delete, ct);
+        var why = Require.Reason(reason);
+        var cycle = await db.Cycles.FirstOrDefaultAsync(c => c.Id == id, ct) ?? throw DomainException.NotFound();
+        if (cycle.Status != CycleStatus.Open) throw new DomainException("cycle_not_open", "تغلق الدورة المفتوحة فقط.", "Only an open cycle can be closed.");
+        cycle.Status = CycleStatus.Closed;
+        cycle.ClosedAt = clock.UtcNow;
+        var pending = await db.Submissions.CountAsync(s => s.CycleId == id && s.Status != SubmissionStatus.Approved, ct);
+        audit.Record(AuditEvents.Audit("dc", Feature, "dc.cycle_closed", "إغلاق دورة جمع بيانات", "Closed a collection cycle") with
+        {
+            Target = new AuditTarget("cycle", cycle.Id.ToString(), cycle.Name),
+            Reason = why,
+            Details = new { notApproved = pending },
+        });
+        await db.SaveChangesAsync(ct);
+        return (await ListAsync(ct)).First(c => c.Id == id);
+    }
+
+    private sealed record Plan(List<CycleIndicator> Indicators, List<OrgUnit> Units, List<string> Skipped);
+
+    private async Task<Plan> PlanAsync(CollectionCycle cycle, CancellationToken ct)
+    {
+        var indicators = await db.Indicators.AsNoTracking().Include(i => i.Versions).Where(i => !i.Suspended).OrderBy(i => i.SortOrder).ToListAsync(ct);
+        var units = await db.OrgUnits.AsNoTracking().Where(u => u.Active).ToListAsync(ct);
+        var root = units.First(u => u.Kind == OrgUnitKind.University);
+        var skipped = new List<string>();
+        var picked = new List<CycleIndicator>();
+        foreach (var i in indicators)
+        {
+            var v = i.Effective ?? (cycle.Trial ? i.Current : null);
+            if (v is null)
+            {
+                skipped.Add($"{i.Code}: لم يعتمد تعريفه بعد");
+                continue;
+            }
+            var central = v.Level == CollectionLevel.University ? v.OwnerUnitId is { } o && units.Any(u => u.Id == o) ? o : root.Id : (Guid?)null;
+            picked.Add(new CycleIndicator { CycleId = cycle.Id, IndicatorId = i.Id, VersionId = v.Id, Code = i.Code, Level = v.Level, CentralUnitId = central });
+        }
+        var needed = new List<OrgUnit>();
+        if (picked.Any(p => p.Level == CollectionLevel.Department)) needed.AddRange(units.Where(u => u.Kind == OrgUnitKind.Department));
+        if (picked.Any(p => p.Level == CollectionLevel.College)) needed.AddRange(units.Where(u => u.IsCollegeLevel));
+        foreach (var c in picked.Where(p => p.CentralUnitId is not null).Select(p => p.CentralUnitId!.Value).Distinct())
+            if (needed.All(u => u.Id != c)) needed.Add(units.First(u => u.Id == c));
+        return new Plan(picked, needed, skipped);
+    }
+
+    private static void Apply(CollectionCycle c, SaveCycleRequest req)
+    {
+        c.Name = string.IsNullOrWhiteSpace(req.Name) ? throw new DomainException("name_required", "اكتب اسم الدورة.", "Enter the cycle name.", 400) : req.Name.Trim();
+        c.PeriodLabel = string.IsNullOrWhiteSpace(req.PeriodLabel) ? throw new DomainException("period_required", "اكتب الفترة التي تقيسها الدورة.", "Enter the period.", 400) : req.PeriodLabel.Trim();
+        if (req.TargetYear is < 2026 or > 2031) throw new DomainException("invalid_year", "سنة المستهدف من 2026 إلى 2031.", "Target year 2026-2031.", 400);
+        if (req.DueOn < req.OpensOn) throw new DomainException("dates", "الموعد النهائي بعد تاريخ الفتح.", "The deadline is after the opening date.", 400);
+        c.TargetYear = req.TargetYear;
+        c.OpensOn = req.OpensOn;
+        c.DueOn = req.DueOn;
+        c.Trial = req.Trial;
+    }
+}
+
+/// <summary>لقطة تعريف المؤشر كما في الدورة، لحساب القيم والتحقق منها.</summary>
+public static class CycleSpec
+{
+    public static ValueSpec Of(IndicatorVersion v) => new(v.Unit, v.Aggregation, !string.IsNullOrWhiteSpace(v.EvidenceRequired));
+}
