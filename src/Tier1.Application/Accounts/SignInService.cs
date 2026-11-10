@@ -1,0 +1,291 @@
+using Tier1.Application.Abstractions;
+using Tier1.Application.Access;
+using Tier1.Application.Auditing;
+using Tier1.Application.Security;
+using Tier1.Domain.Common;
+using Tier1.Domain.Identity;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+
+namespace Tier1.Application.Accounts;
+
+public sealed record LoginCommand(string Email, string Password);
+
+/// <summary>next: "done" أو "mfa_verify" أو "mfa_enroll" أو "change_password".</summary>
+public sealed record LoginResult(string Token, DateTimeOffset ExpiresAt, string Next);
+
+public sealed record MfaSetup(string Secret, string OtpAuthUri, string QrDataUri);
+
+public sealed class SignInService(
+    IAppDb db,
+    IClock clock,
+    ICurrentUser current,
+    IPasswordHasher hasher,
+    ISecretProtector protector,
+    ISessionService sessions,
+    IAuditLog audit,
+    IQrCodes qr,
+    LoginThrottle throttle,
+    IOptions<AuthOptions> options)
+{
+    private const string Surface = "staff";
+
+    private static readonly DomainException BadCredentials =
+        new("invalid_credentials", "البريد أو كلمة المرور غير صحيحة.", "Wrong email or password.", 401);
+
+    // تجزئة ثابتة لتوحيد زمن الاستجابة حين لا يوجد الحساب (منع كشف وجود الحسابات بالتوقيت).
+    private static string? _dummyHash;
+
+    public async Task<LoginResult> LoginAsync(LoginCommand cmd, CancellationToken ct)
+    {
+        var email = (cmd.Email ?? "").Trim().ToLowerInvariant();
+        var now = clock.UtcNow;
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
+        if (user is null || !user.Active || user.PasswordHash is null)
+        {
+            hasher.Verify(_dummyHash ??= hasher.Hash("not-a-real-password"), cmd.Password ?? "");
+            await audit.RecordNowAsync(LoginDenied(user, email, user is null ? "unknown_email" : "inactive_or_unset"), ct);
+            throw BadCredentials;
+        }
+        // العنوان المحجوب عن هذا الحساب (محاولات كثيرة منه) يرد كالخطأ العادي وبزمنه، ولا يمس دخول صاحب الحساب من مكان آخر.
+        var lockout = TimeSpan.FromMinutes(options.Value.LockoutMinutes);
+        if (throttle.IsBlocked(Surface, user.Id, current.Ip, now))
+        {
+            hasher.Verify(_dummyHash ??= hasher.Hash("not-a-real-password"), cmd.Password ?? "");
+            await audit.RecordNowAsync(LoginDenied(user, email, "address_blocked"), ct);
+            throw BadCredentials;
+        }
+        // حجز المحاولة ذريًا قبل التحقق: الحساب المقفل أو المستنفد لا يتحقق منه، فلا تتجاوز الطلبات المتوازية الحد.
+        var max = options.Value.MaxFailedLoginsPerAccount;
+        var reserved = await db.Users.Where(u => u.Id == user.Id && (u.LockedUntil == null || u.LockedUntil <= now) && u.FailedLogins < max)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.FailedLogins, u => u.FailedLogins + 1), ct);
+        if (reserved == 0)
+        {
+            await db.Users.Where(u => u.Id == user.Id && u.FailedLogins >= max).ExecuteUpdateAsync(s => s.SetProperty(u => u.LockedUntil, now.AddMinutes(options.Value.LockoutMinutes)).SetProperty(u => u.FailedLogins, 0), ct);
+            await audit.RecordNowAsync(AuditEvents.Security("auth.locked", Features.Users, "قفل حساب", "Locked an account") with
+            {
+                Outcome = "denied",
+                Target = new AuditTarget("User", user.Id.ToString(), user.Email),
+                ActorOverride = user.Id,
+            }, ct);
+            // الرد نفسه للحساب المقفل وغير الموجود، وبالزمن نفسه (تجزئة وهمية)، فلا يكشف الرد وجود الحساب ولا قفله؛ القفل مسجل في السجل الأمني.
+            hasher.Verify(_dummyHash ??= hasher.Hash("not-a-real-password"), cmd.Password ?? "");
+            throw BadCredentials;
+        }
+        var (valid, rehash) = hasher.Verify(user.PasswordHash, cmd.Password ?? "");
+        if (!valid)
+        {
+            if (throttle.Fail(Surface, user.Id, current.Ip, now, options.Value.MaxFailedLogins, lockout))
+                await audit.RecordNowAsync(AuditEvents.Security("auth.locked", Features.Users, "حجب عنوان عن حساب بعد محاولات فاشلة", "Blocked an address from an account after failed attempts") with
+                {
+                    Outcome = "denied",
+                    Target = new AuditTarget("User", user.Id.ToString(), user.Email),
+                    Details = new { scope = "address", minutes = options.Value.LockoutMinutes },
+                    ActorOverride = user.Id,
+                }, ct);
+            var failed = await db.Users.Where(u => u.Id == user.Id).Select(u => u.FailedLogins).FirstAsync(ct);
+            if (failed >= max)
+                await db.Users.Where(u => u.Id == user.Id).ExecuteUpdateAsync(s => s.SetProperty(u => u.LockedUntil, now.AddMinutes(options.Value.LockoutMinutes)).SetProperty(u => u.FailedLogins, 0), ct);
+            await audit.RecordNowAsync(LoginDenied(user, email, "wrong_password"), ct);
+            throw BadCredentials;
+        }
+        await db.Users.Where(u => u.Id == user.Id).ExecuteUpdateAsync(s => s.SetProperty(u => u.FailedLogins, 0).SetProperty(u => u.LockedUntil, (DateTimeOffset?)null), ct);
+        throttle.Reset(Surface, user.Id, current.Ip);
+        db.Users.Entry(user).State = EntityState.Detached;
+        user = await db.Users.FirstAsync(u => u.Id == user.Id, ct);
+        if (rehash) user.PasswordHash = hasher.Hash(cmd.Password!);
+        user.LastLoginAt = now;
+        var mfaRequired = options.Value.RequireMfa && (user.MfaEnabled || await RoleRequiresMfaAsync(user.Id, ct));
+        var (token, session) = await sessions.CreateAsync(user, mfaRequired, ct);
+        audit.Record(AuditEvents.Security("auth.login", Features.Users, "تسجيل دخول", "Signed in") with
+        {
+            Target = new AuditTarget("User", user.Id.ToString(), user.Email),
+            Details = new { mfa = mfaRequired },
+            ActorOverride = user.Id,
+            ActorName = Lang.Name(user.FullNameAr, user.FullNameEn),
+        });
+        await db.SaveChangesAsync(ct);
+        // من فعّل التحقق بخطوتين يتحقق أولًا ثم يغير الكلمة المؤقتة؛ تغييرها لا يقبل من جلسة لم تتحقق.
+        var next = mfaRequired && user.MfaEnabled ? "mfa_verify"
+            : user.MustChangePassword ? "change_password"
+            : !mfaRequired ? "done" : "mfa_enroll";
+        return new LoginResult(token, session.ExpiresAt, next);
+    }
+
+    /// <summary>يعيد رمز جلسة جديدًا: الرمز قبل التحقق لا يصير رمزًا كامل الصلاحية.</summary>
+    public async Task<string> VerifyMfaAsync(string code, CancellationToken ct)
+    {
+        var (user, sessionId) = await CurrentAsync(ct);
+        if (!user.MfaEnabled || user.MfaSecretProtected is null)
+            throw new DomainException("mfa_not_enrolled", "لم يفعل التحقق بخطوتين لهذا الحساب بعد.", "Two-step verification is not set up for this account yet.");
+        await AcceptCodeAsync(user, code, "auth.mfa_verify", "تحقق بخطوتين", "Verified a two-step code", ct);
+        await sessions.MarkMfaVerifiedAsync(sessionId, ct);
+        return await sessions.RotateAsync(sessionId, ct);
+    }
+
+    public async Task<MfaSetup> BeginMfaSetupAsync(CancellationToken ct)
+    {
+        var (user, _) = await CurrentAsync(ct);
+        if (user.MfaEnabled)
+            throw new DomainException("mfa_enabled", "التحقق بخطوتين مفعل بالفعل. إعادة ضبطه تتم عبر مسؤول الحسابات.", "Two-step verification is already on. Ask an administrator to reset it.", 409);
+        var secret = Totp.NewSecret();
+        user.MfaSecretProtected = protector.Protect(secret);
+        await db.SaveChangesAsync(ct);
+        var uri = Totp.OtpAuthUri(options.Value.TotpIssuer, user.Email, secret);
+        return new MfaSetup(secret, uri, qr.PngDataUri(uri, 5));
+    }
+
+    public async Task<string> EnableMfaAsync(string code, CancellationToken ct)
+    {
+        var (user, sessionId) = await CurrentAsync(ct);
+        if (user.MfaEnabled || user.MfaSecretProtected is null)
+            throw new DomainException("mfa_setup_missing", "ابدأ إعداد التحقق بخطوتين أولًا.", "Start the two-step setup first.", 409);
+        await AcceptCodeAsync(user, code, "auth.mfa_enable", "تفعيل التحقق بخطوتين", "Enabled two-step verification", ct, enabling: true);
+        await sessions.MarkMfaVerifiedAsync(sessionId, ct);
+        return await sessions.RotateAsync(sessionId, ct);
+    }
+
+    public async Task LogoutAsync(CancellationToken ct)
+    {
+        if (current.SessionId is { } sid)
+        {
+            await sessions.RevokeAsync(sid, ct);
+            audit.Record(AuditEvents.Security("auth.logout", Features.Users, "تسجيل خروج", "Signed out") with
+            {
+                Target = new AuditTarget("User", current.UserId?.ToString()),
+            });
+            await db.SaveChangesAsync(ct);
+        }
+    }
+
+    public async Task<int> LogoutAllAsync(CancellationToken ct)
+    {
+        var uid = current.UserId ?? throw DomainException.Forbidden();
+        var count = await sessions.RevokeAllAsync(uid, ct);
+        audit.Record(AuditEvents.Security("auth.logout_all", Features.Users, "إنهاء كل الجلسات", "Ended all sessions") with
+        {
+            Target = new AuditTarget("User", uid.ToString()),
+            Details = new { sessions = count },
+        });
+        await db.SaveChangesAsync(ct);
+        return count;
+    }
+
+    /// <summary>يغير الكلمة ويعيد رمزًا جديدًا للجلسة الحالية، وينهي غيرها.</summary>
+    public async Task<string> ChangePasswordAsync(string currentPassword, string newPassword, CancellationToken ct)
+    {
+        var (user, sessionId) = await CurrentAsync(ct);
+        // جلسة تنتظر التحقق بخطوتين لا تغير كلمة المرور (وإلا أنهت جلسات المالك بكلمة مرور مسروقة وحدها).
+        var session = await db.Sessions.AsNoTracking().FirstAsync(s => s.Id == sessionId, ct);
+        if (session.MfaRequired && session.MfaVerifiedAt is null && user.MfaEnabled) throw DomainException.Forbidden();
+        // حجز المحاولة ذريًا كالدخول: جلسة مسروقة لا تخمن كلمة المرور الحالية بلا حد.
+        var now = clock.UtcNow;
+        var max = options.Value.MaxFailedLoginsPerAccount;
+        if (throttle.IsBlocked(Surface, user.Id, current.Ip, now)) throw BadCredentials;
+        var reserved = await db.Users.Where(u => u.Id == user.Id && (u.LockedUntil == null || u.LockedUntil <= now) && u.FailedLogins < max)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.FailedLogins, u => u.FailedLogins + 1), ct);
+        if (reserved == 0 || user.PasswordHash is null || !hasher.Verify(user.PasswordHash, currentPassword ?? "").Valid)
+        {
+            throttle.Fail(Surface, user.Id, current.Ip, now, options.Value.MaxFailedLogins, TimeSpan.FromMinutes(options.Value.LockoutMinutes));
+            var failed = await db.Users.Where(u => u.Id == user.Id).Select(u => u.FailedLogins).FirstAsync(ct);
+            if (reserved == 0 || failed >= max)
+            {
+                await db.Users.Where(u => u.Id == user.Id).ExecuteUpdateAsync(s => s.SetProperty(u => u.LockedUntil, now.AddMinutes(options.Value.LockoutMinutes)).SetProperty(u => u.FailedLogins, 0), ct);
+                await sessions.RevokeAllAsync(user.Id, ct);
+            }
+            await audit.RecordNowAsync(AuditEvents.Security("auth.change_password", Features.Users, "فشل تغيير كلمة المرور", "Failed to change a password") with
+            {
+                Outcome = "denied",
+                Target = new AuditTarget("User", user.Id.ToString()),
+            }, ct);
+            throw BadCredentials;
+        }
+        await db.Users.Where(u => u.Id == user.Id).ExecuteUpdateAsync(s => s.SetProperty(u => u.FailedLogins, 0), ct);
+        await db.Users.Entry(user).ReloadAsync(ct);
+        PasswordPolicy.Ensure(newPassword, user.Email);
+        user.PasswordHash = hasher.Hash(newPassword);
+        user.MustChangePassword = false;
+        audit.Record(AuditEvents.Security("auth.change_password", Features.Users, "تغيير كلمة المرور", "Changed a password") with
+        {
+            Target = new AuditTarget("User", user.Id.ToString()),
+        });
+        await db.SaveChangesAsync(ct);
+        await sessions.InvalidateAsync(sessionId, ct);
+        foreach (var other in await db.Sessions.Where(s => s.UserId == user.Id && s.RevokedAt == null && s.Id != sessionId).Select(s => s.Id).ToListAsync(ct))
+            await sessions.RevokeAsync(other, ct);
+        return await sessions.RotateAsync(sessionId, ct);
+    }
+
+    private static AuditEntry LoginDenied(AppUser? user, string email, string reason) =>
+        AuditEvents.Security("auth.login", Features.Users, "فشل تسجيل دخول", "Failed to sign in") with
+        {
+            Outcome = "denied",
+            Target = new AuditTarget("User", user?.Id.ToString(), Mask.Email(email)),
+            Details = new { reason },
+            ActorOverride = user?.Id,
+        };
+
+    private async Task AcceptCodeAsync(AppUser user, string? code, string action, string messageAr, string messageEn, CancellationToken ct, bool enabling = false)
+    {
+        var now = clock.UtcNow;
+        // حجز ذري للمحاولة قبل التحقق: مقفل أو مستنفد ⇒ رفض دون مقارنة (لا تخمين لرمز من ستة أرقام بجلسة مسروقة).
+        var maxMfa = options.Value.MaxMfaFailures;
+        var reserved = await db.Users.Where(u => u.Id == user.Id && (u.MfaLockedUntil == null || u.MfaLockedUntil <= now) && u.FailedMfa < maxMfa)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.FailedMfa, u => u.FailedMfa + 1), ct);
+        var target = new AuditTarget("User", user.Id.ToString());
+        if (reserved == 0)
+        {
+            await db.Users.Where(u => u.Id == user.Id && u.FailedMfa >= maxMfa).ExecuteUpdateAsync(s => s.SetProperty(u => u.MfaLockedUntil, now.AddMinutes(options.Value.MfaLockoutMinutes)).SetProperty(u => u.FailedMfa, 0), ct);
+            await audit.RecordNowAsync(AuditEvents.Security(action, Features.Users, "قفل التحقق بخطوتين", "Locked two-step verification") with { Outcome = "denied", Target = target }, ct);
+            throw new DomainException("mfa_locked", "تجاوزت عدد محاولات رمز تطبيق المصادقة. حاول بعد قليل.", "Too many wrong codes. Try again later.", 423);
+        }
+        var secret = protector.Unprotect(user.MfaSecretProtected!) ?? throw new DomainException("mfa_unreadable", "تعذر قراءة إعداد التحقق بخطوتين. اطلب إعادة ضبطه.", "Two-step settings cannot be read. Ask for a reset.", 500);
+        var step = Totp.Verify(secret, code, now, user.LastTotpStep);
+        if (step is null)
+        {
+            await audit.RecordNowAsync(AuditEvents.Security(action, Features.Users, "رفض رمز تحقق", "Rejected a two-step code") with { Outcome = "denied", Target = target }, ct);
+            throw new DomainException("invalid_code", "رمز تطبيق المصادقة غير صحيح أو مستخدم من قبل.", "The code is wrong or was already used.", 400);
+        }
+        // نجاح: إعادة العداد ذريًا ثم تحديث الخطوة المقبولة على نسخة حديثة (رمز التزامن يمنع قبول الرمز نفسه مرتين).
+        await db.Users.Where(u => u.Id == user.Id).ExecuteUpdateAsync(s => s.SetProperty(u => u.FailedMfa, 0), ct);
+        await db.Users.Entry(user).ReloadAsync(ct);
+        if (step.Value <= user.LastTotpStep) throw new DomainException("invalid_code", "رمز تطبيق المصادقة غير صحيح أو مستخدم من قبل.", "The code is wrong or was already used.", 400);
+        user.LastTotpStep = step.Value;
+        if (enabling) user.MfaEnabled = true;
+        audit.Record(AuditEvents.Security(action, Features.Users, messageAr, messageEn) with { Target = target });
+        await db.SaveChangesAsync(ct);
+    }
+
+    private async Task<(AppUser User, Guid SessionId)> CurrentAsync(CancellationToken ct)
+    {
+        var uid = current.UserId ?? throw DomainException.Forbidden();
+        var sid = current.SessionId ?? throw DomainException.Forbidden();
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Id == uid && u.Active, ct) ?? throw DomainException.Forbidden();
+        return (user, sid);
+    }
+
+    private async Task<bool> RoleRequiresMfaAsync(Guid userId, CancellationToken ct)
+    {
+        var codes = options.Value.MfaRoles;
+        var now = clock.UtcNow;
+        return await db.UserRoles.Where(r => r.UserId == userId && r.RevokedAt == null && r.ApprovedAt != null && r.ValidFrom <= now && (r.ValidTo == null || r.ValidTo > now))
+            .Join(db.Roles, a => a.RoleId, r => r.Id, (a, r) => r.Code)
+            .AnyAsync(c => codes.Contains(c), ct);
+    }
+}
+
+public static class PasswordPolicy
+{
+    public static void Ensure(string password, string email)
+    {
+        if (string.IsNullOrEmpty(password) || password.Length < 12)
+            throw new DomainException("weak_password", "كلمة المرور يجب ألا تقل عن 12 حرفًا.", "The password must be at least 12 characters.", 400);
+        if (password.Length > 128)
+            throw new DomainException("weak_password", "كلمة المرور أطول من المسموح.", "The password is too long.", 400);
+        var local = email.Split('@')[0];
+        if (local.Length >= 4 && password.Contains(local, StringComparison.OrdinalIgnoreCase))
+            throw new DomainException("weak_password", "لا تضمّن بريدك في كلمة المرور.", "Do not include your email in the password.", 400);
+        if (password.Distinct().Count() < 6)
+            throw new DomainException("weak_password", "كلمة المرور متكررة الأحرف أكثر من اللازم.", "The password repeats too few characters.", 400);
+    }
+}

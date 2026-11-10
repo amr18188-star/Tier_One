@@ -1,0 +1,46 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Tier1.Application.Abstractions;
+using Tier1.Application.Access;
+using Tier1.Application.Accounts;
+using Tier1.Application.Auditing;
+using Tier1.Application.Logs;
+
+namespace Tier1.Application;
+
+public static class DependencyInjection
+{
+    public static IServiceCollection AddApplication(this IServiceCollection services, IConfiguration config)
+    {
+        // القيم الرقمية تفحص عند الإقلاع: قيمة خاطئة توقف التشغيل برسالة واضحة بدل قفل أو مهلة غريبة لاحقًا.
+        services.AddOptions<AuthOptions>().Bind(config.GetSection("Auth")).ValidateOnStart()
+            .Validate(o => o.IdleMinutes is > 0 and <= 480 && o.AbsoluteHours is > 0 and <= 72, "Auth: IdleMinutes 1-480 and AbsoluteHours 1-72.")
+            .Validate(o => o.MaxFailedLogins is > 0 and <= 20 && o.MaxFailedLoginsPerAccount >= o.MaxFailedLogins && o.LockoutMinutes is > 0 and <= 1440,
+                "Auth: MaxFailedLogins 1-20, MaxFailedLoginsPerAccount >= it, LockoutMinutes 1-1440.");
+
+        // المنصة: الصلاحيات والدخول والسجلات والإعدادات.
+        services.AddMemoryCache();
+        services.AddSingleton<AccessVersion>();
+        services.AddScoped<IAccessService, AccessService>();
+        services.AddScoped<IAccessCache>(sp => sp.GetRequiredService<IAccessService>());
+        services.AddScoped<IAuditLog, AuditLog>();
+        services.AddScoped<ISessionService, SessionService>();
+        services.AddScoped<SignInService>();
+        services.AddSingleton<Security.LoginThrottle>();
+        services.AddScoped<MeService>();
+        services.AddScoped<RbacAdminService>();
+        services.AddScoped<UsersAdminService>();
+        services.AddScoped<LogsService>();
+        services.AddScoped<Settings.SettingsService>();
+        services.AddScoped<IMailOutbox, Notifications.MailOutbox>();
+
+        // Tier 1: الجهات والهيكل، والقاموس والمستهدفات والتعارضات، والصفحة الأولى.
+        services.AddScoped<Organization.OrgUnitsService>();
+        services.AddScoped<Structure.StructureService>();
+        services.AddScoped<Kpi.DictionaryService>();
+        services.AddScoped<Kpi.TargetsService>();
+        services.AddScoped<Kpi.ConflictsService>();
+        services.AddScoped<Home.HomeService>();
+        return services;
+    }
+}

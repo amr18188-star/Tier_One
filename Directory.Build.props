@@ -1,0 +1,13 @@
+<Project>
+  <!-- إعدادات موحدة لكل مشاريع .NET في منظومة مركز اللغات -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <!-- قواعد الأمان كلها في محلل .NET (حقن SQL، XSS، التشفير الضعيف، فك التسلسل غير الآمن…) -->
+    <AnalysisModeSecurity>All</AnalysisModeSecurity>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+</Project>

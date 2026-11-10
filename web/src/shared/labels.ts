@@ -1,0 +1,76 @@
+import type { Aggregation, CollectionLevel, ConflictSeverity, ConflictStatus, DefinitionStatus, Direction, DistributionStatus, Frequency, OrgUnitKind, TargetKind } from "../api/tier1";
+
+/** نصوص الحالات وألوانها في مكان واحد؛ اللون لا يأتي وحده أبدًا، بل مع نص يشرحه. */
+export type TagColor = "default" | "processing" | "success" | "warning" | "error" | "gold" | "cyan" | "purple";
+
+export const definitionStatus: Record<DefinitionStatus, { text: string; color: TagColor; hint: string }> = {
+  Draft: { text: "مسودة", color: "default", hint: "قيد الإعداد؛ تكمل بياناته ثم يرسل للاعتماد." },
+  UnderReview: { text: "قيد الاعتماد", color: "processing", hint: "أرسل للجنة العليا وينتظر قرارها." },
+  Approved: { text: "معتمد", color: "success", hint: "التعريف المعتمد الساري." },
+  Superseded: { text: "حل محله إصدار أحدث", color: "default", hint: "يبقى للنتائج التي قيست به." },
+};
+
+export const conflictSeverity: Record<ConflictSeverity, { text: string; color: TagColor }> = {
+  High: { text: "عالية", color: "error" },
+  Medium: { text: "متوسطة", color: "warning" },
+  Low: { text: "منخفضة", color: "default" },
+};
+
+export const conflictStatus: Record<ConflictStatus, { text: string; color: TagColor; hint: string }> = {
+  Open: { text: "مفتوح", color: "error", hint: "يحتاج كتابة المعالجة المقترحة ليدخل جدول أعمال اللجنة." },
+  Ready: { text: "جاهز للجنة", color: "processing", hint: "على جدول أعمال الجلسة القادمة." },
+  Deferred: { text: "مؤجل", color: "warning", hint: "أجلت اللجنة حسمه إلى جلسة لاحقة." },
+  Resolved: { text: "محسوم", color: "success", hint: "سجل قرار اللجنة العليا برقم المحضر." },
+};
+
+export const distributionStatus: Record<DistributionStatus, { text: string; color: TagColor }> = {
+  Covers: { text: "التوزيع يحقق مستهدف الجامعة", color: "success" },
+  Short: { text: "التوزيع لا يكفي", color: "error" },
+  Incomplete: { text: "التوزيع غير مكتمل", color: "warning" },
+  NotComparable: { text: "لا يقارن بالجمع", color: "default" },
+  NoUniversityTarget: { text: "لا يوجد مستهدف للجامعة", color: "default" },
+};
+
+export const direction: Record<Direction, string> = {
+  Undefined: "غير محدد",
+  HigherIsBetter: "الأعلى أفضل",
+  LowerIsBetter: "الأقل أفضل",
+  Range: "نطاق مطلوب",
+};
+
+export const aggregation: Record<Aggregation, string> = {
+  Undefined: "غير محددة",
+  Sum: "مجموع قيم الجهات",
+  RatioOfSums: "نسبة مجموع البسط إلى مجموع المقام",
+  DistinctCount: "عدد مميز بعد إزالة التكرار",
+  WeightedAverage: "متوسط مرجح",
+  Central: "قياس مركزي على مستوى الجامعة",
+  StatusOnly: "حالة لكل جهة (لا تجمع)",
+};
+
+export const level: Record<CollectionLevel, string> = { Department: "القسم العلمي", College: "الكلية", University: "الجامعة" };
+
+export const frequency: Record<Frequency, string> = { Monthly: "شهري", Quarterly: "ربع سنوي", SemiAnnual: "نصف سنوي", Annual: "سنوي", Custom: "مخصص" };
+
+export const targetKind: Record<TargetKind, string> = { Baseline: "خط الأساس", Target: "مستهدف", EachCollege: "مستهدف موحد لكل كلية" };
+
+export const unitKind: Record<OrgUnitKind, string> = {
+  University: "الجامعة", College: "كلية", Institute: "معهد", Department: "قسم علمي", Center: "مركز", Administration: "إدارة",
+};
+
+/** خيارات قائمة منسدلة من قاموس نصوص. */
+export function options<K extends string>(map: Record<K, string | { text: string }>): { value: K; label: string }[] {
+  return (Object.keys(map) as K[]).map((k) => ({ value: k, label: typeof map[k] === "string" ? (map[k] as string) : (map[k] as { text: string }).text }));
+}
+
+/** رقم بفواصل الآلاف وحتى منزلتين عشريتين، أو شرطة إن لم يوجد. */
+export function num(v: number | null | undefined): string {
+  if (v === null || v === undefined) return "—";
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(v);
+}
+
+/** القيمة بوحدتها: 82% أو 1,800 عدد. */
+export function withUnit(v: number | null | undefined, unit: string): string {
+  if (v === null || v === undefined) return "—";
+  return unit.trim() === "%" ? `${num(v)}%` : `${num(v)} ${unit}`;
+}

@@ -1,0 +1,343 @@
+/* ===== تصميم المنظومة الموحد (البوابة والموظفون): قائمة جانبية كحلية، ولوحات بيضاء بحواف ناعمة، والإجراءات تركوازية ===== */
+/* على :root لا على الإطار: الأدراج والنوافذ تعرض خارج الإطار وتحتاج القيم نفسها. */
+:root {
+  --side-w: 268px;
+  --r: 16px;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 6px 20px rgba(16, 24, 40, 0.05);
+  --shadow-up: 0 12px 30px rgba(16, 24, 40, 0.1);
+  --teal-50: #e8f6f6;
+  --teal-100: #c7e8e9;
+  --navy-50: #eef2f8;
+  --gold: #c9973f;
+  --gold-50: #fbf3e4;
+  --gold-ink: #8a5a12;
+  --row-alt: #f9fbfc;
+  --hair: #eef1f5;
+}
+.lcp {
+  display: grid;
+  grid-template-columns: var(--side-w) minmax(0, 1fr);
+  min-height: 100vh;
+  background: var(--bg);
+}
+.lcp a { text-decoration: none; }
+/* نص لقارئ الشاشة وحده. */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* ----- القائمة الجانبية ----- */
+.lcp-side, .lcp-drawer .ant-drawer-body {
+  display: flex; flex-direction: column; gap: 18px; padding: 20px 14px; color: #fff;
+  background: radial-gradient(120% 45% at 100% 0%, rgba(10, 140, 147, 0.3), transparent 60%), linear-gradient(180deg, #183059 0%, #0f2242 100%);
+}
+.lcp-side { position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+/* القائمة الطويلة تمرر داخل الشريط؛ لا ينضغط زر الطلب ولا الشعار لتتسع. */
+.lcp-side > *, .lcp-drawer .ant-drawer-body > * { flex-shrink: 0; }
+.lcp-drawer .ant-drawer-content { background: transparent; }
+.lcp-brand { display: flex; align-items: center; gap: 12px; color: #fff; padding: 4px 6px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+.lcp-brand:hover { color: #fff; }
+.lcp-brand img { width: 44px; height: 44px; border-radius: 12px; background: #fff; padding: 5px; flex: none; object-fit: contain; }
+.lcp-brand b { display: block; font-family: var(--font-display); font-size: 15px; line-height: 1.45; }
+.lcp-brand small { color: #b7c5da; font-size: 12px; }
+.lcp-cta {
+  display: flex; align-items: center; justify-content: center; gap: 8px; height: 46px; border-radius: 12px;
+  background: var(--teal); color: #fff; font-weight: 600; box-shadow: 0 8px 22px rgba(10, 140, 147, 0.35); transition: background 0.15s, transform 0.15s;
+}
+.lcp-cta:hover { background: #0b9aa2; color: #fff; transform: translateY(-1px); }
+.lcp-nav { display: grid; gap: 4px; }
+.lcp-nav a {
+  position: relative; display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 12px;
+  color: #c9d4e5; font-size: 14.5px; transition: background 0.15s, color 0.15s;
+}
+.lcp-nav a .anticon { font-size: 18px; }
+.lcp-nav a:hover { background: rgba(255, 255, 255, 0.06); color: #fff; }
+.lcp-nav a.active { background: rgba(255, 255, 255, 0.11); color: #fff; font-weight: 600; }
+.lcp-nav a.active::before {
+  content: ""; position: absolute; inset-inline-start: -14px; top: 10px; bottom: 10px; width: 4px;
+  border-start-end-radius: 4px; border-end-end-radius: 4px; background: var(--teal);
+}
+.lcp-badge {
+  margin-inline-start: auto; min-width: 22px; height: 22px; padding: 0 7px; border-radius: 11px;
+  display: inline-grid; place-items: center; background: var(--gold); color: #1d1405; font-size: 12px; font-weight: 700;
+}
+.lcp-side-foot { margin-top: auto; display: grid; gap: 2px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+.lcp-side-foot button {
+  display: flex; align-items: center; gap: 10px; padding: 9px 14px; border: 0; border-radius: 10px; background: transparent;
+  color: #b7c5da; font: inherit; font-size: 13.5px; cursor: pointer; text-align: start;
+}
+.lcp-side-foot button:hover { background: rgba(255, 255, 255, 0.06); color: #fff; }
+
+/* ----- الشريط العلوي والمحتوى ----- */
+.lcp-main { min-width: 0; display: flex; flex-direction: column; }
+.lcp-top {
+  position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 8px; height: 64px; padding: 0 28px;
+  background: rgba(244, 246, 249, 0.86); backdrop-filter: blur(10px);
+}
+.lcp-top-space { flex: 1; }
+.lcp-burger, .lcp-top-brand { display: none !important; }
+.lcp-top-brand { align-items: center; gap: 8px; color: var(--navy); font-family: var(--font-display); font-size: 14px; }
+.lcp-top-brand img { width: 32px; height: 32px; object-fit: contain; }
+.lcp-lang { font-weight: 600; color: var(--navy); }
+.lcp-user {
+  display: flex; align-items: center; gap: 10px; padding: 4px; padding-inline-end: 14px; border: 0; border-radius: 999px;
+  background: #fff; box-shadow: var(--shadow); cursor: pointer; font: inherit; color: var(--ink); max-width: 260px;
+}
+.lcp-user-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13.5px; }
+.lcp-avatar {
+  width: 34px; height: 34px; border-radius: 50%; flex: none; display: grid; place-items: center;
+  background: linear-gradient(135deg, var(--teal), var(--navy)); color: #fff; font-weight: 700; font-size: 13px;
+}
+.lcp-content { padding: 4px 28px 48px; }
+.lcp-page { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; min-width: 0; }
+.lcp-page > * { min-width: 0; }
+
+/* ----- عناوين الصفحات واللوحات ----- */
+.lcp-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; }
+.lcp-head h1 { font-family: var(--font-display); font-size: clamp(20px, 2.2vw, 26px); color: var(--navy); margin: 0; line-height: 1.5; }
+.lcp-head p { margin: 2px 0 0; color: var(--muted); }
+.lcp-head-extra { display: flex; flex-wrap: wrap; gap: 8px; }
+.lcp-back { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); font-size: 13.5px; margin-bottom: 2px; }
+.lcp-back:hover { color: var(--teal-ink); }
+.lcp-panel { background: #fff; border-radius: var(--r); box-shadow: var(--shadow); padding: 20px; min-width: 0; }
+.lcp-panel-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin-bottom: 14px; }
+.lcp-panel-head h2 { margin: 0; font-size: 16px; font-family: var(--font-display); color: var(--navy); display: flex; align-items: center; gap: 8px; }
+.lcp-panel-head h2 .anticon { color: var(--teal); }
+.lcp-panel-head a { font-size: 13.5px; color: var(--teal-ink); font-weight: 600; }
+.lcp-empty { margin: 12px 0; }
+.lcp-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
+.lcp-split { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: 20px; align-items: start; }
+.lcp-split > div { display: grid; gap: 20px; min-width: 0; }
+.lcp-muted-box { padding: 12px 14px; border-radius: 12px; background: #f8fafc; color: var(--muted); font-size: 13.5px; line-height: 1.8; }
+
+/* ----- الأزرار ----- */
+.lcp-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 42px; padding: 0 18px; border-radius: 12px;
+  font: inherit; font-weight: 600; border: 1px solid transparent; cursor: pointer; transition: transform 0.15s, background 0.15s;
+}
+.lcp-btn:hover { transform: translateY(-1px); }
+.lcp-btn.light { background: #fff; color: var(--navy); }
+.lcp-btn.light:hover { color: var(--teal-ink); }
+.lcp-btn.ghost { background: rgba(255, 255, 255, 0.12); color: #fff; border-color: rgba(255, 255, 255, 0.28); }
+.lcp-btn.ghost:hover { background: rgba(255, 255, 255, 0.2); color: #fff; }
+
+/* ----- الترحيب ----- */
+.lcp-hero {
+  position: relative; overflow: hidden; border-radius: 20px; padding: 28px 30px; color: #fff;
+  background: radial-gradient(90% 140% at 0% 100%, rgba(201, 151, 63, 0.24), transparent 55%), linear-gradient(120deg, #183059 0%, #14406b 55%, #0a8c93 125%);
+}
+.lcp-hero small { color: #b9e4e6; font-size: 13.5px; }
+.lcp-hero h1 { font-family: var(--font-display); font-size: clamp(22px, 2.6vw, 30px); margin: 4px 0 6px; line-height: 1.5; color: #fff; }
+.lcp-hero p { color: #d3ddeb; margin: 0; max-width: 620px; line-height: 1.9; }
+.lcp-hero-actions { position: relative; display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.lcp-hero-decor { position: absolute; inset-inline-end: -30px; top: -40px; width: 300px; fill: none; stroke: rgba(255, 255, 255, 0.12); stroke-width: 12; pointer-events: none; }
+
+/* ----- المؤشرات ----- */
+.lcp-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
+/* ستة مؤشرات: صفان من ثلاثة بدل خمسة وواحد وحيد. */
+.lcp-stats.six { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 640px) {
+  .lcp-stats.six { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .lcp-stats.six .lcp-stat { padding: 12px; gap: 10px; }
+  .lcp-stats.six .lcp-stat-icon { width: 36px; height: 36px; border-radius: 11px; font-size: 16px; }
+  .lcp-stats.six .lcp-stat-text b { font-size: 22px; }
+}
+.lcp-stat {
+  display: flex; align-items: center; gap: 14px; padding: 16px 18px; background: #fff; border-radius: var(--r);
+  box-shadow: var(--shadow); color: var(--ink); transition: transform 0.15s, box-shadow 0.15s;
+}
+a.lcp-stat:hover { transform: translateY(-2px); box-shadow: var(--shadow-up); color: var(--ink); }
+.lcp-stat-icon { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; font-size: 20px; flex: none; }
+.lcp-stat-text { display: grid; gap: 2px; min-width: 0; }
+.lcp-stat-text b { font-size: 26px; line-height: 1.15; color: var(--navy); font-variant-numeric: tabular-nums; }
+.lcp-stat-text span { color: var(--muted); font-size: 13.5px; }
+.lcp-stat-hint { color: var(--muted); font-size: 12px; }
+.tone-teal .lcp-stat-icon { background: var(--teal-50); color: var(--teal-ink); }
+.tone-gold .lcp-stat-icon { background: var(--gold-50); color: var(--gold-ink); }
+.tone-navy .lcp-stat-icon { background: var(--navy-50); color: var(--navy); }
+.tone-green .lcp-stat-icon { background: var(--ok-bg); color: var(--ok); }
+.tone-rose .lcp-stat-icon { background: var(--crit-bg); color: var(--crit); }
+
+/* مؤشرات صغيرة داخل اللوحة */
+.course-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.course-kpi { padding: 12px 14px; border-radius: 12px; background: #f8fafc; display: grid; gap: 2px; }
+.course-kpi b { font-size: 22px; color: var(--navy); line-height: 1.2; font-variant-numeric: tabular-nums; }
+.course-kpi span { color: var(--muted); font-size: 12.5px; }
+.course-kpi.ok b { color: var(--ok); }
+.course-kpi.bad b { color: var(--crit); }
+
+/* ----- قوائم مختصرة ----- */
+.lcp-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.lcp-list-item {
+  display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; background: #f8fafc; color: var(--ink);
+  transition: background 0.15s;
+}
+a.lcp-list-item:hover { background: var(--teal-50); color: var(--ink); }
+.lcp-list-item .grow { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.lcp-list-item .grow b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lcp-list-item .grow small { color: var(--muted); }
+.lcp-list-item .go { color: var(--muted); flex: none; }
+.lcp-date {
+  width: 54px; flex: none; text-align: center; border-radius: 12px; background: #fff; box-shadow: var(--shadow); padding: 6px 0; line-height: 1.2;
+}
+.lcp-date b { display: block; font-size: 20px; color: var(--navy); }
+.lcp-date small { font-size: 11px; color: var(--muted); }
+.lcp-date.exam { box-shadow: inset 0 -3px 0 var(--gold), var(--shadow); }
+.lcp-date.course { box-shadow: inset 0 -3px 0 var(--teal), var(--shadow); }
+.next-text { color: var(--teal-ink); }
+
+/* ----- شارات ----- */
+.kind { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+.kind-Training { background: #e8f1fd; color: #1d4f91; }
+.kind-Exam { background: var(--gold-50); color: var(--gold-ink); }
+.kind-Translation { background: var(--teal-50); color: var(--teal-ink); }
+.kind-Document { background: #f1ecfb; color: #5b3c99; }
+.kind-Other { background: var(--sunk); color: var(--muted); }
+.lcp-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12.5px; background: var(--sunk); color: var(--muted); }
+.lcp-chip.ok { background: var(--ok-bg); color: var(--ok); }
+.lcp-chip.warn { background: var(--warn-bg); color: var(--warn); }
+.lcp-chip.info { background: var(--teal-50); color: var(--teal-ink); }
+
+/* ----- الجدول ----- */
+.dt { background: #fff; border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden; }
+.dt-pad { padding: 20px; }
+.dt .ant-table { background: transparent; }
+.dt .ant-table-thead > tr > th {
+  background: var(--teal) !important; color: #fff !important; font-weight: 600; border-bottom: none !important; white-space: nowrap; padding: 14px 16px !important;
+}
+.dt .ant-table-thead > tr > th::before { background-color: rgba(255, 255, 255, 0.22) !important; }
+.dt .ant-table-tbody > tr > td { padding: 13px 16px !important; border-bottom: 1px solid var(--hair) !important; }
+.dt .ant-table-tbody > tr.ant-table-measure-row > td { padding: 0 !important; border: 0 !important; }
+.dt .ant-table-tbody > tr:nth-child(even) > td { background: var(--row-alt); }
+.dt .ant-table-tbody > tr.dt-click { cursor: pointer; }
+.dt .ant-table-tbody > tr.dt-click:hover > td { background: var(--teal-50) !important; }
+.dt-idx { color: var(--muted); font-variant-numeric: tabular-nums; }
+.dt-service { display: grid; gap: 3px; min-width: 220px; }
+.dt-service small { font-size: 12.5px; line-height: 1.6; }
+.dt-ref { font-family: var(--font-mono); color: var(--navy); font-weight: 600; direction: ltr; unicode-bidi: isolate; white-space: nowrap; }
+.dt-foot {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px 24px; padding: 8px 16px;
+  border-top: 1px solid var(--hair); color: var(--muted); font-size: 13.5px;
+}
+.dt-size { display: inline-flex; align-items: center; gap: 4px; }
+.dt-range { font-variant-numeric: tabular-nums; }
+.dt-nav { display: inline-flex; gap: 2px; }
+.dt-cards { display: grid; gap: 10px; padding: 12px; background: #f8fafc; }
+.dt-card {
+  display: grid; gap: 8px; padding: 14px 16px; border-radius: 14px; background: #fff; box-shadow: var(--shadow);
+  border-inline-start: 4px solid var(--teal);
+}
+.dt-card-click { cursor: pointer; }
+.dt-card-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.lcp-prog { display: grid; gap: 3px; min-width: 110px; }
+.lcp-prog small { color: var(--muted); font-size: 11.5px; }
+.lcp-prog-bar { height: 6px; border-radius: 3px; background: #e6ecf2; overflow: hidden; }
+.lcp-prog-bar i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--teal), #13b3bb); }
+.lcp-prog-bar i.full { background: #2e9e64; }
+.lcp-filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.lcp-filters .ant-input-affix-wrapper { max-width: 320px; }
+/* مرشحات الحالة: على الشاشة الضيقة تمرر أفقيًا داخل إطارها، فلا تعرض الصفحة كلها. */
+.lcp-seg { background: #fff; box-shadow: var(--shadow); padding: 4px; border-radius: 12px; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.lcp-seg::-webkit-scrollbar { display: none; }
+.lcp-filters { min-width: 0; }
+.lcp-seg .ant-segmented-item { border-radius: 9px; }
+.lcp-seg .ant-segmented-item-selected { background: var(--teal); color: #fff; }
+.seg-count { display: inline-block; min-width: 20px; margin-inline-start: 6px; padding: 0 6px; border-radius: 10px; background: rgba(0, 0, 0, 0.06); font-size: 12px; }
+.ant-segmented-item-selected .seg-count { background: rgba(255, 255, 255, 0.25); }
+
+.lcp-steps { list-style: none; margin: 0; padding: 0; display: grid; }
+.lcp-step { position: relative; display: grid; justify-items: center; align-content: start; text-align: center; gap: 4px; padding: 0 4px; }
+.lcp-step::before {
+  content: ""; position: absolute; top: 17px; inset-inline-start: 50%; width: 100%; height: 3px; background: #e2e8f0; z-index: 0;
+}
+.lcp-step:last-child::before { display: none; }
+.lcp-step.done::before { background: var(--teal); }
+.lcp-step-dot {
+  position: relative; z-index: 1; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
+  background: #fff; border: 3px solid #e2e8f0; color: var(--muted); font-weight: 700; margin-bottom: 4px;
+}
+.lcp-step.done .lcp-step-dot { background: var(--teal); border-color: var(--teal); color: #fff; }
+.lcp-step.current .lcp-step-dot { border-color: var(--teal); color: var(--teal-ink); box-shadow: 0 0 0 6px rgba(10, 140, 147, 0.12); }
+.lcp-step b { font-size: 13.5px; color: var(--ink); font-weight: 600; }
+.lcp-step small { color: var(--muted); font-size: 12px; }
+.lcp-next {
+  display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 14px;
+  background: linear-gradient(90deg, var(--teal-50), #f5fbfb); border: 1px solid var(--teal-100);
+}
+.lcp-next > .anticon { color: var(--teal); font-size: 20px; margin-top: 3px; }
+.lcp-next b { display: block; color: var(--teal-ink); margin-bottom: 2px; }
+.lcp-next.warn { background: var(--warn-bg); border-color: #f3d9ae; }
+.lcp-next.warn > .anticon, .lcp-next.warn b { color: var(--warn); }
+.lcp-kv { display: grid; gap: 10px; margin: 0; }
+.lcp-kv > div { display: flex; justify-content: space-between; gap: 12px; padding-bottom: 10px; border-bottom: 1px dashed var(--hair); }
+.lcp-kv > div:last-child { border-bottom: none; padding-bottom: 0; }
+.lcp-kv.mt { margin-top: 16px; }
+.lcp-kv.mb { margin-bottom: 16px; }
+.lcp-kv dt { color: var(--muted); }
+.lcp-kv dd { margin: 0; font-weight: 600; text-align: end; }
+.lcp-timeline .ant-timeline-item-content small { color: var(--muted); }
+.lcp-tabs > .ant-tabs-nav { margin-bottom: 16px; }
+.lcp-tabs > .ant-tabs-nav::before { border-bottom-color: var(--hair); }
+
+/* ----- شريط التبويب السفلي (الجوال) ----- */
+.lcp-tabbar { display: none; }
+@media (max-width: 1100px) {
+  .lcp-split { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 960px) {
+  .lcp { grid-template-columns: minmax(0, 1fr); }
+  .lcp-side { display: none; }
+  .lcp-burger, .lcp-top-brand { display: inline-flex !important; }
+  .lcp-top { padding: 0 12px; background: #fff; border-bottom: 1px solid var(--line); height: 58px; }
+  .lcp-user { padding-inline-end: 4px; }
+  .lcp-user-name { display: none; }
+  .lcp-content { padding: 14px 14px 100px; }
+  .lcp-grid-2 { grid-template-columns: minmax(0, 1fr); }
+  .lcp-tabbar {
+    display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); align-items: end; position: fixed; inset-inline: 0; bottom: 0; z-index: 30;
+    background: #fff; border-top: 1px solid var(--line); padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); box-shadow: 0 -6px 20px rgba(16, 24, 40, 0.06);
+  }
+  .lcp-tabbar a { position: relative; display: grid; justify-items: center; gap: 2px; font-size: 11px; color: var(--muted); padding: 4px 0; }
+  .lcp-tabbar a .anticon { font-size: 20px; }
+  .lcp-tabbar a.active { color: var(--teal-ink); font-weight: 600; }
+  .lcp-tabbar .dot { position: absolute; top: 2px; inset-inline-end: calc(50% - 16px); width: 8px; height: 8px; border-radius: 50%; background: var(--gold); }
+  .lcp-tabbar .tab-new {
+    justify-self: center; width: 52px; height: 52px; margin-top: -22px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--teal); color: #fff; font-size: 22px; box-shadow: 0 8px 20px rgba(10, 140, 147, 0.4);
+  }
+  .lcp-hero { padding: 22px 18px; }
+  .lcp-panel { padding: 16px; }
+}
+@media print {
+  .lcp-side, .lcp-top, .lcp-tabbar { display: none !important; }
+  .lcp { display: block; }
+}
+@media (max-width: 640px) {
+  .lcp-step b { font-size: 12px; }
+  .lcp-step small { display: none; }
+  .lcp-filters .ant-input-affix-wrapper, .lcp-filters .ant-input-search, .lcp-filters > .ant-select { max-width: none; flex-basis: 100%; }
+}
+
+/* ----- واجهة الموظفين: القائمة أطول فتقسم مجموعات بعناوين صغيرة، والصفحات أعرض للجداول ----- */
+.lcp-staff .lcp-side { gap: 14px; }
+.lcp-staff .lcp-nav { gap: 12px; }
+.lcp-staff .lcp-nav a { padding: 9px 14px; font-size: 14px; }
+.lcp-nav-sec { display: grid; gap: 2px; }
+.lcp-nav-group { margin: 0 14px 4px; color: #8fa2c0; font-size: 11.5px; font-weight: 600; }
+.lcp-staff .lcp-page { max-width: 1440px; }
+.lcp-bell.ant-btn { color: var(--navy); }
+.lcp-bell .anticon { font-size: 18px; }
+.lcp-filters .ant-input-search { max-width: 360px; }
+
+/* ----- مكونات antd بشكل لوحات المنظومة ----- */
+/* البطاقات: بلا حدود، بظل خفيف وحواف 16، وعنوانها بخط العناوين الكحلي. */
+.ant-card { border-radius: var(--r); }
+.ant-card.ant-card-bordered { border-color: transparent; box-shadow: var(--shadow); }
+.ant-card > .ant-card-head { border-bottom-color: var(--hair); }
+.ant-card > .ant-card-head .ant-card-head-title { font-family: var(--font-display); color: var(--navy); font-weight: 600; }
+/* الجداول: الرأس التركوازي من سمة antd (App.tsx)؛ هنا أيقونات الترتيب والتصفية فوقه. */
+.ant-table-thead .ant-table-column-sorter { color: rgba(255, 255, 255, 0.55); }
+.ant-table-thead .ant-table-column-sorter-up.active, .ant-table-thead .ant-table-column-sorter-down.active { color: #fff; }
+.ant-table-thead .ant-table-filter-trigger { color: rgba(255, 255, 255, 0.7); }
+.ant-table-thead .ant-table-filter-trigger.active, .ant-table-thead .ant-table-filter-trigger:hover { color: #fff; }
+.ant-descriptions-bordered .ant-descriptions-item-label { background: #f8fafc; }

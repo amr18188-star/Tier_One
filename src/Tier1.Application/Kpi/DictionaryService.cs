@@ -1,0 +1,270 @@
+using Microsoft.EntityFrameworkCore;
+using Tier1.Application.Abstractions;
+using Tier1.Application.Access;
+using Tier1.Application.Auditing;
+using Tier1.Application.Common;
+using Tier1.Domain.Access;
+using Tier1.Domain.Common;
+using Tier1.Domain.Kpi;
+
+namespace Tier1.Application.Kpi;
+
+public sealed record StandardDto(Guid Id, string Code, string NameAr, string? PillarCode, string? PillarName, string? ClassificationNote, int IndicatorCount, int ApprovedCount, int OpenConflicts);
+
+public sealed record IndicatorRowDto(
+    string Code, string StandardCode, string NameAr, string Unit, Direction Direction, CollectionLevel Level, Aggregation Aggregation,
+    DefinitionStatus Status, int VersionNumber, bool HasApproved, bool Suspended, int MissingCount, int OpenConflicts,
+    decimal? Baseline, decimal? Target2031, string? CollegeTarget);
+
+public sealed record VersionDto(
+    Guid Id, int Number, DefinitionStatus Status, string NameAr, string? NameEn, string? AlternateName, string? Definition,
+    string? Purpose, string? Exclusions, string? Numerator, string? Denominator, string Unit, Direction Direction,
+    Frequency Frequency, CollectionLevel Level, Aggregation Aggregation, string? AggregationNote, string? DataSource,
+    Guid? OwnerUnitId, string? OwnerUnitName, string? EvidenceRequired, string? SourcePages, string? ChangeReason,
+    DateTimeOffset? SubmittedAt, DateTimeOffset? ApprovedAt, string? DecisionRef, string? ReturnNote,
+    IReadOnlyList<string> Missing, uint Version);
+
+public sealed record IndicatorDetailDto(
+    string Code, Guid StandardId, string StandardCode, string StandardName, bool Suspended,
+    VersionDto Current, VersionDto? Effective, IReadOnlyList<VersionSummaryDto> History,
+    IReadOnlyList<string> ConflictCodes, IndicatorActions Actions);
+
+public sealed record VersionSummaryDto(int Number, DefinitionStatus Status, string? ChangeReason, DateTimeOffset CreatedAt, DateTimeOffset? ApprovedAt, string? DecisionRef);
+
+/// <summary>ما يستطيعه المستخدم في هذا المؤشر الآن، فتظهر الأزرار المتاحة وحدها.</summary>
+public sealed record IndicatorActions(bool CanEdit, bool CanSubmit, bool CanApprove, bool CanSuspend, bool EditCreatesVersion);
+
+public sealed record SaveDefinitionRequest(
+    string NameAr, string? NameEn, string? Definition, string? Purpose, string? Exclusions, string? Numerator, string? Denominator,
+    string Unit, Direction Direction, Frequency Frequency, CollectionLevel Level, Aggregation Aggregation, string? AggregationNote,
+    string? DataSource, Guid? OwnerUnitId, string? EvidenceRequired, string? ChangeReason, uint? Version);
+
+public sealed record CommitteeDecisionRequest(string? DecisionRef, string? Note);
+
+/// <summary>
+/// قاموس المؤشرات: القراءة للجميع بصلاحية العرض، والتعديل ينشئ إصدارًا جديدًا للمعتمد، والاعتماد بقرار اللجنة العليا
+/// من غير من أعدّ التعريف.
+/// </summary>
+public sealed class DictionaryService(IAppDb db, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit)
+{
+    private const string Feature = Features.Dictionary;
+
+    public async Task<IReadOnlyList<StandardDto>> StandardsAsync(CancellationToken ct)
+    {
+        await access.RequireAsync(Feature, Cap.View, ct);
+        var pillars = await db.Pillars.AsNoTracking().ToDictionaryAsync(p => p.Id, ct);
+        var standards = await db.Standards.AsNoTracking().OrderBy(s => s.SortOrder).ToListAsync(ct);
+        var indicators = await db.Indicators.AsNoTracking().Include(i => i.Versions).ToListAsync(ct);
+        var openConflicts = await OpenConflictScopesAsync(ct);
+
+        return standards.Select(s =>
+        {
+            var mine = indicators.Where(i => i.StandardId == s.Id).ToList();
+            var pillar = s.PillarId is { } pid ? pillars.GetValueOrDefault(pid) : null;
+            return new StandardDto(s.Id, s.Code, s.NameAr, pillar?.Code, pillar?.NameAr, s.ClassificationNote, mine.Count,
+                mine.Count(i => i.Effective is not null),
+                openConflicts.Count(scope => scope.Any(code => code == s.Code || code.StartsWith(s.Code + "-", StringComparison.Ordinal))));
+        }).ToList();
+    }
+
+    public async Task<IReadOnlyList<IndicatorRowDto>> ListAsync(string? standard, DefinitionStatus? status, string? q, bool? withConflicts, CancellationToken ct)
+    {
+        await access.RequireAsync(Feature, Cap.View, ct);
+        var standards = await db.Standards.AsNoTracking().ToDictionaryAsync(s => s.Id, s => s.Code, ct);
+        var indicators = await db.Indicators.AsNoTracking().Include(i => i.Versions).OrderBy(i => i.SortOrder).ToListAsync(ct);
+        var university = await db.OrgUnits.AsNoTracking().Where(u => u.Kind == Domain.Organization.OrgUnitKind.University).Select(u => u.Id).FirstOrDefaultAsync(ct);
+        var targets = await db.Targets.AsNoTracking().Where(t => t.UnitId == university).ToListAsync(ct);
+        var openConflicts = await OpenConflictScopesAsync(ct);
+        var term = q?.Trim();
+
+        return indicators
+            .Select(i =>
+            {
+                var v = i.Current;
+                var mine = targets.Where(t => t.IndicatorId == i.Id).ToList();
+                var stdCode = standards[i.StandardId];
+                return new IndicatorRowDto(
+                    i.Code, stdCode, v.NameAr, v.Unit, v.Direction, v.Level, v.Aggregation, v.Status, v.Number, i.Effective is not null, i.Suspended,
+                    IndicatorRules.MissingForApproval(v).Count,
+                    openConflicts.Count(scope => scope.Contains(i.Code) || scope.Contains(stdCode)),
+                    mine.FirstOrDefault(t => t.Kind == TargetKind.Baseline)?.Value,
+                    mine.FirstOrDefault(t => t.Kind == TargetKind.Target && t.Year == 2031)?.Value,
+                    mine.FirstOrDefault(t => t.Kind == TargetKind.EachCollege) is { } each ? each.Text ?? each.Value?.ToString(System.Globalization.CultureInfo.InvariantCulture) : null);
+            })
+            .Where(r => standard is null || r.StandardCode == standard)
+            .Where(r => status is null || r.Status == status)
+            .Where(r => withConflicts is not true || r.OpenConflicts > 0)
+            .Where(r => string.IsNullOrEmpty(term) || r.Code.Contains(term, StringComparison.OrdinalIgnoreCase) || r.NameAr.Contains(term, StringComparison.Ordinal))
+            .ToList();
+    }
+
+    public async Task<IndicatorDetailDto> GetAsync(string code, CancellationToken ct)
+    {
+        var me = await access.RequireAsync(Feature, Cap.View, ct);
+        var indicator = await LoadAsync(code, tracking: false, ct);
+        var standard = await db.Standards.AsNoTracking().FirstAsync(s => s.Id == indicator.StandardId, ct);
+        var owners = await UnitNamesAsync(indicator.Versions.Select(v => v.OwnerUnitId), ct);
+        var conflictCodes = (await db.Conflicts.AsNoTracking().Select(c => new { c.Code, c.Scope }).ToListAsync(ct))
+            .Where(c => c.Scope.Contains(indicator.Code) || c.Scope.Contains(standard.Code))
+            .Select(c => c.Code).Order(StringComparer.Ordinal).ToList();
+
+        var current = indicator.Current;
+        var canEdit = me.Has(Feature, Cap.Edit) && !indicator.Suspended;
+        var actions = new IndicatorActions(
+            CanEdit: canEdit,
+            CanSubmit: canEdit && current.Status == DefinitionStatus.Draft && IndicatorRules.MissingForApproval(current).Count == 0,
+            // فصل المهام يظهر في الواجهة أيضًا: من أعدّ التعريف أو أرسله لا يرى زر الاعتماد.
+            CanApprove: me.HasSpecial(Feature, Specials.Approve) && current.Status == DefinitionStatus.UnderReview
+                        && current.SubmittedBy != me.UserId && current.EditedBy != me.UserId,
+            CanSuspend: me.Has(Feature, Cap.Delete),
+            EditCreatesVersion: indicator.Working is null);
+
+        return new IndicatorDetailDto(
+            indicator.Code, standard.Id, standard.Code, standard.NameAr, indicator.Suspended,
+            ToDto(current, owners), indicator.Effective is { } eff && eff.Id != current.Id ? ToDto(eff, owners) : null,
+            indicator.Versions.OrderByDescending(v => v.Number).Select(v => new VersionSummaryDto(v.Number, v.Status, v.ChangeReason, v.CreatedAt, v.ApprovedAt, v.DecisionRef)).ToList(),
+            conflictCodes, actions);
+    }
+
+    public async Task<IndicatorDetailDto> SaveAsync(string code, SaveDefinitionRequest req, CancellationToken ct)
+    {
+        await access.RequireAsync(Feature, Cap.Edit, ct);
+        var indicator = await LoadAsync(code, tracking: true, ct);
+        var now = clock.UtcNow;
+        var createsVersion = indicator.Working is null;
+        var v = IndicatorRules.EditableVersion(indicator, now, req.ChangeReason);
+        if (!createsVersion) Concurrency.Expect(db, v, req.Version);
+        if (req.OwnerUnitId is { } owner && !await db.OrgUnits.AnyAsync(u => u.Id == owner && u.Active, ct))
+            throw new DomainException("owner_not_found", "الجهة المالكة غير موجودة أو معطلة.", "The owner unit was not found.", 400);
+
+        var changes = new ChangeSet()
+            .Add("definition", v.Definition, req.Definition).Add("unit", v.Unit, req.Unit).Add("direction", v.Direction, req.Direction)
+            .Add("aggregation", v.Aggregation, req.Aggregation).Add("numerator", v.Numerator, req.Numerator).Add("denominator", v.Denominator, req.Denominator)
+            .Add("dataSource", v.DataSource, req.DataSource).Add("ownerUnitId", v.OwnerUnitId, req.OwnerUnitId).Add("level", v.Level, req.Level);
+
+        v.NameAr = Text(req.NameAr, 300, "اسم المؤشر") ?? throw new DomainException("name_required", "اكتب اسم المؤشر.", "Enter the indicator name.", 400);
+        v.NameEn = Require.Optional(req.NameEn, 300);
+        v.Definition = Require.Optional(req.Definition, 2000);
+        v.Purpose = Require.Optional(req.Purpose, 1000);
+        v.Exclusions = Require.Optional(req.Exclusions, 1000);
+        v.Numerator = Require.Optional(req.Numerator, 500);
+        v.Denominator = Require.Optional(req.Denominator, 500);
+        v.Unit = Text(req.Unit, 50, "وحدة القياس") ?? "غير محدد";
+        v.Direction = req.Direction;
+        v.Frequency = req.Frequency;
+        v.Level = req.Level;
+        v.Aggregation = req.Aggregation;
+        v.AggregationNote = Require.Optional(req.AggregationNote, 500);
+        v.DataSource = Require.Optional(req.DataSource, 500);
+        v.OwnerUnitId = req.OwnerUnitId;
+        v.EvidenceRequired = Require.Optional(req.EvidenceRequired, 1000);
+        v.EditedBy = current.UserId;
+        v.EditedAt = now;
+        if (createsVersion) db.IndicatorVersions.Add(v);
+
+        audit.Record(AuditEvents.Audit("kpi", Feature, createsVersion ? "kpi.definition_versioned" : "kpi.definition_saved",
+            createsVersion ? "إنشاء إصدار جديد من تعريف مؤشر" : "تعديل مسودة تعريف مؤشر",
+            createsVersion ? "Created a new indicator definition version" : "Edited an indicator definition draft") with
+        {
+            Target = new AuditTarget("indicator", indicator.Id.ToString(), indicator.Code),
+            Changes = changes.ToList(),
+            Reason = createsVersion ? v.ChangeReason : null,
+        });
+        await db.SaveChangesAsync(ct);
+        return await GetAsync(code, ct);
+    }
+
+    public async Task<IndicatorDetailDto> SubmitAsync(string code, CancellationToken ct)
+    {
+        await access.RequireAsync(Feature, Cap.Edit, ct);
+        var indicator = await LoadAsync(code, tracking: true, ct);
+        var v = indicator.Working ?? throw new DomainException("no_draft", "لا توجد مسودة لهذا المؤشر.", "There is no draft for this indicator.");
+        IndicatorRules.Submit(v, current.UserId!.Value, clock.UtcNow);
+        audit.Record(AuditEvents.Audit("kpi", Feature, "kpi.definition_submitted", "إرسال تعريف مؤشر للاعتماد", "Submitted an indicator definition") with
+        {
+            Target = new AuditTarget("indicator", indicator.Id.ToString(), indicator.Code),
+            Details = new { version = v.Number },
+        });
+        await db.SaveChangesAsync(ct);
+        return await GetAsync(code, ct);
+    }
+
+    public async Task<IndicatorDetailDto> ApproveAsync(string code, CommitteeDecisionRequest req, CancellationToken ct)
+    {
+        await access.RequireSpecialAsync(Feature, Specials.Approve, ct);
+        var indicator = await LoadAsync(code, tracking: true, ct);
+        var v = indicator.Working ?? throw new DomainException("not_under_review", "لا يوجد تعريف ينتظر الاعتماد.", "Nothing is waiting for approval.");
+        IndicatorRules.Approve(indicator, v, current.UserId!.Value, clock.UtcNow, req.DecisionRef ?? "");
+        audit.Record(AuditEvents.Audit("kpi", Feature, "kpi.definition_approved", "اعتماد تعريف مؤشر", "Approved an indicator definition") with
+        {
+            Target = new AuditTarget("indicator", indicator.Id.ToString(), indicator.Code),
+            Details = new { version = v.Number, v.DecisionRef },
+            Permission = $"{Feature}:{Specials.Approve}",
+        });
+        await db.SaveChangesAsync(ct);
+        return await GetAsync(code, ct);
+    }
+
+    public async Task<IndicatorDetailDto> ReturnAsync(string code, CommitteeDecisionRequest req, CancellationToken ct)
+    {
+        await access.RequireSpecialAsync(Feature, Specials.Approve, ct);
+        var note = Require.Reason(req.Note, 5, "note_required", 1000);
+        var indicator = await LoadAsync(code, tracking: true, ct);
+        var v = indicator.Working ?? throw new DomainException("not_under_review", "لا يوجد تعريف ينتظر الاعتماد.", "Nothing is waiting for approval.");
+        IndicatorRules.Return(v, note);
+        audit.Record(AuditEvents.Audit("kpi", Feature, "kpi.definition_returned", "إعادة تعريف مؤشر بملاحظات", "Returned an indicator definition") with
+        {
+            Target = new AuditTarget("indicator", indicator.Id.ToString(), indicator.Code),
+            Reason = note,
+        });
+        await db.SaveChangesAsync(ct);
+        return await GetAsync(code, ct);
+    }
+
+    public async Task<IndicatorDetailDto> SetSuspendedAsync(string code, bool suspended, string? reason, CancellationToken ct)
+    {
+        await access.RequireAsync(Feature, Cap.Delete, ct);
+        var why = Require.Reason(reason);
+        var indicator = await LoadAsync(code, tracking: true, ct);
+        indicator.Suspended = suspended;
+        audit.Record(AuditEvents.Audit("kpi", Feature, suspended ? "kpi.indicator_suspended" : "kpi.indicator_reactivated",
+            suspended ? "إيقاف مؤشر" : "إعادة تفعيل مؤشر", suspended ? "Suspended an indicator" : "Reactivated an indicator") with
+        {
+            Target = new AuditTarget("indicator", indicator.Id.ToString(), indicator.Code),
+            Reason = why,
+        });
+        await db.SaveChangesAsync(ct);
+        return await GetAsync(code, ct);
+    }
+
+    private async Task<Indicator> LoadAsync(string code, bool tracking, CancellationToken ct)
+    {
+        var query = db.Indicators.Include(i => i.Versions).Where(i => i.Code == code.Trim().ToUpperInvariant());
+        return await (tracking ? query : query.AsNoTracking()).FirstOrDefaultAsync(ct) ?? throw DomainException.NotFound();
+    }
+
+    private async Task<List<List<string>>> OpenConflictScopesAsync(CancellationToken ct) =>
+        await db.Conflicts.AsNoTracking()
+            .Where(c => c.Status != ConflictStatus.Resolved)
+            .Select(c => c.Scope)
+            .ToListAsync(ct);
+
+    private async Task<Dictionary<Guid, string>> UnitNamesAsync(IEnumerable<Guid?> ids, CancellationToken ct)
+    {
+        var list = ids.Where(i => i is not null).Select(i => i!.Value).Distinct().ToList();
+        return await db.OrgUnits.AsNoTracking().Where(u => list.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.NameAr, ct);
+    }
+
+    private static string? Text(string? value, int max, string field)
+    {
+        var v = value?.Trim();
+        if (string.IsNullOrEmpty(v)) return null;
+        return v.Length <= max ? v : throw new DomainException("text_too_long", $"«{field}» أطول من {max} حرف.", $"\"{field}\" is too long.", 400);
+    }
+
+    private static VersionDto ToDto(IndicatorVersion v, IReadOnlyDictionary<Guid, string> owners) =>
+        new(v.Id, v.Number, v.Status, v.NameAr, v.NameEn, v.AlternateName, v.Definition, v.Purpose, v.Exclusions, v.Numerator, v.Denominator,
+            v.Unit, v.Direction, v.Frequency, v.Level, v.Aggregation, v.AggregationNote, v.DataSource, v.OwnerUnitId,
+            v.OwnerUnitId is { } o ? owners.GetValueOrDefault(o) : null, v.EvidenceRequired, v.SourcePages, v.ChangeReason,
+            v.SubmittedAt, v.ApprovedAt, v.DecisionRef, v.ReturnNote, IndicatorRules.MissingForApproval(v), v.Version);
+}

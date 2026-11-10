@@ -1,0 +1,132 @@
+/* أنماط Tier 1: الرسوم (charts.tsx)، ومهام «مطلوب منك»، وصفحة المؤشر، والرسم التنظيمي.
+   خط الأساس نقطة كحلية، والمستهدف متقطع تركوازي، والفعلي متصل ذهبي. */
+
+.ch { margin: 0; }
+.ch-cap { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
+.ch-cap b { font-family: var(--font-display); font-size: 14px; }
+.ch-cap .ant-btn { margin-inline-start: auto; }
+.ch-unit { color: var(--muted); font-size: 12px; }
+.ch-empty { color: var(--muted); margin: 8px 0; }
+.ch-svg { width: 100%; height: auto; display: block; overflow: visible; }
+.ch-grid { stroke: var(--line); stroke-width: 1; }
+.ch-axis { fill: var(--muted); font-size: 11px; font-family: var(--font-body); }
+.ch-val { fill: var(--ink); font-size: 11px; font-weight: 600; font-family: var(--font-body); }
+.ch-line-target { fill: none; stroke: var(--teal); stroke-width: 2.5; stroke-dasharray: 6 5; }
+.ch-line-actual { fill: none; stroke: #c99a2e; stroke-width: 3; }
+.ch-dot { stroke: #fff; stroke-width: 2; }
+.ch-dot-baseline { fill: var(--navy); }
+.ch-dot-target { fill: var(--teal); }
+.ch-dot-actual { fill: #c99a2e; }
+.ch-legend { display: flex; gap: 16px; flex-wrap: wrap; color: var(--muted); font-size: 12px; margin-top: 4px; }
+.ch-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.ch-key { display: inline-block; width: 18px; height: 0; border-top: 3px solid; }
+.ch-key-baseline { width: 10px; height: 10px; border: 0; border-radius: 50%; background: var(--navy); }
+.ch-key-target { border-color: var(--teal); border-top-style: dashed; }
+.ch-key-actual { border-color: #c99a2e; }
+.ch-key-ref { border-color: var(--crit); border-top-style: dashed; }
+
+.ch-prog-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
+.ch-prog-track { position: relative; height: 10px; background: var(--sunk); border-radius: 6px; }
+.ch-prog-fill { height: 100%; background: var(--teal); border-radius: 6px; }
+.ch-prog-target { position: absolute; top: -4px; width: 2px; height: 18px; background: var(--navy); }
+
+.ch-bars { display: grid; gap: 8px; }
+.ch-bar-row { display: grid; grid-template-columns: minmax(110px, 34%) 1fr 72px; align-items: center; gap: 10px; font-size: 13px; }
+.ch-bar-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ch-bar-track { position: relative; height: 14px; background: var(--sunk); border-radius: 4px; }
+.ch-bar-fill { display: block; height: 100%; border-radius: 4px; min-width: 2px; }
+.ch-bar-fill.tone-teal { background: var(--teal); }
+.ch-bar-fill.tone-gold { background: #c99a2e; }
+.ch-bar-fill.tone-muted { background: #aab6c6; }
+.ch-bar-fill.tone-rose { background: var(--crit); }
+.ch-bar-ref { position: absolute; top: -3px; height: 20px; border-inline-start: 2px dashed var(--crit); }
+.ch-bar-value { font-weight: 600; text-align: end; }
+.ch-ref-note { color: var(--muted); font-size: 12px; display: flex; align-items: center; gap: 6px; }
+
+.ch-seg-track { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--sunk); }
+.ch-seg-track span { display: block; min-width: 3px; }
+.ch-seg-legend { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; }
+.ch-seg-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.ch-seg-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.ch-seg-legend small { color: var(--muted); }
+
+/* ----- مساعدات صغيرة ----- */
+.lcp-switch { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
+.ms { margin-inline-start: 6px; }
+.muted { color: var(--muted); }
+.t1-help { color: var(--muted); font-size: 12px; }
+/* الكود عنصر ltr، فهامشه المنطقي ينعكس؛ المسافة بالفجوة لا بالهامش. */
+.t1-code-title { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.t1-code-title code { color: var(--teal-ink); }
+.t1-form-sec { font-family: var(--font-display); color: var(--navy); font-size: 15px; margin: 18px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.mt { margin-top: 12px; }
+.mb { margin-bottom: 12px; }
+
+/* ----- «مطلوب منك» ----- */
+.t1-tasks { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.t1-task { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); color: var(--ink); border-inline-start-width: 5px; }
+.t1-task:hover { border-color: var(--teal); color: var(--ink); box-shadow: 0 2px 8px rgba(22, 41, 74, 0.08); }
+.t1-task b { font-size: 26px; line-height: 1; font-family: var(--font-display); min-width: 40px; }
+.t1-task strong { display: block; font-size: 14px; }
+.t1-task small { color: var(--muted); }
+.t1-task.tone-bad { border-inline-start-color: var(--crit); }
+.t1-task.tone-bad b { color: var(--crit); }
+.t1-task.tone-warn { border-inline-start-color: #c99a2e; }
+.t1-task.tone-warn b { color: var(--warn); }
+.t1-task.tone-brand { border-inline-start-color: var(--teal); }
+.t1-task.tone-brand b { color: var(--teal-ink); }
+.t1-task.tone-info { border-inline-start-color: var(--navy); }
+.t1-task.tone-info b { color: var(--navy); }
+.t1-done { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-radius: 12px; background: var(--ok-bg); color: var(--ok); }
+
+.t1-std { display: grid; grid-template-columns: 52px 1fr 140px; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--sunk); color: var(--ink); }
+.t1-std:last-child { border-bottom: 0; }
+.t1-std:hover { color: var(--teal-ink); }
+.t1-std code { font-weight: 700; color: var(--navy); }
+.t1-std small { color: var(--muted); }
+
+/* ----- صفحة المؤشر ----- */
+.t1-kv { display: grid; grid-template-columns: 180px 1fr; gap: 8px 16px; margin: 0; }
+.t1-kv dt { color: var(--muted); }
+.t1-kv dd { margin: 0; white-space: pre-wrap; }
+.t1-kv dd.missing { color: var(--crit); }
+@media (max-width: 640px) {
+  .t1-kv { grid-template-columns: 1fr; }
+  .t1-kv dt { margin-top: 8px; }
+}
+
+.t1-years { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-bottom: 16px; }
+.t1-year { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--surface); text-align: center; }
+.t1-year small { display: block; color: var(--muted); font-size: 12px; }
+.t1-year b { display: block; font-size: 18px; font-family: var(--font-display); }
+.t1-year.baseline { background: var(--sunk); }
+.t1-year.empty b { color: var(--muted); }
+@media (max-width: 760px) { .t1-years { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+.t1-summary { padding: 10px 14px; border-radius: 10px; background: var(--sunk); margin-bottom: 12px; font-size: 14px; }
+.t1-sticky-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ----- الرسم التنظيمي: العميد في القمة، والوحدات تحته، ثم الأقسام بممثليها وشركائها. ----- */
+.org { display: grid; gap: 22px; }
+.org-head { display: flex; justify-content: center; }
+.org-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; position: relative; padding-top: 12px; }
+.org-row::before { content: ""; position: absolute; top: 0; inset-inline: 10%; border-top: 2px solid var(--line); }
+.org-title { font-family: var(--font-display); color: var(--navy); font-size: 14px; margin: 0 0 -10px; }
+.org-box { background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--teal); border-radius: 12px; padding: 10px 12px; position: relative; }
+.org-head .org-box { border-top-color: var(--navy); min-width: 300px; }
+.org-box.dept { border-top-color: #c99a2e; }
+.org-box h3 { font-family: var(--font-display); font-size: 14px; margin: 0 0 2px; display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.org-box > small { color: var(--muted); display: block; margin-bottom: 6px; }
+.org-person { display: flex; align-items: center; gap: 8px; padding: 6px; border-radius: 8px; cursor: pointer; width: 100%; background: none; border: 0; text-align: start; font: inherit; color: inherit; }
+.org-person:hover, .org-person:focus-visible { background: var(--sunk); }
+.org-person .lcp-avatar { width: 32px; height: 32px; font-size: 12px; flex: none; }
+.org-person b { display: block; font-size: 13px; }
+.org-person small { color: var(--muted); font-size: 12px; }
+.org-vacant { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 8px; border: 1px dashed #e0b0a8; border-radius: 8px; color: var(--crit); font-size: 12px; margin-top: 4px; }
+.org-partner { margin-top: 6px; padding: 6px 8px; border-radius: 8px; background: #fbf5e6; font-size: 12px; cursor: pointer; border: 0; width: 100%; text-align: start; font-family: inherit; }
+
+@media print {
+  .lcp-side, .lcp-top, .lcp-tabbar, .no-print, .ant-btn { display: none !important; }
+  .lcp-content { padding: 0 !important; }
+  .org-box { break-inside: avoid; }
+}

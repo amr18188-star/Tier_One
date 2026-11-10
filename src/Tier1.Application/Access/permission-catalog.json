@@ -1,0 +1,505 @@
+{
+  "version": 1,
+  "modules": [
+    {
+      "key": "dash",
+      "ar": "الرئيسية واللوحات",
+      "en": "Home and dashboards"
+    },
+    {
+      "key": "org",
+      "ar": "الجهات والهيكل",
+      "en": "Units and structure"
+    },
+    {
+      "key": "kpi",
+      "ar": "المؤشرات والمستهدفات",
+      "en": "Indicators and targets"
+    },
+    {
+      "key": "adm",
+      "ar": "الإدارة والأمان",
+      "en": "Administration and security"
+    },
+    {
+      "key": "log",
+      "ar": "السجلات (MongoDB)",
+      "en": "Logs (MongoDB)"
+    }
+  ],
+  "roles": [
+    {
+      "code": "SA",
+      "ar": "المدير الأعلى",
+      "en": "Super administrator",
+      "descriptionAr": "كل الإمكانيات المعرّفة دائمًا ولا يُعدَّل من المصفوفة. حسابان على الأقل، بتحقق بخطوتين ومن شبكة الجامعة فقط.",
+      "isNew": false
+    },
+    {
+      "code": "PRES",
+      "ar": "رئيس الجامعة",
+      "en": "University president",
+      "descriptionAr": "الاطلاع الشامل على المؤشرات والهيكل والتعارضات ومتابعة الأداء، دون إدخال أو اعتماد بيانات.",
+      "isNew": true
+    },
+    {
+      "code": "VP",
+      "ar": "نائب رئيس الجامعة",
+      "en": "Vice president",
+      "descriptionAr": "متابعة الجهات التابعة لنطاق اختصاصه (قيمة «نطاقه» رموز الكليات).",
+      "isNew": true
+    },
+    {
+      "code": "HC",
+      "ar": "عضو اللجنة العليا لـ Tier 1",
+      "en": "Tier 1 higher committee",
+      "descriptionAr": "اعتماد تعريفات المؤشرات والمستهدفات وحسم التعارضات برقم المحضر. لا يعتمد ما أعدّه بنفسه.",
+      "isNew": true
+    },
+    {
+      "code": "PM",
+      "ar": "مدير متابعة الخطة",
+      "en": "Plan monitoring manager",
+      "descriptionAr": "إدارة القاموس والمستهدفات والجهات والهياكل، وتجهيز التعارضات لجدول أعمال اللجنة العليا.",
+      "isNew": true
+    },
+    {
+      "code": "QA",
+      "ar": "الجودة المركزية",
+      "en": "Central quality assurance",
+      "descriptionAr": "مراجعة تعريفات المؤشرات ومصادرها والتعارضات، والاطلاع على كل الجهات.",
+      "isNew": true
+    },
+    {
+      "code": "DEAN",
+      "ar": "عميد الكلية",
+      "en": "Dean",
+      "descriptionAr": "متابعة الكلية وإدارة هيكلها ومستهدفاتها في نطاقه (رمز الكلية).",
+      "isNew": true
+    },
+    {
+      "code": "CTC",
+      "ar": "لجنة Tier 1 بالكلية",
+      "en": "College Tier 1 committee",
+      "descriptionAr": "تحديث هيكل الكلية وأعضائه ومستهدفاتها ومتابعة الأقسام، في نطاق الكلية.",
+      "isNew": true
+    },
+    {
+      "code": "DREP",
+      "ar": "ممثل Tier 1 بالقسم",
+      "en": "Department Tier 1 representative",
+      "descriptionAr": "الاطلاع على بيانات قسمه وكليته ومراجعتها قبل رفعها.",
+      "isNew": true
+    },
+    {
+      "code": "DE",
+      "ar": "مدخل البيانات",
+      "en": "Data entry",
+      "descriptionAr": "الاطلاع على المطلوب من جهته وإدخال بياناتها.",
+      "isNew": true
+    },
+    {
+      "code": "INIT",
+      "ar": "مسؤول المبادرة",
+      "en": "Initiative owner",
+      "descriptionAr": "تحديث أنشطة المبادرة وإنجازها وتكاليفها (المرحلة الثانية).",
+      "isNew": true
+    },
+    {
+      "code": "VIEW",
+      "ar": "مستخدم الاطلاع",
+      "en": "Viewer",
+      "descriptionAr": "مشاهدة النطاق المسموح دون تعديل.",
+      "isNew": true
+    },
+    {
+      "code": "SYS",
+      "ar": "مسؤول النظام",
+      "en": "System administrator",
+      "descriptionAr": "حسابات الموظفين والإعدادات التقنية والتكاملات والمهام. لا يرى محتوى المعاملات ولا يعتمد.",
+      "isNew": false
+    },
+    {
+      "code": "AUD",
+      "ar": "المراجع الرقابي",
+      "en": "Oversight auditor",
+      "descriptionAr": "قراءة السجلات والتقارير والتصدير المصرح، دون أي تعديل.",
+      "isNew": false
+    }
+  ],
+  "features": [
+    {
+      "key": "dash.home",
+      "module": "dash",
+      "ar": "الصفحة الرئيسية ولوحة المتابعة",
+      "en": "Home and dashboard",
+      "caps": {
+        "V": "مطلوب منك والصورة العامة في نطاقه",
+        "P": "طباعة اللوحة"
+      },
+      "specials": [],
+      "defaults": {
+        "PRES": "VP:A",
+        "VP": "VP:U",
+        "HC": "VP:A",
+        "PM": "VP:A",
+        "QA": "V:A",
+        "DEAN": "VP:U",
+        "CTC": "V:U",
+        "DREP": "V:U",
+        "DE": "V:U",
+        "INIT": "V:U",
+        "VIEW": "V:U",
+        "AUD": "VP:A"
+      }
+    },
+    {
+      "key": "org.units",
+      "module": "org",
+      "ar": "الجهات (الكليات والأقسام والإدارات)",
+      "en": "Organization units",
+      "caps": {
+        "V": "قائمة الجهات وتاريخها",
+        "P": "طباعة القائمة",
+        "E": "تعديل الاسم والترتيب بتاريخ سريان",
+        "A": "إنشاء جهة",
+        "D": "إغلاق جهة أو دمجها (لا حذف)"
+      },
+      "specials": [],
+      "defaults": {
+        "PRES": "V:A",
+        "VP": "V:A",
+        "HC": "V:A",
+        "PM": "VPEAD:A",
+        "QA": "V:A",
+        "DEAN": "V:A",
+        "CTC": "V:A",
+        "DREP": "V:A",
+        "DE": "V:A",
+        "INIT": "V:A",
+        "VIEW": "V:A",
+        "SYS": "VPEA:A",
+        "AUD": "V:A"
+      }
+    },
+    {
+      "key": "org.structure",
+      "module": "org",
+      "ar": "هيكل Tier 1 بالكليات وأعضاؤه",
+      "en": "College Tier 1 structure",
+      "caps": {
+        "V": "الرسم التنظيمي وأعضاؤه ولوحة الاكتمال",
+        "P": "طباعة الهيكل",
+        "E": "تعديل بيانات عضو أو شريك",
+        "A": "إضافة عضو أو شريك صناعي",
+        "D": "إنهاء عضوية أو شراكة بتاريخ (لا حذف)"
+      },
+      "specials": [
+        {
+          "key": "view_contacts",
+          "ar": "عرض الهاتف والبريد",
+          "en": "View phone and email",
+          "roles": [
+            "PRES",
+            "PM",
+            "DEAN",
+            "CTC"
+          ]
+        }
+      ],
+      "defaults": {
+        "PRES": "VP:A",
+        "VP": "VP:U",
+        "HC": "V:A",
+        "PM": "VPEAD:A",
+        "QA": "V:A",
+        "DEAN": "VPEAD:U",
+        "CTC": "VPEA:U",
+        "DREP": "V:U",
+        "DE": "V:U",
+        "VIEW": "V:U",
+        "AUD": "V:A"
+      }
+    },
+    {
+      "key": "kpi.dictionary",
+      "module": "kpi",
+      "ar": "قاموس المؤشرات",
+      "en": "Indicator dictionary",
+      "caps": {
+        "V": "المؤشرات وتعريفاتها وإصداراتها",
+        "P": "طباعة بطاقة المؤشر",
+        "E": "تعديل التعريف وإرساله للاعتماد",
+        "A": "إضافة مؤشر",
+        "D": "إيقاف مؤشر وإعادة تفعيله"
+      },
+      "specials": [
+        {
+          "key": "approve",
+          "ar": "اعتماد التعريف أو إعادته بملاحظات",
+          "en": "Approve or return a definition",
+          "roles": [
+            "HC"
+          ]
+        }
+      ],
+      "defaults": {
+        "PRES": "VP:A",
+        "VP": "V:A",
+        "HC": "VP:A",
+        "PM": "VPEAD:A",
+        "QA": "VPE:A",
+        "DEAN": "V:A",
+        "CTC": "V:A",
+        "DREP": "V:A",
+        "DE": "V:A",
+        "INIT": "V:A",
+        "VIEW": "V:A",
+        "AUD": "VP:A"
+      }
+    },
+    {
+      "key": "kpi.targets",
+      "module": "kpi",
+      "ar": "خط الأساس والمستهدفات",
+      "en": "Baselines and targets",
+      "caps": {
+        "V": "مستهدفات الجامعة وتوزيعها على الكليات",
+        "P": "طباعة المستهدفات",
+        "E": "إدخال المستهدف وتعديله في نطاقه"
+      },
+      "specials": [
+        {
+          "key": "approve",
+          "ar": "اعتماد المستهدف وتعديل المعتمد بقرار",
+          "en": "Approve a target and amend an approved one",
+          "roles": [
+            "HC"
+          ]
+        }
+      ],
+      "defaults": {
+        "PRES": "VP:A",
+        "VP": "VP:U",
+        "HC": "VP:A",
+        "PM": "VPE:A",
+        "QA": "VP:A",
+        "DEAN": "VPE:U",
+        "CTC": "VPE:U",
+        "DREP": "V:U",
+        "DE": "V:U",
+        "INIT": "V:A",
+        "VIEW": "V:U",
+        "AUD": "VP:A"
+      }
+    },
+    {
+      "key": "kpi.conflicts",
+      "module": "kpi",
+      "ar": "سجل التعارضات",
+      "en": "Conflict register",
+      "caps": {
+        "V": "التعارضات وقراراتها",
+        "P": "طباعة جدول أعمال اللجنة",
+        "E": "تجهيز التعارض بالمعالجة المقترحة"
+      },
+      "specials": [
+        {
+          "key": "decide",
+          "ar": "تسجيل قرار اللجنة العليا",
+          "en": "Record the committee decision",
+          "roles": [
+            "HC"
+          ]
+        }
+      ],
+      "defaults": {
+        "PRES": "VP:A",
+        "VP": "V:A",
+        "HC": "VP:A",
+        "PM": "VPE:A",
+        "QA": "VPE:A",
+        "DEAN": "V:A",
+        "CTC": "V:A",
+        "AUD": "VP:A"
+      }
+    },
+    {
+      "key": "adm.users",
+      "module": "adm",
+      "ar": "حسابات الموظفين",
+      "en": "Staff accounts",
+      "caps": {
+        "V": "الحسابات وحالتها وآخر دخول",
+        "P": "طباعة قائمة الحسابات",
+        "E": "تعديل الاسم والحالة وفك القفل وإعادة ضبط التحقق بخطوتين",
+        "A": "إنشاء حساب موظف بدعوة على البريد",
+        "D": "إيقاف الحساب. لا حذف لحساب له عمليات"
+      },
+      "specials": [
+        {
+          "key": "set_password",
+          "ar": "تعيين كلمة مرور مؤقتة",
+          "en": "Set a temporary password",
+          "roles": []
+        }
+      ],
+      "defaults": {
+        "SYS": "VPEAD:A",
+        "PRES": "VP:A",
+        "AUD": "V:A"
+      }
+    },
+    {
+      "key": "adm.roles",
+      "module": "adm",
+      "ar": "الأدوار ومصفوفة الصلاحيات",
+      "en": "Roles and permission matrix",
+      "caps": {
+        "V": "الأدوار وصلاحياتها والمقارنة بينها",
+        "P": "طباعة المصفوفة",
+        "E": "تعديل صلاحيات دور",
+        "A": "إنشاء دور أو نسخ دور قائم",
+        "D": "حذف دور غير مسند"
+      },
+      "specials": [
+        {
+          "key": "approve",
+          "ar": "اعتماد تعديل المصفوفة (مدير أعلى ثانٍ)",
+          "en": "Approve a matrix change (a second super administrator)",
+          "roles": []
+        }
+      ],
+      "defaults": {
+        "PRES": "V:A",
+        "AUD": "VP:A"
+      }
+    },
+    {
+      "key": "adm.grants",
+      "module": "adm",
+      "ar": "إسناد الأدوار والتفويضات",
+      "en": "Role assignments and delegations",
+      "caps": {
+        "V": "من يحمل كل دور ونطاقه ومدته",
+        "P": "طباعة كشف الأدوار",
+        "E": "تعديل النطاق أو المدة",
+        "A": "إسناد دور أو تفويض مؤقت",
+        "D": "سحب دور أو إنهاء تفويض"
+      },
+      "specials": [],
+      "defaults": {
+        "PRES": "VPEAD:A",
+        "SYS": "VP:A",
+        "AUD": "VP:A"
+      }
+    },
+    {
+      "key": "adm.settings",
+      "module": "adm",
+      "ar": "الإعدادات",
+      "en": "Settings",
+      "caps": {
+        "V": "مهل السداد والحجز المؤقت وحدود الملفات والتنبيهات",
+        "P": "طباعة الإعدادات الحالية",
+        "E": "تعديل الإعدادات: التشغيلية للمدير والتقنية لمسؤول النظام",
+        "A": "إضافة إعداد تشغيلي جديد",
+        "D": "إعادة إعداد إلى قيمته الافتراضية"
+      },
+      "specials": [],
+      "defaults": {
+        "PRES": "VE:A",
+        "SYS": "VE:A",
+        "AUD": "V:A"
+      }
+    },
+    {
+      "key": "log.audit",
+      "module": "log",
+      "ar": "سجل العمليات",
+      "en": "Operations log",
+      "caps": {
+        "V": "أحداث العمليات بقيمها السابقة والجديدة في نطاقه",
+        "P": "طباعة سجل كيان أو فترة"
+      },
+      "specials": [
+        {
+          "key": "export",
+          "ar": "تصدير السجل",
+          "en": "Export the log",
+          "roles": [
+            "AUD"
+          ]
+        }
+      ],
+      "defaults": {
+        "PRES": "VP:A",
+        "AUD": "VP:A"
+      }
+    },
+    {
+      "key": "log.security",
+      "module": "log",
+      "ar": "السجلات الأمنية",
+      "en": "Security log",
+      "caps": {
+        "V": "الدخول والفشل والقفل ورفض الصلاحية وتغيير الأدوار",
+        "P": "طباعة السجل"
+      },
+      "specials": [
+        {
+          "key": "export",
+          "ar": "تصدير السجل",
+          "en": "Export the log",
+          "roles": [
+            "AUD"
+          ]
+        }
+      ],
+      "defaults": {
+        "SYS": "VP:A",
+        "PRES": "V:A",
+        "AUD": "VP:A"
+      }
+    },
+    {
+      "key": "log.access",
+      "module": "log",
+      "ar": "سجل الاطلاع والطباعة والتصدير",
+      "en": "Access, print and export log",
+      "caps": {
+        "V": "من اطلع على بيانات حساسة أو طبع مستندًا رسميًا أو صدّر بيانات",
+        "P": "طباعة السجل"
+      },
+      "specials": [
+        {
+          "key": "export",
+          "ar": "تصدير السجل",
+          "en": "Export the log",
+          "roles": [
+            "AUD"
+          ]
+        }
+      ],
+      "defaults": {
+        "PRES": "VP:A",
+        "AUD": "VP:A"
+      }
+    },
+    {
+      "key": "log.tech",
+      "module": "log",
+      "ar": "السجلات التقنية",
+      "en": "Technical log",
+      "caps": {
+        "V": "الأخطاء وزمن الاستجابة وحمولات التكاملات المقنّعة",
+        "P": "طباعة السجل"
+      },
+      "specials": [],
+      "defaults": {
+        "SYS": "VP:A",
+        "AUD": "V:A"
+      }
+    }
+  ]
+}
