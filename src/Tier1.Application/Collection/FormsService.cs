@@ -26,9 +26,10 @@ public sealed record ValueDto(
 public sealed record FormItem(
     Guid IndicatorId, string Code, string Name, string Unit, Aggregation Aggregation, bool UsesRatio, string? NumeratorLabel, string? DenominatorLabel,
     string? Definition, string? DataSource, string? EvidenceRequired, Direction Direction, decimal? Previous, decimal? Target,
-    ValueDto? Value, IReadOnlyList<IssueDto> Issues, IReadOnlyList<DocDto> Evidence);
+    ValueDto? Value, IReadOnlyList<IssueDto> Issues, IReadOnlyList<DocDto> Evidence, string? EntryNote, Kpi.TargetSource TargetSource);
 
-public sealed record FormSection(string StandardCode, string StandardName, IReadOnlyList<FormItem> Items);
+/// <summary>معيار في النموذج بركيزته، فيعرض الإدخال مصنفًا: الركيزة ← المعيار ← مؤشراته.</summary>
+public sealed record FormSection(string? PillarCode, string? PillarName, string StandardCode, string StandardName, IReadOnlyList<FormItem> Items);
 
 public sealed record FormEventDto(SubmissionAction Action, ApprovalStep FromStep, ApprovalStep ToStep, string? ByName, DateTimeOffset At, string? Note);
 
@@ -267,7 +268,7 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
 
     // ----------------------------------------------------------------- داخلي
 
-    internal sealed record IndicatorInCycle(CycleIndicator Ci, IndicatorVersion Version, Standard Standard, int SortOrder);
+    internal sealed record IndicatorInCycle(CycleIndicator Ci, IndicatorVersion Version, Standard Standard, int SortOrder, Pillar? Pillar, int? PlanStart);
 
     internal sealed class FormContext
     {
@@ -283,9 +284,20 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
     public static bool Applies(CycleIndicator ci, OrgUnit unit) => unit.Kind switch
     {
         OrgUnitKind.Department => ci.Level == CollectionLevel.Department,
-        OrgUnitKind.College or OrgUnitKind.Institute => ci.Level == CollectionLevel.College || ci.CentralUnitId == unit.Id,
+        OrgUnitKind.College or OrgUnitKind.Institute => ci.Level == CollectionLevel.College || ci.CollegeEntry || ci.CentralUnitId == unit.Id,
         _ => ci.CentralUnitId == unit.Id,
     };
+
+    /// <summary>ما يدخل في هذا النموذج تحديدًا حين لا يكون رقم الجهة وحدها: العدد بعد إزالة التكرار للكلية أو للجامعة كلها.</summary>
+    public static string? EntryNote(CycleIndicator ci, IndicatorVersion v, OrgUnit unit)
+    {
+        if (v.Aggregation != Aggregation.DistinctCount) return null;
+        if (!unit.IsCollegeLevel && unit.Kind != OrgUnitKind.Department)
+            return "أدخل عدد الجامعة كلها بعد إزالة التكرار (ما تشترك فيه كليتان يعد مرة واحدة)، لا مجموع أعداد الكليات.";
+        if (unit.IsCollegeLevel && ci.Level == CollectionLevel.Department)
+            return "أدخل عدد الكلية كلها بعد إزالة التكرار بين أقسامها، لا مجموع أعداد الأقسام.";
+        return null;
+    }
 
     internal async Task<FormContext> LoadAsync(Guid id, Cap cap, bool tracking, CancellationToken ct)
     {
@@ -300,8 +312,9 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
         var versionIds = cis.Select(c => c.VersionId).ToList();
         var versions = await db.IndicatorVersions.AsNoTracking().Where(v => versionIds.Contains(v.Id)).ToDictionaryAsync(v => v.Id, ct);
         var indicatorIds = cis.Select(c => c.IndicatorId).ToList();
-        var meta = await db.Indicators.AsNoTracking().Where(i => indicatorIds.Contains(i.Id)).Select(i => new { i.Id, i.StandardId, i.SortOrder }).ToDictionaryAsync(i => i.Id, ct);
+        var meta = await db.Indicators.AsNoTracking().Where(i => indicatorIds.Contains(i.Id)).Select(i => new { i.Id, i.StandardId, i.SortOrder, i.PlanStartYear }).ToDictionaryAsync(i => i.Id, ct);
         var standards = await db.Standards.AsNoTracking().ToDictionaryAsync(s => s.Id, ct);
+        var pillars = await db.Pillars.AsNoTracking().ToDictionaryAsync(p => p.Id, ct);
         var valuesQuery = tracking ? db.SubmittedValues : db.SubmittedValues.AsNoTracking();
         var values = await valuesQuery.Where(v => v.SubmissionId == sub.Id).ToDictionaryAsync(v => v.IndicatorId, ct);
 
@@ -320,8 +333,13 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
             Submission = sub,
             Cycle = cycle,
             Unit = unit,
-            Indicators = cis.Select(c => new IndicatorInCycle(c, versions[c.VersionId], standards[meta[c.IndicatorId].StandardId], meta[c.IndicatorId].SortOrder))
-                .OrderBy(x => x.Standard.SortOrder).ThenBy(x => x.SortOrder).ToList(),
+            Indicators = cis.Select(c =>
+                {
+                    var std = standards[meta[c.IndicatorId].StandardId];
+                    return new IndicatorInCycle(c, versions[c.VersionId], std, meta[c.IndicatorId].SortOrder,
+                        std.PillarId is { } p ? pillars.GetValueOrDefault(p) : null, meta[c.IndicatorId].PlanStartYear);
+                })
+                .OrderBy(x => x.Pillar?.SortOrder ?? int.MaxValue).ThenBy(x => x.Standard.SortOrder).ThenBy(x => x.SortOrder).ToList(),
             Values = values,
             Previous = previous,
             Me = me,
@@ -398,19 +416,15 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
         return docs.ToDictionary(d => byValue[d.Key], d => d.Count);
     }
 
-    private async Task<Dictionary<Guid, decimal?>> TargetsAsync(FormContext ctx, CancellationToken ct)
+    /// <summary>المستهدف الذي يظهر بجانب كل مؤشر، بقواعد النتائج نفسها (سنة البدء، واستمرار آخر مستهدف، ومستهدف الجامعة للنسب).</summary>
+    private async Task<Dictionary<Guid, Kpi.TargetInfo>> TargetsAsync(FormContext ctx, CancellationToken ct)
     {
-        if (ctx.Unit.Kind == OrgUnitKind.Department) return [];
         var ids = ctx.Indicators.Select(i => i.Ci.IndicatorId).ToList();
-        var targets = await db.Targets.AsNoTracking().Where(t => ids.Contains(t.IndicatorId) && t.Year == ctx.Cycle.TargetYear).ToListAsync(ct);
-        var result = new Dictionary<Guid, decimal?>();
-        foreach (var id in ids)
-        {
-            var own = targets.FirstOrDefault(t => t.IndicatorId == id && t.UnitId == ctx.Unit.Id && t.Kind == TargetKind.Target);
-            var each = ctx.Unit.IsCollegeLevel ? targets.FirstOrDefault(t => t.IndicatorId == id && t.Kind == TargetKind.EachCollege) : null;
-            result[id] = own?.Value ?? each?.Value;
-        }
-        return result;
+        var targets = (await db.Targets.AsNoTracking().Where(t => ids.Contains(t.IndicatorId) && t.Year <= ctx.Cycle.TargetYear && t.Kind != TargetKind.Baseline).ToListAsync(ct))
+            .ToLookup(t => t.IndicatorId);
+        var universityId = await db.OrgUnits.AsNoTracking().Where(u => u.Kind == OrgUnitKind.University).Select(u => u.Id).FirstAsync(ct);
+        return ctx.Indicators.ToDictionary(i => i.Ci.IndicatorId,
+            i => Kpi.TargetLookup.For([.. targets[i.Ci.IndicatorId]], ctx.Unit, universityId, ctx.Cycle.TargetYear, i.PlanStart, i.Version.Aggregation));
     }
 
     private async Task<FormItem> ItemAsync(FormContext ctx, IndicatorInCycle i, decimal bigChange, CancellationToken ct)
@@ -429,7 +443,7 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
         return docs.GroupBy(d => byValue[d.OwnerId]).ToDictionary(g => g.Key, g => g.Select(ToDoc).ToList());
     }
 
-    private static FormItem Item(FormContext ctx, IndicatorInCycle i, decimal bigChange, Dictionary<Guid, decimal?> targets, Dictionary<Guid, List<DocDto>> docs)
+    private static FormItem Item(FormContext ctx, IndicatorInCycle i, decimal bigChange, Dictionary<Guid, Kpi.TargetInfo> targets, Dictionary<Guid, List<DocDto>> docs)
     {
         var v = i.Version;
         var spec = CycleSpec.Of(v);
@@ -441,10 +455,11 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
                 ctx.Previous.GetValueOrDefault(i.Ci.IndicatorId), bigChange);
             issues = found.Select(f => new IssueDto(f.Code, f.Severity, f.MessageAr)).ToList();
         }
+        var target = targets.GetValueOrDefault(i.Ci.IndicatorId) ?? Kpi.TargetInfo.None;
         return new FormItem(i.Ci.IndicatorId, i.Ci.Code, v.NameAr, v.Unit, v.Aggregation, ValueRules.UsesRatio(spec), v.Numerator, v.Denominator,
-            v.Definition, v.DataSource, v.EvidenceRequired, v.Direction, ctx.Previous.GetValueOrDefault(i.Ci.IndicatorId), targets.GetValueOrDefault(i.Ci.IndicatorId),
+            v.Definition, v.DataSource, v.EvidenceRequired, v.Direction, ctx.Previous.GetValueOrDefault(i.Ci.IndicatorId), target.Value,
             value is null ? null : new ValueDto(value.Kind, value.Value, value.Numerator, value.Denominator, value.Reason, value.Explanation, value.ReviewNote, value.EditedAt, value.Version),
-            issues, docs.GetValueOrDefault(i.Ci.IndicatorId) ?? []);
+            issues, docs.GetValueOrDefault(i.Ci.IndicatorId) ?? [], EntryNote(i.Ci, v, ctx.Unit), target.Source);
     }
 
     internal static DocDto ToDoc(StoredDocument d) => new(d.Id, d.FileName, d.ContentType, d.SizeBytes, d.UploadedAt, d.Description, d.VoidedAt is not null, d.VoidReason);
@@ -477,7 +492,9 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
             cycleOpen && s.Status != SubmissionStatus.Approved && s.DueOn < CairoTime.DateOf(clock.UtcNow),
             path.Select((p, i) => new PathStep(p, ApprovalRules.StepName(p), i < stepIndex ? "done" : i == stepIndex ? "current" : "pending")).ToList(),
             next, s.ReturnNote, s.LastEditedAt, ctx.Values.Count, ctx.Indicators.Count,
-            ctx.Indicators.GroupBy(i => i.Standard).Select(g => new FormSection(g.Key.Code, g.Key.NameAr, g.Select(i => Item(ctx, i, bigChange, targets, docs)).ToList())).ToList(),
+            ctx.Indicators.GroupBy(i => i.Standard)
+                .Select(g => new FormSection(g.First().Pillar?.Code, g.First().Pillar?.NameAr, g.Key.Code, g.Key.NameAr, g.Select(i => Item(ctx, i, bigChange, targets, docs)).ToList()))
+                .ToList(),
             blocking,
             events.Select(e => new FormEventDto(e.Action, e.FromStep, e.ToStep, e.ByName, e.At, e.Note)).ToList(),
             new FormActions(canEdit, canEdit && blocking.Count == 0, canReview, canReopen),

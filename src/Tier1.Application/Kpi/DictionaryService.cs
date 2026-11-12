@@ -276,6 +276,35 @@ public sealed class DictionaryService(IAppDb db, IClock clock, ICurrentUser curr
         return await GetAsync(code, ct);
     }
 
+    /// <summary>
+    /// حذف مؤشر لم يدخل أي دورة قياس (أضيف خطأ أو تكرر): يحذف بتعريفاته ومستهدفاته، ويزال من المبادرات المرتبطة.
+    /// المؤشر الذي قيس مرة لا يحذف لأن نتائجه قائمة عليه؛ يوقف بدلًا من ذلك.
+    /// </summary>
+    public async Task DeleteAsync(string code, DeleteRequest req, CancellationToken ct)
+    {
+        await access.RequireAsync(Feature, Cap.Delete, ct);
+        var why = Require.Reason(req.Reason);
+        var indicator = await LoadAsync(code, tracking: true, ct);
+        if (await db.CycleIndicators.AnyAsync(c => c.IndicatorId == indicator.Id, ct))
+            throw new DomainException("indicator_measured", "المؤشر دخل دورة قياس ونتائجه قائمة عليه، فلا يحذف. أوقفه بدلًا من ذلك.",
+                "The indicator was measured in a cycle; suspend it instead.", 409);
+        var targets = await db.Targets.Where(t => t.IndicatorId == indicator.Id).ToListAsync(ct);
+        var targetIds = targets.Select(t => t.Id).ToList();
+        db.TargetRevisions.RemoveRange(await db.TargetRevisions.Where(r => targetIds.Contains(r.TargetId)).ToListAsync(ct));
+        db.Targets.RemoveRange(targets);
+        foreach (var initiative in await db.Initiatives.Where(i => i.IndicatorCodes.Contains(indicator.Code)).ToListAsync(ct))
+            initiative.IndicatorCodes = initiative.IndicatorCodes.Where(c => c != indicator.Code).ToList();
+        db.IndicatorVersions.RemoveRange(indicator.Versions);
+        db.Indicators.Remove(indicator);
+        audit.Record(AuditEvents.Audit("kpi", Feature, "kpi.indicator_deleted", "حذف مؤشر لم يقس", "Deleted an unmeasured indicator") with
+        {
+            Target = new AuditTarget("indicator", indicator.Id.ToString(), indicator.Code),
+            Reason = why,
+            Details = new { name = indicator.Current.NameAr, targets = targets.Count },
+        });
+        await db.SaveChangesAsync(ct);
+    }
+
     private async Task<Indicator> LoadAsync(string code, bool tracking, CancellationToken ct)
     {
         var query = db.Indicators.Include(i => i.Versions).Where(i => i.Code == code.Trim().ToUpperInvariant());

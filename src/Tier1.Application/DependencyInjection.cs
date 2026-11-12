@@ -39,6 +39,7 @@ public static class DependencyInjection
         services.AddScoped<Structure.StructureService>();
         services.AddScoped<Kpi.DictionaryService>();
         services.AddScoped<Kpi.TargetsService>();
+        services.AddScoped<Kpi.StrategyService>();
         services.AddScoped<Kpi.ConflictsService>();
         services.AddScoped<Home.HomeService>();
 

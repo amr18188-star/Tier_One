@@ -1,6 +1,9 @@
 import { useRef, useState } from "react";
 import { Alert, Button, Checkbox, Input, InputNumber, Popover, Segmented, Tooltip, Upload } from "antd";
-import { CloseCircleFilled, ExclamationCircleOutlined, InfoCircleOutlined, LoadingOutlined, PaperClipOutlined, UploadOutlined, WarningFilled } from "@ant-design/icons";
+import {
+  CheckCircleOutlined, CloseCircleFilled, ExclamationCircleOutlined, InfoCircleOutlined, LoadingOutlined, MinusCircleOutlined, PaperClipOutlined, QuestionCircleOutlined,
+  StopOutlined, UploadOutlined, WarningFilled,
+} from "@ant-design/icons";
 import { useMutation } from "@tanstack/react-query";
 import { api, uploadFile } from "../../api/client";
 import type { Doc, FormItem, SaveValue, ValueKind } from "../../api/collection";
@@ -85,6 +88,7 @@ export function ValueRow({ formId, item, editable, reviewing, mark, onMark, onSa
     <div style={{ maxWidth: 380 }}>
       {item.definition && <p><b>{L("التعريف:", "Definition:")}</b> {item.definition}</p>}
       {item.usesRatio && <p><b>{L("البسط:", "Numerator:")}</b> {item.numeratorLabel ?? "—"}<br /><b>{L("المقام:", "Denominator:")}</b> {item.denominatorLabel ?? "—"}</p>}
+      {weighted && <p><b>{L("أساس الترجيح:", "Weight:")}</b> {item.denominatorLabel ?? "—"}</p>}
       {item.dataSource && <p><b>{L("مصدر البيانات:", "Source:")}</b> {item.dataSource}</p>}
       {item.evidenceRequired && <p><b>{L("الدليل المطلوب:", "Evidence:")}</b> {item.evidenceRequired}</p>}
       <p className="muted">{directionText[item.direction]}</p>
@@ -100,12 +104,17 @@ export function ValueRow({ formId, item, editable, reviewing, mark, onMark, onSa
           <Popover content={info} title={L("عن المؤشر", "About this indicator")} trigger="click">
             <Button type="text" size="small" icon={<InfoCircleOutlined />} aria-label={L("تعريف المؤشر", "Definition")} />
           </Popover>
+          <RowStatus item={item} />
         </div>
         <div className="f-meta">
           <span>{L("الوحدة:", "Unit:")} <b>{item.unit}</b></span>
-          <span>{L("المستهدف:", "Target:")} <b className="ltr">{withUnit(item.target, item.unit)}</b></span>
+          <span>
+            {L("المستهدف:", "Target:")} <b className="ltr">{withUnit(item.target, item.unit)}</b>
+            {item.targetSource === "University" && <small className="muted"> ({L("مستهدف الجامعة؛ لا مستهدف خاص بالجهة", "university target")})</small>}
+          </span>
           <span>{L("آخر قيمة معتمدة:", "Last approved:")} <b className="ltr">{withUnit(item.previous, item.unit)}</b></span>
         </div>
+        {item.entryNote && <div className="t1-entry-note">{item.entryNote}</div>}
         {item.value?.reviewNote && (
           <Alert className="mt" type="error" showIcon message={L("ملاحظة المراجع", "Reviewer note")} description={item.value.reviewNote} />
         )}
@@ -120,9 +129,9 @@ export function ValueRow({ formId, item, editable, reviewing, mark, onMark, onSa
                 setDraft(d);
               }}
               options={[
-                { value: "Number", label: L("قيمة", "Value") },
-                { value: "NotAvailable", label: L("غير متاح", "Not available") },
-                { value: "NotApplicable", label: L("لا ينطبق", "Not applicable") },
+                { value: "Number", label: <Tooltip title={L("رقم فعلي، والصفر قيمة صحيحة.", "An actual number; zero is valid.")}>{L("قيمة", "Value")}</Tooltip> },
+                { value: "NotAvailable", label: <Tooltip title={L("المؤشر ينطبق لكن الرقم لم يتوفر بعد؛ اكتب السبب.", "Applies but the number is not available yet.")}>{L("غير متاح", "Not available")}</Tooltip> },
+                { value: "NotApplicable", label: <Tooltip title={L("المؤشر لا يخص الجهة أصلًا (مثل دراسات عليا في جهة بلا برامج لها).", "Does not concern this unit.")}>{L("لا ينطبق", "Not applicable")}</Tooltip> },
               ]} />
             {draft.kind === "Number" ? (
               item.usesRatio ? (
@@ -139,8 +148,11 @@ export function ValueRow({ formId, item, editable, reviewing, mark, onMark, onSa
                   <InputNumber min={0} max={pct ? 100 : undefined} value={draft.value} onChange={(v) => update({ value: v })}
                     addonAfter={item.unit} aria-label={item.name} onPressEnter={() => commit()} />
                   {weighted && (
-                    <Tooltip title={L("عدد المستجيبين أو الطلاب الذي حسب عليه المتوسط؛ يستخدم لترجيح متوسط الجامعة.", "Respondents, used to weight the university average.")}>
-                      <InputNumber min={0} value={draft.denominator} onChange={(v) => update({ denominator: v })} placeholder={L("عدد المستجيبين", "Respondents")} />
+                    <Tooltip title={L(`${item.denominatorLabel ?? "أساس الترجيح"}: يرجح به متوسط الجامعة، فلا تتساوى كلية صغيرة بكلية كبيرة. مطلوب.`,
+                      "The weight used for the university average. Required.")}>
+                      <InputNumber min={1} value={draft.denominator} onChange={(v) => update({ denominator: v })} placeholder={item.denominatorLabel ?? L("أساس الترجيح", "Weight")}
+                        aria-label={item.denominatorLabel ?? L("أساس الترجيح", "Weight")} onPressEnter={() => commit()} style={{ minWidth: 170 }}
+                        addonBefore={L("الوزن", "Weight")} />
                     </Tooltip>
                   )}
                 </div>
@@ -182,6 +194,31 @@ export function ValueRow({ formId, item, editable, reviewing, mark, onMark, onSa
   );
 }
 
+/** وقت الحفظ بتوقيت القاهرة (ساعة ودقيقة). */
+export function savedAt(iso: string) {
+  return new Intl.DateTimeFormat("en-GB", { timeZone: "Africa/Cairo", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+}
+
+/**
+ * حالة المؤشر في النموذج بنص ورمز لا باللون وحده، فلا يلتبس الصفر بغير المتاح ولا غير المنطبق بما لم يدخل:
+ * لم يدخل بعد، أو صفر، أو غير متاح، أو لا ينطبق، أو مدخل؛ ومعها وقت آخر حفظ.
+ */
+function RowStatus({ item }: { item: FormItem }) {
+  const v = item.value;
+  if (!v) return <span className="f-state none"><MinusCircleOutlined aria-hidden /> {L("لم يُدخل بعد", "Not entered")}</span>;
+  const zero = v.kind === "Number" && (item.usesRatio ? v.numerator === 0 : v.value === 0);
+  const [cls, icon, text] = v.kind === "NotAvailable" ? ["na", <QuestionCircleOutlined key="i" aria-hidden />, L("غير متاح", "Not available")]
+    : v.kind === "NotApplicable" ? ["napp", <StopOutlined key="i" aria-hidden />, L("لا ينطبق", "Not applicable")]
+    : zero ? ["zero", <CheckCircleOutlined key="i" aria-hidden />, L("صفر (قيمة مدخلة)", "Zero (entered)")]
+    : ["ok", <CheckCircleOutlined key="i" aria-hidden />, L("مُدخل", "Entered")];
+  return (
+    <span className={`f-state ${cls}`}>
+      {icon} {text}
+      <small> · {L("حُفظ", "saved")} <bdi className="ltr">{savedAt(v.editedAt)}</bdi></small>
+    </span>
+  );
+}
+
 function ReadValue({ item }: { item: FormItem }) {
   const v = item.value;
   if (!v) return <span className="muted"><ExclamationCircleOutlined /> {L("لم تدخل قيمة", "No value")}</span>;
@@ -191,6 +228,7 @@ function ReadValue({ item }: { item: FormItem }) {
     <span>
       <span className="f-readonly ltr">{withUnit(v.value, item.unit)}</span>
       {item.usesRatio && <small className="muted ltr"> ({num(v.numerator)} ÷ {num(v.denominator)})</small>}
+      {item.aggregation === "WeightedAverage" && v.denominator !== null && <small className="muted"> ({L("الوزن", "weight")} <span className="ltr">{num(v.denominator)}</span>)</small>}
       {v.explanation && <><br /><small className="muted">{L("تفسير:", "Note:")} {v.explanation}</small></>}
     </span>
   );

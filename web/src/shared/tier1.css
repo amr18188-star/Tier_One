@@ -137,7 +137,34 @@
 .f-progress .ant-progress { flex: 1; margin: 0; }
 .f-row { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 10px 20px; padding: 14px 4px; border-bottom: 1px solid var(--sunk); }
 .f-row:last-child { border-bottom: 0; }
-.f-row.flagged { background: var(--crit-bg); border-radius: 10px; padding-inline: 12px; }
+.f-row.flagged { background: #fff8f7; border-inline-start: 3px solid var(--crit); border-radius: 8px; padding-inline: 12px; }
+/* حالة كل مؤشر بنص ورمز: لم يدخل، صفر، غير متاح، لا ينطبق، مدخل. */
+.f-state { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; margin-inline-start: auto; }
+.f-state small { color: inherit; opacity: .8; }
+.f-state.none { background: var(--sunk); color: var(--muted); }
+.f-state.ok { background: var(--ok-bg); color: var(--ok); }
+.f-state.zero { background: #e8f0fb; color: #1d4f91; }
+.f-state.na { background: var(--warn-bg); color: var(--warn); }
+.f-state.napp { background: #f1eefb; color: #5b3fa0; }
+.f-name { flex-wrap: wrap; }
+.f-summary { display: inline-flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; }
+.f-summary b { color: var(--navy); }
+.r-ach-wrap { display: grid; gap: 2px; }
+.r-gap { font-size: 11.5px; color: var(--ok); }
+.r-gap.short { color: var(--crit); }
+/* نماذجي في الرئيسية: الجهة، والحالة، والتقدم، والأيام الباقية. */
+.t1-myforms { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.t1-myforms a { display: grid; grid-template-columns: minmax(0, 1fr) auto 180px 170px; gap: 8px 16px; align-items: center; padding: 10px 14px;
+  border: 1px solid var(--line); border-radius: 12px; color: var(--ink); }
+.t1-myforms a:hover { border-color: var(--teal); }
+.t1-myforms-name { display: grid; min-width: 0; }
+.t1-myforms-progress { margin: 0; }
+.t1-due { font-size: 13px; color: var(--ink); }
+.t1-due.late { color: var(--crit); font-weight: 600; }
+.t1-due-date { display: inline-block; margin-inline-start: 6px; }
+@media (max-width: 760px) { .t1-myforms a { grid-template-columns: minmax(0, 1fr) auto; } }
+.f-submit-sum { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 4px; }
+.f-submit-sum li { display: flex; justify-content: space-between; padding: 6px 10px; border-radius: 8px; background: var(--sunk); }
 .f-row.saving { opacity: 0.75; }
 .f-name { display: flex; gap: 8px; align-items: baseline; }
 .f-name code { color: var(--teal-ink); font-weight: 700; flex: none; }
@@ -158,6 +185,11 @@
 .f-actions { position: sticky; bottom: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
   padding: 12px 16px; margin: 16px -4px 0; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 -4px 14px rgba(22, 41, 74, 0.08); }
 .f-actions .grow { flex: 1; min-width: 200px; color: var(--muted); }
+/* على الجوال يظهر شريط الإجراء فوق شريط التنقل السفلي الثابت لا تحته. */
+@media (max-width: 960px) {
+  .f-actions { bottom: calc(66px + env(safe-area-inset-bottom)); padding: 10px 12px; }
+  .f-actions .ant-btn-lg { height: 40px; padding-inline: 14px; font-size: 14px; }
+}
 .f-std-nav { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
 .f-std-nav a { padding: 4px 10px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); font-size: 12px; color: var(--ink); }
 .f-std-nav a.done { border-color: #9fd3b5; background: var(--ok-bg); }
@@ -214,3 +246,68 @@
 .r-legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--muted); }
 .r-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-inline-end: 4px; vertical-align: middle; }
 .r-std { grid-template-columns: 56px minmax(0, 1.3fr) minmax(0, 1fr); }
+
+/* ----- شجرة الخطة الاستراتيجية: الشجرة في جانب وتفاصيل العنصر المختار في الآخر؛ على الجوال تحت بعضهما. ----- */
+.t1-plan { display: grid; grid-template-columns: minmax(280px, 390px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.t1-plan-tree { position: sticky; top: 76px; max-height: calc(100vh - 96px); overflow: auto; display: flex; flex-direction: column; gap: 10px; }
+.t1-plan-detail { min-width: 0; }
+@media (max-width: 960px) {
+  .t1-plan { grid-template-columns: 1fr; }
+  .t1-plan-tree { position: static; max-height: 60vh; }
+}
+.t1-tree .ant-tree-node-content-wrapper { padding-block: 3px; }
+.t1-node { display: inline-flex; align-items: baseline; gap: 6px; flex-wrap: nowrap; line-height: 1.5; }
+.t1-node > span { min-width: 0; }
+.t1-node code { color: var(--teal-ink); font-size: 12px; flex: none; }
+.t1-node .t1-node-tag { flex: none; }
+.t1-node-root { font-family: var(--font-display); color: var(--navy); font-weight: 600; }
+.t1-node-group { color: var(--muted); font-size: 12px; }
+.t1-node-tag { background: var(--sunk); color: var(--muted); border-radius: 6px; padding: 0 6px; font-size: 11px; }
+.t1-desc { white-space: pre-wrap; line-height: 1.8; margin: 0 0 8px; }
+.t1-link { background: none; border: 0; padding: 0; color: var(--teal-ink); cursor: pointer; font: inherit; text-align: start; }
+.t1-link:hover, .t1-link:focus-visible { text-decoration: underline; }
+
+.t1-plan-counts { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-bottom: 8px; }
+.t1-plan-counts div { background: var(--sunk); border-radius: 10px; padding: 10px 12px; }
+.t1-plan-counts b { display: block; font-family: var(--font-display); font-size: 22px; color: var(--navy); }
+.t1-plan-counts span { color: var(--muted); font-size: 12px; }
+.t1-howto { margin: 0; padding-inline-start: 20px; line-height: 1.9; }
+
+.t1-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.t1-card { display: flex; flex-direction: column; gap: 4px; text-align: start; border: 1px solid var(--line); border-radius: 12px; background: var(--surface);
+  padding: 12px 14px; cursor: pointer; font: inherit; color: inherit; transition: border-color .15s, box-shadow .15s; }
+.t1-card:hover, .t1-card:focus-visible { border-color: var(--teal); box-shadow: 0 2px 10px rgba(10, 140, 147, .12); }
+.t1-card code { color: var(--teal-ink); font-size: 12px; }
+.t1-card small { color: var(--muted); }
+
+.t1-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.t1-rows button { width: 100%; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; text-align: start; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--surface); padding: 8px 12px; cursor: pointer; font: inherit; color: inherit; }
+.t1-rows button:hover, .t1-rows button:focus-visible { border-color: var(--teal); }
+.t1-rows code { color: var(--teal-ink); }
+.t1-rows small { color: var(--muted); margin-inline-start: auto; }
+
+.t1-plan-table { display: grid; font-size: 13px; overflow-x: auto; }
+.t1-plan-table [role="row"] { display: grid; grid-template-columns: minmax(200px, 3fr) 78px repeat(6, minmax(52px, 1fr)); gap: 6px;
+  padding: 8px 6px; border-bottom: 1px solid var(--line); align-items: center; min-width: 640px; }
+.t1-plan-table .goal { font-weight: 700; color: var(--navy); }
+.t1-plan-table .head { color: var(--muted); font-size: 12px; font-weight: 600; }
+.t1-plan-table .click { cursor: pointer; }
+.t1-plan-table .click:hover { background: var(--sunk); }
+.t1-plan-table code { color: var(--teal-ink); }
+
+.t1-plan-years-head { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-bottom: 12px; }
+.t1-plan-years-head label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.t1-year.off { background: var(--sunk); opacity: .75; }
+.t1-year.after { border-style: dashed; }
+.t1-year .ant-input-number { margin-block: 4px; }
+.t1-year-note { font-size: 14px !important; color: var(--muted); }
+.t1-field { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; font-size: 13px; color: var(--muted); }
+.t1-plan-save { display: flex; align-items: center; gap: 12px; margin: 12px 0 16px; }
+
+/* الإدخال مصنفًا: عنوان الركيزة فوق معاييرها في النموذج. */
+.t1-pillar-head { font-family: var(--font-display); color: var(--navy); font-size: 16px; margin: 20px 0 8px; display: flex; gap: 8px; align-items: baseline; }
+.t1-pillar-head code { color: var(--teal-ink); font-size: 13px; }
+.f-pillar-label { font-size: 12px; color: var(--muted); align-self: center; margin-inline-end: 4px; }
+.f-std-nav + .f-std-nav { margin-top: -4px; }
+.t1-entry-note { color: var(--teal-ink); background: #e8f6f6; border-radius: 8px; padding: 4px 8px; font-size: 12px; margin-top: 4px; }

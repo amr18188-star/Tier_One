@@ -482,6 +482,10 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(16)")
                         .HasColumnName("code");
 
+                    b.Property<bool>("CollegeEntry")
+                        .HasColumnType("boolean")
+                        .HasColumnName("college_entry");
+
                     b.Property<int>("Level")
                         .HasColumnType("integer")
                         .HasColumnName("level");
@@ -1121,6 +1125,19 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<int?>("PlanEndYear")
+                        .HasColumnType("integer")
+                        .HasColumnName("plan_end_year");
+
+                    b.Property<string>("PlanNote")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("plan_note");
+
+                    b.Property<int?>("PlanStartYear")
+                        .HasColumnType("integer")
+                        .HasColumnName("plan_start_year");
+
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer")
                         .HasColumnName("sort_order");
@@ -1425,6 +1442,97 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                     b.ToTable("indicator_versions", "kpi");
                 });
 
+            modelBuilder.Entity("Tier1.Domain.Kpi.Initiative", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("description");
+
+                    b.Property<int>("EndYear")
+                        .HasColumnType("integer")
+                        .HasColumnName("end_year");
+
+                    b.Property<string>("ExpectedOutcome")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("expected_outcome");
+
+                    b.PrimitiveCollection<List<string>>("IndicatorCodes")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("indicator_codes");
+
+                    b.Property<string>("NameAr")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("name_ar");
+
+                    b.Property<Guid?>("OwnerUnitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_unit_id");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<Guid>("StandardId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("standard_id");
+
+                    b.Property<int>("StartYear")
+                        .HasColumnType("integer")
+                        .HasColumnName("start_year");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_initiatives");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("ix_initiatives_code");
+
+                    b.HasIndex("OwnerUnitId")
+                        .HasDatabaseName("ix_initiatives_owner_unit_id");
+
+                    b.HasIndex("StandardId")
+                        .HasDatabaseName("ix_initiatives_standard_id");
+
+                    b.ToTable("initiatives", "kpi", t =>
+                        {
+                            t.HasCheckConstraint("ck_initiatives_years", "end_year >= start_year");
+                        });
+                });
+
             modelBuilder.Entity("Tier1.Domain.Kpi.Pillar", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1438,15 +1546,31 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(16)")
                         .HasColumnName("code");
 
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("description");
+
                     b.Property<string>("NameAr")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("name_ar");
 
+                    b.Property<string>("NameEn")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name_en");
+
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer")
                         .HasColumnName("sort_order");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("pk_pillars");
@@ -1476,11 +1600,21 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(16)")
                         .HasColumnName("code");
 
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("description");
+
                     b.Property<string>("NameAr")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("name_ar");
+
+                    b.Property<string>("NameEn")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name_en");
 
                     b.Property<Guid?>("PillarId")
                         .HasColumnType("uuid")
@@ -1494,6 +1628,12 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("source_pages");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id")
                         .HasName("pk_standards");
@@ -2609,6 +2749,22 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .HasForeignKey("OwnerUnitId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_indicator_versions_units_owner_unit_id");
+                });
+
+            modelBuilder.Entity("Tier1.Domain.Kpi.Initiative", b =>
+                {
+                    b.HasOne("Tier1.Domain.Organization.OrgUnit", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_initiatives_units_owner_unit_id");
+
+                    b.HasOne("Tier1.Domain.Kpi.Standard", null)
+                        .WithMany()
+                        .HasForeignKey("StandardId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_initiatives_standards_standard_id");
                 });
 
             modelBuilder.Entity("Tier1.Domain.Kpi.Standard", b =>

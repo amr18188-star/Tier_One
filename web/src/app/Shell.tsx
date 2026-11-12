@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { AutoComplete, Button, Drawer, Dropdown, Input } from "antd";
 import {
   ApartmentOutlined, AuditOutlined, BarChartOutlined, BranchesOutlined, CalendarOutlined, ClusterOutlined, FormOutlined, GlobalOutlined, HomeOutlined, LogoutOutlined, MenuOutlined,
-  SafetyCertificateOutlined, SearchOutlined, SettingOutlined, TeamOutlined, UnorderedListOutlined, WarningOutlined,
+  PartitionOutlined, SafetyCertificateOutlined, SearchOutlined, SettingOutlined, TeamOutlined, UnorderedListOutlined, WarningOutlined,
 } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { Link, NavLink, useNavigate } from "react-router-dom";
@@ -62,6 +62,7 @@ export function Shell({ children }: { children: ReactNode }) {
     },
     {
       key: "plan", title: L("الخطة والمؤشرات", "Plan and indicators"), items: [
+        perms.can("kpi.strategy", "V") && { to: "/strategy", icon: <PartitionOutlined aria-hidden />, label: L("الخطة الاستراتيجية", "Strategic plan") },
         perms.can("kpi.dictionary", "V") && { to: "/indicators", icon: <UnorderedListOutlined aria-hidden />, label: L("قاموس المؤشرات", "Indicators"), tab: true },
         perms.can("kpi.conflicts", "V") && { to: "/conflicts", icon: <WarningOutlined aria-hidden />, label: L("سجل التعارضات", "Conflicts"), tab: true },
       ],

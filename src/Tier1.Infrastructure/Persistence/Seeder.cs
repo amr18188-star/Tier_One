@@ -26,6 +26,15 @@ public sealed class Seeder(Tier1DbContext db, IPasswordHasher hasher, ISecretPro
         ("COM", "كلية التجارة (تجريبية)", [("COM-ACC", "قسم المحاسبة"), ("COM-BUS", "قسم إدارة الأعمال")]),
     ];
 
+    /// <summary>جهات مركزية تجريبية تملك مؤشرات مستوى الجامعة، فيصير لكل منها نموذج «الإدخال ← الجودة المركزية».</summary>
+    private static readonly (string Code, string NameAr, OrgUnitKind Kind)[] DemoCentralUnits =
+    [
+        ("QAC", "وحدة التخطيط الاستراتيجي والجودة (تجريبية)", OrgUnitKind.Administration),
+        ("STU", "الإدارة العامة لشؤون الطلاب والمدن الجامعية (تجريبية)", OrgUnitKind.Administration),
+        ("DIG", "مركز التحول الرقمي (تجريبي)", OrgUnitKind.Center),
+        ("INTL", "مركز العلاقات الدولية (تجريبي)", OrgUnitKind.Center),
+    ];
+
     public static readonly IReadOnlyList<(string Email, string NameAr, string NameEn, string Role, string[] Scope)> DemoUsers =
     [
         ("sa1@" + DemoDomain, "مدير أعلى أول", "First super admin", "SA", []),
@@ -42,6 +51,20 @@ public sealed class Seeder(Tier1DbContext db, IPasswordHasher hasher, ISecretPro
         ("viewer@" + DemoDomain, "مستخدم اطلاع", "Viewer", "VIEW", ["CS"]),
         ("sysadmin@" + DemoDomain, "مسؤول النظام", "System administrator", "SYS", []),
         ("auditor@" + DemoDomain, "المراجع الرقابي", "Oversight auditor", "AUD", []),
+        // بقية سلسلة الاعتماد لكل كلية وقسم، ليمر كل نموذج تجريبي بمساره كاملًا بفصل المهام.
+        ("rep.ele@" + DemoDomain, "ممثل Tier 1 بقسم الكهربية", "Electrical department representative", "DREP", ["ENG-ELE"]),
+        ("rep.mec@" + DemoDomain, "ممثل Tier 1 بقسم الميكانيكية", "Mechanical department representative", "DREP", ["ENG-MEC"]),
+        ("entry.cs@" + DemoDomain, "مدخل بيانات كلية الحاسبات", "Computing data entry", "DE", ["CS"]),
+        ("college.cs@" + DemoDomain, "لجنة Tier 1 بكلية الحاسبات", "Computing Tier 1 committee", "CTC", ["CS"]),
+        ("dean.cs@" + DemoDomain, "عميد كلية الحاسبات", "Dean of computing", "DEAN", ["CS"]),
+        ("rep.se@" + DemoDomain, "ممثل Tier 1 بقسم هندسة البرمجيات", "Software engineering representative", "DREP", ["CS-SE"]),
+        ("rep.ai@" + DemoDomain, "ممثل Tier 1 بقسم الذكاء الاصطناعي", "AI department representative", "DREP", ["CS-AI"]),
+        ("entry.com@" + DemoDomain, "مدخل بيانات كلية التجارة", "Commerce data entry", "DE", ["COM"]),
+        ("college.com@" + DemoDomain, "لجنة Tier 1 بكلية التجارة", "Commerce Tier 1 committee", "CTC", ["COM"]),
+        ("dean.com@" + DemoDomain, "عميد كلية التجارة", "Dean of commerce", "DEAN", ["COM"]),
+        ("rep.acc@" + DemoDomain, "ممثل Tier 1 بقسم المحاسبة", "Accounting representative", "DREP", ["COM-ACC"]),
+        ("rep.bus@" + DemoDomain, "ممثل Tier 1 بقسم إدارة الأعمال", "Business administration representative", "DREP", ["COM-BUS"]),
+        ("entry.central@" + DemoDomain, "مدخل بيانات الجهات المركزية", "Central units data entry", "DE", ["QAC", "STU", "DIG", "INTL"]),
     ];
 
     public async Task SeedAsync(CancellationToken ct)
@@ -140,6 +163,12 @@ public sealed class Seeder(Tier1DbContext db, IPasswordHasher hasher, ISecretPro
             var d = 0;
             foreach (var (dc, dn) in departments)
                 db.OrgUnits.Add(new OrgUnit { Code = dc, NameAr = dn, Kind = OrgUnitKind.Department, ParentId = college.Id, Path = OrgUnit.PathOf(college.Path, dc), SortOrder = ++d, CreatedAt = now });
+        }
+        foreach (var (code, name, kind) in DemoCentralUnits)
+        {
+            order++;
+            if (await db.OrgUnits.AnyAsync(u => u.Code == code, ct)) continue;
+            db.OrgUnits.Add(new OrgUnit { Code = code, NameAr = name, Kind = kind, ParentId = root.Id, Path = OrgUnit.PathOf(root.Path, code), SortOrder = order, CreatedAt = now });
         }
         await db.SaveChangesAsync(ct);
     }

@@ -10,7 +10,7 @@ import { level, options } from "../../shared/labels";
 interface Fields { standardCode: string; nameAr: string; unit: string; level: CollectionLevel; reason?: string }
 
 /** إضافة مؤشر: المعيار والاسم فقط؛ الرمز يولد تاليًا في المعيار، وبقية التعريف تكمل في صفحة المؤشر ثم ترسل للاعتماد. */
-export function NewIndicatorModal({ standards, standard, onClose }: { standards: Standard[]; standard?: string; onClose: () => void }) {
+export function NewIndicatorModal({ standards, standard, onClose }: { standards: Pick<Standard, "code" | "nameAr">[]; standard?: string; onClose: () => void }) {
   const [form] = Form.useForm<Fields>();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -19,6 +19,7 @@ export function NewIndicatorModal({ standards, standard, onClose }: { standards:
     onSuccess: async (d) => {
       await qc.invalidateQueries({ queryKey: ["indicators"] });
       await qc.invalidateQueries({ queryKey: ["standards"] });
+      await qc.invalidateQueries({ queryKey: ["strategy"] });
       navigate(`/indicators/${d.code}?edit=1`);
     },
   });

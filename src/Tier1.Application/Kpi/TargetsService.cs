@@ -29,6 +29,16 @@ public sealed record SaveTargetRequest(
 
 public sealed record DistributionDto(int Year, DistributionResult Result, IReadOnlyList<CollegeShare> Shares);
 
+public sealed record PlanValue(int Year, decimal? Value);
+
+/// <summary>
+/// خطة مستهدف المؤشر للجامعة: سنة بدئه وسنة تحقيقه وشرحه، وقيمة كل سنة. القيمة الفارغة تحذف مستهدف تلك السنة.
+/// تعديل مستهدف معتمد أو حذفه يحتاج صلاحية الاعتماد وسببًا ورقم قرار، كأي تعديل على معتمد.
+/// </summary>
+public sealed record SavePlanRequest(int? StartYear, int? EndYear, string? Note, IReadOnlyList<PlanValue>? Values, string? Reason, string? DecisionRef, uint? Version);
+
+public sealed record DeleteTargetRequest(string? Reason, string? DecisionRef);
+
 /// <summary>
 /// خط الأساس والمستهدفات: مستهدفات الجامعة (من ملف Tier 1) وتوزيعها على الكليات (من ملف الكليات)، والاعتماد بقرار،
 /// وتعديل المعتمد بسبب ورقم قرار مع حفظ القيمة السابقة.
@@ -116,6 +126,131 @@ public sealed class TargetsService(IAppDb db, IClock clock, ICurrentUser current
         });
         await db.SaveChangesAsync(ct);
         return ToDto(target, unit);
+    }
+
+    /// <summary>يحفظ خطة المؤشر وقيم سنواتها في حفظ واحد: إما كلها أو لا شيء.</summary>
+    public async Task SavePlanAsync(string code, SavePlanRequest req, CancellationToken ct)
+    {
+        var me = await access.RequireAsync(Feature, Cap.Edit, ct);
+        var university = await UniversityAsync(ct);
+        UnitScope.For(me, Feature, Cap.Edit).Require(university);
+        var indicator = await db.Indicators.Include(i => i.Versions).FirstOrDefaultAsync(i => i.Code == code.Trim().ToUpperInvariant(), ct) ?? throw DomainException.NotFound();
+        Concurrency.Expect(db, indicator, req.Version);
+        var version = indicator.Effective ?? indicator.Current;
+        PlanRules.ValidateYears(req.StartYear, req.EndYear, PlanStart, "فترة المستهدف");
+
+        var values = req.Values ?? [];
+        if (values.GroupBy(v => v.Year).FirstOrDefault(g => g.Count() > 1) is { } dup)
+            throw new DomainException("duplicate_year", $"السنة {dup.Key} مكررة.", "A year is repeated.", 400);
+        foreach (var v in values.Where(v => v.Value is not null))
+        {
+            if (req.StartYear is { } s && v.Year < s)
+                throw new DomainException("before_start", $"مستهدف {v.Year} قبل سنة بدء المؤشر ({s}). احذف القيمة أو قدّم سنة البدء.", "A target precedes the start year.", 400);
+            if (v.Year <= PlanStart || v.Year > PlanEnd)
+                throw new DomainException("invalid_year", $"سنوات المستهدفات من {PlanStart + 1} إلى {PlanEnd}.", "Target years are outside the plan.", 400);
+        }
+
+        var changes = new ChangeSet().Add("planStartYear", indicator.PlanStartYear, req.StartYear).Add("planEndYear", indicator.PlanEndYear, req.EndYear)
+            .Add("planNote", indicator.PlanNote, Require.Optional(req.Note, 2000));
+        indicator.PlanStartYear = req.StartYear;
+        indicator.PlanEndYear = req.EndYear;
+        indicator.PlanNote = Require.Optional(req.Note, 2000);
+
+        var existing = await db.Targets.Where(t => t.IndicatorId == indicator.Id && t.UnitId == university.Id && t.Kind == TargetKind.Target).ToListAsync(ct);
+        var now = clock.UtcNow;
+        foreach (var v in values)
+        {
+            var row = existing.FirstOrDefault(t => t.Year == v.Year);
+            if (v.Value is null)
+            {
+                if (row is not null) Remove(row, me, req.Reason, req.DecisionRef, now);
+                continue;
+            }
+            if (row is not null && row.Value == v.Value) continue;
+            var save = new SaveTargetRequest(university.Id, v.Year, TargetKind.Target, v.Value, null, null, null, row?.Source ?? "خطة المؤشر", row?.Note, req.Reason, req.DecisionRef, null);
+            var value = TargetRules.Validate(save, university, version);
+            if (row is null)
+            {
+                db.Targets.Add(new IndicatorTarget
+                {
+                    IndicatorId = indicator.Id, UnitId = university.Id, Year = v.Year, Kind = TargetKind.Target, Value = value, Source = "خطة المؤشر",
+                    UpdatedBy = current.UserId, UpdatedAt = now,
+                });
+                continue;
+            }
+            if (row.Status == TargetStatus.Approved) Revise(row, value, null, me, req.Reason, req.DecisionRef, now);
+            row.Value = value;
+            row.Text = null;
+            row.UpdatedBy = current.UserId;
+            row.UpdatedAt = now;
+        }
+        changes.Add("values", null, string.Join("، ", values.Select(v => $"{v.Year}: {(v.Value is { } x ? DistributionRules.Fmt(x) : "—")}")));
+
+        audit.Record(AuditEvents.Audit("kpi", Feature, "kpi.target_plan_saved", "حفظ خطة مستهدف مؤشر", "Saved an indicator target plan") with
+        {
+            Target = new AuditTarget("indicator", indicator.Id.ToString(), indicator.Code),
+            Changes = changes.ToList(),
+            Reason = Require.Optional(req.Reason, 500),
+        });
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>حذف مستهدف: المقترح بصلاحية الحذف، والمعتمد بصلاحية الاعتماد أيضًا وسبب ورقم قرار، وتحفظ قيمته في سجل التعديلات.</summary>
+    public async Task DeleteAsync(Guid id, DeleteTargetRequest req, CancellationToken ct)
+    {
+        var me = await access.RequireAsync(Feature, Cap.Delete, ct);
+        var target = await db.Targets.FirstOrDefaultAsync(t => t.Id == id, ct) ?? throw DomainException.NotFound();
+        var unit = await db.OrgUnits.AsNoTracking().FirstAsync(u => u.Id == target.UnitId, ct);
+        UnitScope.For(me, Feature, Cap.Delete).Require(unit);
+        var why = Require.Reason(req.Reason);
+        Remove(target, me, why, req.DecisionRef, clock.UtcNow);
+        audit.Record(AuditEvents.Audit("kpi", Feature, "kpi.target_deleted", "حذف مستهدف مؤشر", "Deleted an indicator target") with
+        {
+            Target = new AuditTarget("indicator_target", target.Id.ToString(), $"{unit.Code}/{target.Year}", unit.Code),
+            Reason = why,
+            Details = new { target.Value, target.Text, target.Status },
+        });
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// يحذف المستهدف وتعديلاته. المعتمد يحتاج صلاحية الاعتماد وسببًا ورقم قرار؛ قيمته وقراره يبقيان في سجل التدقيق المتسلسل.
+    /// </summary>
+    private void Remove(IndicatorTarget target, EffectiveAccess me, string? reason, string? decisionRef, DateTimeOffset now)
+    {
+        if (target.Status == TargetStatus.Approved)
+        {
+            var (why, decision) = AmendApproved(me, reason, decisionRef);
+            audit.Record(AuditEvents.Audit("kpi", Feature, "kpi.approved_target_deleted", "حذف مستهدف معتمد بقرار", "Deleted an approved target") with
+            {
+                Target = new AuditTarget("indicator_target", target.Id.ToString(), $"{target.Year}"),
+                Reason = why,
+                Details = new { target.Year, target.Value, target.Text, decision, at = now },
+            });
+        }
+        db.TargetRevisions.RemoveRange(db.TargetRevisions.Where(r => r.TargetId == target.Id));
+        db.Targets.Remove(target);
+    }
+
+    private (string Reason, string Decision) AmendApproved(EffectiveAccess me, string? reason, string? decisionRef)
+    {
+        if (!me.HasSpecial(Feature, Specials.Approve)) throw DomainException.Forbidden();
+        var why = Require.Reason(reason);
+        var decision = Require.Optional(decisionRef, 200)
+            ?? throw new DomainException("decision_ref_required", "تعديل مستهدف معتمد أو حذفه يحتاج رقم قرار اللجنة العليا.", "Changing an approved target needs a decision reference.", 400);
+        return (why, decision);
+    }
+
+    /// <summary>تعديل معتمد: صلاحية الاعتماد وسبب ورقم قرار، والقيمة السابقة تحفظ.</summary>
+    private void Revise(IndicatorTarget target, decimal? value, string? text, EffectiveAccess me, string? reason, string? decisionRef, DateTimeOffset now)
+    {
+        var (why, decision) = AmendApproved(me, reason, decisionRef);
+        db.TargetRevisions.Add(new TargetRevision
+        {
+            TargetId = target.Id, OldValue = target.Value, OldText = target.Text, NewValue = value, NewText = text,
+            Reason = why, DecisionRef = decision, ChangedBy = current.UserId!.Value, ChangedAt = now,
+        });
+        target.DecisionRef = decision;
     }
 
     /// <summary>اعتماد المستهدف بقرار؛ من أدخله آخر مرة لا يعتمده.</summary>

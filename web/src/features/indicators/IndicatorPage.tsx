@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Alert, App, Button, Tag, Timeline, Tooltip } from "antd";
-import { CheckOutlined, EditOutlined, FileTextOutlined, HistoryOutlined, PrinterOutlined, RollbackOutlined, SendOutlined, WarningOutlined } from "@ant-design/icons";
+import { CheckOutlined, EditOutlined, FileTextOutlined, HistoryOutlined, PartitionOutlined, PrinterOutlined, RollbackOutlined, SendOutlined, WarningOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../../api/client";
 import type { ConflictList, IndicatorDetail, OrgUnit, Version } from "../../api/tier1";
+import { howCalculated } from "../../shared/calc";
 import { DecisionModal } from "../../shared/DecisionModal";
 import { formatDate } from "../../shared/format";
 import { L } from "../../shared/i18n";
@@ -60,6 +61,7 @@ export default function IndicatorPage() {
                 {d!.actions.canSubmit && <Button type="primary" icon={<SendOutlined />} loading={submit.isPending} onClick={() => submit.mutate()}>{L("إرسال للاعتماد", "Submit for approval")}</Button>}
                 {d!.actions.canApprove && <Button type="primary" icon={<CheckOutlined />} onClick={() => setDecision("approve")}>{L("اعتماد", "Approve")}</Button>}
                 {d!.actions.canApprove && <Button icon={<RollbackOutlined />} onClick={() => setDecision("return")}>{L("إعادة بملاحظات", "Return")}</Button>}
+                <Link to={`/strategy?node=I:${d!.code}`}><Button icon={<PartitionOutlined />}>{L("في شجرة الخطة", "In the plan tree")}</Button></Link>
                 <Tooltip title={L("طباعة بطاقة المؤشر", "Print the indicator card")}><Button icon={<PrinterOutlined />} onClick={() => window.print()} aria-label={L("طباعة", "Print")} /></Tooltip>
               </div>
             } />
@@ -146,6 +148,9 @@ function DefinitionView({ v }: { v: Version }) {
       {row(L("قاعدة التجميع", "Aggregation"), v.aggregation === "Undefined" ? null : aggregation[v.aggregation], "قاعدة التجميع")}
       {v.aggregation === "RatioOfSums" && row(L("البسط", "Numerator"), v.numerator, "البسط والمقام")}
       {v.aggregation === "RatioOfSums" && row(L("المقام", "Denominator"), v.denominator, "البسط والمقام")}
+      {v.aggregation === "WeightedAverage" && row(L("أساس الترجيح", "Weighting basis"), v.denominator, "أساس الترجيح")}
+      {row(L("كيف تحسب الكلية", "College value"), howCalculated(v).college)}
+      {row(L("كيف تحسب الجامعة", "University value"), howCalculated(v).university)}
       {row(L("مستوى جمع البيانات", "Collection level"), level[v.level])}
       {row(L("الدورية", "Frequency"), frequency[v.frequency])}
       {row(L("مصدر البيانات", "Data source"), v.dataSource, "مصدر البيانات")}

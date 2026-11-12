@@ -9,7 +9,8 @@ namespace Tier1.Tests;
 /// <summary>قواعد جمع البيانات: التحقق من القيم، ومسار الاعتماد وفصل المهام، والتجميع وحكم الأداء، وقبول الملفات.</summary>
 public class CollectionRulesTests
 {
-    private static readonly ValueSpec Percent = new("%", Aggregation.WeightedAverage, false);
+    private static readonly ValueSpec Percent = new("%", Aggregation.Central, false);
+    private static readonly ValueSpec Survey = new("%", Aggregation.WeightedAverage, false);
     private static readonly ValueSpec Ratio = new("%", Aggregation.RatioOfSums, false);
     private static readonly ValueSpec Count = new("عدد", Aggregation.Sum, true);
 
@@ -50,6 +51,15 @@ public class CollectionRulesTests
         Assert.Equal("percent_range", Assert.Single(ValueRules.Check(Percent, Num(150), null).Issues).Code);
         Assert.Equal("integer", Assert.Single(ValueRules.Check(Count, Num(12.5m), null).Issues).Code);
         Assert.Empty(ValueRules.Check(Count, Num(12), null).Issues);
+    }
+
+    [Fact]
+    public void Weighted_average_needs_its_weight_so_the_university_value_is_exact()
+    {
+        Assert.Equal("weight_required", Assert.Single(ValueRules.Check(Survey, Num(80), null).Issues).Code);
+        var (value, issues) = ValueRules.Check(Survey, Num(80, d: 1200), null);
+        Assert.Empty(issues);
+        Assert.Equal(80m, value);
     }
 
     [Fact]

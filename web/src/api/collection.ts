@@ -7,7 +7,8 @@ export type SubmissionStatus = "NotStarted" | "InProgress" | "InReview" | "Retur
 export type ValueKind = "Number" | "NotAvailable" | "NotApplicable";
 export type IssueSeverity = "Error" | "Warning";
 export type SubmissionAction = "Submitted" | "Approved" | "Returned" | "Reopened";
-export type Performance = "Achieved" | "Near" | "Behind" | "NoTarget" | "NoData" | "NotJudged";
+export type Performance = "Achieved" | "Near" | "Behind" | "NoTarget" | "NoData" | "NotJudged" | "NotStarted" | "Incomplete";
+export type TargetSource = "None" | "Unit" | "EachCollege" | "University";
 
 export interface Cycle {
   id: string; name: string; periodLabel: string; targetYear: number; opensOn: string; dueOn: string; status: CycleStatus; trial: boolean;
@@ -35,10 +36,10 @@ export interface Value {
 export interface FormItem {
   indicatorId: string; code: string; name: string; unit: string; aggregation: Aggregation; usesRatio: boolean; numeratorLabel: string | null; denominatorLabel: string | null;
   definition: string | null; dataSource: string | null; evidenceRequired: string | null; direction: Direction; previous: number | null; target: number | null;
-  value: Value | null; issues: Issue[]; evidence: Doc[];
+  value: Value | null; issues: Issue[]; evidence: Doc[]; entryNote: string | null; targetSource: TargetSource;
 }
 
-export interface FormSection { standardCode: string; standardName: string; items: FormItem[] }
+export interface FormSection { pillarCode: string | null; pillarName: string | null; standardCode: string; standardName: string; items: FormItem[] }
 
 export interface PathStep { step: ApprovalStep; name: string; state: "done" | "current" | "pending" }
 
@@ -68,6 +69,7 @@ export interface IndicatorResult {
   indicatorId: string; code: string; name: string; standardCode: string; unit: string; direction: Direction; level: CollectionLevel;
   actual: number | null; target: number | null; baseline: number | null; previous: number | null; achievement: number | null; performance: Performance;
   reported: number; expected: number; note: string | null; summary: string;
+  targetSource: TargetSource; targetYear: number | null; universityTarget: number | null; universityAchievement: number | null;
 }
 
 export interface StandardResult { code: string; name: string; indicators: number; achieved: number; near: number; behind: number; noData: number; noTarget: number }
@@ -78,6 +80,9 @@ export interface Results {
   standards: StandardResult[]; indicators: IndicatorResult[]; heatUnits: ResultUnit[]; heat: HeatCell[]; canExport: boolean;
 }
 
-export interface UnitResult { unitId: string; unitName: string; actual: number | null; target: number | null; achievement: number | null; performance: Performance; reported: number; expected: number; note: string | null }
+export interface UnitResult {
+  unitId: string; unitName: string; actual: number | null; target: number | null; achievement: number | null; performance: Performance; reported: number; expected: number;
+  note: string | null; targetSource: TargetSource; numerator: number | null; denominator: number | null;
+}
 export interface TrendPoint { cycleId: string; label: string; actual: number | null; target: number | null }
 export interface IndicatorResults { university: IndicatorResult; colleges: UnitResult[]; trend: TrendPoint[] }

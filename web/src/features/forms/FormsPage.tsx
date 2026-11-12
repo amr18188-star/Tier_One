@@ -6,8 +6,8 @@ import { api, query } from "../../api/client";
 import type { Cycle, FormRow, SubmissionStatus } from "../../api/collection";
 import { formatDate } from "../../shared/format";
 import { L } from "../../shared/i18n";
-import { submissionStatus, unitKind } from "../../shared/labels";
-import { DataTable, EmptyNote, oneOf, PageHeader, Panel, StatTile } from "../../shared/ui";
+import { dueText, submissionStatus, unitKind } from "../../shared/labels";
+import { DataTable, EmptyNote, FilterMeta, oneOf, PageHeader, Panel, StatTile } from "../../shared/ui";
 
 const VIEWS = ["mine", "all", "NotStarted", "InProgress", "InReview", "Returned", "Approved"] as const;
 type View = (typeof VIEWS)[number];
@@ -37,9 +37,12 @@ export default function FormsPage() {
     queryFn: () => api.get<FormRow[]>(`/api/forms${query({ cycleId })}`),
     enabled: !!cycleId,
   });
+  // الأولوية: المعاد للتصحيح، ثم ما ينتظرني، ثم الأقرب موعدًا.
   const rows = (all.data ?? []).filter((r) =>
     (view === "mine" ? r.awaitingMe : view === "all" ? true : r.status === view)
-    && (!q || r.unitName.includes(q) || (r.parentName ?? "").includes(q)));
+    && (!q || r.unitName.includes(q) || (r.parentName ?? "").includes(q)))
+    .sort((a, b) => Number(b.status === "Returned") - Number(a.status === "Returned") || Number(b.awaitingMe) - Number(a.awaitingMe) || a.dueOn.localeCompare(b.dueOn));
+  const filtered = view !== "mine" || !!q;
   const count = (f: (r: FormRow) => boolean) => all.data?.filter(f).length ?? 0;
 
   return (
@@ -74,7 +77,9 @@ export default function FormsPage() {
                   { value: "all", label: L("الكل", "All") },
                   ...(["NotStarted", "InProgress", "InReview", "Returned", "Approved"] as SubmissionStatus[]).map((s) => ({ value: s, label: submissionStatus[s].text })),
                 ]} />
-              <Input.Search allowClear defaultValue={q} placeholder={L("اسم الجهة أو الكلية", "Unit or college name")} onSearch={(v) => set("q", v || undefined)} />
+              <Input.Search key={q} allowClear defaultValue={q} placeholder={L("اسم الجهة أو الكلية", "Unit or college name")} onSearch={(v) => set("q", v || undefined)} />
+              <FilterMeta shown={rows.length} total={all.data?.length} noun={L("نموذج", "forms")} active={filtered}
+                onReset={() => setParams(params.get("cycle") ? { cycle: params.get("cycle")! } : {}, { replace: true })} />
             </div>
             <DataTable<FormRow>
               rowKey={(r) => r.id}
@@ -105,15 +110,17 @@ export default function FormsPage() {
                   ),
                 },
                 {
-                  title: L("الموعد", "Due"), dataIndex: "dueOn", width: 130, render: (d: string, r) => (
-                    <span className={r.overdue ? "f-issue err" : undefined}>{formatDate(d)}{r.overdue && ` · ${L("متأخر", "late")}`}</span>
+                  title: L("الموعد", "Due"), dataIndex: "dueOn", width: 150, render: (d: string, r) => (
+                    <span className={`t1-due${r.overdue ? " late" : ""}`}>
+                      {r.status === "Approved" ? formatDate(d) : <>{dueText(d)}<br /><small className="muted ltr">{formatDate(d)}</small></>}
+                    </span>
                   ),
                 },
               ]}
               renderCard={(r) => (
                 <>
                   <div className="dt-card-row"><b>{r.unitName}</b><Tag color={submissionStatus[r.status].color}>{submissionStatus[r.status].text}</Tag></div>
-                  <small className="muted">{r.parentName ?? unitKind[r.unitKind]} · {r.stepName}</small>
+                  <small className="muted">{r.parentName ?? unitKind[r.unitKind]} · {r.stepName}{r.status !== "Approved" && ` · ${dueText(r.dueOn)}`}</small>
                   <Progress percent={r.required ? Math.round((100 * r.completed) / r.required) : 0} size="small" format={() => <span className="ltr">{r.completed}/{r.required}</span>} />
                 </>
               )}

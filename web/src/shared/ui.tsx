@@ -65,6 +65,18 @@ export function StatTile({ icon, label, value, tone = "teal", to, loading, hint 
   return to ? <Link to={to} className={`lcp-stat tone-${tone}`}>{body}</Link> : <div className={`lcp-stat tone-${tone}`}>{body}</div>;
 }
 
+/**
+ * طرف شريط المرشحات: عدد النتائج (ومن كم)، وزر «إعادة ضبط المرشحات» حين يكون مرشح نشط؛ نفسه في كل الجداول.
+ */
+export function FilterMeta({ shown, total, noun, active, onReset }: { shown: number; total?: number; noun: string; active: boolean; onReset: () => void }) {
+  return (
+    <span className="lcp-filter-meta" aria-live="polite">
+      {total !== undefined && total !== shown ? L(`${shown} من ${total} ${noun}`, `${shown} of ${total}`) : L(`${shown} ${noun}`, `${shown}`)}
+      {active && <Button size="small" type="link" onClick={onReset}>{L("إعادة ضبط المرشحات", "Reset filters")}</Button>}
+    </span>
+  );
+}
+
 export function EmptyNote({ children, action }: { children: ReactNode; action?: ReactNode }) {
   return <Empty className="lcp-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description={<>{children}{action && <div className="mt">{action}</div>}</>} />;
 }

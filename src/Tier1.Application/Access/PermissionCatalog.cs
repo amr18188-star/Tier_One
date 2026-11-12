@@ -196,6 +196,7 @@ public static class Features
     public const string Dashboard = "dash.home";
     public const string Units = "org.units";
     public const string Structure = "org.structure";
+    public const string Strategy = "kpi.strategy";
     public const string Dictionary = "kpi.dictionary";
     public const string Targets = "kpi.targets";
     public const string Conflicts = "kpi.conflicts";

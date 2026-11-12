@@ -1,12 +1,12 @@
-import { lazy, Suspense, useEffect, useState, type ComponentType } from "react";
+import { lazy, Suspense, useEffect, useState, type ComponentType, type ReactNode } from "react";
 import { App as AntApp, ConfigProvider, Spin } from "antd";
 import type { Locale } from "antd/es/locale";
 import arEG from "antd/locale/ar_EG";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { onLangChange, useLang, type Lang } from "../shared/i18n";
-import { ErrorScreen } from "../shared/QueryState";
-import { SessionProvider, useSession } from "../shared/session";
+import { ErrorScreen, NoAccess } from "../shared/QueryState";
+import { SessionProvider, usePermissions, useSession } from "../shared/session";
 
 /**
  * بعد نشر إصدار جديد تتغير أسماء ملفات الصفحات، فتفشل الصفحة المفتوحة قبله في تحميل صفحة لم تفتحها بعد.
@@ -33,6 +33,7 @@ function load<T extends { default: ComponentType<any> }>(importer: () => Promise
 const LoginPage = load(() => import("../features/auth/LoginPage").then((m) => ({ default: m.LoginPage })));
 const Shell = load(() => import("./Shell").then((m) => ({ default: m.Shell })));
 const HomePage = load(() => import("../features/home/HomePage"));
+const StrategyPage = load(() => import("../features/strategy/StrategyPage"));
 const IndicatorsPage = load(() => import("../features/indicators/IndicatorsPage"));
 const IndicatorPage = load(() => import("../features/indicators/IndicatorPage"));
 const ConflictsPage = load(() => import("../features/conflicts/ConflictsPage"));
@@ -107,6 +108,19 @@ function useAntLocale(lang: Lang): Locale {
   return lang === "en" && en ? en : arEG;
 }
 
+/**
+ * الصفحة لمن يملك إحدى الصلاحيات المذكورة («خاصية:إمكانية»)؛ وإلا شرح «لا تملك صلاحية» بطريق للعودة.
+ * للواجهة فقط: الخادم يرفض الطلب نفسه في كل الأحوال.
+ */
+function Guard({ need, children }: { need: string[]; children: ReactNode }) {
+  const perms = usePermissions();
+  const allowed = need.some((n) => {
+    const [feature, cap] = n.split(":");
+    return perms.can(feature, cap);
+  });
+  return allowed ? <>{children}</> : <NoAccess />;
+}
+
 function Gate() {
   const { me, loading, error, retry } = useSession();
   if (loading) return <div className="center-screen"><Spin size="large" /></div>;
@@ -119,23 +133,24 @@ function Gate() {
         <Suspense fallback={pageFallback}>
           <Routes>
             <Route path="/" element={<HomePage />} />
-            <Route path="/indicators" element={<IndicatorsPage />} />
-            <Route path="/indicators/:code" element={<IndicatorPage />} />
-            <Route path="/conflicts" element={<ConflictsPage />} />
-            <Route path="/conflicts/agenda" element={<AgendaPage />} />
-            <Route path="/structure" element={<StructurePage />} />
-            <Route path="/structure/:id" element={<CollegeStructurePage />} />
-            <Route path="/cycles" element={<CyclesPage />} />
-            <Route path="/forms" element={<FormsPage />} />
-            <Route path="/forms/:id" element={<FormPage />} />
-            <Route path="/results" element={<ResultsPage />} />
-            <Route path="/units" element={<UnitsPage />} />
-            <Route path="/matrix" element={<MatrixPage />} />
-            <Route path="/matrix/:roleId" element={<MatrixPage />} />
-            <Route path="/changes" element={<ChangesPage />} />
-            <Route path="/users" element={<UsersPage />} />
-            <Route path="/logs" element={<LogsPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/strategy" element={<Guard need={["kpi.strategy:V"]}><StrategyPage /></Guard>} />
+            <Route path="/indicators" element={<Guard need={["kpi.dictionary:V"]}><IndicatorsPage /></Guard>} />
+            <Route path="/indicators/:code" element={<Guard need={["kpi.dictionary:V"]}><IndicatorPage /></Guard>} />
+            <Route path="/conflicts" element={<Guard need={["kpi.conflicts:V"]}><ConflictsPage /></Guard>} />
+            <Route path="/conflicts/agenda" element={<Guard need={["kpi.conflicts:V"]}><AgendaPage /></Guard>} />
+            <Route path="/structure" element={<Guard need={["org.structure:V"]}><StructurePage /></Guard>} />
+            <Route path="/structure/:id" element={<Guard need={["org.structure:V"]}><CollegeStructurePage /></Guard>} />
+            <Route path="/cycles" element={<Guard need={["dc.cycles:E"]}><CyclesPage /></Guard>} />
+            <Route path="/forms" element={<Guard need={["dc.forms:V"]}><FormsPage /></Guard>} />
+            <Route path="/forms/:id" element={<Guard need={["dc.forms:V"]}><FormPage /></Guard>} />
+            <Route path="/results" element={<Guard need={["dc.results:V"]}><ResultsPage /></Guard>} />
+            <Route path="/units" element={<Guard need={["org.units:V"]}><UnitsPage /></Guard>} />
+            <Route path="/matrix" element={<Guard need={["adm.roles:V"]}><MatrixPage /></Guard>} />
+            <Route path="/matrix/:roleId" element={<Guard need={["adm.roles:V"]}><MatrixPage /></Guard>} />
+            <Route path="/changes" element={<Guard need={["adm.roles:V"]}><ChangesPage /></Guard>} />
+            <Route path="/users" element={<Guard need={["adm.users:V", "adm.grants:V"]}><UsersPage /></Guard>} />
+            <Route path="/logs" element={<Guard need={["log.audit:V", "log.security:V", "log.access:V", "log.tech:V"]}><LogsPage /></Guard>} />
+            <Route path="/settings" element={<Guard need={["adm.settings:V"]}><SettingsPage /></Guard>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

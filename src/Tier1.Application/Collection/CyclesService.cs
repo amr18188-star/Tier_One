@@ -158,12 +158,21 @@ public sealed class CyclesService(IAppDb db, IClock clock, ICurrentUser current,
                 skipped.Add($"{i.Code}: لم يعتمد تعريفه بعد");
                 continue;
             }
-            var central = v.Level == CollectionLevel.University ? v.OwnerUnitId is { } o && units.Any(u => u.Id == o) ? o : root.Id : (Guid?)null;
-            picked.Add(new CycleIndicator { CycleId = cycle.Id, IndicatorId = i.Id, VersionId = v.Id, Code = i.Code, Level = v.Level, CentralUnitId = central });
+            // جهة الإدخال المركزية: لمؤشر الجامعة كلها، وللعدد المميز الذي يدخل عدد الجامعة فيه بعد إزالة التكرار لأنه لا يجمع من الكليات.
+            var distinct = v.Aggregation == Aggregation.DistinctCount;
+            var owner = v.OwnerUnitId is { } o ? units.FirstOrDefault(u => u.Id == o) : null;
+            Guid? central = v.Level == CollectionLevel.University ? owner?.Id ?? root.Id
+                : distinct ? (owner is { IsCollegeLevel: false, Kind: not OrgUnitKind.Department } ? owner.Id : root.Id)
+                : null;
+            picked.Add(new CycleIndicator
+            {
+                CycleId = cycle.Id, IndicatorId = i.Id, VersionId = v.Id, Code = i.Code, Level = v.Level, CentralUnitId = central,
+                CollegeEntry = distinct && v.Level == CollectionLevel.Department,
+            });
         }
         var needed = new List<OrgUnit>();
         if (picked.Any(p => p.Level == CollectionLevel.Department)) needed.AddRange(units.Where(u => u.Kind == OrgUnitKind.Department));
-        if (picked.Any(p => p.Level == CollectionLevel.College)) needed.AddRange(units.Where(u => u.IsCollegeLevel));
+        if (picked.Any(p => p.Level == CollectionLevel.College || p.CollegeEntry)) needed.AddRange(units.Where(u => u.IsCollegeLevel));
         foreach (var c in picked.Where(p => p.CentralUnitId is not null).Select(p => p.CentralUnitId!.Value).Distinct())
             if (needed.All(u => u.Id != c)) needed.Add(units.First(u => u.Id == c));
         return new Plan(picked, needed, skipped);

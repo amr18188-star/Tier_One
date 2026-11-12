@@ -10,6 +10,17 @@ import { aggregation, direction, frequency, level, options } from "../../shared/
 type FormValues = Pick<Version, "nameAr" | "nameEn" | "definition" | "purpose" | "exclusions" | "numerator" | "denominator" | "unit" | "direction"
   | "frequency" | "level" | "aggregation" | "aggregationNote" | "dataSource" | "ownerUnitId" | "evidenceRequired"> & { changeReason?: string };
 
+/** أثر كل قاعدة تجميع بجملة واحدة، تحت اختيارها مباشرة. */
+const AGG_HELP: Record<Version["aggregation"], string> = {
+  Undefined: "اختر القاعدة؛ لا يعتمد المؤشر بدونها.",
+  Sum: "للأعداد فقط (طلاب، برامج، أبحاث): الجامعة = مجموع الكليات. لا تصلح للنسب أو المعدلات.",
+  RatioOfSums: "للنسب والمعدلات: تدخل كل جهة البسط والمقام، والجامعة = مجموع البسط ÷ مجموع المقام. أدق قاعدة للنسب.",
+  DistinctCount: "لما قد يتكرر بين الكليات (براءات، شراكات، دول): تدخل كل كلية عددها، ويدخل عدد الجامعة مركزيًا بعد إزالة التكرار.",
+  WeightedAverage: "للاستبيانات والمتوسطات: تدخل كل جهة القيمة ووزنها (عدد المستجيبين)، والجامعة متوسط مرجح بالأوزان.",
+  Central: "يدخل مرة واحدة على مستوى الجامعة كلها (اجعل مستوى الجمع «الجامعة»).",
+  StatusOnly: "حالة لكل كلية لا تجمع.",
+};
+
 const UNITS = ["%", "عدد", "برنامج", "مليون جنيه", "جنيه", "طالب لكل عضو", "بحث / عضو", "ساعة / عضو / سنة", "ساعة / أسبوع", "ساعة / يوم", "دولة", "سرير", "مركز", "حالة"];
 
 /**
@@ -89,10 +100,17 @@ export function DefinitionDrawer({ detail, onClose }: { detail: IndicatorDetail;
           </Form.Item>
         </div>
         <Form.Item name="aggregation" label={L("قاعدة التجميع", "Aggregation rule")}
-          extra={L("كيف تحسب قيمة الكلية والجامعة من قيم الجهات. النسب تجمع من البسط والمقام لا من متوسط النسب.",
-            "How the college and university values are computed. Ratios are combined from numerators and denominators, not averaged.")}>
+          extra={L("كيف تحسب قيمة الكلية والجامعة من قيم الجهات. النسب والمعدلات (% أو «لكل عضو») تدخل ببسطها ومقامها وتجمع منهما، لا من متوسط النسب ولا بجمعها.",
+            "How the college and university values are computed. Ratios are combined from numerators and denominators, not averaged or added.")}>
           <Select options={options(aggregation)} />
         </Form.Item>
+        {agg && <p className="t1-help" style={{ marginTop: -12 }}>{AGG_HELP[agg]}</p>}
+        {agg === "WeightedAverage" && (
+          <Form.Item name="denominator" label={L("أساس الترجيح", "Weighting basis")} rules={[{ required: true, message: L("مطلوب ليحسب متوسط الجامعة بدقة", "Required for an exact university average") }]}
+            extra={L("ما يرجح به متوسط كل جهة، مثل «عدد المستجيبين للاستبيان». تدخله كل جهة مع قيمتها.", "What each unit's average is weighted by, e.g. number of respondents.")}>
+            <Input maxLength={500} />
+          </Form.Item>
+        )}
         {agg === "RatioOfSums" && (
           <div className="lcp-grid-2">
             <Form.Item name="numerator" label={L("البسط", "Numerator")} rules={[{ required: true, message: L("مطلوب لقاعدة النسبة", "Required for a ratio") }]}>

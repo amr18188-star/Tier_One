@@ -341,3 +341,39 @@ a.lcp-list-item:hover { background: var(--teal-50); color: var(--ink); }
 .ant-table-thead .ant-table-filter-trigger { color: rgba(255, 255, 255, 0.7); }
 .ant-table-thead .ant-table-filter-trigger.active, .ant-table-thead .ant-table-filter-trigger:hover { color: #fff; }
 .ant-descriptions-bordered .ant-descriptions-item-label { background: #f8fafc; }
+
+/* ===== طبقة الاتساق (مراجعة تجربة الاستخدام): سطوح هادئة، وتركيز واضح للوحة المفاتيح، ولا تمرير أفقي للصفحة. ===== */
+:root {
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-up: 0 4px 14px rgba(16, 24, 40, 0.08);
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px; --space-6: 24px;
+}
+.lcp-panel { border: 1px solid var(--hair); }
+.lcp-stat { border: 1px solid var(--hair); }
+/* مؤشر تركيز موحد ومرئي على كل عنصر تفاعلي، بلون الإجراء. */
+:where(a, button, [role="button"], [tabindex]):focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; border-radius: 6px; }
+.lcp-nav a:focus-visible { outline-color: #7fd1d5; }
+/* شرائط الاختيار تمرر داخل مكانها على الشاشات الضيقة بدل أن توسع الصفحة. */
+.ant-segmented { max-width: 100%; overflow-x: auto; scrollbar-width: thin; }
+.ant-segmented-group { flex-wrap: nowrap; }
+/* الترحيب بلا زخرفة: لون واحد هادئ، والعناية بالنص. */
+.lcp-hero { background: linear-gradient(120deg, #183059 0%, #14406b 100%); padding: 22px 26px; border-radius: var(--r); }
+.lcp-hero-decor { display: none; }
+/* حالات الصفحة (لا صلاحية، غير موجود، فارغ) داخل لوحة لا على الخلفية. */
+.lcp-state { background: #fff; border: 1px solid var(--hair); border-radius: var(--r); padding: 32px 16px; }
+/* الأرقام بعرض ثابت في الجداول والمؤشرات، فتصطف عموديًا. */
+.ant-table td, .lcp-stat-text b, .ltr { font-variant-numeric: tabular-nums; }
+/* شريط الفلاتر: عدد النتائج وزر إعادة الضبط في الطرف. */
+.lcp-filter-meta { display: inline-flex; align-items: center; gap: 8px; margin-inline-start: auto; color: var(--muted); font-size: 13px; }
+/* عناصر اللمس على الجوال 40 بكسل على الأقل. */
+@media (max-width: 640px) {
+  .ant-btn:not(.ant-btn-sm) { min-height: 40px; }
+  .lcp-content { padding: 4px 16px 88px; }
+}
+/* المؤشرات الرقمية على الجوال: اثنان في الصف بدل بطاقة كاملة لكل رقم. */
+@media (max-width: 640px) {
+  .lcp-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .lcp-stat { padding: 12px; gap: 10px; }
+  .lcp-stat-icon { width: 36px; height: 36px; border-radius: 11px; font-size: 16px; }
+  .lcp-stat-text b { font-size: 22px; }
+}

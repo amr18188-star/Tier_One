@@ -16,7 +16,7 @@ import reference_data as R  # noqa: E402
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "src", "Tier1.Infrastructure", "Persistence", "Seed", "reference-seed.json")
 
-DIRECTION = {R.H: "HigherIsBetter", R.L: "LowerIsBetter", R.N: "Undefined"}
+DIRECTION = {R.H: "HigherIsBetter", R.L: "LowerIsBetter", R.N: "Undefined", R.TGT: "Range"}
 LEVEL = {"قسم": "Department", "كلية": "College", "جامعة": "University"}
 YEARS = [2026, 2027, 2028, 2029, 2030, 2031]
 

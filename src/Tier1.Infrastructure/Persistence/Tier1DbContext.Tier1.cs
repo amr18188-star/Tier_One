@@ -24,6 +24,8 @@ public sealed partial class Tier1DbContext
 
     public DbSet<Standard> Standards => Set<Standard>();
 
+    public DbSet<Initiative> Initiatives => Set<Initiative>();
+
     public DbSet<Indicator> Indicators => Set<Indicator>();
 
     public DbSet<IndicatorVersion> IndicatorVersions => Set<IndicatorVersion>();
@@ -125,6 +127,9 @@ public sealed partial class Tier1DbContext
             e.HasIndex(x => x.Code).IsUnique();
             e.Property(x => x.Code).HasMaxLength(16);
             e.Property(x => x.NameAr).HasMaxLength(200);
+            e.Property(x => x.NameEn).HasMaxLength(200);
+            e.Property(x => x.Description).HasMaxLength(4000);
+            e.Property(x => x.Version).IsRowVersion();
         });
         b.Entity<Standard>(e =>
         {
@@ -132,9 +137,25 @@ public sealed partial class Tier1DbContext
             e.HasIndex(x => x.Code).IsUnique();
             e.Property(x => x.Code).HasMaxLength(16);
             e.Property(x => x.NameAr).HasMaxLength(200);
+            e.Property(x => x.NameEn).HasMaxLength(200);
+            e.Property(x => x.Description).HasMaxLength(4000);
             e.Property(x => x.SourcePages).HasMaxLength(50);
             e.Property(x => x.ClassificationNote).HasMaxLength(500);
+            e.Property(x => x.Version).IsRowVersion();
             e.HasOne<Pillar>().WithMany().HasForeignKey(x => x.PillarId).OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<Initiative>(e =>
+        {
+            e.ToTable("initiatives", "kpi", t => t.HasCheckConstraint("ck_initiatives_years", "end_year >= start_year"));
+            e.HasIndex(x => x.Code).IsUnique();
+            e.HasIndex(x => x.StandardId);
+            e.Property(x => x.Code).HasMaxLength(20);
+            e.Property(x => x.NameAr).HasMaxLength(300);
+            e.Property(x => x.Description).HasMaxLength(4000);
+            e.Property(x => x.ExpectedOutcome).HasMaxLength(2000);
+            e.Property(x => x.Version).IsRowVersion();
+            e.HasOne<Standard>().WithMany().HasForeignKey(x => x.StandardId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<OrgUnit>().WithMany().HasForeignKey(x => x.OwnerUnitId).OnDelete(DeleteBehavior.Restrict);
         });
         b.Entity<Indicator>(e =>
         {
@@ -142,6 +163,7 @@ public sealed partial class Tier1DbContext
             e.HasIndex(x => x.Code).IsUnique();
             e.HasIndex(x => x.StandardId);
             e.Property(x => x.Code).HasMaxLength(16);
+            e.Property(x => x.PlanNote).HasMaxLength(2000);
             e.Property(x => x.Version).IsRowVersion();
             e.HasOne<Standard>().WithMany().HasForeignKey(x => x.StandardId).OnDelete(DeleteBehavior.Restrict);
             e.HasMany(x => x.Versions).WithOne().HasForeignKey(v => v.IndicatorId).OnDelete(DeleteBehavior.Restrict);

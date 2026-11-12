@@ -14,6 +14,12 @@ public enum Performance
 
     /// <summary>الاتجاه غير محدد في التعريف، فلا يحكم على القيمة.</summary>
     NotJudged = 6,
+
+    /// <summary>سنة القياس قبل سنة بدء مستهدف المؤشر في الخطة.</summary>
+    NotStarted = 7,
+
+    /// <summary>مجموع من بعض الجهات فقط: لا يحكم عليه قبل اكتمال الجهات، حتى لا يبدو متأخرًا وهو ناقص.</summary>
+    Incomplete = 8,
 }
 
 public sealed record UnitValue(Guid UnitId, ValueKind Kind, decimal? Value, decimal? Numerator, decimal? Denominator);
@@ -40,7 +46,8 @@ public static class ResultsRules
         switch (aggregation)
         {
             case Aggregation.Sum:
-                return new(numbers.Sum(v => v.Value ?? 0), null, null, reported, expected, notApplicable, null);
+                return new(numbers.Sum(v => v.Value ?? 0), null, null, reported, expected, notApplicable,
+                    reported < expected ? $"مجموع جزئي: اعتمدت قيم {reported} من {expected} جهة." : null);
             case Aggregation.RatioOfSums:
             {
                 var withRatio = numbers.Where(v => v.Numerator is not null && v.Denominator is > 0).ToList();
@@ -69,7 +76,10 @@ public static class ResultsRules
         }
     }
 
-    /// <summary>نسبة الإنجاز من المستهدف بحسب الاتجاه: الأعلى أفضل = الفعلي ÷ المستهدف، والأقل أفضل = المستهدف ÷ الفعلي.</summary>
+    /// <summary>
+    /// نسبة الإنجاز من المستهدف بحسب الاتجاه: الأعلى أفضل = الفعلي ÷ المستهدف، والأقل أفضل = المستهدف ÷ الفعلي،
+    /// والوصول إلى قيمة = 1 − نسبة الانحراف عنها في أي اتجاه (12 ساعة مستهدفة و13 فعلية = 92%).
+    /// </summary>
     public static decimal? Achievement(Direction direction, decimal? actual, decimal? target)
     {
         if (actual is not { } a || target is not { } t) return null;
@@ -77,17 +87,33 @@ public static class ResultsRules
         {
             Direction.HigherIsBetter => t == 0 ? (a >= 0 ? 1 : 0) : decimal.Round(a / t, 4),
             Direction.LowerIsBetter => a == 0 ? 1 : decimal.Round(t / a, 4),
+            Direction.Range => t == 0 ? (a == 0 ? 1 : 0) : decimal.Round(Math.Max(0, 1 - Math.Abs(a - t) / Math.Abs(t)), 4),
             _ => null,
         };
     }
 
+    /// <summary>
+    /// الحكم على القيمة. للوصول إلى قيمة: محقق إن كان الانحراف نصف هامش «القريب» أو أقل (5% افتراضيًا)، وقريب حتى الهامش كله (10%).
+    /// </summary>
     public static Performance Judge(Direction direction, decimal? actual, decimal? target, decimal near = NearRatio)
     {
         if (actual is null) return Performance.NoData;
         if (target is null) return Performance.NoTarget;
-        if (direction is not (Direction.HigherIsBetter or Direction.LowerIsBetter)) return Performance.NotJudged;
+        if (direction is not (Direction.HigherIsBetter or Direction.LowerIsBetter or Direction.Range)) return Performance.NotJudged;
         var r = Achievement(direction, actual, target)!.Value;
-        return r >= 1 ? Performance.Achieved : r >= near ? Performance.Near : Performance.Behind;
+        var achieved = direction == Direction.Range ? 1 - (1 - near) / 2 : 1;
+        return r >= achieved ? Performance.Achieved : r >= near ? Performance.Near : Performance.Behind;
+    }
+
+    /// <summary>
+    /// حالة المؤشر للجهة: «لم يبدأ» قبل سنة بدئه، و«بيانات جزئية» لمجموع لم تعتمد كل جهاته بعد، وإلا الحكم مقابل المستهدف.
+    /// </summary>
+    public static Performance Status(Aggregation aggregation, Direction direction, Aggregate actual, decimal? target, bool notStarted, decimal near = NearRatio)
+    {
+        if (notStarted) return Performance.NotStarted;
+        if (actual.Value is null) return Performance.NoData;
+        if (aggregation == Aggregation.Sum && actual.Reported < actual.Expected) return Performance.Incomplete;
+        return Judge(direction, actual.Value, target, near);
     }
 
     /// <summary>ملخص مقروء بجانب الرسم: «حققت الجامعة 92% من المستهدف، بتحسن 3 نقاط عن الدورة السابقة».</summary>
@@ -103,7 +129,12 @@ public static class ResultsRules
         if (previous is { } p)
         {
             var diff = actual.Value - p;
-            var better = direction == Direction.LowerIsBetter ? diff < 0 : diff > 0;
+            var better = direction switch
+            {
+                Direction.LowerIsBetter => diff < 0,
+                Direction.Range when target is { } t => Math.Abs(actual.Value - t) < Math.Abs(p - t),
+                _ => diff > 0,
+            };
             text += diff == 0 ? "، دون تغير عن الدورة السابقة" : $"، {(better ? "بتحسن" : "بتراجع")} {Fmt(Math.Abs(diff), unit == "%" ? "نقطة مئوية" : unit)} عن الدورة السابقة";
         }
         return text + ".";

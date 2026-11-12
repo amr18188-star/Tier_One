@@ -12,10 +12,14 @@ namespace Tier1.Application.Collection;
 
 public sealed record ResultUnit(Guid Id, string Name, OrgUnitKind Kind);
 
+/// <summary>
+/// نتيجة مؤشر لجهة. للكلية في مؤشر نسبة أو متوسط: مستهدف الجامعة ونسبة الإنجاز منه أيضًا، فتعرف بعدها عن نسبة الجامعة المرجوة.
+/// </summary>
 public sealed record IndicatorResult(
     Guid IndicatorId, string Code, string Name, string StandardCode, string Unit, Direction Direction, CollectionLevel Level,
     decimal? Actual, decimal? Target, decimal? Baseline, decimal? Previous, decimal? Achievement, Performance Performance,
-    int Reported, int Expected, string? Note, string Summary);
+    int Reported, int Expected, string? Note, string Summary,
+    Kpi.TargetSource TargetSource, int? TargetYear, decimal? UniversityTarget, decimal? UniversityAchievement);
 
 public sealed record StandardResult(string Code, string Name, int Indicators, int Achieved, int Near, int Behind, int NoData, int NoTarget);
 
@@ -28,7 +32,9 @@ public sealed record ResultsDto(
     int FormsApproved, int FormsTotal, IReadOnlyList<StandardResult> Standards, IReadOnlyList<IndicatorResult> Indicators,
     IReadOnlyList<ResultUnit> HeatUnits, IReadOnlyList<HeatCell> Heat, bool CanExport);
 
-public sealed record UnitResult(Guid UnitId, string UnitName, decimal? Actual, decimal? Target, decimal? Achievement, Performance Performance, int Reported, int Expected, string? Note);
+public sealed record UnitResult(
+    Guid UnitId, string UnitName, decimal? Actual, decimal? Target, decimal? Achievement, Performance Performance, int Reported, int Expected, string? Note,
+    Kpi.TargetSource TargetSource, decimal? Numerator, decimal? Denominator);
 
 public sealed record TrendPoint(Guid CycleId, string Label, decimal? Actual, decimal? Target);
 
@@ -108,9 +114,10 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
             {
                 var cu = snap.Units[c.Id];
                 var agg = Actual(snap, ind, cu);
-                var target = TargetFor(snap, ind.Ci.IndicatorId, cu);
-                return new UnitResult(c.Id, c.Name, agg.Value, target, ResultsRules.Achievement(ind.Version.Direction, agg.Value, target),
-                    ResultsRules.Judge(ind.Version.Direction, agg.Value, target, near), agg.Reported, agg.Expected, agg.Note);
+                var target = TargetFor(snap, ind, cu);
+                return new UnitResult(c.Id, c.Name, agg.Value, target.Value, ResultsRules.Achievement(ind.Version.Direction, agg.Value, target.Value),
+                    ResultsRules.Status(ind.Version.Aggregation, ind.Version.Direction, agg, target.Value, target.NotStarted, near), agg.Reported, agg.Expected, agg.Note,
+                    target.Source, agg.Numerator, agg.Denominator);
             })
             .OrderByDescending(r => r.Achievement ?? -1).ToList();
 
@@ -126,7 +133,7 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
             var s = c.Id == cycle.Id ? snap : await SnapshotAsync(c, ct);
             var i = s.Indicators.FirstOrDefault(x => x.Ci.IndicatorId == indicatorId);
             if (i is null || !s.Units.TryGetValue(unit.Id, out var tu)) continue;
-            trend.Add(new TrendPoint(c.Id, c.PeriodLabel, Actual(s, i, tu).Value, TargetFor(s, indicatorId, tu)));
+            trend.Add(new TrendPoint(c.Id, c.PeriodLabel, Actual(s, i, tu).Value, TargetFor(s, i, tu).Value));
         }
         return new IndicatorResultsDto(main, colleges, trend);
     }
@@ -167,6 +174,8 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
         Performance.Behind => "متأخر",
         Performance.NoTarget => "بلا مستهدف",
         Performance.NotJudged => "لا يحكم",
+        Performance.NotStarted => "لم يبدأ مستهدفه",
+        Performance.Incomplete => "بيانات جزئية",
         _ => "لا بيانات",
     };
 
@@ -185,7 +194,12 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
         /// <summary>القيم المعتمدة: (الجهة، المؤشر) ← القيمة.</summary>
         public required Dictionary<(Guid Unit, Guid Indicator), SubmittedValue> Approved { get; init; }
 
-        public required List<IndicatorTarget> Targets { get; init; }
+        /// <summary>المستهدفات حتى سنة مقارنة الدورة (آخر مستهدف محدد يستمر بعد سنته)، وخطوط الأساس.</summary>
+        public required ILookup<Guid, IndicatorTarget> Targets { get; init; }
+
+        /// <summary>سنة بدء مستهدف كل مؤشر في الخطة، إن حددت.</summary>
+        public required Dictionary<Guid, int?> PlanStart { get; init; }
+
         public required OrgUnit Root { get; init; }
     }
 
@@ -195,14 +209,14 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
         var versionIds = cis.Select(c => c.VersionId).ToList();
         var versions = await db.IndicatorVersions.AsNoTracking().Where(v => versionIds.Contains(v.Id)).ToDictionaryAsync(v => v.Id, ct);
         var indicatorIds = cis.Select(c => c.IndicatorId).ToList();
-        var indicators = await db.Indicators.AsNoTracking().Where(i => indicatorIds.Contains(i.Id)).Select(i => new { i.Id, i.StandardId, i.SortOrder }).ToDictionaryAsync(i => i.Id, ct);
+        var indicators = await db.Indicators.AsNoTracking().Where(i => indicatorIds.Contains(i.Id)).Select(i => new { i.Id, i.StandardId, i.SortOrder, i.PlanStartYear }).ToDictionaryAsync(i => i.Id, ct);
         var standards = await db.Standards.AsNoTracking().ToDictionaryAsync(s => s.Id, ct);
         var units = await db.OrgUnits.AsNoTracking().ToDictionaryAsync(u => u.Id, ct);
         var subs = await db.Submissions.AsNoTracking().Where(s => s.CycleId == cycle.Id).ToListAsync(ct);
         var approvedIds = subs.Where(s => s.Status == SubmissionStatus.Approved).Select(s => s.Id).ToList();
         var unitOf = subs.ToDictionary(s => s.Id, s => s.UnitId);
         var values = await db.SubmittedValues.AsNoTracking().Where(v => approvedIds.Contains(v.SubmissionId)).ToListAsync(ct);
-        var targets = await db.Targets.AsNoTracking().Where(t => indicatorIds.Contains(t.IndicatorId) && (t.Year == cycle.TargetYear || t.Kind == TargetKind.Baseline)).ToListAsync(ct);
+        var targets = await db.Targets.AsNoTracking().Where(t => indicatorIds.Contains(t.IndicatorId) && (t.Year <= cycle.TargetYear || t.Kind == TargetKind.Baseline)).ToListAsync(ct);
         return new Snapshot
         {
             Cycle = cycle,
@@ -213,7 +227,8 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
             Standards = standards.Values.ToDictionary(s => s.Id),
             Submissions = subs,
             Approved = values.ToDictionary(v => (unitOf[v.SubmissionId], v.IndicatorId)),
-            Targets = targets,
+            Targets = targets.ToLookup(t => t.IndicatorId),
+            PlanStart = indicators.Values.ToDictionary(i => i.Id, i => i.PlanStartYear),
             Root = units.Values.Where(u => u.ParentId == null).OrderBy(u => u.SortOrder).First(),
         };
     }
@@ -230,6 +245,20 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
             if (unit.Kind != OrgUnitKind.University) return new(null, null, null, 0, 0, 0, null);
             var central = i.Ci.CentralUnitId ?? s.Root.Id;
             return ResultsRules.Combine(i.Version.Aggregation == Aggregation.Sum ? Aggregation.Sum : Aggregation.Central, percent, Values(s, i, [central]), 1);
+        }
+
+        // العدد المميز لا يجمع (بحث مشترك بين كليتين يعد مرة واحدة): قيمة الجامعة من إدخالها المركزي بعد إزالة التكرار،
+        // وقيمة الكلية من إدخالها هي، لا مجموع أقسامها.
+        if (i.Version.Aggregation == Aggregation.DistinctCount)
+        {
+            Guid? own = unit.Kind == OrgUnitKind.University ? i.Ci.CentralUnitId
+                : unit.IsCollegeLevel && (i.Ci.Level == CollectionLevel.College || i.Ci.CollegeEntry) ? unit.Id : null;
+            if (own is { } id && formUnits.Contains(id))
+            {
+                var mine = Values(s, i, [id]);
+                return mine.Count == 0 ? new(null, null, null, 0, 1, 0, null)
+                    : new(mine[0].Kind == ValueKind.Number ? mine[0].Value : null, null, null, 1, 1, mine[0].Kind == ValueKind.NotApplicable ? 1 : 0, null);
+            }
         }
 
         var level = i.Ci.Level == CollectionLevel.Department ? OrgUnitKind.Department : OrgUnitKind.College;
@@ -249,31 +278,37 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
         units.Select(u => s.Approved.GetValueOrDefault((u, i.Ci.IndicatorId))).Where(v => v is not null)
             .Select(v => new UnitValue(Guid.Empty, v!.Kind, v.Value, v.Numerator, v.Denominator)).ToList();
 
-    private static decimal? TargetFor(Snapshot s, Guid indicatorId, OrgUnit unit, TargetKind kind = TargetKind.Target)
-    {
-        var year = kind == TargetKind.Baseline ? (int?)null : s.Cycle.TargetYear;
-        var own = s.Targets.Where(t => t.IndicatorId == indicatorId && t.UnitId == unit.Id && t.Kind == kind && (year == null || t.Year == year))
-            .OrderByDescending(t => t.Year).FirstOrDefault();
-        if (own is not null || kind != TargetKind.Target || !unit.IsCollegeLevel) return own?.Value;
-        return s.Targets.FirstOrDefault(t => t.IndicatorId == indicatorId && t.Kind == TargetKind.EachCollege && t.Year == s.Cycle.TargetYear)?.Value;
-    }
+    private static Kpi.TargetInfo TargetFor(Snapshot s, Ind i, OrgUnit unit) =>
+        Kpi.TargetLookup.For([.. s.Targets[i.Ci.IndicatorId]], unit, s.Root.Id, s.Cycle.TargetYear, s.PlanStart.GetValueOrDefault(i.Ci.IndicatorId), i.Version.Aggregation);
 
-    private static Performance Judge(Snapshot s, Ind i, OrgUnit unit, decimal near) =>
-        ResultsRules.Judge(i.Version.Direction, Actual(s, i, unit).Value, TargetFor(s, i.Ci.IndicatorId, unit), near);
+    private static decimal? BaselineFor(Snapshot s, Ind i, OrgUnit unit) =>
+        s.Targets[i.Ci.IndicatorId].Where(t => t.UnitId == unit.Id && t.Kind == TargetKind.Baseline).OrderByDescending(t => t.Year).FirstOrDefault()?.Value;
+
+    private static Performance Judge(Snapshot s, Ind i, OrgUnit unit, decimal near)
+    {
+        var target = TargetFor(s, i, unit);
+        return ResultsRules.Status(i.Version.Aggregation, i.Version.Direction, Actual(s, i, unit), target.Value, target.NotStarted, near);
+    }
 
     private static IndicatorResult Result(Snapshot s, Ind i, OrgUnit unit, Snapshot? previous, decimal near)
     {
         var agg = Actual(s, i, unit);
-        var target = TargetFor(s, i.Ci.IndicatorId, unit);
-        var baseline = TargetFor(s, i.Ci.IndicatorId, unit, TargetKind.Baseline);
+        var target = TargetFor(s, i, unit);
+        var baseline = BaselineFor(s, i, unit);
         decimal? prev = null;
         if (previous?.Indicators.FirstOrDefault(x => x.Ci.IndicatorId == i.Ci.IndicatorId) is { } pi && previous.Units.TryGetValue(unit.Id, out var pu))
             prev = Actual(previous, pi, pu).Value;
         var who = unit.Kind == OrgUnitKind.University ? "الجامعة" : unit.NameAr;
+        // للكلية في نسبة أو متوسط: مستهدف الجامعة بجانب مستهدفها، لتعرف قربها من نسبة الجامعة المرجوة.
+        var uniTarget = unit.Kind != OrgUnitKind.University && Kpi.TargetLookup.ComparableAcrossLevels(i.Version.Aggregation)
+            ? Kpi.TargetLookup.University([.. s.Targets[i.Ci.IndicatorId]], s.Root.Id, s.Cycle.TargetYear, s.PlanStart.GetValueOrDefault(i.Ci.IndicatorId))
+            : null;
+        var note = target.NotStarted ? $"يبدأ مستهدف المؤشر في {target.Year}." : agg.Note;
         return new IndicatorResult(i.Ci.IndicatorId, i.Ci.Code, i.Version.NameAr, i.Standard.Code, i.Version.Unit, i.Version.Direction, i.Ci.Level,
-            agg.Value, target, baseline, prev, ResultsRules.Achievement(i.Version.Direction, agg.Value, target),
-            ResultsRules.Judge(i.Version.Direction, agg.Value, target, near), agg.Reported, agg.Expected, agg.Note,
-            ResultsRules.Summary(who, i.Version.Unit, i.Version.Direction, agg.Value, target, prev));
+            agg.Value, target.Value, baseline, prev, ResultsRules.Achievement(i.Version.Direction, agg.Value, target.Value),
+            ResultsRules.Status(i.Version.Aggregation, i.Version.Direction, agg, target.Value, target.NotStarted, near), agg.Reported, agg.Expected, note,
+            ResultsRules.Summary(who, i.Version.Unit, i.Version.Direction, agg.Value, target.Value, prev),
+            target.Source, target.Year, uniTarget, ResultsRules.Achievement(i.Version.Direction, agg.Value, uniTarget));
     }
 
     private static List<ResultUnit> VisibleUnits(Snapshot s, UnitScope scope)

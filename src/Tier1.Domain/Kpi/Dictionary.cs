@@ -9,7 +9,14 @@ public sealed class Pillar
 
     public string NameAr { get; set; } = "";
 
+    public string? NameEn { get; set; }
+
+    /// <summary>شرح الركيزة وما تهدف إليه، يظهر في شجرة الخطة.</summary>
+    public string? Description { get; set; }
+
     public int SortOrder { get; set; }
+
+    public uint Version { get; set; }
 }
 
 /// <summary>معيار من المعايير الاثني عشر لنموذج Tier 1.</summary>
@@ -21,6 +28,11 @@ public sealed class Standard
 
     public string NameAr { get; set; } = "";
 
+    public string? NameEn { get; set; }
+
+    /// <summary>شرح المعيار وما يقيسه.</summary>
+    public string? Description { get; set; }
+
     public Guid? PillarId { get; set; }
 
     public int SortOrder { get; set; }
@@ -29,6 +41,8 @@ public sealed class Standard
 
     /// <summary>ملاحظة تعارض التصنيف بين الملفين، إن وجدت.</summary>
     public string? ClassificationNote { get; set; }
+
+    public uint Version { get; set; }
 }
 
 public enum Direction
@@ -36,6 +50,8 @@ public enum Direction
     Undefined = 0,
     HigherIsBetter = 1,
     LowerIsBetter = 2,
+
+    /// <summary>الوصول إلى قيمة بعينها: الأقرب إلى المستهدف أفضل (ساعات التدريس الأسبوعية لعضو هيئة التدريس مثلًا).</summary>
     Range = 3,
 }
 
@@ -107,6 +123,17 @@ public sealed class Indicator
 
     /// <summary>أكواد التعارضات المرتبطة من سجل التعارضات، للعرض والانتقال.</summary>
     public List<string> ConflictCodes { get; set; } = [];
+
+    /// <summary>
+    /// أول سنة يطلب فيها مستهدف للمؤشر (مؤشر يبدأ بعد سنتين مثلًا)؛ قبلها «لم يبدأ» ولا يحكم على الأداء. فارغ = من أول سنة في الخطة.
+    /// </summary>
+    public int? PlanStartYear { get; set; }
+
+    /// <summary>سنة تحقيق المستهدف النهائي (قصير المدى بعد سنتين أو ثلاث، أو نهاية الخطة). بعدها يستمر آخر مستهدف.</summary>
+    public int? PlanEndYear { get; set; }
+
+    /// <summary>شرح المستهدف ومراحله: لماذا هذه القيم وكيف يتدرج الوصول إليها.</summary>
+    public string? PlanNote { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }
 

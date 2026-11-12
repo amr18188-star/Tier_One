@@ -1,5 +1,7 @@
-import type { CycleStatus, Performance, SubmissionStatus } from "../api/collection";
-import type { Aggregation, CollectionLevel, ConflictSeverity, ConflictStatus, DefinitionStatus, Direction, DistributionStatus, Frequency, OrgUnitKind, TargetKind } from "../api/tier1";
+import type { CycleStatus, Performance, SubmissionStatus, TargetSource } from "../api/collection";
+import type {
+  Aggregation, CollectionLevel, ConflictSeverity, ConflictStatus, DefinitionStatus, Direction, DistributionStatus, Frequency, InitiativeStatus, OrgUnitKind, TargetKind,
+} from "../api/tier1";
 
 /** نصوص الحالات وألوانها في مكان واحد؛ اللون لا يأتي وحده أبدًا، بل مع نص يشرحه. */
 export type TagColor = "default" | "processing" | "success" | "warning" | "error" | "gold" | "cyan" | "purple";
@@ -36,7 +38,7 @@ export const direction: Record<Direction, string> = {
   Undefined: "غير محدد",
   HigherIsBetter: "الأعلى أفضل",
   LowerIsBetter: "الأقل أفضل",
-  Range: "نطاق مطلوب",
+  Range: "الوصول إلى قيمة محددة (الأقرب أفضل)",
 };
 
 export const aggregation: Record<Aggregation, string> = {
@@ -100,7 +102,49 @@ export const performance: Record<Performance, { text: string; color: TagColor; t
   NoTarget: { text: "بلا مستهدف", color: "default", tone: "none" },
   NoData: { text: "لا بيانات معتمدة", color: "default", tone: "none" },
   NotJudged: { text: "لا يحكم عليه", color: "default", tone: "none" },
+  NotStarted: { text: "لم يبدأ مستهدفه", color: "default", tone: "none" },
+  Incomplete: { text: "بيانات جزئية", color: "default", tone: "none" },
 };
+
+/** مصدر المستهدف الذي قورنت به الجهة. */
+export const targetSource: Record<TargetSource, string> = {
+  None: "",
+  Unit: "مستهدف الجهة",
+  EachCollege: "المستهدف الموحد لكل كلية",
+  University: "مستهدف الجامعة",
+};
+
+export const initiativeStatus: Record<InitiativeStatus, { text: string; color: TagColor }> = {
+  Planned: { text: "مخططة", color: "default" },
+  InProgress: { text: "قيد التنفيذ", color: "processing" },
+  Completed: { text: "مكتملة", color: "success" },
+  Stopped: { text: "متوقفة", color: "error" },
+};
+
+/**
+ * مدة المستهدف بكلمات (بالقاعدة نفسها في الخادم): قصير المدى سنتان أو أقل، ومتوسط ثلاث، وطويل أكثر؛ ومتى يبدأ إن تأخر بدؤه.
+ */
+export function horizon(start: number | null, end: number | null, first: number, last: number): string {
+  const s = start ?? first;
+  const e = end ?? last;
+  const years = e - s + 1;
+  const kind = years <= 2 ? "قصير المدى" : years <= 3 ? "متوسط المدى" : "طويل المدى";
+  const span = years === 1 ? "سنة واحدة" : years === 2 ? "سنتان" : `${years} سنوات`;
+  return s > first ? `${kind} (${span})، يبدأ في ${s} ويتحقق في ${e}` : `${kind} (${span})، يتحقق في ${e}`;
+}
+
+/** الموعد بالأيام الباقية بتوقيت القاهرة: «اليوم» أو «باقٍ 5 أيام» أو «متأخر 2 يوم». */
+export function dueText(dueOn: string): string {
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Cairo" }).format(new Date());
+  const days = Math.round((Date.parse(dueOn) - Date.parse(today)) / 86_400_000);
+  if (days === 0) return "اليوم";
+  if (days === 1) return "غدًا";
+  return days > 0 ? `باقٍ ${daysText(days)}` : `متأخر ${daysText(-days)}`;
+}
+
+function daysText(n: number): string {
+  return n === 1 ? "يومًا واحدًا" : n === 2 ? "يومين" : n <= 10 ? `${n} أيام` : `${n} يومًا`;
+}
 
 /** حجم الملف مقروءًا. */
 export function fileSize(bytes: number): string {

@@ -6,7 +6,7 @@ import { api, query } from "../../api/client";
 import type { Conflict, ConflictList, ConflictSeverity, ConflictStatus } from "../../api/tier1";
 import { L } from "../../shared/i18n";
 import { conflictSeverity, conflictStatus } from "../../shared/labels";
-import { DataTable, oneOf, PageHeader, Panel, StatTile } from "../../shared/ui";
+import { DataTable, FilterMeta, oneOf, PageHeader, Panel, StatTile } from "../../shared/ui";
 import { ConflictDrawer } from "./ConflictDrawer";
 
 const STATUSES: ConflictStatus[] = ["Open", "Ready", "Deferred", "Resolved"];
@@ -53,7 +53,9 @@ export default function ConflictsPage() {
             options={[{ value: "all", label: L("الكل", "All") }, ...STATUSES.map((s) => ({ value: s, label: conflictStatus[s].text }))]} />
           <Select allowClear placeholder={L("كل درجات الخطورة", "All severities")} value={severity} onChange={(v) => set("severity", v)} style={{ minWidth: 170 }}
             options={SEVERITIES.map((s) => ({ value: s, label: conflictSeverity[s].text }))} />
-          <Input.Search allowClear defaultValue={q} placeholder={L("رقم التعارض أو كلمة من وصفه", "Code or a word from the description")} onSearch={(v) => set("q", v || undefined)} />
+          <Input.Search key={q} allowClear defaultValue={q} placeholder={L("رقم التعارض أو كلمة من وصفه", "Code or a word from the description")} onSearch={(v) => set("q", v || undefined)} />
+          <FilterMeta shown={list.data?.items.length ?? 0} total={all.data?.items.length} noun={L("تعارض", "conflicts")} active={!!(status || severity || q)}
+            onReset={() => setParams({}, { replace: true })} />
         </div>
         <DataTable<Conflict>
           rowKey={(c) => c.code}

@@ -8,7 +8,7 @@ import type { DefinitionStatus, IndicatorRow, Standard } from "../../api/tier1";
 import { L } from "../../shared/i18n";
 import { definitionStatus, num, withUnit } from "../../shared/labels";
 import { usePermissions } from "../../shared/session";
-import { DataTable, oneOf, PageHeader, Panel } from "../../shared/ui";
+import { DataTable, FilterMeta, oneOf, PageHeader, Panel } from "../../shared/ui";
 import { NewIndicatorModal } from "./NewIndicatorModal";
 
 const STATUSES: DefinitionStatus[] = ["Draft", "UnderReview", "Approved"];
@@ -53,10 +53,11 @@ export default function IndicatorsPage() {
             options={(standards.data ?? []).map((s) => ({ value: s.code, label: `${s.code} — ${s.nameAr} (${s.indicatorCount})` }))} />
           <Segmented value={status ?? "all"} onChange={(v) => set("status", v === "all" ? undefined : String(v))}
             options={[{ value: "all", label: L("الكل", "All") }, ...STATUSES.map((s) => ({ value: s, label: definitionStatus[s].text }))]} />
-          <Input.Search allowClear defaultValue={q} placeholder={L("كود المؤشر أو اسمه", "Code or name")} onSearch={(v) => set("q", v || undefined)} />
+          <Input.Search key={q} allowClear defaultValue={q} placeholder={L("كود المؤشر أو اسمه", "Code or name")} onSearch={(v) => set("q", v || undefined)} />
           <label className="lcp-switch">
             <Switch size="small" checked={withConflicts} onChange={(v) => set("conflicts", v ? "1" : undefined)} /> {L("بتعارضات مفتوحة فقط", "Open conflicts only")}
           </label>
+          <FilterMeta shown={rows.data?.length ?? 0} noun={L("مؤشر", "indicators")} active={!!(standard || status || q || withConflicts)} onReset={() => setParams({}, { replace: true })} />
         </div>
         {selected?.classificationNote && <p className="t1-summary">{L("ملاحظة تصنيف:", "Classification note:")} {selected.classificationNote}</p>}
 

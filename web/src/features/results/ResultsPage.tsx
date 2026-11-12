@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Drawer, Input, Segmented, Select, Space, Tag, Tooltip } from "antd";
+import { Alert, Button, Drawer, Input, Segmented, Select, Space, Tag, Tooltip } from "antd";
 import { CheckCircleOutlined, ClockCircleOutlined, DownloadOutlined, FileDoneOutlined, PrinterOutlined, QuestionCircleOutlined, WarningOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
@@ -8,10 +8,10 @@ import type { Cycle, HeatCell, IndicatorResult, IndicatorResults, Performance, R
 import { HBarChart, ProgressToTarget, SegmentBar } from "../../shared/charts";
 import { L } from "../../shared/i18n";
 import { num, performance as perfText, withUnit } from "../../shared/labels";
-import { DataTable, EmptyNote, oneOf, PageHeader, Panel, StatTile } from "../../shared/ui";
+import { DataTable, EmptyNote, FilterMeta, oneOf, PageHeader, Panel, StatTile } from "../../shared/ui";
 import { ReportView } from "./ReportView";
 
-const PERF: Performance[] = ["Achieved", "Near", "Behind", "NoData", "NoTarget"];
+const PERF: Performance[] = ["Achieved", "Near", "Behind", "NoData", "NoTarget", "Incomplete", "NotStarted"];
 const PERF_COLORS: Record<string, string> = { Achieved: "#2e9e63", Near: "#d9a227", Behind: "#b42318", NoData: "#c4ccd8", NoTarget: "#8d99ab" };
 
 /**
@@ -89,6 +89,10 @@ export default function ResultsPage() {
       {r && r.formsApproved === 0 && (
         <Panel><EmptyNote>{L("لم يعتمد أي نموذج في هذه الدورة بعد؛ النتائج تحسب من القيم المعتمدة نهائيًا فقط.", "No approved forms yet.")}</EmptyNote></Panel>
       )}
+      {r && r.formsApproved > 0 && r.formsApproved < r.formsTotal && (
+        <Alert type="info" showIcon message={L(`النتائج مؤقتة: محسوبة من ${r.formsApproved} نموذجًا معتمدًا نهائيًا من ${r.formsTotal}. المجموع الذي لم تكتمل جهاته يظهر «بيانات جزئية» ولا يحكم عليه.`,
+          `Provisional: from ${r.formsApproved} of ${r.formsTotal} approved forms.`)} />
+      )}
 
       <Panel title={L(`الأداء بحسب المعيار — ${who ?? ""}`, "By standard")} query={res}
         extra={<span className="r-legend">{(["Achieved", "Near", "Behind", "NoData"] as const).map((p) => <span key={p}><i style={{ background: PERF_COLORS[p] }} />{p === "NoData" ? L("بلا بيانات", "No data") : perfText[p].text}</span>)}</span>}>
@@ -118,8 +122,14 @@ export default function ResultsPage() {
         <div className="lcp-filters">
           <Segmented value={perf ?? "all"} onChange={(v) => set("perf", v === "all" ? undefined : String(v))}
             options={[{ value: "all", label: L("الكل", "All") }, ...PERF.map((p) => ({ value: p, label: perfText[p].text }))]} />
-          <Input.Search allowClear defaultValue={q} placeholder={L("رمز المؤشر أو اسمه", "Code or name")} onSearch={(v) => set("q", v || undefined)} />
+          <Input.Search key={q} allowClear defaultValue={q} placeholder={L("رمز المؤشر أو اسمه", "Code or name")} onSearch={(v) => set("q", v || undefined)} />
           {std && <Tag closable onClose={() => set("std", undefined)}>{L("المعيار", "Standard")} {std}</Tag>}
+          <FilterMeta shown={rows.length} total={r?.indicators.length} noun={L("مؤشر", "indicators")} active={!!(perf || std || q)}
+            onReset={() => {
+              const next = new URLSearchParams(params);
+              ["perf", "std", "q"].forEach((k) => next.delete(k));
+              setParams(next, { replace: true });
+            }} />
         </div>
         <DataTable<IndicatorResult>
           rowKey={(i) => i.indicatorId}
@@ -132,8 +142,24 @@ export default function ResultsPage() {
             { title: L("الرمز", "Code"), dataIndex: "code", width: 90, render: (c: string) => <code className="ltr">{c}</code> },
             { title: L("المؤشر", "Indicator"), dataIndex: "name", ellipsis: true },
             { title: L("الفعلي", "Actual"), key: "a", width: 110, render: (_, i) => <b className="ltr">{withUnit(i.actual, i.unit)}</b> },
-            { title: L("المستهدف", "Target"), key: "t", width: 110, render: (_, i) => <span className="ltr">{withUnit(i.target, i.unit)}</span> },
+            {
+              title: L("المستهدف", "Target"), key: "t", width: 130, render: (_, i) => (
+                <span>
+                  <span className="ltr">{withUnit(i.target, i.unit)}</span>
+                  {i.targetSource === "University" && <Tooltip title={L("لا مستهدف خاص بالكلية؛ تقارن بمستهدف الجامعة.", "No college target; compared with the university target.")}><small className="muted"> ({L("الجامعة", "univ.")})</small></Tooltip>}
+                </span>
+              ),
+            },
             { title: L("الإنجاز", "Achievement"), key: "p", width: 190, render: (_, i) => <Achievement i={i} /> },
+            ...(r && r.unit.kind !== "University" ? [{
+              title: L("من نسبة الجامعة المرجوة", "vs university target"), key: "u", width: 150,
+              render: (_: unknown, i: IndicatorResult) => i.universityTarget === null || i.targetSource === "University" ? <span className="muted">—</span> : (
+                <Tooltip title={L(`مستهدف الجامعة ${withUnit(i.universityTarget, i.unit)}`, `University target ${withUnit(i.universityTarget, i.unit)}`)}>
+                  <span className="ltr">{withUnit(i.universityTarget, i.unit)}</span>
+                  {i.universityAchievement !== null && <b className="ltr ms">{Math.round(i.universityAchievement * 100)}%</b>}
+                </Tooltip>
+              ),
+            }] : []),
             { title: L("عن السابقة", "vs previous"), key: "d", width: 110, render: (_, i) => <Delta i={i} /> },
             { title: L("الحالة", "Status"), dataIndex: "performance", width: 150, render: (p: Performance) => <><i className={`perf-dot perf-${perfText[p].tone}`} />{perfText[p].text}</> },
           ]}
@@ -148,19 +174,30 @@ export default function ResultsPage() {
         />
       </Panel>
 
-      {open && r && <IndicatorDrawer cycleId={r.cycle.id} unitId={r.unit.id} item={open} onClose={() => setOpen(null)} />}
+      {open && r && <IndicatorDrawer cycleId={r.cycle.id} unitId={r.unit.id} university={r.unit.kind === "University"} item={open} onClose={() => setOpen(null)} />}
       {printing && r && <ReportView r={r} onClose={() => setPrinting(false)} />}
     </>
   );
 }
 
+/** نسبة الإنجاز وتحتها الفجوة عن المستهدف بوحدة المؤشر، فيعرف القارئ كم بقي لا النسبة وحدها. */
 function Achievement({ i }: { i: IndicatorResult }) {
   if (i.achievement === null) return <span className="muted">—</span>;
   const pct = Math.round(i.achievement * 100);
+  const gap = i.actual !== null && i.target !== null ? i.actual - i.target : null;
+  // الفجوة «مطلوبة» إن كانت في غير صالح الاتجاه، وإلا «فائض».
+  const short = gap === null ? false : i.direction === "LowerIsBetter" ? gap > 0 : i.direction === "Range" ? Math.abs(gap) > 0 : gap < 0;
   return (
-    <span className="r-ach">
-      <ProgressToTarget value={Math.min(pct, 150)} target={100} max={150} />
-      <b className="ltr">{pct}%</b>
+    <span className="r-ach-wrap">
+      <span className="r-ach">
+        <ProgressToTarget value={Math.min(pct, 150)} target={100} max={150} />
+        <b className="ltr">{pct}%</b>
+      </span>
+      {gap !== null && gap !== 0 && (
+        <small className={short ? "r-gap short" : "r-gap"}>
+          {short ? L("الفجوة", "Gap") : L("فوق المستهدف", "Above target")} <bdi className="ltr">{num(Math.abs(gap))}</bdi> {i.unit.trim() === "%" ? L("نقطة", "pts") : i.unit}
+        </small>
+      )}
     </span>
   );
 }
@@ -169,7 +206,10 @@ function Delta({ i }: { i: IndicatorResult }) {
   if (i.actual === null || i.previous === null) return <span className="muted">—</span>;
   const d = i.actual - i.previous;
   if (d === 0) return <span className="muted">{L("ثابت", "Same")}</span>;
-  const better = i.direction === "LowerIsBetter" ? d < 0 : d > 0;
+  // للوصول إلى قيمة: التحسن اقتراب منها، لا زيادة أو نقص.
+  const better = i.direction === "LowerIsBetter" ? d < 0
+    : i.direction === "Range" && i.target !== null ? Math.abs(i.actual - i.target) < Math.abs(i.previous - i.target)
+    : d > 0;
   return <span className={`r-delta ${better ? "up" : "down"} ltr`}>{d > 0 ? "▲" : "▼"} {num(Math.abs(d))}{i.unit.trim() === "%" ? L(" نقطة", " pts") : ""}</span>;
 }
 
@@ -218,7 +258,9 @@ function Heatmap({ r, onPick }: { r: Results; onPick: (unitId: string) => void }
   );
 }
 
-function IndicatorDrawer({ cycleId, unitId, item, onClose }: { cycleId: string; unitId: string; item: IndicatorResult; onClose: () => void }) {
+function IndicatorDrawer({ cycleId, unitId, university, item, onClose }: { cycleId: string; unitId: string; university: boolean; item: IndicatorResult; onClose: () => void }) {
+  // خط مستهدف الجامعة على مقارنة الكليات: مستهدف الجهة المعروضة إن كانت الجامعة، وإلا مستهدف الجامعة المحسوب معها.
+  const uniTarget = university ? item.target : item.universityTarget;
   const d = useQuery({
     queryKey: ["results", cycleId, "indicator", item.indicatorId, unitId],
     queryFn: () => api.get<IndicatorResults>(`/api/results/${cycleId}/indicators/${item.indicatorId}${query({ unitId })}`),
@@ -236,9 +278,11 @@ function IndicatorDrawer({ cycleId, unitId, item, onClose }: { cycleId: string; 
                 rows={d.data!.colleges.map((c) => ({
                   key: c.unitId, label: c.unitName, value: c.actual,
                   tone: c.performance === "Achieved" ? "teal" : c.performance === "Near" ? "gold" : c.performance === "Behind" ? "rose" : "muted",
-                  note: `${perfText[c.performance].text}${c.target !== null ? ` · ${L("المستهدف", "Target")} ${withUnit(c.target, item.unit)}` : ""}`,
+                  note: `${perfText[c.performance].text}${c.target !== null ? ` · ${L("المستهدف", "Target")} ${withUnit(c.target, item.unit)}` : ""}`
+                    + (c.numerator !== null && c.denominator !== null ? ` · ${num(c.numerator)} ÷ ${num(c.denominator)}` : ""),
                 }))}
-                reference={item.target !== null && item.unit.trim() === "%" ? { value: item.target, label: L(`مستهدف الجامعة ${withUnit(item.target, item.unit)}`, "University target") } : undefined} />
+                reference={uniTarget !== null && d.data!.colleges.some((c) => c.targetSource === "University" || c.numerator !== null)
+                  ? { value: uniTarget, label: L(`مستهدف الجامعة ${withUnit(uniTarget, item.unit)}`, "University target") } : undefined} />
             )}
             {d.data!.trend.length > 0 && (
               <HBarChart title={L("عبر الدورات", "Across cycles")} unit={item.unit} sort={false}

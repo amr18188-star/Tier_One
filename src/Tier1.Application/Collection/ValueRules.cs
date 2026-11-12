@@ -75,6 +75,9 @@ public static class ValueRules
             if (IsPercent(spec) && v > 100) issues.Add(new("percent_range", IssueSeverity.Error, $"النسبة من 0 إلى 100؛ أدخلت {Fmt(v)}."));
             if (IntegerUnits.Contains(spec.Unit.Trim()) && v != decimal.Truncate(v))
                 issues.Add(new("integer", IssueSeverity.Error, $"«{spec.Unit}» عدد صحيح بلا كسور؛ أدخلت {Fmt(v)}."));
+            // المتوسط المرجح يجمع على مستوى الجامعة بوزن كل جهة، فلا يقبل بلا وزنه وإلا صار متوسطًا بسيطًا غير دقيق.
+            if (spec.Aggregation == Aggregation.WeightedAverage && input.Denominator is not > 0)
+                issues.Add(new("weight_required", IssueSeverity.Error, "أدخل أساس الترجيح (عدد المستجيبين أو الأعضاء) ليحسب متوسط الجامعة بدقة."));
             if (issues.Count > 0) return (null, issues);
             value = v;
         }

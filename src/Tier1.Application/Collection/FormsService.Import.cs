@@ -27,14 +27,15 @@ public sealed partial class FormsService
     {
         var ctx = await LoadAsync(id, Cap.View, tracking: false, ct);
         var targets = await TargetsAsync(ctx, ct);
-        var rows = ctx.Indicators.OrderBy(i => i.SortOrder).Select(i =>
+        // بترتيب النموذج نفسه: الركيزة ثم المعيار ثم المؤشر.
+        var rows = ctx.Indicators.Select(i =>
         {
             ctx.Values.TryGetValue(i.Ci.IndicatorId, out var v);
             var ratio = ValueRules.UsesRatio(CycleSpec.Of(i.Version));
             return (IReadOnlyList<string?>)
             [
                 i.Ci.Code, i.Version.NameAr, i.Standard.NameAr, i.Version.Unit,
-                Num(targets.GetValueOrDefault(i.Ci.IndicatorId)), Num(ctx.Previous.GetValueOrDefault(i.Ci.IndicatorId)),
+                Num(targets.GetValueOrDefault(i.Ci.IndicatorId)?.Value), Num(ctx.Previous.GetValueOrDefault(i.Ci.IndicatorId)),
                 v is null ? null : v.Kind switch { ValueKind.NotAvailable => NotAvailableText, ValueKind.NotApplicable => NotApplicableText, _ => "رقم" },
                 ratio ? null : Num(v?.Value), Num(v?.Numerator), Num(v?.Denominator), v?.Reason, v?.Explanation,
             ];

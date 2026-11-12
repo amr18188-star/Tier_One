@@ -23,6 +23,7 @@ public static class Tier1Endpoints
         MapUnits(api.MapGroup("/org/units"));
         MapStructure(api.MapGroup("/structure"));
         MapDictionary(api.MapGroup("/kpi"));
+        MapStrategy(api.MapGroup("/strategy"));
         MapConflicts(api.MapGroup("/kpi/conflicts"));
     }
 
@@ -94,6 +95,61 @@ public static class Tier1Endpoints
             .RequirePermission(Features.Targets, Cap.View);
         g.MapPost("/targets/{id:guid}/approve", async (Guid id, CommitteeDecisionRequest req, TargetsService svc, CancellationToken ct) => Results.Ok(await svc.ApproveAsync(id, req, ct)))
             .RequireSpecial(Features.Targets, Specials.Approve);
+        g.MapPost("/targets/{id:guid}/delete", async (Guid id, DeleteTargetRequest req, TargetsService svc, CancellationToken ct) =>
+            {
+                await svc.DeleteAsync(id, req, ct);
+                return Results.NoContent();
+            })
+            .RequirePermission(Features.Targets, Cap.Delete);
+        g.MapPut("/indicators/{code}/plan", async (string code, SavePlanRequest req, TargetsService svc, CancellationToken ct) =>
+            {
+                await svc.SavePlanAsync(code, req, ct);
+                return Results.NoContent();
+            })
+            .RequirePermission(Features.Targets, Cap.Edit);
+        g.MapPost("/indicators/{code}/delete", async (string code, DeleteRequest req, DictionaryService svc, CancellationToken ct) =>
+            {
+                await svc.DeleteAsync(code, req, ct);
+                return Results.NoContent();
+            })
+            .RequirePermission(Features.Dictionary, Cap.Delete);
+    }
+
+    /// <summary>شجرة الخطة: الركائز والمعايير والمبادرات.</summary>
+    private static void MapStrategy(RouteGroupBuilder g)
+    {
+        g.MapGet("/tree", async (StrategyService svc, CancellationToken ct) => Results.Ok(await svc.TreeAsync(ct)))
+            .RequirePermission(Features.Strategy, Cap.View);
+        g.MapPost("/pillars", async (SavePillarRequest req, StrategyService svc, CancellationToken ct) => Results.Ok(await svc.CreatePillarAsync(req, ct)))
+            .RequirePermission(Features.Strategy, Cap.Add);
+        g.MapPut("/pillars/{id:guid}", async (Guid id, SavePillarRequest req, StrategyService svc, CancellationToken ct) => Results.Ok(await svc.UpdatePillarAsync(id, req, ct)))
+            .RequirePermission(Features.Strategy, Cap.Edit);
+        g.MapPost("/pillars/{id:guid}/delete", async (Guid id, DeleteRequest req, StrategyService svc, CancellationToken ct) =>
+            {
+                await svc.DeletePillarAsync(id, req, ct);
+                return Results.NoContent();
+            })
+            .RequirePermission(Features.Strategy, Cap.Delete);
+        g.MapPost("/standards", async (SaveStandardRequest req, StrategyService svc, CancellationToken ct) => Results.Ok(await svc.CreateStandardAsync(req, ct)))
+            .RequirePermission(Features.Strategy, Cap.Add);
+        g.MapPut("/standards/{id:guid}", async (Guid id, SaveStandardRequest req, StrategyService svc, CancellationToken ct) => Results.Ok(await svc.UpdateStandardAsync(id, req, ct)))
+            .RequirePermission(Features.Strategy, Cap.Edit);
+        g.MapPost("/standards/{id:guid}/delete", async (Guid id, DeleteRequest req, StrategyService svc, CancellationToken ct) =>
+            {
+                await svc.DeleteStandardAsync(id, req, ct);
+                return Results.NoContent();
+            })
+            .RequirePermission(Features.Strategy, Cap.Delete);
+        g.MapPost("/initiatives", async (SaveInitiativeRequest req, StrategyService svc, CancellationToken ct) => Results.Ok(await svc.CreateInitiativeAsync(req, ct)))
+            .RequirePermission(Features.Strategy, Cap.Add);
+        g.MapPut("/initiatives/{id:guid}", async (Guid id, SaveInitiativeRequest req, StrategyService svc, CancellationToken ct) => Results.Ok(await svc.UpdateInitiativeAsync(id, req, ct)))
+            .RequirePermission(Features.Strategy, Cap.Edit);
+        g.MapPost("/initiatives/{id:guid}/delete", async (Guid id, DeleteRequest req, StrategyService svc, CancellationToken ct) =>
+            {
+                await svc.DeleteInitiativeAsync(id, req, ct);
+                return Results.NoContent();
+            })
+            .RequirePermission(Features.Strategy, Cap.Delete);
     }
 
     private static void MapConflicts(RouteGroupBuilder g)

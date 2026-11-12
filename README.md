@@ -43,6 +43,16 @@ dotnet run --project src\Tier1.Api                                # http://local
 | `vp@` و`viewer@` و`quality@` | نائب الرئيس، اطلاع، الجودة |
 | `sa1@` و`sysadmin@` و`auditor@` | المدير الأعلى، مسؤول النظام، المراجع الرقابي |
 
+### النسخة التجريبية بالبيانات (للعرض والتجربة)
+
+قاعدة منفصلة `tier1_demo` على http://localhost:5160 مملوءة ببيانات واقعية مولدة: ثلاث دورات، ونماذج في كل مراحل الاعتماد، ونتائج ومقارنات.
+الحسابات وما ينتظر كل منها في [docs/demo.md](docs/demo.md).
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\demo.ps1 -Reset   # قاعدة فارغة، ويبقى الخادم يعمل
+python tools\demo_data.py                                          # في نافذة أخرى: يملؤها (نحو 40 ثانية)
+```
+
 ## الاختبارات
 
 ```powershell

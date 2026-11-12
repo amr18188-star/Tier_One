@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react";
-import { Alert, App, Button, DatePicker, Form as AntForm, Input, Modal, Popover, Progress, Segmented, Space, Tag, Timeline } from "antd";
+import { Alert, App, Button, DatePicker, Form as AntForm, Input, Modal, Popover, Progress, Segmented, Space, Tag, Timeline, Tooltip } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import {
-  CalendarOutlined, CheckOutlined, DownloadOutlined, FileExcelOutlined, HistoryOutlined, RollbackOutlined, SendOutlined, UnlockOutlined, WarningOutlined,
+  AimOutlined, CalendarOutlined, CheckOutlined, DownloadOutlined, FileExcelOutlined, HistoryOutlined, LoadingOutlined, RollbackOutlined, SendOutlined, UnlockOutlined,
+  WarningOutlined,
 } from "@ant-design/icons";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { api } from "../../api/client";
-import type { Form, FormItem } from "../../api/collection";
+import type { Form, FormItem, FormSection } from "../../api/collection";
 import { DecisionModal } from "../../shared/DecisionModal";
 import { errorText, formatDate, formatDateTime } from "../../shared/format";
 import { L } from "../../shared/i18n";
@@ -15,7 +16,7 @@ import { submissionStatus, unitKind } from "../../shared/labels";
 import { usePermissions } from "../../shared/session";
 import { PageHeader, Panel, Stepper } from "../../shared/ui";
 import { ImportModal } from "./ImportModal";
-import { ValueRow, type ReturnMark } from "./ValueRow";
+import { savedAt, ValueRow, type ReturnMark } from "./ValueRow";
 
 type Filter = "all" | "missing" | "issues" | "flagged";
 
@@ -31,8 +32,10 @@ export default function FormPage() {
   const form = useQuery({ queryKey: key, queryFn: () => api.get<Form>(`/api/forms/${id}`) });
   const [filter, setFilter] = useState<Filter>("all");
   const [marks, setMarks] = useState<Record<string, ReturnMark>>({});
-  const [dialog, setDialog] = useState<"approve" | "return" | "reopen" | "import" | "extend" | null>(null);
+  const [dialog, setDialog] = useState<"submit" | "approve" | "return" | "reopen" | "import" | "extend" | null>(null);
   const canExtend = usePermissions().can("dc.cycles", "E");
+  // الحفظ التلقائي الجاري في أي صف، لشريط الحالة أسفل النموذج.
+  const saving = useIsMutating();
 
   const refresh = () => qc.invalidateQueries({ queryKey: key });
   const onSaved = (item: FormItem) => {
@@ -54,12 +57,36 @@ export default function FormPage() {
 
   const f = form.data;
   const items = useMemo(() => f?.sections.flatMap((s) => s.items) ?? [], [f]);
+  // المعايير بترتيبها من الخادم (الركيزة ثم المعيار)، مجمعة تحت ركائزها.
+  const pillars = useMemo(() => {
+    const list: { code: string | null; name: string | null; sections: FormSection[] }[] = [];
+    for (const s of f?.sections ?? []) {
+      const last = list.at(-1);
+      if (last && last.code === s.pillarCode) last.sections.push(s);
+      else list.push({ code: s.pillarCode, name: s.pillarName, sections: [s] });
+    }
+    return list;
+  }, [f]);
   const flaggedCount = Object.values(marks).filter((m) => m.checked).length;
   const visible = (i: FormItem) =>
     filter === "all" ? true
       : filter === "missing" ? !i.value
         : filter === "issues" ? i.issues.length > 0 || (!!i.evidenceRequired && i.evidence.every((e) => e.voided) && i.value?.kind === "Number")
           : !!i.value?.reviewNote || !!marks[i.indicatorId]?.checked;
+
+  const missing = items.filter((i) => !i.value);
+  const lastSaved = items.reduce<string | null>((m, i) => (i.value && (!m || i.value.editedAt > m) ? i.value.editedAt : m), null);
+  /** ينتقل إلى أول مؤشر بلا قيمة ويضع المؤشر في حقله. */
+  const goToMissing = () => {
+    const first = missing[0];
+    if (!first) return;
+    setFilter("all");
+    requestAnimationFrame(() => {
+      const row = document.getElementById(`i-${first.code}`);
+      row?.scrollIntoView({ behavior: "smooth", block: "center" });
+      row?.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true });
+    });
+  };
 
   if (!f) return <Panel query={form}>{null}</Panel>;
   const editable = f.actions.canEdit;
@@ -70,7 +97,7 @@ export default function FormPage() {
     <>
       <PageHeader back={{ to: "/forms", label: L("النماذج", "Forms") }}
         title={<>{f.unitName} <Tag color={submissionStatus[f.status].color}>{submissionStatus[f.status].text}</Tag>{f.trial && <Tag color="purple">{L("بروفة", "Rehearsal")}</Tag>}</>}
-        subtitle={<>{unitKind[f.unitKind]} · {f.cycleName} · {L("الموعد النهائي", "Due")} <b className="ltr">{formatDate(f.dueOn)}</b>{f.overdue && <Tag color="error" className="ms">{L("متأخر", "Overdue")}</Tag>}</>}
+        subtitle={<>{unitKind[f.unitKind]} · {f.cycleName} · {L("الفترة", "Period")} <b className="ltr">{f.periodLabel}</b> · {L("الموعد النهائي", "Due")} <b className="ltr">{formatDate(f.dueOn)}</b>{f.overdue && <Tag color="error" className="ms">{L("متأخر", "Overdue")}</Tag>}</>}
         extra={
           <Space wrap>
             <Button icon={<DownloadOutlined />} href={`/api/forms/${f.id}/template.xlsx`}>{L("تنزيل Excel", "Download Excel")}</Button>
@@ -112,25 +139,34 @@ export default function FormPage() {
               { value: "flagged", label: L("ملاحظات المراجعة", "Review notes") },
             ]} />
         </div>
-        <nav className="f-std-nav" aria-label={L("المعايير", "Standards")}>
-          {f.sections.map((s) => (
-            <a key={s.standardCode} href={`#s-${s.standardCode}`} className={s.items.every((i) => i.value) ? "done" : undefined}>
-              {s.standardCode} <span className="ltr">{s.items.filter((i) => i.value).length}/{s.items.length}</span>
-            </a>
-          ))}
-        </nav>
+        {pillars.map((p) => (
+          <nav key={p.code ?? "-"} className="f-std-nav" aria-label={p.name ?? L("المعايير", "Standards")}>
+            {p.name && <span className="f-pillar-label">{p.code} {p.name}</span>}
+            {p.sections.map((s) => (
+              <a key={s.standardCode} href={`#s-${s.standardCode}`} className={s.items.every((i) => i.value) ? "done" : undefined} title={s.standardName}>
+                {s.standardCode} <span className="ltr">{s.items.filter((i) => i.value).length}/{s.items.length}</span>
+              </a>
+            ))}
+          </nav>
+        ))}
       </Panel>
 
-      {f.sections.map((s) => {
-        const rows = s.items.filter(visible);
-        if (rows.length === 0) return null;
+      {/* الإدخال مصنفًا: الركيزة، ثم معاييرها، وفي كل معيار مؤشراته. */}
+      {pillars.map((p) => {
+        const shown = p.sections.map((s) => ({ s, rows: s.items.filter(visible) })).filter((x) => x.rows.length > 0);
+        if (shown.length === 0) return null;
         return (
-          <Panel key={s.standardCode} id={`s-${s.standardCode}`} title={<><code className="ltr">{s.standardCode}</code> {s.standardName}</>}>
-            {rows.map((i) => (
-              <ValueRow key={`${i.indicatorId}:${i.value?.version ?? 0}:${i.evidence.length}`} formId={f.id} item={i} editable={editable} reviewing={reviewing}
-                mark={marks[i.indicatorId]} onMark={(m) => setMarks((x) => ({ ...x, [i.indicatorId]: m }))} onSaved={onSaved} />
+          <div key={p.code ?? "-"}>
+            {p.name && <h2 className="t1-pillar-head"><code className="ltr">{p.code}</code>{p.name}</h2>}
+            {shown.map(({ s, rows }) => (
+              <Panel key={s.standardCode} id={`s-${s.standardCode}`} title={<><code className="ltr">{s.standardCode}</code> {s.standardName}</>}>
+                {rows.map((i) => (
+                  <ValueRow key={`${i.indicatorId}:${i.value?.version ?? 0}:${i.evidence.length}`} formId={f.id} item={i} editable={editable} reviewing={reviewing}
+                    mark={marks[i.indicatorId]} onMark={(m) => setMarks((x) => ({ ...x, [i.indicatorId]: m }))} onSaved={onSaved} />
+                ))}
+              </Panel>
             ))}
-          </Panel>
+          </div>
         );
       })}
 
@@ -151,25 +187,33 @@ export default function FormPage() {
       {(editable || reviewing || f.actions.canReopen) && (
         <div className="f-actions no-print">
           <span className="grow">
-            {editable && (f.blocking.length === 0
-              ? L("كل المؤشرات مكتملة. أرسل النموذج للمراجعة.", "Everything is complete. Send it for review.")
-              : <Popover title={L("ما يمنع الإرسال", "What blocks sending")} content={<ul style={{ maxWidth: 420, maxHeight: 300, overflow: "auto" }}>{f.blocking.map((b) => <li key={b}>{b}</li>)}</ul>}>
-                  <span className="f-issue warn"><WarningOutlined /> {L(`${f.blocking.length} أمر يمنع الإرسال — اعرضها`, `${f.blocking.length} items block sending`)}</span>
-                </Popover>)}
+            {editable && (
+              <span className="f-summary" aria-live="polite">
+                <span>{L("أدخلت", "Entered")} <b className="ltr">{f.completed}/{f.required}</b></span>
+                {missing.length > 0 && <span>{L("ناقص", "Missing")} <b className="ltr">{missing.length}</b></span>}
+                {saving > 0 ? <span><LoadingOutlined aria-hidden /> {L("جار الحفظ…", "Saving…")}</span>
+                  : lastSaved && <span>{L("آخر حفظ", "Last saved")} <b className="ltr">{savedAt(lastSaved)}</b></span>}
+                {f.blocking.length === 0
+                  ? <span className="f-issue" style={{ color: "var(--ok)" }}><CheckOutlined /> {L("مكتمل وجاهز للإرسال", "Complete and ready")}</span>
+                  : <Popover title={L("ما يمنع الإرسال", "What blocks sending")} content={<ul style={{ maxWidth: 420, maxHeight: 300, overflow: "auto" }}>{f.blocking.map((b) => <li key={b}>{b}</li>)}</ul>}>
+                      <Button type="link" size="small" className="f-issue warn" style={{ padding: 0 }}><WarningOutlined /> {L(`${f.blocking.length} أمر يمنع الإرسال`, `${f.blocking.length} items block sending`)}</Button>
+                    </Popover>}
+              </span>
+            )}
             {reviewing && (flaggedCount > 0
               ? L(`علّمت ${flaggedCount} مؤشرًا للتصحيح.`, `${flaggedCount} marked for correction.`)
               : L("راجع القيم والأدلة، ثم اعتمد أو أعد.", "Review values and evidence, then approve or return."))}
           </span>
           {submit.error && <span className="f-issue err">{errorText(submit.error)}</span>}
+          {editable && missing.length > 0 && (
+            <Button size="large" icon={<AimOutlined />} onClick={goToMissing}>{L("التالي الناقص", "Next missing")}</Button>
+          )}
           {editable && (
-            <Button type="primary" size="large" icon={<SendOutlined />} disabled={!f.actions.canSubmit} loading={submit.isPending}
-              onClick={() => Modal.confirm({
-                title: L("إرسال النموذج للمراجعة؟", "Send for review?"),
-                content: L(`سيقفل النموذج للتعديل وينتقل إلى «${f.path[1]?.name}». يعاد إليك إن احتاج تصحيحًا.`, "The form will be locked until returned."),
-                okText: L("إرسال", "Send"), cancelText: L("إلغاء", "Cancel"), onOk: () => submit.mutateAsync(),
-              })}>
-              {L("إرسال للمراجعة", "Send for review")}
-            </Button>
+            <Tooltip title={!f.actions.canSubmit ? L("يتفعل حين يكتمل النموذج؛ اعرض «ما يمنع الإرسال».", "Enabled once the form is complete.") : undefined}>
+              <Button type="primary" size="large" icon={<SendOutlined />} disabled={!f.actions.canSubmit} loading={submit.isPending} onClick={() => setDialog("submit")}>
+                {L("إرسال للمراجعة", "Send for review")}
+              </Button>
+            </Tooltip>
           )}
           {reviewing && (
             <>
@@ -183,6 +227,10 @@ export default function FormPage() {
         </div>
       )}
 
+      {dialog === "submit" && (
+        <SubmitModal form={f} items={items} pending={submit.isPending} error={submit.error} onClose={() => setDialog(null)}
+          onConfirm={async () => { await submit.mutateAsync(); setDialog(null); }} />
+      )}
       {dialog === "approve" && (
         <ApproveModal form={f} onClose={() => setDialog(null)} onDone={(next) => { qc.setQueryData(key, next); void qc.invalidateQueries({ queryKey: ["forms"] }); }} />
       )}
@@ -212,6 +260,32 @@ export default function FormPage() {
       {dialog === "extend" && <ExtendModal form={f} onClose={() => setDialog(null)} onDone={(next) => { qc.setQueryData(key, next); void qc.invalidateQueries({ queryKey: ["forms"] }); }} />}
       {dialog === "import" && <ImportModal formId={f.id} onClose={() => setDialog(null)} onApplied={() => void refresh()} />}
     </>
+  );
+}
+
+/** ملخص ما سيرسل قبل التأكيد: كم قيمة وكم صفر وغير متاح ولا ينطبق، والتفسيرات والأدلة، وإلى من يذهب النموذج. */
+function SubmitModal({ form, items, pending, error, onConfirm, onClose }: {
+  form: Form; items: FormItem[]; pending: boolean; error: unknown; onConfirm: () => Promise<void>; onClose: () => void;
+}) {
+  const v = (i: FormItem) => i.value;
+  const numbers = items.filter((i) => v(i)?.kind === "Number");
+  const zeros = numbers.filter((i) => (i.usesRatio ? v(i)!.numerator : v(i)!.value) === 0).length;
+  const rows = [
+    { label: L("قيم مدخلة", "Values entered"), n: numbers.length - zeros },
+    { label: L("منها صفر", "Zero values"), n: zeros },
+    { label: L("غير متاح (بسبب مكتوب)", "Not available"), n: items.filter((i) => v(i)?.kind === "NotAvailable").length },
+    { label: L("لا ينطبق (بسبب مكتوب)", "Not applicable"), n: items.filter((i) => v(i)?.kind === "NotApplicable").length },
+    { label: L("تفسيرات للمراجع", "Explanations"), n: items.filter((i) => !!v(i)?.explanation).length },
+    { label: L("أدلة مرفقة", "Evidence files"), n: items.reduce((s, i) => s + i.evidence.filter((e) => !e.voided).length, 0) },
+  ];
+  return (
+    <Modal open title={L("مراجعة قبل الإرسال", "Review before sending")} onCancel={onClose} onOk={() => void onConfirm()} confirmLoading={pending}
+      okText={L("إرسال للمراجعة", "Send for review")} cancelText={L("رجوع للتعديل", "Back to editing")}>
+      {!!error && <Alert type="error" showIcon message={errorText(error)} className="mb" />}
+      <p>{L(`${form.unitName} · ${form.periodLabel}: ${form.completed} من ${form.required} مؤشرًا.`, `${form.completed} of ${form.required} indicators.`)}</p>
+      <ul className="f-submit-sum">{rows.map((r) => <li key={r.label}><span>{r.label}</span><b className="ltr">{r.n}</b></li>)}</ul>
+      <Alert type="info" showIcon message={L(`يقفل النموذج للتعديل وينتقل إلى «${form.path[1]?.name ?? ""}». يعاد إليك إن احتاج تصحيحًا.`, "The form will be locked until returned.")} />
+    </Modal>
   );
 }
 

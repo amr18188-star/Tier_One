@@ -24,9 +24,27 @@ public static class IndicatorRules
         if (v.Aggregation == Aggregation.Undefined) missing.Add("قاعدة التجميع");
         if (v.Aggregation == Aggregation.RatioOfSums && (string.IsNullOrWhiteSpace(v.Numerator) || string.IsNullOrWhiteSpace(v.Denominator)))
             missing.Add("البسط والمقام");
+        if (v.Aggregation == Aggregation.WeightedAverage && string.IsNullOrWhiteSpace(v.Denominator))
+            missing.Add("أساس الترجيح");
+        if (AggregationProblem(v) is { } problem) missing.Add(problem);
         if (string.IsNullOrWhiteSpace(v.DataSource)) missing.Add("مصدر البيانات");
         if (v.OwnerUnitId is null) missing.Add("الجهة المالكة");
         return missing;
+    }
+
+    /// <summary>
+    /// قاعدة تجميع تعطي رقمًا غير دقيق للجامعة: النسب والمعدلات لا تجمع (تحسب من مجموع البسط إلى مجموع المقام)،
+    /// والقياس المركزي يدخل على مستوى الجامعة لا من الكليات.
+    /// </summary>
+    public static string? AggregationProblem(IndicatorVersion v)
+    {
+        var unit = v.Unit.Trim();
+        var rate = unit == "%" || unit.Contains("لكل", StringComparison.Ordinal) || unit.Contains('/', StringComparison.Ordinal);
+        if (v.Aggregation == Aggregation.Sum && rate && v.Level != CollectionLevel.University)
+            return "قاعدة التجميع: النسب والمعدلات لا تجمع؛ اجعلها «نسبة مجموع البسط إلى مجموع المقام» أو «متوسط مرجح»";
+        if (v.Aggregation == Aggregation.Central && v.Level != CollectionLevel.University)
+            return "قاعدة التجميع: «يقاس مركزيًا» لمؤشر على مستوى الجامعة فقط";
+        return null;
     }
 
     /// <summary>

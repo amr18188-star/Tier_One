@@ -11,6 +11,32 @@ export type TargetStatus = "Proposed" | "Approved";
 export type ConflictSeverity = "Low" | "Medium" | "High";
 export type ConflictStatus = "Open" | "Ready" | "Resolved" | "Deferred";
 export type DistributionStatus = "Covers" | "Short" | "Incomplete" | "NotComparable" | "NoUniversityTarget";
+export type InitiativeStatus = "Planned" | "InProgress" | "Completed" | "Stopped";
+
+// ----- شجرة الخطة -----
+export interface YearTarget { id: string; year: number; value: number | null; text: string | null; status: TargetStatus; version: number }
+export interface IndicatorNode {
+  code: string; nameAr: string; definition: string | null; numerator: string | null; denominator: string | null;
+  unit: string; direction: Direction; level: CollectionLevel; aggregation: Aggregation;
+  status: DefinitionStatus; hasApproved: boolean; suspended: boolean; planStartYear: number | null; planEndYear: number | null; planNote: string | null;
+  baseline: number | null; targets: YearTarget[]; eachCollege: string | null; version: number;
+}
+export interface InitiativeNode {
+  id: string; code: string; nameAr: string; description: string | null; expectedOutcome: string | null; ownerUnitId: string | null; ownerUnitName: string | null;
+  startYear: number; endYear: number; status: InitiativeStatus; indicatorCodes: string[]; version: number;
+}
+export interface StandardNode {
+  id: string; code: string; nameAr: string; nameEn: string | null; description: string | null; pillarId: string | null; sortOrder: number; version: number;
+  initiatives: InitiativeNode[]; indicators: IndicatorNode[];
+}
+export interface PillarNode { id: string; code: string; nameAr: string; nameEn: string | null; description: string | null; sortOrder: number; version: number; standards: StandardNode[] }
+export interface StrategyTree {
+  baselineYear: number; years: number[]; pillars: PillarNode[]; unassigned: StandardNode[];
+  actions: {
+    canEdit: boolean; canAdd: boolean; canDelete: boolean; canAddIndicator: boolean; canEditIndicator: boolean; canDeleteIndicator: boolean;
+    canEditTargets: boolean; canDeleteTargets: boolean; canApproveTargets: boolean;
+  };
+}
 
 export interface OrgUnit {
   id: string; code: string; nameAr: string; nameEn: string | null; kind: OrgUnitKind; parentId: string | null; path: string;

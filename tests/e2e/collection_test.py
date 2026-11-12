@@ -66,8 +66,9 @@ def input_for(item: dict, good: bool = True) -> dict:
         body["value"] = 80
     else:
         body["value"] = 12
-        if item["aggregation"] == "WeightedAverage":
-            body["denominator"] = 30
+    if item["aggregation"] == "WeightedAverage":
+        # المتوسط المرجح لا يقبل بلا وزنه.
+        body["denominator"] = 30
     if item["value"] and item["value"]["kind"] == "Number" and item["value"]["value"] is not None:
         # قيمة سابقة في النموذج: لا تغيير كبير يطلب تفسيرًا.
         pass

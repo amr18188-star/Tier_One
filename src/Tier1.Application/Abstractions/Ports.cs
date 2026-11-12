@@ -62,6 +62,8 @@ public interface IAppDb
 
     DbSet<Standard> Standards { get; }
 
+    DbSet<Initiative> Initiatives { get; }
+
     DbSet<Indicator> Indicators { get; }
 
     DbSet<IndicatorVersion> IndicatorVersions { get; }
