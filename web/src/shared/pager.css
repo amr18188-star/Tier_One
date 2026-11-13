@@ -1,0 +1,58 @@
+/* ===== تذييل الجداول الموحد (Pager): عدد العناصر لكل صفحة، و«x–y من N»، و«السابق» والأرقام و«التالي» ===== */
+/* سطر واحد إن اتسع: العدد والمدى في البداية والترقيم في النهاية؛ وإن ضاق نزل الترقيم إلى سطر وحده في الوسط. */
+.pg {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 16px;
+  padding: 10px 0; color: var(--muted); font-size: 13.5px;
+}
+/* داخل بطاقة الجدول الموحد (DataTable). */
+.dt > .pg { padding: 8px 16px; border-top: 1px solid var(--hair); }
+/* تحت صفوف الجدول خط الصف الأخير يكفي فاصلًا؛ الخط يبقى تحت البطاقات. */
+.ant-table-wrapper + .pg { border-top: 0; }
+.pg-meta {
+  flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 16px;
+}
+.pg-size { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.pg-range { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pg-nav { flex: none; min-width: 0; max-width: 100%; }
+.pg-list { list-style: none; margin: 0; padding: 0; display: flex; align-items: center; justify-content: center; gap: 4px; }
+.pg-list > li { display: flex; }
+
+.pg-btn, .pg-step {
+  appearance: none; margin: 0; border: 0; background: transparent; font: inherit; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; border-radius: 10px;
+  color: var(--navy); font-variant-numeric: tabular-nums; white-space: nowrap;
+  transition: background-color 0.15s, color 0.15s;
+}
+.pg-btn { min-width: 36px; padding: 0 8px; font-size: 14px; font-weight: 500; }
+.pg-step { padding: 0 10px; font-weight: 600; }
+.pg-step .anticon { font-size: 12px; }
+.pg-btn:hover, .pg-step:hover:not(:disabled) { background: var(--teal-50); color: var(--teal-ink); }
+/* الصفحة الحالية: تعبئة teal-ink ونص أبيض (6.3:1)، لا teal (4.0:1). */
+.pg-btn[aria-current="page"], .pg-btn[aria-current="page"]:hover {
+  background: var(--teal-ink); color: var(--surface); font-weight: 700; cursor: default;
+}
+.pg-step:disabled { color: var(--muted); opacity: 0.45; cursor: not-allowed; }
+.pg-btn:focus-visible, .pg-step:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; border-radius: 10px; }
+.pg-gap {
+  min-width: 36px; height: 36px; align-items: center; justify-content: center; color: var(--muted); user-select: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pg-btn, .pg-step { transition: none; }
+}
+
+/* الجوال: الترقيم في سطر وحده يملأ العرض، والأزرار 40×40 للمس، و«السابق/التالي» أيقونة فقط.
+   سبعة عناصر على الأكثر (السابق، خمس خانات، التالي) = 304 بكسل مع الفراغات؛ إن ضاق الإطار عن ذلك تنكمش حتى 32 ولا تخرج عنه. */
+@media (max-width: 640px) {
+  .pg { gap: 10px; }
+  .dt > .pg { padding: 10px 0 12px; }
+  .dt > .pg > .pg-meta { padding-inline: 12px; }
+  .pg-meta, .pg-nav { flex-basis: 100%; }
+  .pg-nav { display: flex; justify-content: center; }
+  .pg-list { min-width: 0; max-width: 100%; }
+  .pg-list > li { flex: 0 1 40px; min-width: 32px; }
+  .pg-btn, .pg-step, .pg-gap { width: 100%; min-width: 0; height: 40px; }
+  .pg-btn { padding: 0 2px; font-size: 15px; }
+  .pg-step { padding: 0; }
+  .pg-step .anticon { font-size: 14px; }
+  .pg-step-text { display: none; }
+}

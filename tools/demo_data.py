@@ -42,6 +42,7 @@ COLLEGES = {
 }
 SHARE = {"ENG": 0.35, "CS": 0.2, "COM": 0.45}
 CENTRAL_ENTRY = "entry.central"
+UNIVERSITY_ENTRY = "entry.uni"
 
 CYCLES = [
     {"name": "دورة القياس 2023/2024", "period": "2023/2024", "opens": "2024-10-01", "due": "2024-11-30", "trend": 0.9},
@@ -408,7 +409,10 @@ def reviewers(unit: dict, values: Values) -> dict:
 
 def entry_of(unit: dict, values: Values) -> str:
     c = values.college_of(unit)
-    return COLLEGES[c]["entry"] if c else CENTRAL_ENTRY
+    if c:
+        return COLLEGES[c]["entry"]
+    # مؤشرات مستوى الجامعة تدخل في نموذج الجامعة نفسها (CU) بحساب مدخل بيانات الجامعة.
+    return UNIVERSITY_ENTRY if unit["code"] == "CU" else CENTRAL_ENTRY
 
 
 def advance(form: dict, unit: dict, values: Values, until: str) -> dict:

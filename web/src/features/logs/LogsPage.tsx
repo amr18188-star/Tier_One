@@ -9,6 +9,7 @@ import { errorText, formatDate, formatDateTime } from "../../shared/format";
 import { getLang, L } from "../../shared/i18n";
 import { usePermissions } from "../../shared/session";
 import { DataTable, EmptyNote, PageHeader, Panel } from "../../shared/ui";
+import { mergeSizes, Pager, usePaged } from "../../shared/Pager";
 
 const COLLECTIONS = [
   { key: "audit_events", feature: "log.audit", label: () => L("سجل العمليات", "Operations") },
@@ -166,12 +167,16 @@ function LogDetails({ item }: { item: LogItem }) {
   );
 }
 
+/** أيام السلاسل في الصفحة الواحدة؛ يظهر الترقيم متى زادت عنها. */
+const CHAIN_PAGE = 8;
+
 function IntegrityPanel() {
   const qc = useQueryClient();
   const { message } = App.useApp();
   const status = useQuery({ queryKey: ["logs-status"], queryFn: () => api.get<LogsStatus>("/api/logs/status?days=14"), refetchInterval: 15_000 });
   const [busy, setBusy] = useState(false);
   const days = status.data?.days ?? [];
+  const pagedDays = usePaged(days, CHAIN_PAGE);
   const broken = days.filter((d) => d.intact === false);
   async function verify() {
     setBusy(true);
@@ -201,8 +206,8 @@ function IntegrityPanel() {
       <Table<ChainDay>
         rowKey={(d) => d.chain + d.day}
         size="small"
-        dataSource={days}
-        pagination={{ pageSize: 8, hideOnSinglePage: true }}
+        dataSource={pagedDays.rows}
+        pagination={false}
         scroll={{ x: 640 }}
         columns={[
           { title: L("اليوم", "Day"), dataIndex: "day", render: (v) => formatDate(v) },
@@ -218,6 +223,7 @@ function IntegrityPanel() {
           },
         ]}
       />
+      {days.length > CHAIN_PAGE && <Pager {...pagedDays.pager} sizes={mergeSizes([CHAIN_PAGE])} label={L("ترقيم أيام السلاسل", "Chain days pagination")} />}
     </Panel>
   );
 }

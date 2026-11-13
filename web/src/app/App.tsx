@@ -123,12 +123,25 @@ function Guard({ need, children }: { need: string[]; children: ReactNode }) {
   return allowed ? <>{children}</> : <NoAccess />;
 }
 
+/** صفحة التعريف العامة لزائر لم يسجل دخوله. */
+const LandingPage = load(() => import("../features/landing/LandingPage"));
+
 function Gate() {
   const { me, loading, error, retry } = useSession();
   if (loading) return <div className="center-screen"><Spin size="large" /></div>;
   // خطأ الخادم أو الشبكة ليس خروجًا: شاشة إعادة محاولة بدل نموذج الدخول.
   if (error) return <ErrorScreen error={error} onRetry={retry} />;
-  if (!me || me.mfaPending || me.mustChangePassword) return <Suspense fallback={pageFallback}><LoginPage /></Suspense>;
+  // غير المسجل على «/» تحديدًا يرى صفحة التعريف؛ وأي عنوان آخر، وأي دخول لم يكتمل، يعرض نموذج الدخول كما كان.
+  if (!me || me.mfaPending || me.mustChangePassword) {
+    return (
+      <Suspense fallback={pageFallback}>
+        <Routes>
+          {!me && <Route path="/" element={<LandingPage />} />}
+          <Route path="*" element={<LoginPage />} />
+        </Routes>
+      </Suspense>
+    );
+  }
   return (
     <Suspense fallback={<div className="center-screen"><Spin size="large" /></div>}>
       <Shell>

@@ -1,0 +1,207 @@
+/*
+ * Theme "app-soft": the softer palette of the old signed-in /app (Frontend/React/src/styles/tokens.css):
+ * navy #0d2440, gold #c9a227, 14px radius, Cairo. Same token names and the same scheme as navy-gold.css:
+ * data-theme="app-soft" on a container, data-section="dark" | "light" re-scopes the section tokens.
+ * Values follow tokens.css (light contract for light sections, its .dark block for dark sections).
+ * Only custom properties here. Primitives come from ../primitives.css.
+ */
+
+/* ---------- Theme level ---------- */
+[data-theme="app-soft"] {
+  --ds-font: "Cairo", "Geist Variable", "Segoe UI", sans-serif; /* tokens.css --font-family-sans */
+  --ds-font-heading: "Cairo", "Geist Variable", "Segoe UI", sans-serif;
+  --ds-radius: 0.875rem; /* 14px, tokens.css --radius */
+
+  --ds-chrome: var(--color-soft-navy-950); /* the app sidebar colour */
+
+  --ds-grid-hero: var(--color-soft-navy-800);
+  --ds-grid-dark: var(--color-soft-neutral-500);
+  --ds-texture-hero: linear-gradient(to right, var(--color-soft-navy-800) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-soft-navy-800) 1px, transparent 1px);
+  --ds-texture-dark: linear-gradient(to right, var(--color-soft-neutral-500) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-soft-neutral-500) 1px, transparent 1px);
+  --ds-hero-vignette: radial-gradient(
+    ellipse at center,
+    rgb(var(--color-soft-navy-900-rgb) / 0.96) 0%,
+    rgb(var(--color-soft-navy-900-rgb) / 0.88) 40%,
+    rgb(var(--color-soft-navy-900-rgb) / 0.65) 75%,
+    rgb(var(--color-soft-navy-900-rgb) / 0.4) 100%
+  );
+
+  /* Categorical series = tokens.css --chart-1…4; all ≥ 3:1 on white (navy-gold's 4th, haze-300, is 1.5:1) */
+  --ds-chart-1: var(--color-soft-navy-500);
+  --ds-chart-2: var(--color-soft-gold-600);
+  --ds-chart-3: var(--color-soft-success-700);
+  --ds-chart-4: var(--color-soft-info-700);
+  --ds-chart-actual: var(--color-soft-gold-600);
+  --ds-chart-target: var(--color-soft-neutral-500);
+  --ds-chart-area: var(--color-soft-gold-500);
+  --ds-chart-current: var(--color-soft-gold-500);
+  --ds-chart-bg: var(--color-paper);
+  --ds-chart-grid: var(--color-soft-neutral-150);
+  --ds-chart-axis: var(--color-soft-neutral-600);
+  --ds-chart-up: var(--color-soft-success-400);
+  --ds-chart-down: var(--color-soft-danger-400);
+
+  --ds-shadow-sm: 0 8px 24px color-mix(in srgb, var(--color-soft-navy-800) 8%, transparent);
+  --ds-shadow-md: 0 16px 40px color-mix(in srgb, var(--color-soft-navy-800) 14%, transparent);
+  --ds-focus: color-mix(in oklab, var(--color-soft-gold-500) 50%, transparent);
+  --ds-selection-bg: var(--color-soft-gold-500);
+  --ds-selection-fg: var(--color-soft-navy-950);
+
+  /* shadcn: theme-level variables (tokens.css) */
+  --radius: 0.875rem;
+  --chart-1: var(--color-soft-navy-500);
+  --chart-2: var(--color-soft-gold-600);
+  --chart-3: var(--color-soft-success-700);
+  --chart-4: var(--color-soft-info-700);
+  --chart-5: var(--color-soft-danger-600);
+  --sidebar: var(--color-soft-navy-950);
+  --sidebar-foreground: var(--color-paper);
+  --sidebar-primary: var(--color-soft-gold-500);
+  --sidebar-primary-foreground: var(--color-soft-navy-950);
+  --sidebar-accent: color-mix(in srgb, var(--color-paper) 10%, transparent);
+  --sidebar-accent-foreground: var(--color-paper);
+  --sidebar-border: color-mix(in srgb, var(--color-paper) 14%, transparent);
+  --sidebar-ring: var(--color-soft-gold-300);
+}
+
+/* ---------- Light scope (default) ---------- */
+[data-theme="app-soft"],
+[data-theme="app-soft"] [data-section="light"] {
+  --ds-bg: var(--color-paper);
+  --ds-bg-cool: var(--color-soft-neutral-50);
+  --ds-bg-warm: var(--color-soft-gold-50);
+  --ds-fg: var(--color-soft-neutral-900);
+  --ds-surface: var(--color-paper);
+  --ds-surface-hover: var(--color-soft-neutral-25);
+  --ds-surface-hover-soft: var(--color-soft-neutral-25);
+  --ds-surface-warm: var(--color-paper);
+  --ds-callout: var(--color-soft-neutral-75);
+  --ds-border: var(--color-soft-neutral-100);
+  --ds-line-soft: var(--color-soft-navy-800);
+  --ds-track: var(--color-soft-neutral-75);
+  --ds-accent: var(--color-soft-gold-500);
+  --ds-accent-strong: var(--color-soft-gold-600);
+  --ds-accent-border: color-mix(in oklab, var(--color-soft-gold-500) 40%, transparent);
+  --ds-heading: var(--color-soft-navy-950);
+  --ds-highlight: var(--color-soft-gold-700);
+  --ds-highlight-display: var(--color-soft-gold-700);
+  --ds-body: var(--color-soft-neutral-700);
+  --ds-body-strong: var(--color-soft-neutral-900);
+  --ds-label: var(--color-soft-neutral-700);
+  --ds-faint: var(--color-soft-neutral-600);
+  --ds-index: var(--color-soft-neutral-300);
+  --ds-eyebrow: var(--color-soft-gold-700);
+  --ds-eyebrow-aa: var(--color-soft-gold-700);
+  --ds-icon: var(--color-soft-gold-600);
+  --ds-tile: var(--color-soft-gold-50);
+  --ds-tile-active: var(--color-soft-gold-500);
+  --ds-tile-active-fg: var(--color-soft-navy-950);
+  --ds-tile-solid: var(--color-soft-navy-950);
+  --ds-tile-solid-fg: var(--color-soft-gold-300);
+  --ds-live: var(--color-soft-success-700);
+
+  --ds-btn-primary-bg: var(--color-soft-navy-800);
+  --ds-btn-primary-fg: var(--color-paper);
+  --ds-btn-primary-border: var(--color-soft-navy-800);
+  --ds-btn-primary-hover-bg: var(--color-soft-gold-500);
+  --ds-btn-primary-hover-fg: var(--color-soft-navy-950);
+  --ds-btn-primary-hover-border: var(--color-soft-gold-500);
+  --ds-btn-ghost-bg: transparent;
+  --ds-btn-ghost-fg: var(--color-soft-navy-800);
+  --ds-btn-ghost-border: color-mix(in oklab, var(--color-soft-navy-800) 20%, transparent);
+  --ds-btn-ghost-hover-bg: var(--color-soft-gold-500);
+  --ds-btn-ghost-hover-fg: var(--color-soft-navy-950);
+  --ds-btn-ghost-hover-border: var(--color-soft-gold-500);
+
+  /* shadcn core (tokens.css light contract) */
+  --background: var(--color-soft-neutral-50);
+  --foreground: var(--color-soft-neutral-900);
+  --card: var(--color-paper);
+  --card-foreground: var(--color-soft-neutral-900);
+  --popover: var(--color-paper);
+  --popover-foreground: var(--color-soft-neutral-900);
+  --primary: var(--color-soft-navy-800);
+  --primary-foreground: var(--color-paper);
+  --secondary: var(--color-soft-navy-100);
+  --secondary-foreground: var(--color-soft-navy-800);
+  --ui-muted: var(--color-soft-neutral-75);
+  --muted-foreground: var(--color-soft-neutral-700);
+  --accent: var(--color-soft-gold-50);
+  --accent-foreground: var(--color-soft-gold-700);
+  --destructive: var(--color-soft-danger-700);
+  --border: var(--color-soft-neutral-100);
+  --input: var(--color-soft-neutral-100);
+  --ring: var(--color-soft-gold-500);
+}
+
+/* ---------- Dark scope ---------- */
+[data-theme="app-soft"] [data-section="dark"],
+[data-theme="app-soft"][data-section="dark"] {
+  --ds-bg: var(--color-soft-navy-900);
+  --ds-bg-cool: var(--color-soft-navy-900);
+  --ds-bg-warm: var(--color-soft-navy-900);
+  --ds-fg: var(--color-paper);
+  --ds-surface: var(--color-soft-navy-800);
+  --ds-surface-hover: var(--color-soft-navy-700);
+  --ds-surface-hover-soft: var(--color-soft-navy-700);
+  --ds-surface-warm: var(--color-soft-navy-800);
+  --ds-callout: var(--color-soft-navy-800);
+  --ds-border: color-mix(in srgb, var(--color-paper) 14%, transparent); /* tokens.css .dark --border */
+  --ds-line-soft: var(--color-paper);
+  --ds-track: var(--color-soft-navy-700);
+  --ds-accent: var(--color-soft-gold-500);
+  --ds-accent-strong: var(--color-soft-gold-300);
+  --ds-accent-border: color-mix(in oklab, var(--color-soft-gold-500) 30%, transparent);
+  --ds-heading: var(--color-paper);
+  --ds-highlight: var(--color-soft-gold-300);
+  --ds-highlight-display: var(--color-soft-gold-100);
+  --ds-body: var(--color-soft-neutral-200);
+  --ds-body-strong: var(--color-soft-navy-100);
+  --ds-label: var(--color-soft-navy-100);
+  --ds-faint: var(--color-soft-neutral-400);
+  --ds-index: color-mix(in oklab, var(--color-paper) 20%, transparent);
+  --ds-eyebrow: var(--color-soft-gold-300);
+  --ds-eyebrow-aa: var(--color-soft-gold-300);
+  --ds-icon: var(--color-soft-gold-300);
+  --ds-tile: color-mix(in oklab, var(--color-soft-gold-500) 14%, transparent);
+  --ds-tile-active: var(--color-soft-gold-500);
+  --ds-tile-active-fg: var(--color-soft-navy-950);
+  --ds-tile-solid: var(--color-soft-navy-950);
+  --ds-tile-solid-fg: var(--color-soft-gold-300);
+  --ds-live: var(--color-soft-success-400);
+
+  --ds-btn-primary-bg: var(--color-soft-gold-500);
+  --ds-btn-primary-fg: var(--color-soft-navy-950);
+  --ds-btn-primary-border: var(--color-soft-gold-500);
+  --ds-btn-primary-hover-bg: transparent;
+  --ds-btn-primary-hover-fg: var(--color-soft-gold-300);
+  --ds-btn-primary-hover-border: var(--color-soft-gold-500);
+  --ds-btn-ghost-bg: transparent;
+  --ds-btn-ghost-fg: var(--color-paper);
+  --ds-btn-ghost-border: color-mix(in oklab, var(--color-paper) 20%, transparent);
+  --ds-btn-ghost-hover-bg: var(--color-soft-gold-500);
+  --ds-btn-ghost-hover-fg: var(--color-soft-navy-950);
+  --ds-btn-ghost-hover-border: var(--color-soft-gold-500);
+
+  /* shadcn core (tokens.css .dark, nearest primitives) */
+  --background: var(--color-soft-navy-900);
+  --foreground: var(--color-soft-neutral-25);
+  --card: var(--color-soft-navy-800);
+  --card-foreground: var(--color-soft-neutral-25);
+  --popover: var(--color-soft-navy-800);
+  --popover-foreground: var(--color-soft-neutral-25);
+  --primary: var(--color-soft-gold-300);
+  --primary-foreground: var(--color-soft-navy-950);
+  --secondary: var(--color-soft-navy-700);
+  --secondary-foreground: var(--color-soft-neutral-25);
+  --ui-muted: var(--color-soft-navy-800);
+  --muted-foreground: var(--color-soft-neutral-200);
+  --accent: var(--color-soft-navy-700);
+  --accent-foreground: var(--color-soft-gold-100);
+  --destructive: var(--color-soft-danger-400);
+  --border: color-mix(in srgb, var(--color-paper) 14%, transparent);
+  --input: color-mix(in srgb, var(--color-paper) 18%, transparent);
+  --ring: var(--color-soft-gold-300);
+}

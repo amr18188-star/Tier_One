@@ -37,7 +37,7 @@
 .lcp-drawer .ant-drawer-content { background: transparent; }
 .lcp-brand { display: flex; align-items: center; gap: 12px; color: #fff; padding: 4px 6px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
 .lcp-brand:hover { color: #fff; }
-.lcp-brand img { width: 44px; height: 44px; border-radius: 12px; background: #fff; padding: 5px; flex: none; object-fit: contain; }
+.lcp-brand img { height: 44px; width: auto; flex: none; object-fit: contain; }
 .lcp-brand b { display: block; font-family: var(--font-display); font-size: 15px; line-height: 1.45; }
 .lcp-brand small { color: #b7c5da; font-size: 12px; }
 .lcp-cta {
@@ -76,8 +76,8 @@
 }
 .lcp-top-space { flex: 1; }
 .lcp-burger, .lcp-top-brand { display: none !important; }
-.lcp-top-brand { align-items: center; gap: 8px; color: var(--navy); font-family: var(--font-display); font-size: 14px; }
-.lcp-top-brand img { width: 32px; height: 32px; object-fit: contain; }
+.lcp-top-brand { align-items: center; gap: 8px; color: var(--navy); font-family: var(--font-display); font-size: 14px; white-space: nowrap; flex: none; }
+.lcp-top-brand img { height: 40px; width: auto; flex: none; object-fit: contain; }
 .lcp-lang { font-weight: 600; color: var(--navy); }
 .lcp-user {
   display: flex; align-items: center; gap: 10px; padding: 4px; padding-inline-end: 14px; border: 0; border-radius: 999px;

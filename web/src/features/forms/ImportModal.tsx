@@ -6,6 +6,10 @@ import { uploadFile } from "../../api/client";
 import type { ImportPreview, ImportRow } from "../../api/collection";
 import { errorText } from "../../shared/format";
 import { L } from "../../shared/i18n";
+import { mergeSizes, Pager, usePaged } from "../../shared/Pager";
+
+/** صفوف المعاينة في الصفحة الواحدة؛ يظهر الترقيم متى زادت عنها. */
+const IMPORT_PAGE = 10;
 
 const STATUS: Record<ImportRow["status"], { text: string; color: string }> = {
   new: { text: "قيمة جديدة", color: "processing" },
@@ -33,6 +37,7 @@ export function ImportModal({ formId, onClose, onApplied }: { formId: string; on
   });
   const p = preview.data;
   const shown = p?.items.filter((i) => i.status !== "skip" && i.status !== "same") ?? [];
+  const paged = usePaged(shown, IMPORT_PAGE);
 
   return (
     <Modal open width={860} title={L("إدخال القيم من Excel", "Import values from Excel")} onCancel={onClose}
@@ -68,7 +73,7 @@ export function ImportModal({ formId, onClose, onApplied }: { formId: string; on
               : p.changes > 0 ? L(`${p.changes} تغيير جاهز للتطبيق${p.warnings ? `، و${p.warnings} تحذير يحتاج تفسيرًا قبل الإرسال` : ""}.`, `${p.changes} changes ready.`)
                 : L("لا تغييرات عن القيم المحفوظة.", "No changes.")} />
           {shown.length > 0 && (
-            <Table className="mt" size="small" rowKey="row" dataSource={shown} pagination={shown.length > 10 ? { pageSize: 10 } : false}
+            <Table className="mt" size="small" rowKey="row" dataSource={paged.rows} pagination={false}
               columns={[
                 { title: L("السطر", "Row"), dataIndex: "row", width: 60 },
                 { title: L("المؤشر", "Indicator"), key: "i", render: (_, r) => <span><code className="ltr">{r.code}</code> {r.name}</span> },
@@ -81,6 +86,7 @@ export function ImportModal({ formId, onClose, onApplied }: { formId: string; on
                 ) },
               ]} />
           )}
+          {shown.length > IMPORT_PAGE && <Pager {...paged.pager} sizes={mergeSizes([IMPORT_PAGE])} />}
         </>
       )}
     </Modal>

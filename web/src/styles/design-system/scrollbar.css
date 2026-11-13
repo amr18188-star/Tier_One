@@ -1,0 +1,241 @@
+/*
+ * ===== Scrollbar tokens (doc section, to merge into README.md) =====
+ *
+ * One glass scrollbar for the whole site: transparent track, a floating pill thumb (a transparent ring
+ * plus background-clip: padding-box), a translucent fill with a soft white sheen and a 1px hairline.
+ * The thumb grows from 6px to 8px under the pointer and changes colour on hover and press.
+ * Imported once in src/main.tsx, after app.css. Plain CSS, no Tailwind, works without primitives.css
+ * (every primitive has a hex fallback).
+ *
+ * Tokens (inherited custom properties, so a subtree re-colours its own inner scrollers):
+ *   --scrollbar-size           12px   hit area: width of a vertical bar, height of a horizontal one
+ *   --scrollbar-gap            3px    transparent ring around the thumb (visible thumb = size - 2 x gap)
+ *   --scrollbar-gap-hover      2px    ring under the pointer (thumb grows to 8px)
+ *   --scrollbar-radius         999px  pill
+ *   --scrollbar-min-thumb      40px   shortest thumb
+ *   --scrollbar-track                 track fill (transparent everywhere)
+ *   --scrollbar-thumb                 thumb at rest
+ *   --scrollbar-thumb-hover           thumb under the pointer
+ *   --scrollbar-thumb-active          thumb while dragged
+ *   --scrollbar-highlight             white sheen on the thumb (the "glass")
+ *   --scrollbar-hairline              1px inner ring that keeps the thumb's edge crisp
+ *   --scrollbar-overlay-thumb, -hover, -active   scrollers that sit on a modal mask (.ant-modal-wrap)
+ *
+ * Palettes (rest / hover / active):
+ *   :root (main app)          navy 52% / teal 90% / teal-ink           (app.css --navy, --teal, --teal-ink)
+ *   dark app chrome           white 36% / #7fd1d5 90% / teal-100        (.lcp-side, .lcp-drawer, .json)
+ *   modal mask                white 90% / white / teal-50
+ *   navy-gold, light scope    gold-600 94% / gold-700 90% / gold-700
+ *   navy-gold, dark sections  gold-400 55% / gold-400 90% / gold-200
+ *   app-soft, light scope     soft-navy-950 50% / soft-gold-600 / soft-gold-700
+ *   app-soft, dark sections   soft-gold-300 55% / soft-gold-500 / soft-gold-300
+ *   Every rest colour is about 3:1 or more on its usual background (white, #f4f6f9, #071a33).
+ *
+ * Scopes:
+ *   - [data-theme="…"] re-colours the subtree; [data-section="dark"] inside it switches to the dark palette.
+ *   - The page scrollbar follows the theme of a page root marked [data-ds-page][data-theme="…"]
+ *     (rule on html:has(…); without :has() support the page keeps the main-app palette).
+ *   - A new theme: add a light rule and a dark rule below with the seven colour tokens.
+ *   - Override per component: set any token on the scroller, e.g. `.my-list { --scrollbar-size: 8px; }`.
+ *
+ * Engines:
+ *   - Chromium and Safari: ::-webkit-scrollbar. Chrome 121+ ignores those pseudo-elements on any element
+ *     whose scrollbar-color or scrollbar-width is not auto, so the antd scrollers that set them
+ *     (.ant-table: scrollbar-color; date-picker time column: both; .ant-segmented: thin in shared/ui.css)
+ *     are reset to auto here, in the Chromium branch only.
+ *   - Firefox: scrollbar-width: thin + scrollbar-color (no hover state, no shape), only inside
+ *     @supports not selector(::-webkit-scrollbar).
+ *   - forced-colors: active: no custom styling at all, the browser draws its system-coloured scrollbars.
+ *   - Hidden scrollers stay hidden: .lcp-seg, .f-pipe, .sp-tabs, .sp-rail (and antd Anchor, Tailwind no-scrollbar).
+ */
+
+/* ---------- Tokens: main app (light surfaces #f4f6f9 / white) ---------- */
+:root {
+  --scrollbar-size: 12px;
+  --scrollbar-gap: 3px;
+  --scrollbar-gap-hover: 2px;
+  --scrollbar-radius: 999px;
+  --scrollbar-min-thumb: 40px;
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: color-mix(in srgb, var(--navy, #16294a) 52%, transparent);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--teal, #0a8c93) 90%, transparent);
+  --scrollbar-thumb-active: var(--teal-ink, #076b71);
+  --scrollbar-highlight: rgb(255 255 255 / 0.34);
+  --scrollbar-hairline: color-mix(in srgb, var(--navy, #16294a) 16%, transparent);
+  --scrollbar-overlay-thumb: rgb(255 255 255 / 0.9);
+  --scrollbar-overlay-thumb-hover: #ffffff;
+  --scrollbar-overlay-thumb-active: var(--teal-50, #e8f6f6);
+}
+
+/* Dark chrome of the main app: sidebar, mobile menu drawer, JSON blocks */
+.lcp-side,
+.lcp-drawer .ant-drawer-body,
+.json {
+  --scrollbar-thumb: rgb(255 255 255 / 0.36);
+  --scrollbar-thumb-hover: color-mix(in srgb, #7fd1d5 90%, transparent);
+  --scrollbar-thumb-active: var(--teal-100, #c7e8e9);
+  --scrollbar-highlight: rgb(255 255 255 / 0.22);
+  --scrollbar-hairline: rgb(255 255 255 / 0.14);
+}
+
+/* ---------- Theme navy-gold (landing) ---------- */
+:is(html:has([data-ds-page][data-theme="navy-gold"])),
+[data-theme="navy-gold"],
+[data-theme="navy-gold"] [data-section="light"] {
+  --scrollbar-thumb: color-mix(in srgb, var(--color-gold-600, #a7833d) 94%, transparent);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--color-gold-700, #82652b) 90%, transparent);
+  --scrollbar-thumb-active: var(--color-gold-700, #82652b);
+  --scrollbar-highlight: rgb(255 255 255 / 0.34);
+  --scrollbar-hairline: color-mix(in srgb, var(--color-navy-900, #071a33) 14%, transparent);
+}
+[data-theme="navy-gold"] [data-section="dark"],
+[data-theme="navy-gold"][data-section="dark"] {
+  --scrollbar-thumb: color-mix(in srgb, var(--color-gold-400, #d6b46a) 55%, transparent);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--color-gold-400, #d6b46a) 90%, transparent);
+  --scrollbar-thumb-active: var(--color-gold-200, #e5c47e);
+  --scrollbar-highlight: rgb(255 255 255 / 0.22);
+  --scrollbar-hairline: rgb(255 255 255 / 0.12);
+}
+
+/* ---------- Theme app-soft ---------- */
+:is(html:has([data-ds-page][data-theme="app-soft"])),
+[data-theme="app-soft"],
+[data-theme="app-soft"] [data-section="light"] {
+  --scrollbar-thumb: color-mix(in srgb, var(--color-soft-navy-950, #0d2440) 50%, transparent);
+  --scrollbar-thumb-hover: var(--color-soft-gold-600, #ad8700);
+  --scrollbar-thumb-active: var(--color-soft-gold-700, #8a6d00);
+  --scrollbar-highlight: rgb(255 255 255 / 0.34);
+  --scrollbar-hairline: color-mix(in srgb, var(--color-soft-navy-950, #0d2440) 16%, transparent);
+}
+[data-theme="app-soft"] [data-section="dark"],
+[data-theme="app-soft"][data-section="dark"] {
+  --scrollbar-thumb: color-mix(in srgb, var(--color-soft-gold-300, #e6c25a) 55%, transparent);
+  --scrollbar-thumb-hover: var(--color-soft-gold-500, #c9a227);
+  --scrollbar-thumb-active: var(--color-soft-gold-300, #e6c25a);
+  --scrollbar-highlight: rgb(255 255 255 / 0.22);
+  --scrollbar-hairline: rgb(255 255 255 / 0.12);
+}
+
+/* ---------- Drawing ---------- */
+@media (forced-colors: none) {
+  /* Chromium, Safari */
+  @supports selector(::-webkit-scrollbar) {
+    ::-webkit-scrollbar {
+      width: var(--scrollbar-size);
+      height: var(--scrollbar-size);
+      background: transparent;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--scrollbar-track);
+      border-radius: var(--scrollbar-radius);
+    }
+    ::-webkit-scrollbar-corner {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-button {
+      display: none;
+      width: 0;
+      height: 0;
+    }
+    ::-webkit-scrollbar-thumb {
+      min-height: var(--scrollbar-min-thumb);
+      border: var(--scrollbar-gap) solid transparent;
+      border-radius: var(--scrollbar-radius);
+      background-color: var(--scrollbar-thumb);
+      background-image: linear-gradient(to right, var(--scrollbar-highlight), transparent 70%);
+      background-clip: padding-box;
+      box-shadow: inset 0 0 0 1px var(--scrollbar-hairline);
+    }
+    ::-webkit-scrollbar-thumb:horizontal {
+      min-width: var(--scrollbar-min-thumb);
+      min-height: 0;
+      background-image: linear-gradient(to bottom, var(--scrollbar-highlight), transparent 70%);
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      border-width: var(--scrollbar-gap-hover);
+      background-color: var(--scrollbar-thumb-hover);
+    }
+    ::-webkit-scrollbar-thumb:active {
+      border-width: var(--scrollbar-gap-hover);
+      background-color: var(--scrollbar-thumb-active);
+    }
+
+    /* The modal wrapper scrolls over the dimmed mask: light glass on that one bar only (not its content). */
+    .ant-modal-wrap::-webkit-scrollbar-thumb {
+      --scrollbar-thumb: var(--scrollbar-overlay-thumb);
+      --scrollbar-thumb-hover: var(--scrollbar-overlay-thumb-hover);
+      --scrollbar-thumb-active: var(--scrollbar-overlay-thumb-active);
+    }
+
+    /* antd sets scrollbar-color / -width on these; Chrome 121+ would then skip ::-webkit-scrollbar. */
+    :root .ant-table-wrapper .ant-table {
+      scrollbar-color: auto;
+    }
+    :root .ant-segmented,
+    :root .ant-picker-dropdown .ant-picker-time-panel-column {
+      scrollbar-width: auto;
+      scrollbar-color: auto;
+      --scrollbar-size: 8px;
+      --scrollbar-gap: 2px;
+      --scrollbar-gap-hover: 1px;
+    }
+    /* antd styles this column's thumb itself (higher specificity than the generic rules above). */
+    :root .ant-picker-dropdown .ant-picker-time-panel-column::-webkit-scrollbar-thumb {
+      border-radius: var(--scrollbar-radius);
+      background-color: var(--scrollbar-thumb);
+    }
+    :root .ant-picker-dropdown .ant-picker-time-panel-column::-webkit-scrollbar-thumb:hover {
+      background-color: var(--scrollbar-thumb-hover);
+    }
+    :root .ant-picker-dropdown .ant-picker-time-panel-column::-webkit-scrollbar-thumb:active {
+      background-color: var(--scrollbar-thumb-active);
+    }
+  }
+
+  /* Firefox */
+  @supports not selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+    }
+    :root .ant-table-wrapper .ant-table,
+    :root .ant-picker-dropdown .ant-picker-time-panel-column {
+      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+    }
+    .ant-modal-wrap {
+      scrollbar-color: var(--scrollbar-overlay-thumb) var(--scrollbar-track);
+    }
+  }
+
+  /* antd Select / Cascader / TreeSelect virtual lists draw their own 8px thumb (inline style reads this variable). */
+  .rc-virtual-list-scrollbar-thumb {
+    --rc-virtual-list-scrollbar-bg: var(--scrollbar-thumb);
+    box-shadow: inset 0 0 0 1px var(--scrollbar-hairline);
+  }
+  .rc-virtual-list-scrollbar-thumb:hover {
+    --rc-virtual-list-scrollbar-bg: var(--scrollbar-thumb-hover);
+  }
+  .rc-virtual-list-scrollbar-thumb-moving {
+    --rc-virtual-list-scrollbar-bg: var(--scrollbar-thumb-active);
+  }
+}
+
+@media (forced-colors: none) and (prefers-reduced-motion: no-preference) {
+  @supports selector(::-webkit-scrollbar) {
+    ::-webkit-scrollbar-thumb {
+      transition: background-color 0.18s ease, border-width 0.18s ease;
+    }
+  }
+  .rc-virtual-list-scrollbar-thumb {
+    transition: background-color 0.18s ease;
+  }
+}
+
+/* ---------- Scrollers that are hidden on purpose stay hidden (every engine, every mode) ---------- */
+/* shared/ui.css gives .ant-segmented `scrollbar-width: thin` after .lcp-seg's `none`; restore the intent. */
+:root .lcp-seg {
+  scrollbar-width: none;
+}
+:is(.lcp-seg, .f-pipe, .sp-tabs, .sp-rail)::-webkit-scrollbar {
+  display: none;
+}

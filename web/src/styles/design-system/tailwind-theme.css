@@ -1,0 +1,141 @@
+/*
+ * Tailwind v4 mapping for the design-system tokens.
+ * Import it from a Tailwind entry, after Tailwind's theme layer, for example:
+ *
+ *   @layer theme, base, components, utilities;
+ *   @import "tailwindcss/theme.css" layer(theme);
+ *   @import "tailwindcss/utilities.css" layer(utilities) source(none);
+ *   @import "<path>/styles/design-system/index.css";           (the tokens, plain CSS)
+ *   @import "<path>/styles/design-system/tailwind-theme.css";  (this file)
+ *   @source "<folder that uses the classes>";
+ *
+ * "inline": utilities read the token directly (bg-ds-surface → background-color: var(--ds-surface)),
+ *   so the value resolves on the element itself and follows [data-theme] and [data-section].
+ *   Opacity modifiers work: bg-ds-accent/10 → color-mix(in oklab, var(--ds-accent) 10%, transparent).
+ * "reference": Tailwind emits no theme variables for these keys on :root. The values live in
+ *   primitives.css and themes/*.css only, so nothing here can override app.css or shadcn.css.
+ */
+@theme inline reference {
+  /* Tailwind 4.3 ships a "mist" scale too; clear it so mist-100 / mist-300 are the doc's only steps. */
+  --color-mist-*: initial;
+
+  /* ---------- Primitives: bg-navy-900, text-gold-500, border-ash-200 … (fixed colours, no re-theming) */
+  --color-navy-950: var(--color-navy-950);
+  --color-navy-900: var(--color-navy-900);
+  --color-navy-800: var(--color-navy-800);
+  --color-navy-700: var(--color-navy-700);
+  --color-navy-600: var(--color-navy-600);
+  --color-navy-500: var(--color-navy-500);
+  --color-steel-400: var(--color-steel-400);
+  --color-mist-100: var(--color-mist-100);
+  --color-mist-300: var(--color-mist-300);
+  --color-gold-200: var(--color-gold-200);
+  --color-gold-400: var(--color-gold-400);
+  --color-gold-500: var(--color-gold-500);
+  --color-gold-600: var(--color-gold-600);
+  --color-gold-700: var(--color-gold-700);
+  --color-paper: var(--color-paper);
+  --color-cloud: var(--color-cloud);
+  --color-sand-200: var(--color-sand-200);
+  --color-sand-100: var(--color-sand-100);
+  --color-sand-50: var(--color-sand-50);
+  --color-ivory: var(--color-ivory);
+  --color-ivory-50: var(--color-ivory-50);
+  --color-ash-100: var(--color-ash-100);
+  --color-ash-200: var(--color-ash-200);
+  --color-ash-300: var(--color-ash-300);
+  --color-ash-400: var(--color-ash-400);
+  --color-ash-500: var(--color-ash-500);
+  --color-ash-600: var(--color-ash-600);
+  --color-haze-200: var(--color-haze-200);
+  --color-haze-300: var(--color-haze-300);
+  --color-haze-400: var(--color-haze-400);
+  --color-signal-green: var(--color-signal-green);
+  --color-signal-red: var(--color-signal-red);
+  --color-soft-navy-950: var(--color-soft-navy-950);
+  --color-soft-navy-900: var(--color-soft-navy-900);
+  --color-soft-navy-800: var(--color-soft-navy-800);
+  --color-soft-navy-700: var(--color-soft-navy-700);
+  --color-soft-navy-500: var(--color-soft-navy-500);
+  --color-soft-navy-100: var(--color-soft-navy-100);
+  --color-soft-gold-700: var(--color-soft-gold-700);
+  --color-soft-gold-600: var(--color-soft-gold-600);
+  --color-soft-gold-500: var(--color-soft-gold-500);
+  --color-soft-gold-300: var(--color-soft-gold-300);
+  --color-soft-gold-100: var(--color-soft-gold-100);
+  --color-soft-gold-50: var(--color-soft-gold-50);
+
+  /* ---------- Semantic: bg-ds-*, text-ds-*, border-ds-* … (follow data-theme and data-section) */
+  --color-ds-bg: var(--ds-bg);
+  --color-ds-bg-cool: var(--ds-bg-cool);
+  --color-ds-bg-warm: var(--ds-bg-warm);
+  --color-ds-fg: var(--ds-fg);
+  --color-ds-chrome: var(--ds-chrome);
+  --color-ds-surface: var(--ds-surface);
+  --color-ds-surface-hover: var(--ds-surface-hover);
+  --color-ds-surface-hover-soft: var(--ds-surface-hover-soft);
+  --color-ds-surface-warm: var(--ds-surface-warm);
+  --color-ds-callout: var(--ds-callout);
+  --color-ds-border: var(--ds-border);
+  --color-ds-line-soft: var(--ds-line-soft);
+  --color-ds-track: var(--ds-track);
+  --color-ds-accent: var(--ds-accent);
+  --color-ds-accent-strong: var(--ds-accent-strong);
+  --color-ds-accent-border: var(--ds-accent-border);
+  --color-ds-heading: var(--ds-heading);
+  --color-ds-highlight: var(--ds-highlight);
+  --color-ds-highlight-display: var(--ds-highlight-display);
+  --color-ds-body: var(--ds-body);
+  --color-ds-body-strong: var(--ds-body-strong);
+  --color-ds-label: var(--ds-label);
+  --color-ds-faint: var(--ds-faint);
+  --color-ds-index: var(--ds-index);
+  --color-ds-eyebrow: var(--ds-eyebrow);
+  --color-ds-eyebrow-aa: var(--ds-eyebrow-aa);
+  --color-ds-icon: var(--ds-icon);
+  --color-ds-tile: var(--ds-tile);
+  --color-ds-tile-active: var(--ds-tile-active);
+  --color-ds-tile-active-fg: var(--ds-tile-active-fg);
+  --color-ds-tile-solid: var(--ds-tile-solid);
+  --color-ds-tile-solid-fg: var(--ds-tile-solid-fg);
+  --color-ds-live: var(--ds-live);
+  --color-ds-focus: var(--ds-focus);
+  --color-ds-selection-bg: var(--ds-selection-bg);
+  --color-ds-selection-fg: var(--ds-selection-fg);
+  --color-ds-grid-hero: var(--ds-grid-hero);
+  --color-ds-grid-dark: var(--ds-grid-dark);
+
+  --color-ds-btn-primary-bg: var(--ds-btn-primary-bg);
+  --color-ds-btn-primary-fg: var(--ds-btn-primary-fg);
+  --color-ds-btn-primary-border: var(--ds-btn-primary-border);
+  --color-ds-btn-primary-hover-bg: var(--ds-btn-primary-hover-bg);
+  --color-ds-btn-primary-hover-fg: var(--ds-btn-primary-hover-fg);
+  --color-ds-btn-primary-hover-border: var(--ds-btn-primary-hover-border);
+  --color-ds-btn-ghost-bg: var(--ds-btn-ghost-bg);
+  --color-ds-btn-ghost-fg: var(--ds-btn-ghost-fg);
+  --color-ds-btn-ghost-border: var(--ds-btn-ghost-border);
+  --color-ds-btn-ghost-hover-bg: var(--ds-btn-ghost-hover-bg);
+  --color-ds-btn-ghost-hover-fg: var(--ds-btn-ghost-hover-fg);
+  --color-ds-btn-ghost-hover-border: var(--ds-btn-ghost-hover-border);
+
+  --color-ds-chart-1: var(--ds-chart-1);
+  --color-ds-chart-2: var(--ds-chart-2);
+  --color-ds-chart-3: var(--ds-chart-3);
+  --color-ds-chart-4: var(--ds-chart-4);
+  --color-ds-chart-actual: var(--ds-chart-actual);
+  --color-ds-chart-target: var(--ds-chart-target);
+  --color-ds-chart-area: var(--ds-chart-area);
+  --color-ds-chart-current: var(--ds-chart-current);
+  --color-ds-chart-bg: var(--ds-chart-bg);
+  --color-ds-chart-grid: var(--ds-chart-grid);
+  --color-ds-chart-axis: var(--ds-chart-axis);
+  --color-ds-chart-up: var(--ds-chart-up);
+  --color-ds-chart-down: var(--ds-chart-down);
+
+  /* ---------- Shape, type, elevation: rounded-ds, font-ds, font-ds-heading, shadow-ds-sm, shadow-ds-md */
+  --radius-ds: var(--ds-radius);
+  --font-ds: var(--ds-font);
+  --font-ds-heading: var(--ds-font-heading);
+  --shadow-ds-sm: var(--ds-shadow-sm);
+  --shadow-ds-md: var(--ds-shadow-md);
+}

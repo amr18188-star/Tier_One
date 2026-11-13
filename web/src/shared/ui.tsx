@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Button, Empty, Grid, Select, Skeleton, Table } from "antd";
+import { Button, Empty, Grid, Skeleton, Table } from "antd";
 import type { ColumnsType, TableProps } from "antd/es/table";
 import {
   ApartmentOutlined, ArrowLeftOutlined, ArrowRightOutlined, AuditOutlined, BarChartOutlined, BranchesOutlined, CalendarOutlined, CheckOutlined, ClusterOutlined, FileDoneOutlined, FormOutlined,
-  LeftOutlined, RightOutlined, RiseOutlined, SafetyCertificateOutlined, SettingOutlined, TeamOutlined, UnorderedListOutlined, WarningOutlined,
+  RiseOutlined, SafetyCertificateOutlined, SettingOutlined, TeamOutlined, UnorderedListOutlined, WarningOutlined,
 } from "@ant-design/icons";
 import { Link, useLocation } from "react-router-dom";
 import { L, useLang } from "./i18n";
 import { QueryState, type QueryLike } from "./QueryState";
+import { mergeSizes, Pager } from "./Pager";
 import "./ui.css";
 
 /** القسم الذي تتبعه الصفحة (كما في القائمة الجانبية) وأيقونته، من مسارها. */
@@ -144,7 +145,8 @@ export function Stepper({ steps, current }: { steps: Step[]; current: number }) 
 export interface ServerPaging { page: number; size: number; total: number; onPage: (page: number) => void }
 
 /**
- * الجدول الموحد: رأس تركوازي وعمود ترقيم، وتذييل «عدد العناصر لكل صفحة» و«1-10 من N».
+ * الجدول الموحد: رأس تركوازي وعمود ترقيم، وتذييل Pager: «عدد العناصر لكل صفحة» و«1–10 من N» وأرقام الصفحات بين «السابق» و«التالي».
+ * خيارات عدد الصفوف هي المشتركة مع pageSizes، والبداية أول pageSizes.
  * على الشاشات الضيقة يعرض البطاقات بدل الصفوف إن أعطيت renderCard.
  */
 export function DataTable<T extends object>({
@@ -167,7 +169,6 @@ export function DataTable<T extends object>({
   paging?: ServerPaging;
   rowClassName?: (row: T) => string;
 }) {
-  const lang = useLang();
   const screens = Grid.useBreakpoint();
   const [page, setPage] = useState(1);
   const [chosenSize, setSize] = useState(pageSizes[0]);
@@ -178,10 +179,6 @@ export function DataTable<T extends object>({
   const current = paging ? paging.page : Math.min(page, pages);
   const rows = useMemo(() => (paging ? data : data.slice((current - 1) * size, current * size)), [data, current, size, paging]);
   const go = (p: number) => (paging ? paging.onPage(p) : setPage(p));
-  const from = total === 0 ? 0 : (current - 1) * size + 1;
-  const to = Math.min((current - 1) * size + rows.length, total);
-  const Prev = lang === "ar" ? RightOutlined : LeftOutlined;
-  const Next = lang === "ar" ? LeftOutlined : RightOutlined;
   const cards = !!renderCard && screens.md === false;
 
   const indexed: ColumnsType<T> = [
@@ -215,20 +212,8 @@ export function DataTable<T extends object>({
           onRow={onRowClick ? (r) => ({ onClick: () => onRowClick(r), className: "dt-click" }) : undefined} />
       )}
       {total > 0 && (
-        <div className="dt-foot">
-          {!paging && (
-            <span className="dt-size">
-              {L("عدد العناصر لكل صفحة", "Rows per page")}
-              <Select size="small" variant="borderless" value={size} onChange={(v) => { setSize(v); setPage(1); }}
-                options={pageSizes.map((n) => ({ value: n, label: n }))} aria-label={L("عدد العناصر لكل صفحة", "Rows per page")} />
-            </span>
-          )}
-          <bdi className="dt-range">{from}-{to} {L("من", "of")} {total}</bdi>
-          <span className="dt-nav">
-            <Button type="text" shape="circle" icon={<Prev />} disabled={current <= 1} onClick={() => go(current - 1)} aria-label={L("السابق", "Previous")} />
-            <Button type="text" shape="circle" icon={<Next />} disabled={current >= pages} onClick={() => go(current + 1)} aria-label={L("التالي", "Next")} />
-          </span>
-        </div>
+        <Pager page={current} size={size} total={total} count={rows.length} onPage={go}
+          sizes={paging ? undefined : mergeSizes(pageSizes)} onSize={(v) => { setSize(v); setPage(1); }} />
       )}
     </div>
   );
