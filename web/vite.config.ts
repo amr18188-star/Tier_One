@@ -1,5 +1,7 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
+import { fileURLToPath, URL } from "node:url";
 
 /**
  * مكتبات الطرف الثالث في حزم ثابتة منفصلة عن شيفرة التطبيق، فتبقى في ذاكرة المتصفح بين الإصدارات.
@@ -19,7 +21,8 @@ function vendorChunk(id: string): string | undefined {
 // الواجهة تبنى إلى wwwroot في الخادم؛ في التطوير يمرر Vite طلبات /api إلى الخادم المحلي.
 // داخل Docker (docker-compose.dev.yml) يحدد VITE_API_TARGET عنوان خدمة الخادم، وVITE_USE_POLLING فحص الملفات الدوري للمجلد المركب.
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
+  resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   server: {
     port: 5188,
     strictPort: true,
