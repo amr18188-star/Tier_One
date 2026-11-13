@@ -11,7 +11,7 @@ using Tier1.Domain.Organization;
 namespace Tier1.Infrastructure.Persistence;
 
 /// <summary>
-/// الإطار الشامل لتقييم أداء الجامعات (Seed/kpi-framework.json، يولده tools/import_kpi_workbook.py من KPI.xlsx):
+/// الإطار الشامل لتقييم أداء الجامعات (Seed/kpi-framework.json، يولده SeedImporters (--import-kpi) من KPI.xlsx):
 /// الركائز الست والمعايير الاثنا عشر والمؤشرات الـ92 بتعريفاتها ومستهدفات سنواتها الخمس، و«القدرات/الأنشطة» مبادرات.
 /// هي بيانات الجامعة النهائية، فتحمل التعريفات والمستهدفات «معتمدة».
 /// </summary>

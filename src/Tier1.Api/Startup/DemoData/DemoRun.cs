@@ -38,6 +38,17 @@ internal sealed class DemoRun(Uri baseAddress, string password, ILogger log) : I
         ["QAC"] = "Done", ["STU"] = "Quality", ["DIG"] = "partial", ["INTL"] = "Done", ["CU"] = "partial",
     };
 
+    // On the official university structure the demo colleges and central units are the real units with these codes.
+    private static readonly Dictionary<string, string> OfficialToDemo = new()
+    {
+        ["F06"] = "ENG", ["F06-D01"] = "ENG-CIV", ["F06-D02"] = "ENG-ELE", ["F06-D03"] = "ENG-MEC",
+        ["F08"] = "CS", ["F08-D01"] = "CS-SE", ["F08-D04"] = "CS-AI",
+        ["F17"] = "COM", ["F17-D01"] = "COM-ACC", ["F17-D02"] = "COM-BUS",
+        ["SPU"] = "QAC", ["A06"] = "STU", ["ICT"] = "DIG", ["A11"] = "INTL",
+    };
+
+    private static readonly HashSet<string> CentralUnits = ["CU", "QAC", "STU", "DIG", "INTL"];
+
     private static readonly string[] First = ["أحمد", "محمد", "محمود", "مصطفى", "خالد", "هشام", "طارق", "سامح", "وليد", "عمرو", "منى", "هبة", "نهى", "ريهام", "داليا", "سارة", "إيمان", "ياسمين"];
     private static readonly string[] Family = ["عبد الحميد", "السيد", "منصور", "الشافعي", "عبد الله", "حسنين", "رضوان", "سليمان", "فهمي", "الجمال", "عثمان", "البنا", "زكي", "شاكر"];
 
@@ -73,10 +84,14 @@ internal sealed class DemoRun(Uri baseAddress, string password, ILogger log) : I
         var started = DateTime.UtcNow;
         log.LogInformation("Loading the demo data through {Address}.", baseAddress);
 
-        units = (await planner.GetAsync("/api/org/units", ct)).Items().ToDictionary(u => u["code"].Str()!);
+        var list = (await planner.GetAsync("/api/org/units", ct)).Items().ToList();
+        // Work with the demo codes whichever structure is loaded: the official codes of the demo colleges are renamed in memory only.
+        if (list.Any(u => u["code"].Str() == "F06"))
+            foreach (var u in list.Where(u => OfficialToDemo.ContainsKey(u["code"].Str()!))) u["code"] = OfficialToDemo[u["code"].Str()!];
+        units = list.ToDictionary(u => u["code"].Str()!);
         unitsById = units.Values.ToDictionary(u => u["id"].Str()!);
         var missing = new[] { "CU", "QAC", "STU", "DIG", "INTL", "ENG", "CS", "COM" }.Where(c => !units.ContainsKey(c)).ToList();
-        if (missing.Count > 0) throw new InvalidOperationException($"Missing demo units {string.Join(',', missing)}; Seed:Demo must create the demo colleges.");
+        if (missing.Count > 0) throw new InvalidOperationException($"Missing demo units {string.Join(',', missing)}; Seed:Demo must create the demo colleges or Seed:Structure the official ones.");
 
         await StructuresAsync();
         foreach (var spec in Cycles) await RunCycleAsync(spec);
@@ -260,6 +275,8 @@ internal sealed class DemoRun(Uri baseAddress, string password, ILogger log) : I
         foreach (var row in rows)
         {
             if (!unitsById.TryGetValue(row["unitId"].Str()!, out var unit)) continue;
+            // Only the demo colleges and central units have demo accounts; every other unit's form stays not started.
+            if (CollegeOf(unit) is null && !CentralUnits.Contains(unit["code"].Str()!)) continue;
             var stage = stages is not null && stages.TryGetValue(unit["code"].Str()!, out var s) ? s : "Done";
             var college = CollegeOf(unit);
             var entry = await UserAsync(EntryOf(unit, college));

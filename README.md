@@ -10,14 +10,12 @@
 | `src/Tier1.Api` | المسارات (`Endpoints/Tier1Endpoints.cs` و`Endpoints/CollectionEndpoints.cs`) والصلاحيات والإعدادات |
 | `web` | الواجهة (React + antd)، وتبنى إلى `src/Tier1.Api/wwwroot` |
 | `tests/Tier1.Tests` | اختبارات الوحدة (القواعد والصلاحيات والبذرة) |
-| `tests/e2e/scenario_test.py` | اختبار شامل على خادم يعمل: القاموس والمستهدفات والتعارضات والهيكل |
-| `tests/e2e/collection_test.py` | اختبار شامل لجمع البيانات: الدورة والنماذج والأدلة ومسار الاعتماد والاستيراد والنتائج |
-| `tests/load/load_test.py` | اختبار الحمل (100 مستخدم متزامن) |
+| `tests/Tier1.E2E` | اختبارات شاملة على خادم يعمل (xUnit): القاموس والمستهدفات والتعارضات والهيكل والتكليف وجمع البيانات والاعتماد والاستيراد والنتائج وشجرة الخطة، وبطاقة الأداء، واختبار الحمل |
 | `deploy/` | صورة Docker وملف compose للإنتاج والوكيل العكسي وتهيئة MongoDB |
 | `docs/requirements.md` | وثيقة المتطلبات والقرارات |
 | `docs/deployment.md` | التشغيل على خوادم الجامعة، والنسخ الاحتياطي والاسترجاع |
 | `docs/user-guide.md` | دليل المستخدم لكل دور |
-| `reference/` و`tools/` | القاموس المستخرج من ملفي الخطة وأدوات توليده |
+| `reference/` | ملفات المصدر (Excel) التي تستخرج منها البذرة |
 
 ## التشغيل للتطوير
 
@@ -60,15 +58,18 @@ docker compose -p tier1-dev -f docker-compose.dev.yml up      # أول مرة ب
 
 ## الاختبارات
 
-```powershell
-dotnet test tests\Tier1.Tests
-cd web; npx tsc -b --noEmit; npx vitest run; cd ..
-python tests\e2e\scenario_test.py      # والخادم يعمل
-python tests\e2e\collection_test.py
-python tests\load\load_test.py --users 100 --seconds 60
+```bash
+dotnet test tests/Tier1.Tests                                  # اختبارات الوحدة (بلا خادم)
+cd web && npx tsc -b --noEmit && npx vitest run && cd ..       # الواجهة
+dotnet test tests/Tier1.E2E                                    # شاملة: والخادم يعمل (docker compose ... up)
 ```
 
-الاختبارات الشاملة تتكرر على القاعدة نفسها دون إعادة تهيئتها. البريد في التطوير يكتب ملفات `.eml` في `data\mail`.
+الاختبارات الشاملة (`tests/Tier1.E2E`) تتخطى نفسها إن لم يوجد خادم، وتقرأ `T1_BASE` (الافتراضي http://localhost:5150) و`T1_DEMO_PASSWORD` (الافتراضي `Tier1-Demo-Pass1`).
+تتكرر على القاعدة نفسها دون إعادة تهيئتها، وتعمل واحدًا بعد الآخر لأنها تشترك في الخادم والحسابات. وتعمل على الهيكل الرسمي أو التجريبي (تسمي الكليات برموزها التجريبية ENG وCS وCOM).
+
+- **بطاقة الأداء** (`ScorecardTests`) تحتاج قاعدة جديدة بالكليات التجريبية (`Seed__Structure=false` و`Seed__DemoData=false`) لأنها تملأ كل النماذج بنفسها: `T1_E2E_SCORECARD=1 dotnet test tests/Tier1.E2E --filter Scorecard`.
+- **الحمل** (`LoadTests`): `T1_E2E_LOAD=1 T1_LOAD_USERS=100 T1_LOAD_SECONDS=60 dotnet test tests/Tier1.E2E --filter Load`. المقبول: p95 أقل من ثانيتين ولا أخطاء خادم.
+- البريد في التطوير يكتب ملفات `.eml` في `data/mail`.
 
 ## الإنتاج
 
@@ -77,7 +78,11 @@ python tests\load\load_test.py --users 100 --seconds 60
 
 ## إعادة بناء البيانات المرجعية
 
-```powershell
-python tools\build_reference_workbook.py   # ملف Excel للمراجعة
-python tools\export_seed.py                # بذرة الخادم
+البذرة ملفات JSON مضمنة في الخادم (`src/Tier1.Infrastructure/Persistence/Seed`)، وتستخرج من ملفي Excel بأمرين في الخادم نفسه (لا بايثون):
+
+```bash
+dotnet run --project src/Tier1.Api -- --import-structure "مسار/الهيكل.xlsx"   # university-structure.json
+dotnet run --project src/Tier1.Api -- --import-kpi "مسار/KPI.xlsx"            # kpi-framework.json
 ```
+
+يكتبان الملف في `Seed/` ويحفظان نسخة المصدر في `reference/`. أما `reference-seed.json` (الهيكل المرجعي القديم) فهو المصدر نفسه ويعدل يدويًا.

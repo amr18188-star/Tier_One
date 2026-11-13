@@ -71,6 +71,14 @@ internal sealed class DemoClient : IDisposable
         return await FinishAsync(HttpMethod.Post, path, response, null, ct);
     }
 
+    /// <summary>A binary download: status, body, content type and the response headers.</summary>
+    public async Task<(int Status, byte[] Body, string ContentType, IReadOnlyDictionary<string, string> Headers)> DownloadAsync(string path, CancellationToken ct)
+    {
+        using var response = await http.GetAsync(path, ct);
+        var headers = response.Headers.Concat(response.Content.Headers).ToDictionary(h => h.Key, h => string.Join(",", h.Value), StringComparer.OrdinalIgnoreCase);
+        return ((int)response.StatusCode, await response.Content.ReadAsByteArrayAsync(ct), response.Content.Headers.ContentType?.ToString() ?? "", headers);
+    }
+
     private async Task<(int, JsonNode?)> FinishAsync(HttpMethod method, string path, HttpResponseMessage response, int? expect, CancellationToken ct)
     {
         var text = await response.Content.ReadAsStringAsync(ct);

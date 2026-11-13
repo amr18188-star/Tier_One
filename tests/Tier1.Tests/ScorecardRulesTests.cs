@@ -109,7 +109,7 @@ public class ScorecardRulesTests
     }
 }
 
-/// <summary>سلامة بذرة الإطار الشامل المستخرجة من KPI.xlsx (tools/import_kpi_workbook.py).</summary>
+/// <summary>سلامة بذرة الإطار الشامل المستخرجة من KPI.xlsx (SeedImporters (--import-kpi)).</summary>
 public class KpiFrameworkSeedTests
 {
     private static JsonElement Seed()
