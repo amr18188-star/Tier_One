@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: tier1
       POSTGRES_USER: tier1_dev
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run scripts/dev-setup.ps1 first to generate .env}
+      POSTGRES_PASSWORD: tier1_dev
       TZ: Africa/Cairo
       PGTZ: Africa/Cairo
     ports:
