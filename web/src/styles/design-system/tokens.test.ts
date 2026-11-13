@@ -1,7 +1,8 @@
 /**
  * tokens.ts must equal the CSS (primitives.css + themes/*.css), and the pairs antd and the app rely on must pass AA.
  * The CSS is parsed as text: var(--color-*) is resolved from primitives.css, color-mix(in oklab|srgb, X n%, transparent)
- * becomes rgba(X, n/100), OKLCH primitives become 8-bit hex (±1 per channel).
+ * becomes rgba(X, n/100), color-mix(in srgb, X n%, Y) becomes the mixed 8-bit hex, OKLCH primitives become 8-bit hex
+ * (±1 per channel). ../shadcn.css (the one shadcn → token mapping) is checked against every theme at the end.
  */
 import { describe, expect, it } from "vitest";
 import { antdTheme } from "./antd-theme";
@@ -76,6 +77,11 @@ function resolve(value: string, scope?: Record<string, string>): string {
     const [r, g, b] = rgbOf(c);
     return `rgba(${r}, ${g}, ${b}, ${Number(pct) / 100})`;
   });
+  v = v.replace(/color-mix\(in srgb, (#[0-9a-f]{6}) ([\d.]+)%, (#[0-9a-f]{6})\)/gi, (_, a: string, pct: string, b: string) => {
+    const w = Number(pct) / 100;
+    const y = rgbOf(b);
+    return hex(rgbOf(a).map((x, i) => Math.round(x * w + y[i] * (1 - w))));
+  });
   return v;
 }
 
@@ -95,7 +101,6 @@ const camel = (s: string) => s.replace(/-([a-z0-9])/g, (_, c: string) => c.toUpp
 
 /** --ds-* section token → path in SectionTokens. */
 function sectionPath(name: string): string[] | null {
-  if (name === "--destructive") return ["destructive"];
   if (!name.startsWith("--ds-")) return null;
   const n = name.slice(5);
   const btn = n.match(/^btn-(primary|ghost)-(.+)$/);
@@ -125,6 +130,11 @@ describe.each(Object.keys(themes) as ThemeName[])("tokens.ts matches themes/%s.c
     expect(radiusNames).toEqual([]);
   });
 
+  it("declares only --ds-* tokens (shadcn variables are mapped once, in ../shadcn.css)", () => {
+    const others = [...b.values()].flatMap((decls) => Object.keys(decls)).filter((n) => !n.startsWith("--ds-"));
+    expect(others).toEqual([]);
+  });
+
   it("theme-level tokens", () => {
     expect(theme["--ds-font"]).toBe(t.fontFamily);
     const pairs: [string, string][] = [
@@ -135,7 +145,8 @@ describe.each(Object.keys(themes) as ThemeName[])("tokens.ts matches themes/%s.c
       ["--ds-chart-2", t.chart.series[1]],
       ["--ds-chart-3", t.chart.series[2]],
       ["--ds-chart-4", t.chart.series[3]],
-      ...(["actual", "target", "area", "current", "bg", "grid", "axis", "up", "down"] as const).map(
+      ["--ds-chart-5", t.chart.series[4]],
+      ...(["actual", "target", "area", "current", "bg", "grid", "axis", "up", "down", "college"] as const).map(
         (k): [string, string] => [`--ds-chart-${k}`, t.chart[k]],
       ),
       ["--ds-shadow-sm", t.shadow.sm],
@@ -144,11 +155,12 @@ describe.each(Object.keys(themes) as ThemeName[])("tokens.ts matches themes/%s.c
       ["--ds-selection-bg", t.selection.bg],
       ["--ds-selection-fg", t.selection.fg],
       ["--ds-shade", t.shade],
+      ["--ds-accent-on-dark", t.accentOnDark],
     ];
     for (const [n, ts] of pairs) expect(same(resolve(theme[n]), ts), `${n}: ${resolve(theme[n])} vs ${ts}`).toBe(true);
   });
 
-  it.each(["sidebar", "band", "gradient", "hatch"] as const)("%s tokens, both ways", (group) => {
+  it.each(["sidebar", "band", "gradient", "hatch", "status"] as const)("%s tokens, both ways", (group) => {
     const prefix = `--ds-${group}-`;
     const cssNames = Object.keys(theme).filter((n) => n.startsWith(prefix));
     expect(cssNames.map((n) => camel(n.slice(prefix.length))).sort()).toEqual(Object.keys(t[group]).sort());
@@ -171,7 +183,7 @@ describe.each(Object.keys(themes) as ThemeName[])("tokens.ts matches themes/%s.c
     const seen = new Set<string>();
     for (const [n, v] of Object.entries(block)) {
       const path = sectionPath(n);
-      if (!path) continue; // shadcn variables other than --destructive
+      if (!path) continue; // none: the test above fails on any non --ds-* name
       const ts = get(sect, path);
       expect(typeof ts, `${n} has no field ${path.join(".")} in tokens.ts`).toBe("string");
       expect(same(resolve(v), ts as string), `${n}: ${resolve(v)} vs ${String(ts)}`).toBe(true);
@@ -251,6 +263,8 @@ describe.each(Object.keys(themes) as ThemeName[])("AA for text on the gradients 
     ["hero / band: heading", d.heading, bandAll],
     ["hero / band: kicker (--ds-eyebrow)", d.eyebrow, band],
     ["hero / band: link (--ds-link)", d.link, band],
+    ["plan hero: kicker, rings, rail dots (--ds-accent-on-dark)", t.accentOnDark, band],
+    ["active navy tab: icon (--ds-accent-on-dark on --navy)", t.accentOnDark, [l.heading, d.bg]],
     ["sign-in panel: heading", d.heading, auth],
     ["sidebar: link", sb.fg, side],
     ["sidebar: group title", sb.muted, side],
@@ -263,6 +277,11 @@ describe.each(Object.keys(themes) as ThemeName[])("AA for text on the gradients 
   it.each(cases)("%s ≥ 4.5:1", (_, fg, bgs) => {
     expect(bgs.length).toBeGreaterThan(1);
     for (const bg of bgs) expect(contrast(fg, bg), `${fg} on ${bg}`).toBeGreaterThanOrEqual(4.5);
+  });
+  it("--ds-accent-on-dark equals the dark-section eyebrow", () => expect(t.accentOnDark).toBe(d.eyebrow));
+  it("data marks: college series and review status ≥ 3:1 on the surface and the track", () => {
+    expect(t.chart.college, "legend key must match the --teal bars").toBe(l.btnPrimary.bg);
+    for (const c of [t.chart.college, t.status.review]) for (const bg of [l.surface, l.track]) expect(contrast(c, bg), `${c} on ${bg}`).toBeGreaterThanOrEqual(3);
   });
   it("progress fill ≥ 3:1 on the track", () => {
     for (const s of stopsOf(t.gradient.progress)) expect(contrast(s, l.track), s).toBeGreaterThanOrEqual(3);
@@ -323,5 +342,118 @@ describe("antdTheme", () => {
     expect(antdTheme("app-soft", base).token?.borderRadius).toBe(corners[CORNERS].md);
     const values = JSON.stringify([ng, soft]);
     expect(values).not.toContain("var(");
+  });
+});
+
+// ---------- shadcn (../shadcn.css: the one shadcn variable → --ds-* token mapping, for every theme) ----------
+describe("shadcn.css maps every shadcn variable to design tokens", () => {
+  const shadcnCss = read("../shadcn.css");
+  const sb = blocks(shadcnCss);
+  const mapping = sb.get(":where([data-theme], [data-section])")!;
+  // blocks() keys the first block by all the text before it (the @import and @source lines), so match the end.
+  const twTheme = [...sb].find(([k]) => k.endsWith("@theme inline"))?.[1] ?? {};
+  /** These follow data-section, so they must point at section tokens (they flip on a navy band). */
+  const sectioned = [
+    "--background", "--foreground", "--card", "--card-foreground", "--popover", "--popover-foreground",
+    "--primary", "--primary-foreground", "--secondary", "--secondary-foreground", "--ui-muted", "--muted-foreground",
+    "--accent", "--accent-foreground", "--destructive", "--border", "--input", "--ring",
+  ];
+  /** Theme level: the same in both sections. */
+  const themeLevel = [
+    "--chart-1", "--chart-2", "--chart-3", "--chart-4", "--chart-5",
+    "--sidebar", "--sidebar-foreground", "--sidebar-primary", "--sidebar-primary-foreground",
+    "--sidebar-accent", "--sidebar-accent-foreground", "--sidebar-border", "--sidebar-ring",
+  ];
+  const target = (v: string) => mapping[v]?.match(/^var\((--ds-[a-z0-9-]+)\)$/)?.[1] ?? "";
+  /** A colour (hex or rgba) at `alpha` × its own alpha, composited over a solid background. */
+  const alphaOver = (colour: string, alpha: number, base: string) => {
+    const m = colour.match(/^rgba\((\d+), (\d+), (\d+), ([\d.]+)\)$/);
+    const [r, g, b, a] = m ? [Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4])] : [...rgbOf(colour), 1];
+    return over(`rgba(${r}, ${g}, ${b}, ${a * alpha})`, base);
+  };
+
+  it("finds the mapping and the Tailwind map", () => {
+    expect(mapping).toBeDefined();
+    expect(Object.keys(twTheme).length).toBeGreaterThan(30);
+  });
+
+  it("has no raw colour: no hex anywhere (comments included), only var(--ds-*) in the mapping", () => {
+    expect(shadcnCss).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+    for (const [n, v] of Object.entries(mapping)) expect(v, n).toMatch(/^var\(--ds-[a-z0-9-]+\)$/);
+  });
+
+  it("maps exactly the variables its Tailwind map reads, both ways", () => {
+    const used = Object.values(twTheme)
+      .flatMap((v) => [...v.matchAll(/var\((--[a-z0-9-]+)\)/g)].map((m) => m[1]))
+      .filter((n) => !n.startsWith("--ds-") && n !== "--radius");
+    expect([...new Set(used)].sort()).toEqual(Object.keys(mapping).sort());
+    expect(Object.keys(mapping).sort()).toEqual([...sectioned, ...themeLevel].sort());
+  });
+
+  it("radius: --radius comes from corners.css; every step reads the --ds-radius-* scale, never negative", () => {
+    expect(mapping["--radius"]).toBeUndefined();
+    const steps = Object.entries(twTheme).filter(([n]) => n.startsWith("--radius-"));
+    expect(steps.length).toBe(8);
+    for (const [n, v] of steps) expect(v, n).toMatch(/^(var\(--ds-radius-(xs|sm|md|xl)\)|var\(--radius\)|calc\(var\(--ds-radius-xl\) \* [\d.]+\))$/);
+  });
+
+  it("the dark: variant follows data-section, not a .dark class", () => {
+    expect(shadcnCss).toMatch(/@custom-variant dark \(&:is\(\[data-section="dark"\]/);
+    expect(shadcnCss.replace(/\/\*[\s\S]*?\*\//g, "")).not.toMatch(/\.dark\b/);
+  });
+
+  describe.each(Object.keys(themes) as ThemeName[])("in %s", (name) => {
+    const b = blocks(css[name]);
+    const theme = b.get(`[data-theme="${name}"]`)!;
+    const scopes = {
+      light: b.get(`[data-theme="${name}"], [data-theme="${name}"] [data-section="light"]`)!,
+      dark: b.get(`[data-theme="${name}"] [data-section="dark"], [data-theme="${name}"][data-section="dark"]`)!,
+    };
+
+    it("every target exists: section variables in both scopes, the others at theme level", () => {
+      for (const v of sectioned) for (const tone of ["light", "dark"] as const) expect(scopes[tone][target(v)], `${v} → ${target(v)} (${tone})`).toBeDefined();
+      for (const v of themeLevel) expect(theme[target(v)], `${v} → ${target(v)}`).toBeDefined();
+    });
+
+    it("five distinct chart series", () => {
+      const series = themeLevel.filter((v) => v.startsWith("--chart-")).map((v) => resolve(theme[target(v)]));
+      expect(new Set(series).size).toBe(5);
+    });
+
+    describe.each(["light", "dark"] as const)("%s section, AA", (tone) => {
+      const scope = { ...theme, ...scopes[tone] };
+      const c = (v: string) => resolve(scope[target(v)], scope);
+      const text: [string, string][] = [
+        ["--foreground", "--background"],
+        ["--card-foreground", "--card"],
+        ["--popover-foreground", "--popover"],
+        ["--primary-foreground", "--primary"],
+        ["--primary", "--background"], // link Button
+        ["--secondary-foreground", "--secondary"],
+        ["--muted-foreground", "--ui-muted"],
+        ["--muted-foreground", "--background"],
+        ["--muted-foreground", "--card"],
+        ["--accent-foreground", "--accent"],
+        ["--destructive", "--background"],
+        ["--destructive", "--card"],
+        ["--sidebar-foreground", "--sidebar"],
+        ["--sidebar-accent-foreground", "--sidebar-accent"],
+        ["--sidebar-primary-foreground", "--sidebar-primary"],
+      ];
+      it.each(text)("%s on %s ≥ 4.5:1", (fg, bg) => expect(contrast(c(fg), c(bg))).toBeGreaterThanOrEqual(4.5));
+
+      // Component recipes: destructive Button / Badge = text-destructive on bg-destructive/10 (dark: /20);
+      // outline Button and Input = inherited text on bg-input/30 in a dark section.
+      it.each(["--background", "--card"])("destructive Button text on its red tint over %s ≥ 4.5:1", (bg) => {
+        expect(contrast(c("--destructive"), alphaOver(c("--destructive"), tone === "light" ? 0.1 : 0.2, c(bg)))).toBeGreaterThanOrEqual(4.5);
+      });
+      it("outline Button / Input text on its fill ≥ 4.5:1", () => {
+        const fill = tone === "light" ? c("--background") : alphaOver(c("--input"), 0.3, c("--background"));
+        expect(contrast(c("--foreground"), fill)).toBeGreaterThanOrEqual(4.5);
+      });
+
+      const ui: [string, string][] = [["--ring", "--background"], ["--ring", "--card"], ["--sidebar-ring", "--sidebar"]];
+      it.each(ui)("%s on %s ≥ 3:1", (fg, bg) => expect(contrast(c(fg), c(bg))).toBeGreaterThanOrEqual(3));
+    });
   });
 });

@@ -155,16 +155,17 @@ function Crumbs({ items }: { items: { key: string; label: string }[] }) {
 }
 
 function DetailHead({ index, kind, icon, code, title, sub, chips, actions, crumbs, children }: {
-  index: number; kind: string; icon: ReactNode; code: string; title: string; sub?: string | null; chips?: ReactNode; actions?: ReactNode;
+  index: number; kind?: string; icon: ReactNode; code?: string; title: string; sub?: string | null; chips?: ReactNode; actions?: ReactNode;
   crumbs?: { key: string; label: string }[]; children?: ReactNode;
 }) {
+  // بلا kind وcode لا يظهر سطر النوع والرمز فوق العنوان (الركيزة: يكفي اسمها، كما في الخريطة).
   return (
     <header className="sp-dhead" style={tint(index)}>
       {crumbs && <Crumbs items={crumbs} />}
       <div className="sp-dhead-row">
         <span className="sp-dhead-icon" aria-hidden>{icon}</span>
         <div className="sp-dhead-text">
-          <small>{kind} <code>{code}</code></small>
+          {kind && code && <small>{kind} <code>{code}</code></small>}
           <h2>{title}</h2>
           {sub && <p className="ltr sp-dhead-en">{sub}</p>}
           {chips && <div className="sp-dhead-chips">{chips}</div>}
@@ -319,7 +320,7 @@ function PillarDetail({ pillar }: { pillar: PillarNode }) {
   const initiatives = pillar.standards.flatMap((s) => s.initiatives);
   return (
     <>
-      <DetailHead index={index} kind={L("الركيزة", "Pillar")} icon={<FlagOutlined />} code={pillar.code} title={pillar.nameAr} sub={pillar.nameEn}
+      <DetailHead index={index} icon={<FlagOutlined />} title={pillar.nameAr} sub={pillar.nameEn}
         crumbs={[]}
         actions={<>
           {a.canEdit && <Button icon={<EditOutlined />} onClick={() => edit({ kind: "pillar", pillar })}>{L("تعديل", "Edit")}</Button>}

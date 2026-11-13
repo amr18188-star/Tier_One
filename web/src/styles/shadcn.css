@@ -8,13 +8,26 @@
  * - No Tailwind preflight: only the theme and utilities layers, so antd and app.css keep their element styles.
  * - Tailwind scans only the shadcn folders (components, hooks, lib). Add an @source line for any
  *   other folder that starts using Tailwind classes.
- * - The base rules apply only inside shadcn components ([data-slot]), never to <body> or *.
+ * - The base rules apply only inside shadcn components ([data-slot]), never to <body> or *. They include a small
+ *   preflight for shadcn parts only (box model, UA borders, and fonts, colour and fill of form controls); without it
+ *   the browser paints outline, ghost and link buttons grey with black text, also on a navy band.
+ * - Text colour is inherited: a dark band sets its own (text-ds-fg or color: var(--ds-fg)), like the landing sections.
  * - app.css already owns --muted (a text colour), so the shadcn muted surface is --ui-muted.
  *
- * Colours come from the antd ConfigProvider theme (src/app/App.tsx) and the palette in src/styles/app.css.
- * Radius: the design-system corner scale (styles/design-system/corners.css, switch CORNERS in config.ts):
- * --radius = --ds-radius-lg, rounded-xs … xl = --ds-radius-xs … xl, all 0 when square (never negative).
+ * Colours: the design-system tokens (styles/design-system, loaded on every page by theme.ts). This file is the one
+ * place that maps shadcn's variables to --ds-* tokens (the @layer base block below); the theme files declare no shadcn
+ * variable. So shadcn follows the theme switch (ACTIVE_THEME, <html data-theme>) and data-section="dark" | "light",
+ * and a new theme needs no shadcn lines.
+ * - The mapping is declared on every element that re-scopes the tokens ([data-theme] and [data-section]): a custom
+ *   property resolves its var() where it is declared, so on :root alone a dark section would inherit light values.
+ * - It is layered (base) and wrapped in :where() (specificity 0): any theme or page rule that sets one of these names
+ *   wins, whatever the import order. Nothing does today.
+ * - There is no .dark class. shadcn's dark: variant means "inside the nearest data-section=dark" (below).
+ * Radius: --radius comes from styles/design-system/corners.css (= --ds-radius-lg, switch CORNERS in config.ts).
+ * rounded-xs … xl read --ds-radius-xs … xl, 2xl–4xl are xl × 1.25–1.75: all 0 when square, never negative.
  * Fonts: IBM Plex Sans Arabic (body), Noto Kufi Arabic (headings).
+ * The variable → token table is in styles/design-system/README.md ("shadcn"). tokens.test.ts checks this file:
+ * no raw colour, every variable mapped to a token that exists in every theme, AA pairs in both sections.
  */
 @layer theme, base, components, utilities;
 @import "tailwindcss/theme.css" layer(theme);
@@ -26,76 +39,8 @@
 @source "../hooks";
 @source "../lib";
 
-@custom-variant dark (&:is(.dark *));
-
-:root {
-  --radius: var(--ds-radius-lg); /* corner scale (corners.css); antd borderRadiusLG */
-  --background: #f4f6f9; /* antd colorBgLayout, app --bg */
-  --foreground: #15202f; /* antd colorText, app --ink */
-  --card: #ffffff;
-  --card-foreground: #15202f;
-  --popover: #ffffff;
-  --popover-foreground: #15202f;
-  --primary: #0a8c93; /* antd colorPrimary (teal) */
-  --primary-foreground: #ffffff;
-  --secondary: #edf1f5; /* app --sunk */
-  --secondary-foreground: #16294a; /* app --navy, antd Table headerBg */
-  --ui-muted: #edf1f5; /* app --sunk */
-  --muted-foreground: #566275; /* app --muted */
-  --accent: #e8f6f6; /* antd colorInfoBg, Table rowHoverBg */
-  --accent-foreground: #076b71; /* antd colorLink */
-  --destructive: #b42318; /* app --crit */
-  --border: #d8dfe8; /* app --line */
-  --input: #d8dfe8;
-  --ring: #0a8c93;
-  --chart-1: #0a8c93;
-  --chart-2: #16294a;
-  --chart-3: #c9973f;
-  --chart-4: #2e9e63;
-  --chart-5: #0a647f; /* antd colorInfo */
-  --sidebar: #16294a;
-  --sidebar-foreground: #ffffff;
-  --sidebar-primary: #0a8c93;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1f3760;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #24406b;
-  --sidebar-ring: #0a8c93;
-}
-
-.dark {
-  --background: #0f1b30;
-  --foreground: #e8edf4;
-  --card: #16294a;
-  --card-foreground: #e8edf4;
-  --popover: #16294a;
-  --popover-foreground: #e8edf4;
-  --primary: #19a7ae;
-  --primary-foreground: #ffffff;
-  --secondary: #1f3760;
-  --secondary-foreground: #e8edf4;
-  --ui-muted: #1f3760;
-  --muted-foreground: #a9b6c8;
-  --accent: #12406a;
-  --accent-foreground: #a9e1e4;
-  --destructive: #f97066;
-  --border: rgb(255 255 255 / 0.12);
-  --input: rgb(255 255 255 / 0.16);
-  --ring: #19a7ae;
-  --chart-1: #19a7ae;
-  --chart-2: #8ea9c8;
-  --chart-3: #d9a227;
-  --chart-4: #4cc184;
-  --chart-5: #5fb3d1;
-  --sidebar: #12223f;
-  --sidebar-foreground: #e8edf4;
-  --sidebar-primary: #19a7ae;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1f3760;
-  --sidebar-accent-foreground: #e8edf4;
-  --sidebar-border: rgb(255 255 255 / 0.12);
-  --sidebar-ring: #19a7ae;
-}
+/* dark: applies inside data-section="dark" (or on it), unless a data-section="light" inside that block flips back. */
+@custom-variant dark (&:is([data-section="dark"], [data-section="dark"] *):not(:where([data-section="dark"] [data-section="light"], [data-section="dark"] [data-section="light"] *)));
 
 @theme inline {
   --font-sans: "IBM Plex Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
@@ -142,6 +87,65 @@
 }
 
 @layer base {
+  /* shadcn variable → design token. The first block follows data-section; charts and sidebar are theme level. */
+  :where([data-theme], [data-section]) {
+    --background: var(--ds-bg);
+    --foreground: var(--ds-fg);
+    --card: var(--ds-surface);
+    --card-foreground: var(--ds-fg);
+    --popover: var(--ds-surface);
+    --popover-foreground: var(--ds-fg);
+    --primary: var(--ds-btn-primary-bg);
+    --primary-foreground: var(--ds-btn-primary-fg);
+    --secondary: var(--ds-track);
+    --secondary-foreground: var(--ds-heading);
+    --ui-muted: var(--ds-track); /* bg-muted: hovers, skeletons, tab lists */
+    --muted-foreground: var(--ds-label); /* AA on the muted surface too (--ds-body is not) */
+    --accent: var(--ds-surface-hover); /* menu and select item focus, like antd's optionActiveBg */
+    --accent-foreground: var(--ds-heading);
+    --destructive: var(--ds-destructive);
+    --border: var(--ds-border);
+    --input: var(--ds-border); /* field borders, like antd colorBorder */
+    --ring: var(--ds-focus-ring); /* full colour on focus-visible borders, 50% for the halo */
+
+    --chart-1: var(--ds-chart-1);
+    --chart-2: var(--ds-chart-2);
+    --chart-3: var(--ds-chart-3);
+    --chart-4: var(--ds-chart-4);
+    --chart-5: var(--ds-chart-5);
+    --sidebar: var(--ds-sidebar-bg);
+    --sidebar-foreground: var(--ds-sidebar-fg);
+    --sidebar-primary: var(--ds-sidebar-badge-bg);
+    --sidebar-primary-foreground: var(--ds-sidebar-badge-fg);
+    --sidebar-accent: var(--ds-sidebar-active-bg);
+    --sidebar-accent-foreground: var(--ds-sidebar-fg-active);
+    --sidebar-border: var(--ds-sidebar-border);
+    --sidebar-ring: var(--ds-sidebar-focus);
+  }
+
+  /* Tailwind's preflight, for shadcn parts only (there is no global preflight). Utilities override all of it. */
+  [data-slot] {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border-width: 0;
+    border-style: solid;
+  }
+  :where(button, input, select, textarea, optgroup)[data-slot] {
+    font: inherit;
+    font-feature-settings: inherit;
+    font-variation-settings: inherit;
+    letter-spacing: inherit;
+    color: inherit;
+    background-color: transparent;
+    border-radius: 0;
+    opacity: 1;
+  }
+  a[data-slot] {
+    color: inherit;
+    text-decoration: inherit;
+  }
+
   [data-slot],
   [data-slot] * {
     @apply border-border outline-ring/50;

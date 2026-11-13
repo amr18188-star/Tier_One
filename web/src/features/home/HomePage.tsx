@@ -159,7 +159,7 @@ export default function HomePage() {
               {() => (
                 <SegmentBar label={L("حالة التعريفات", "Definition status")} segments={[
                   { key: "Approved", label: L("معتمد", "Approved"), count: approved, color: "#1c6a43" },
-                  { key: "UnderReview", label: L("قيد الاعتماد", "Under review"), count: d!.definitionStatus.find((s) => s.key === "UnderReview")?.count ?? 0, color: "#0a8c93" },
+                  { key: "UnderReview", label: L("قيد الاعتماد", "Under review"), count: d!.definitionStatus.find((s) => s.key === "UnderReview")?.count ?? 0, color: "var(--ds-status-review)" },
                   { key: "Draft", label: L("مسودة", "Draft"), count: d!.definitionStatus.find((s) => s.key === "Draft")?.count ?? 0, color: "#aab6c6" },
                 ]} />
               )}

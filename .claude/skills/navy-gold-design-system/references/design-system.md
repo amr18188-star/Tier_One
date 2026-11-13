@@ -51,7 +51,7 @@ Institutional, calm, and authoritative. A **deep midnight navy** carries the wei
 
 | Token | Hex | Tier1 token | Role |
 |---|---|---|---|
-| `navy-950` | `#06152A` | `--color-navy-950` → `ds-chrome`, shadcn `--sidebar` | Header and footer chrome. Header uses it at 95% + `backdrop-blur-md`. |
+| `navy-950` | `#06152A` | `--color-navy-950` → `ds-chrome`, `ds-sidebar-bg` (shadcn `--sidebar`) | Header and footer chrome. Header uses it at 95% + `backdrop-blur-md`. |
 | `navy-900` | `#071A33` | `--color-navy-900` → dark `ds-bg`; light `ds-heading`, `ds-fg`, `ds-btn-primary-bg`, `ds-tile-solid`, `ds-tile-active-fg` | **Brand base.** Dark section background, heading text on light, text on gold buttons. |
 | `navy-800` | `#0C2545` | `--color-navy-800` → dark `ds-surface`, `ds-callout`; `ds-chart-1` | Raised surface on dark (cards, badges at 90%). First chart series. |
 | `navy-700` | `#12345B` | `--color-navy-700` → dark `ds-surface-hover`, `ds-track` | Card hover on dark. |
@@ -64,7 +64,7 @@ Institutional, calm, and authoritative. A **deep midnight navy** carries the wei
 | Token | Hex | Tier1 token | Role |
 |---|---|---|---|
 | `gold-200` | `#E5C47E` | `--color-gold-200` → dark `ds-highlight-display` | Display highlight on dark (second line of the hero H1). Lighter, so huge type doesn't feel heavy. |
-| `gold-400` | `#D6B46A` | `--color-gold-400` → `ds-accent`; dark `ds-highlight`, `ds-eyebrow`, `ds-icon`, `ds-btn-primary-bg`; `ds-accent-border` (dark @30%, light @40%); `ds-tile-active`; `ds-chart-2`, `ds-chart-area`, `ds-chart-current`; shadcn `--ring` | **Primary accent.** CTA fill, icons and eyebrows on dark, highlight words on dark, accent borders (at 30 / 40 / 50% opacity), active chart point. |
+| `gold-400` | `#D6B46A` | `--color-gold-400` → `ds-accent`; dark `ds-highlight`, `ds-eyebrow`, `ds-icon`, `ds-btn-primary-bg`; `ds-accent-border` (dark @30%, light @40%); `ds-tile-active`; `ds-chart-2`, `ds-chart-area`, `ds-chart-current`; dark `ds-focus-ring` (shadcn `--ring` on dark) | **Primary accent.** CTA fill, icons and eyebrows on dark, highlight words on dark, accent borders (at 30 / 40 / 50% opacity), active chart point. |
 | `gold-500` | `#B9944D` | `--color-gold-500` → light `ds-highlight`, `ds-highlight-display`, `ds-accent-strong`; `ds-chart-actual` | Highlight words on light, "actual" data line, connector lines, thick accent rules (`border-r-4`). |
 | `gold-600` | `#A7833D` | `--color-gold-600` → light `ds-eyebrow`, `ds-icon` | Eyebrow labels, captions, and icons on light surfaces. Use **only bold ≥ 18.7px or regular ≥ 24px** (see §11). |
 | `gold-700` ★ | `#82652B` | `--color-gold-700` → light `ds-eyebrow-aa` | **Recommended addition, not in the original.** AA-safe gold for *small* text on white / sand / cream (≥ 4.6:1 on all three). |
@@ -74,7 +74,7 @@ Institutional, calm, and authoritative. A **deep midnight navy** carries the wei
 | Token | Hex | Tier1 token | Role |
 |---|---|---|---|
 | `white` | `#FFFFFF` | `--color-paper` → light `ds-bg`, `ds-surface`; dark `ds-heading`, `ds-fg`; `ds-chart-bg` | Default light section and card. |
-| `cloud` | `#F8F9FB` | `--color-cloud` → light `ds-bg-cool`; shadcn `--secondary`, `--ui-muted` | Cool off-white section background (analytics). Inner info panels. |
+| `cloud` | `#F8F9FB` | `--color-cloud` → light `ds-bg-cool` | Cool off-white section background (analytics). Inner info panels. |
 | `sand-200` | `#F4EBD8` | `--color-sand-200` → light `ds-bg-warm` | Warm section background (hierarchy, final CTA). |
 | `sand-100` | `#F8F3E9` | `--color-sand-100` → light `ds-surface-warm` | Stat cells sitting on sand. |
 | `sand-50` | `#F8F4EA` | `--color-sand-50` → light `ds-tile` | Icon-tile fill on light. |
@@ -439,7 +439,7 @@ Group stat cells inside a single `border border-slate-200` wrapper with internal
 
 | Element | Spec | Tier1 token |
 |---|---|---|
-| Categorical order | `navy-800 #0C2545` → `gold-400 #D6B46A` → `steel-400 #7890AC` → `slate-300 #CBD5E1` | `ds-chart-1` → `ds-chart-2` → `ds-chart-3` → `ds-chart-4` (shadcn `--chart-1…4`) |
+| Categorical order | `navy-800 #0C2545` → `gold-400 #D6B46A` → `steel-400 #7890AC` → `slate-300 #CBD5E1` | `ds-chart-1` → `ds-chart-2` → `ds-chart-3` → `ds-chart-4` → `ds-chart-5` (gold-500; shadcn `--chart-1…5`) |
 | Actual line | `gold-500 #B9944D`, 3px, round joins. Points r=4, white fill, 2.5px gold-500 stroke. | `stroke-ds-chart-actual`; points `fill-ds-chart-bg stroke-ds-chart-actual` |
 | Current point | r=7, `gold-400` fill, 3px white stroke. | `fill-ds-chart-current stroke-ds-chart-bg` |
 | Target line | `steel-400`, 2px, dashed `6 7`. | `stroke-ds-chart-target` |
@@ -563,8 +563,9 @@ module.exports = {
 
 If the target project uses shadcn/ui, set `--radius: 0` and map `--primary → navy-900`, `--accent → gold-400`, `--ring → gold-400`.
 
-**Tier1:** done per theme and per section in `themes/navy-gold.css` (radius: `corners.css`). In a dark section `--primary` is gold-400 and
-`--accent` is navy-700. Full table in `token-files.md`.
+**Tier1:** done once for every theme in `web/src/styles/shadcn.css`, which maps each shadcn variable to a `--ds-*` token
+(radius: `corners.css`). navy-gold light: `--primary` navy-900, `--accent` ivory, `--ring` navy-900; in a dark section
+`--primary` is gold-400, `--accent` navy-700, `--ring` gold-400. Full table in `token-files.md` §7.
 
 ---
 

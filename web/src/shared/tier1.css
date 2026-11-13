@@ -276,7 +276,7 @@
 .t1-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
 .t1-card { display: flex; flex-direction: column; gap: 4px; text-align: start; border: 1px solid var(--line); border-radius: var(--ds-radius-lg); background: var(--surface);
   padding: 12px 14px; cursor: pointer; font: inherit; color: inherit; transition: border-color .15s, box-shadow .15s; }
-.t1-card:hover, .t1-card:focus-visible { border-color: var(--teal); box-shadow: 0 2px 10px rgba(10, 140, 147, .12); }
+.t1-card:hover, .t1-card:focus-visible { border-color: var(--teal); box-shadow: 0 2px 10px color-mix(in srgb, var(--teal) 12%, transparent); }
 .t1-card code { color: var(--teal-ink); font-size: 12px; }
 .t1-card small { color: var(--muted); }
 

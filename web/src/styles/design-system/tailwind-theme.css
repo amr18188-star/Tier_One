@@ -119,6 +119,7 @@
   --color-ds-sidebar-bg-top: var(--ds-sidebar-bg-top);
   --color-ds-sidebar-glow: var(--ds-sidebar-glow);
   --color-ds-shade: var(--ds-shade);
+  --color-ds-accent-on-dark: var(--ds-accent-on-dark);
   --color-ds-band-from: var(--ds-band-from);
   --color-ds-band-via: var(--ds-band-via);
   --color-ds-band-to: var(--ds-band-to);
@@ -146,6 +147,8 @@
   --color-ds-chart-2: var(--ds-chart-2);
   --color-ds-chart-3: var(--ds-chart-3);
   --color-ds-chart-4: var(--ds-chart-4);
+  --color-ds-chart-5: var(--ds-chart-5);
+  --color-ds-destructive: var(--ds-destructive);
   --color-ds-chart-actual: var(--ds-chart-actual);
   --color-ds-chart-target: var(--ds-chart-target);
   --color-ds-chart-area: var(--ds-chart-area);
@@ -155,6 +158,8 @@
   --color-ds-chart-axis: var(--ds-chart-axis);
   --color-ds-chart-up: var(--ds-chart-up);
   --color-ds-chart-down: var(--ds-chart-down);
+  --color-ds-chart-college: var(--ds-chart-college);
+  --color-ds-status-review: var(--ds-status-review);
 
   /* ---------- Shape, type, elevation: rounded-ds*, font-ds, font-ds-heading, shadow-ds-sm, shadow-ds-md
      Corners follow <html data-corners> (corners.css): 0 when square, the px step when rounded.

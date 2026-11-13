@@ -14,7 +14,7 @@ disagrees with the CSS, the CSS wins: re-read the file.
 | File | Holds | Scope | Imported by |
 |---|---|---|---|
 | `web/src/styles/design-system/primitives.css` | Raw palettes as `--color-<family>-<step>` | `:root` (the only global file) | `index.css` |
-| `web/src/styles/design-system/themes/navy-gold.css` | `--ds-*` + shadcn variables for the landing look | `[data-theme="navy-gold"]` | `index.css` |
+| `web/src/styles/design-system/themes/navy-gold.css` | `--ds-*` tokens for the landing look (no shadcn variables: §7) | `[data-theme="navy-gold"]` | `index.css` |
 | `web/src/styles/design-system/themes/app-soft.css` | Same names, the old `/app` palette | `[data-theme="app-soft"]` | `index.css` |
 | `web/src/styles/design-system/corners.css` | Corner scale `--ds-radius-xs … xl`, `-pill`, `-round`, aliases `--ds-radius`, shadcn `--radius` (section 2a) | `:root` + `[data-corners]` | `index.css` (last) |
 | `web/src/styles/design-system/config.ts` | `CORNERS = "square" \| "rounded"`: the one corner switch | — | `theme.ts`, `antd-theme.ts` |
@@ -39,10 +39,10 @@ again through its own Tailwind entry (see SKILL.md); the values are the same.
 
 - `data-theme="<name>"` on a container turns a theme on for its subtree. Default scope inside it: light.
 - `data-section="dark"` on any descendant re-scopes the section tokens (backgrounds, surfaces, text, lines, accent,
-  tiles, buttons, shadcn core) for that subtree. `data-section="light"` flips back inside a dark block. Put
-  `data-section="dark"` on the theme root itself for an all-dark page.
-- Theme-level tokens (font, chrome, textures, charts, shadows, focus, selection, shadcn `--chart-*`,
-  `--sidebar-*`) are the same in both scopes. Radius is not a theme token: see §2a (corners).
+  tiles, buttons, destructive; shadcn's core variables through `shadcn.css`) for that subtree. `data-section="light"`
+  flips back inside a dark block. Put `data-section="dark"` on the theme root itself for an all-dark page.
+- Theme-level tokens (font, chrome, textures, charts, shadows, focus, selection, sidebar; shadcn's `--chart-*` and
+  `--sidebar-*` through `shadcn.css`) are the same in both scopes. Radius is not a theme token: see §2a (corners).
 - The Tailwind mapping is `inline`: `bg-ds-surface` compiles to `background-color: var(--ds-surface)`, so the value
   resolves on the element itself and follows the nearest scope at any depth. A dark card in a light section is just
   `<div data-section="dark" className="bg-ds-surface">`.
@@ -60,12 +60,12 @@ No attribute = square.
 
 | Token | Utility | square | rounded | Use |
 |---|---|---|---|---|
-| `--ds-radius-xs` | `rounded-ds-xs` | 0 | 4px | bars, swatches, small codes, active-link bars |
+| `--ds-radius-xs` | `rounded-ds-xs` | 0 | 4px | bars, swatches, small codes, active-link bars, scrollbar thumb |
 | `--ds-radius-sm` | `rounded-ds-sm` | 0 | 6px | code pills, focus rings, inner boxes |
 | `--ds-radius-md` | `rounded-ds-md` | 0 | 8px | buttons, inputs, icon tiles, list rows |
 | `--ds-radius-lg` | `rounded-ds-lg` | 0 | 12px | cards, panels, tables, modals |
 | `--ds-radius-xl` | `rounded-ds-xl` | 0 | 16px | page bands, hero, large panels |
-| `--ds-radius-pill` | `rounded-ds-pill` | 0 | 999px | chips, count badges, progress bars, status dots, scrollbar thumb |
+| `--ds-radius-pill` | `rounded-ds-pill` | 0 | 999px | chips, count badges, progress bars, status dots |
 | `--ds-radius-round` | `rounded-ds-round` | 50% | 50% | real circles only |
 | `--ds-radius` | `rounded-ds` | = md | = md | alias |
 | `--radius` (shadcn) | `rounded-lg` in shadcn parts | = lg | = lg | alias |
@@ -120,6 +120,7 @@ Same in light and dark scopes.
 | `--ds-chart-2` | gold-400 | soft-gold-600 | second series, highlighted bars |
 | `--ds-chart-3` | steel-400 | soft-success-700 | third series |
 | `--ds-chart-4` | haze-300 | soft-info-700 | fourth series ("other") |
+| `--ds-chart-5` | gold-500 | soft-danger-600 | fifth series (shadcn `--chart-5`; app-soft = the old `/app` fifth series) |
 | `--ds-chart-actual` | gold-500 | soft-gold-600 | actual line |
 | `--ds-chart-target` | steel-400 | soft-neutral-500 | target line (dashed) |
 | `--ds-chart-area` | gold-400 | soft-gold-500 | gradient stop under the actual line (30% → 1%) |
@@ -189,6 +190,12 @@ token: `.sp-pillar > header`, `.pill-band` `color-mix(in srgb, var(--pc) 72%, va
 `color-mix(var(--pt) 45%, var(--ds-surface))`. Status hatch `.sp-statebar .d-gap`: `--g-gap` stripes with
 `color-mix(in srgb, var(--g-gap) 30%, var(--ds-surface))`.
 
+Related theme-level colours: `--ds-accent-on-dark` (gold-400 / soft-gold-300, = dark `--ds-eyebrow`): text and marks on navy
+blocks without `data-section="dark"` (plan hero kicker, rings, rail dots; active navy tab icon), 4.6:1 or more on every band
+stop. `--ds-chart-college` (navy-900 / soft-navy-800, = light `--ds-btn-primary-bg`): "college's own target" legend key.
+`--ds-status-review` (gold-600 / soft-gold-700): "under review" status segment, 3.5:1 on white and 3.2:1 on the track
+(navy-gold). `tokens.ts`: `accentOnDark`, `chart.college`, `status.review`.
+
 Contrast (navy-gold, lowest stop): hero heading 9.1:1, kicker gold-400 4.6:1, sign-in heading 11.8:1, sidebar link 7.6:1,
 group title 4.7:1, avatar initials 12.6:1, callout link 5.0:1, pillar head white 4.8:1 (pillar 1 itself).
 A new theme copies the block of `app-soft.css`; hero, sidebar and auth read the band and sidebar tokens and need no
@@ -254,6 +261,7 @@ These change with `data-section`. Utility = any colour prefix + the name without
 | `--ds-focus-ring` | navy-900 | gold-400 | soft-navy-950 | soft-gold-300 | keyboard focus outline (2px solid); antd `colorPrimaryBorder` |
 | `--ds-link` | gold-700 | gold-400 | soft-navy-700 | soft-gold-300 | text links and codes; antd `colorLink`; legacy `--teal-ink` (5.5:1 on white) |
 | `--ds-link-hover` | navy-900 | paper | soft-navy-950 | paper | link hover / active |
+| `--ds-destructive` | soft-danger-700 | soft-danger-400 + 45% paper | soft-danger-700 | soft-danger-400 + 45% paper | error text; antd `colorError`, shadcn `--destructive`. Dark = `color-mix(in srgb, soft-danger-400 55%, paper)`, so text and shadcn's 20% red tint stay AA on navy |
 
 #### Primary button
 
@@ -290,6 +298,7 @@ Available in a Tailwind entry that imports `tailwind-theme.css` (see SKILL.md fo
 `ds-chart-actual`, `ds-chart-target`, `ds-chart-area`, `ds-chart-current`, `ds-chart-bg`, `ds-chart-grid`, `ds-chart-axis`,
 `ds-chart-up`, `ds-chart-down`, `ds-focus`, `ds-selection-bg`, `ds-selection-fg`, `ds-grid-hero`, `ds-grid-dark`, the
 thirteen `ds-sidebar-*` tokens (with `-bg-top` and `-glow`), the five `ds-band-*` tokens and `ds-shade`.
+`--ds-chart-5` and `--ds-destructive` (added for shadcn) have no utility yet: use `var()` until `tailwind-theme.css` maps them.
 
 **Opacity modifiers** work: `bg-ds-accent/10` → `color-mix(in oklab, var(--ds-accent) 10%, transparent)`;
 `border-ds-line-soft/15`, `bg-ds-surface/90`, `bg-ds-chrome/95`. Don't add a modifier to a token that already carries alpha
@@ -315,57 +324,63 @@ layout, typography sizes and breakpoints are Tailwind defaults and fine to use.
 
 ## 7. shadcn variable mapping
 
-shadcn components (`web/src/components/ui/`) read these variables. The theme files set them per theme and scope, so
-shadcn inside `data-theme` follows it. `web/src/styles/shadcn.css` holds the defaults on `:root` (the teal app palette),
-the `@theme inline` map (`--color-primary: var(--primary)`, `--color-muted: var(--ui-muted)` …) and the radius steps
-(`--radius-xs … xl` = `var(--ds-radius-xs … xl)`, `--radius-lg` = `--radius`, 2xl–4xl = xl × 1.25 / 1.5 / 1.75), so
-`CORNERS = "square"` squares every shadcn part, never with a negative value. `--radius` itself comes from `corners.css`.
+shadcn components (`web/src/components/ui/`) read these variables. `web/src/styles/shadcn.css` is the one place that
+maps them to `--ds-*` tokens, for every theme; the theme files declare no shadcn variable (`tokens.test.ts` fails if one
+does). The file also holds the `@theme inline` map (`--color-primary: var(--primary)`, `--color-muted: var(--ui-muted)` …)
+and the radius steps (`--radius-xs … xl` = `var(--ds-radius-xs … xl)`, `--radius-lg` = `--radius`, 2xl–4xl = xl × 1.25 /
+1.5 / 1.75), so `CORNERS = "square"` squares every shadcn part, never with a negative value. `--radius` itself comes from
+`corners.css` (= `--ds-radius-lg`).
 
-| shadcn variable | navy-gold light | navy-gold dark | app-soft light | app-soft dark |
-|---|---|---|---|---|
-| `--background` | paper | navy-900 | soft-neutral-50 | soft-navy-900 |
-| `--foreground` | navy-900 | paper | soft-neutral-900 | soft-neutral-25 |
-| `--card` | paper | navy-800 | paper | soft-navy-800 |
-| `--card-foreground` | navy-900 | paper | soft-neutral-900 | soft-neutral-25 |
-| `--popover` | paper | navy-800 | paper | soft-navy-800 |
-| `--popover-foreground` | navy-900 | paper | soft-neutral-900 | soft-neutral-25 |
-| `--primary` | navy-900 | gold-400 | soft-navy-800 | soft-gold-300 |
-| `--primary-foreground` | paper | navy-900 | paper | soft-navy-950 |
-| `--secondary` | cloud | navy-700 | soft-navy-100 | soft-navy-700 |
-| `--secondary-foreground` | navy-900 | paper | soft-navy-800 | soft-neutral-25 |
-| `--ui-muted` | cloud | navy-800 | soft-neutral-75 | soft-navy-800 |
-| `--muted-foreground` | ash-500 | mist-300 | soft-neutral-700 | soft-neutral-200 |
-| `--accent` | gold-400 | navy-700 | soft-gold-50 | soft-navy-700 |
-| `--accent-foreground` | navy-900 | paper | soft-gold-700 | soft-gold-100 |
-| `--destructive` | soft-danger-700 | soft-danger-400 | soft-danger-700 | soft-danger-400 |
-| `--border` | ash-200 | navy-500 | soft-neutral-100 | paper @14% |
-| `--input` | ash-200 | navy-500 | soft-neutral-100 | paper @18% |
-| `--ring` | gold-400 | gold-400 | soft-gold-500 | soft-gold-300 |
+How the mapping is written:
+- On `:where([data-theme], [data-section])`, inside `@layer base`. A custom property resolves its `var()` where it is
+  declared, so it is declared on every element that re-scopes the tokens; inside `data-section="dark"` it resolves to
+  the dark-section tokens. Specificity 0 in a layer: it never overrides a theme or page rule, whatever the import order
+  (a scratch harness computed the same values with shadcn.css before and after the tokens).
+- shadcn's `dark:` variant = inside the nearest `data-section="dark"`, unless a `data-section="light"` inside it flips back
+  (no `.dark` class). Three levels deep (dark › light › dark) only those `dark:` tweaks are skipped; colours stay right.
+- A small preflight for shadcn parts only (`[data-slot]`): box model, UA borders, font, colour and fill of form controls.
+  Without it outline, ghost and link buttons are UA grey with black Arial text, also on a navy band. Text colour is
+  inherited, so a dark band sets its own (`text-ds-fg`).
 
-| shadcn variable (theme level) | navy-gold | app-soft |
-|---|---|---|
-| `--chart-1` | navy-800 | soft-navy-500 |
-| `--chart-2` | gold-400 | soft-gold-600 |
-| `--chart-3` | steel-400 | soft-success-700 |
-| `--chart-4` | haze-300 | soft-info-700 |
-| `--chart-5` | gold-500 | soft-danger-600 |
-| `--sidebar` | navy-950 | soft-navy-950 |
-| `--sidebar-foreground` | paper | paper |
-| `--sidebar-primary` | gold-400 | soft-gold-500 |
-| `--sidebar-primary-foreground` | navy-900 | soft-navy-950 |
-| `--sidebar-accent` | navy-800 | paper @10% |
-| `--sidebar-accent-foreground` | paper | paper |
-| `--sidebar-border` | navy-500 | paper @14% |
-| `--sidebar-ring` | gold-400 | soft-gold-300 |
+| shadcn variable | Token | navy-gold light | navy-gold dark | app-soft light | app-soft dark |
+|---|---|---|---|---|---|
+| `--background` | `--ds-bg` | paper | navy-900 | paper | soft-navy-900 |
+| `--foreground`, `--card-foreground`, `--popover-foreground` | `--ds-fg` | navy-900 | paper | soft-neutral-900 | paper |
+| `--card`, `--popover` | `--ds-surface` | paper | navy-800 | paper | soft-navy-800 |
+| `--primary` | `--ds-btn-primary-bg` | navy-900 | gold-400 | soft-navy-800 | soft-gold-500 |
+| `--primary-foreground` | `--ds-btn-primary-fg` | paper | navy-900 | paper | soft-navy-950 |
+| `--secondary`, `--ui-muted` | `--ds-track` | ash-100 | navy-700 | soft-neutral-75 | soft-navy-700 |
+| `--secondary-foreground`, `--accent-foreground` | `--ds-heading` | navy-900 | paper | soft-navy-950 | paper |
+| `--muted-foreground` | `--ds-label` | ash-600 | mist-100 | soft-neutral-700 | soft-navy-100 |
+| `--accent` (item focus) | `--ds-surface-hover` | ivory | navy-700 | soft-neutral-25 | soft-navy-700 |
+| `--destructive` | `--ds-destructive` | soft-danger-700 | soft-danger-400 + 45% paper | soft-danger-700 | soft-danger-400 + 45% paper |
+| `--border`, `--input` | `--ds-border` | ash-200 | navy-500 | soft-neutral-100 | paper @14% |
+| `--ring` | `--ds-focus-ring` | navy-900 | gold-400 | soft-navy-950 | soft-gold-300 |
+
+| shadcn variable (theme level) | Token | navy-gold | app-soft |
+|---|---|---|---|
+| `--chart-1` … `--chart-5` | `--ds-chart-1` … `--ds-chart-5` | navy-800, gold-400, steel-400, haze-300, gold-500 | soft-navy-500, soft-gold-600, soft-success-700, soft-info-700, soft-danger-600 |
+| `--sidebar` | `--ds-sidebar-bg` | navy-950 | soft-navy-950 |
+| `--sidebar-foreground` | `--ds-sidebar-fg` | mist-300 | soft-neutral-200 |
+| `--sidebar-primary` / `-primary-foreground` | `--ds-sidebar-badge-bg` / `-badge-fg` | gold-400 / navy-900 | soft-gold-500 / soft-navy-950 |
+| `--sidebar-accent` / `-accent-foreground` | `--ds-sidebar-active-bg` / `-fg-active` | navy-700 / paper | soft-navy-700 / paper |
+| `--sidebar-border` | `--ds-sidebar-border` | navy-500 | paper @14% |
+| `--sidebar-ring` | `--ds-sidebar-focus` | gold-400 | soft-gold-300 |
 
 Notes:
 - The muted surface is `--ui-muted` because `web/src/styles/app.css` owns `--muted` (a text colour on antd pages).
-- `--destructive` is a soft danger red: navy-gold's `signal-red` fails AA as text (3.8:1).
-- `:root` (shadcn.css) and `[data-theme]` have the same specificity. On a descendant element the theme wins by
-  inheritance. `<html>` carries `data-theme` (`theme.ts`), so if `shadcn.css` is ever imported it must load before the
-  design-system CSS (import it in `main.tsx`, which runs before `App.tsx` imports `theme.ts`).
-- Nothing else in `web/src` declares these names (checked 2026-11-13: only `shadcn.css`, not imported), so the theme's
-  shadcn variables on `<html>` clash with nothing.
+  `--muted-foreground` is `--ds-label`, not `--ds-body`: ash-500 is only 4.35:1 on the muted surface.
+- `--accent` and `--input` match antd (`optionActiveBg`, `colorBorder`), so shadcn and antd fields look alike.
+- `--ds-destructive` is a soft danger red: navy-gold's `signal-red` fails AA as text (3.8:1). Dark sections mix
+  soft-danger-400 55% with paper, so the text and shadcn's destructive Button / Badge (20% red tint) stay ≥ 4.5:1 on
+  navy-900 and navy-800 (soft-danger-400 alone is 4.4:1 on app-soft's dark bg).
+- Charts are theme level and made for light surfaces: on a navy card navy-gold's `--chart-1` is the card colour.
+- Portalled content (dialogs, popovers, select lists) gets the `<html>` theme in its light scope; pass
+  `data-section="dark"` to the content element for a dark block.
+- `tokens.test.ts` checks `shadcn.css`: no hex (comments included), only `var(--ds-*)` values, the exact variable set its
+  `@theme inline` reads, every target present in every theme (section variables in both scopes), five distinct chart
+  series, radius steps never negative, and AA in both sections of both themes (text on background, card, popover,
+  primary, secondary, muted, accent; destructive and outline button recipes; ring 3:1; sidebar pairs).
 
 ## 8. `tokens.ts` and antd
 
@@ -378,7 +393,7 @@ Notes:
   `sidebar` (the `--ds-sidebar-*` tokens), `band` (`--ds-band-*`), `shade` (`--ds-shade`), `gradient`
   (`--ds-gradient-*`, the resolved CSS value) and `hatch` (`--ds-hatch-*`), `sections.light` / `sections.dark` (every
   section token, camelCase, buttons as `btnPrimary` / `btnGhost`, plus `focusRing`, `link`, `linkHover` and `destructive`
-  from `--destructive`).
+  from `--ds-destructive`). `chart.series` holds the five categorical series (`--ds-chart-1` … `--ds-chart-5`).
 - `themeNames`, `isThemeName()`, and the types `ThemeName`, `SectionTone`, `ThemeTokens`, `SectionTokens`,
   `SidebarTokens`, `BandTokens`, `GradientTokens`, `HatchTokens`, `ButtonTokens`.
 - `color-mix(…, X n%, transparent)` is written as `rgba(X, n/100)`. `tokens.test.ts` parses the CSS and fails on any
@@ -466,46 +481,43 @@ Pairs to check per scope: `heading`, `body`, `body-strong`, `label`, `eyebrow`, 
 
 ## 9. Scrollbar tokens
 
-`web/src/styles/design-system/scrollbar.css`, imported once in `web/src/main.tsx` after `app.css`. Plain CSS, no Tailwind,
-every primitive has a hex fallback. One glass scrollbar for the site: transparent track, floating pill thumb (a transparent
-ring plus `background-clip: padding-box`), translucent fill with a soft white sheen and a 1px hairline. The thumb grows from
-6px to 8px under the pointer. The top comment of the file is the source of truth.
+`web/src/styles/design-system/scrollbar.css`, imported once in `web/src/main.tsx` after `app.css`. Plain CSS, no
+Tailwind. The top comment of the file is the source of truth.
 
-Shape tokens (on `:root`, inherited, so a subtree can override them on its own scroller):
+A scrollbar takes the colours of the surface it sits on. The track is that surface: it is transparent, so the
+scroller's own background shows through (the sidebar gradient included). The thumb is a quiet tone of the same surface,
+`color-mix(in srgb, SURFACE p%, INK)` with the surface's own text colour, one step stronger on hover and while dragged. It
+fills the whole track width (no inset, no floating pill, no sheen) and its corner follows `CORNERS`
+(`--ds-radius-xs`: square, or 4px when rounded).
 
-| Token | Value | Meaning |
-|---|---|---|
-| `--scrollbar-size` | `12px` | hit area (width of a vertical bar, height of a horizontal one) |
-| `--scrollbar-gap` | `3px` | transparent ring around the thumb (visible thumb = size - 2 x gap) |
-| `--scrollbar-gap-hover` | `2px` | ring under the pointer / while dragged |
-| `--scrollbar-radius` | `var(--ds-radius-pill)` | follows the corner style: square thumb when square, pill when rounded |
-| `--scrollbar-min-thumb` | `40px` | shortest thumb |
-| `--scrollbar-track` | `transparent` | track fill (transparent everywhere) |
+Tokens: `--scrollbar-size` 10px (= thumb width), `--scrollbar-radius` `var(--ds-radius-xs)`, `--scrollbar-min-thumb`
+40px, `--scrollbar-track` transparent, `--scrollbar-thumb` / `-thumb-hover` / `-thumb-active`, the sidebar palette
+`--scrollbar-sidebar-thumb` / `-hover` / `-active`, and `--scrollbar-overlay-thumb` / `-hover` / `-active` (modal mask).
 
-Colour tokens per scope (rest / hover / active; the sheen and hairline are the other two):
+| Context | Selectors | SURFACE + INK | p rest / hover / active | navy-gold rest / hover | app-soft rest / hover |
+|---|---|---|---|---|---|
+| Light: the page, cards, tables, modal content, drawers, dropdowns | `:root`, `[data-theme]`, `[data-theme] [data-section="light"]` | `--ds-bg-cool` + `--ds-body` | 65 / 50 / 38 | `#c4cad5` / `#adb6c4` | `#b7bec8` / `#9ea6b2` |
+| Dark sections: landing hero, navy bands | `[data-theme] [data-section="dark"]` | `--ds-bg` + `--ds-body` | 74 / 62 / 52 | `#31435a` / `#45566c` | `#435c7d` / `#59718f` |
+| Sidebar, rail, mobile menu drawer, `.json` | `.lcp-side`, `.lcp-drawer .ant-drawer-body`, `.json` (tokens `--scrollbar-sidebar-thumb`, `-hover`, `-active`) | `--ds-sidebar-bg` + `--ds-sidebar-fg` | 76 / 66 / 58 | `#2d3c50` / `#3e4c60` | `#3b506a` / `#4e627b` |
+| Page bar beside the sidebar (Arabic desktop, width > 960px) | `html[dir="rtl"]:has(.lcp > .lcp-side) > body` (WebKit), `html` (Firefox) | the sidebar palette; track = `--ds-gradient-sidebar` | 76 / 66 / 58 | as sidebar | as sidebar |
+| Modal mask (`.ant-modal-wrap`, its own bar only) | tokens `--scrollbar-overlay-thumb`, `-hover`, `-active` | white over the mask | 35% / 55% / 70% | `#b2b2b3` / `#c9caca` | same |
 
-| Scope (selector) | `--scrollbar-thumb` | `-thumb-hover` | `-thumb-active` |
-|---|---|---|---|
-| Main app (`:root`) | `--navy` 56% | `--teal` | `--teal-ink` |
-| Dark sidebar (`.lcp-side`, `.lcp-drawer .ant-drawer-body`, `.json`) | white 36% | `#7fd1d5` 90% | `--teal-100` |
-| Modal overlay (`.ant-modal-wrap` bar only; tokens `--scrollbar-overlay-thumb`, `-hover`, `-active`) | white 90% | white | `--teal-50` |
-| navy-gold light (`[data-theme="navy-gold"]`, `[data-section="light"]`) | gold-600 96% | gold-700 90% | gold-700 |
-| navy-gold dark (`[data-section="dark"]`) | gold-400 55% | gold-400 90% | gold-200 |
-| app-soft light | soft-navy-950 55% | soft-gold-600 | soft-gold-700 |
-| app-soft dark | soft-gold-300 55% | soft-gold-500 | soft-gold-300 |
-
-`--scrollbar-highlight` (the sheen) is white 34% on light scopes and white 22% on dark ones; `--scrollbar-hairline` is the
-scope's navy at 14-16% on light, white 12-14% on dark.
+Thumb vs track, measured in Chromium (rest / hover): navy-gold light 1.57 / 1.94 on the page, 1.65 / 2.05 on white;
+dark 1.73 / 2.33 on `--ds-bg`, 1.52 / 2.05 on a dark card; sidebar 1.61-1.63 / 2.06-2.10 (also the page bar beside it);
+app-soft light 1.74 / 2.29, dark 1.94 / 2.65, sidebar 1.86-1.89 / 2.46-2.49; modal mask 1.65 / 2.13. Target: about 1.5:1 at
+rest (non-text UI that is present but quiet), stronger on hover.
 
 Rules:
-- Page scrollbar: the `html` element is outside the theme root, so each theme also lists
-  `html:has([data-ds-page][data-theme="<name>"])` in its light rule. Mark the page root with `data-ds-page` and
-  `data-theme`. Without `:has()` support the page keeps the main-app palette.
-- A new theme adds a light and a dark rule with the five colour tokens (`-thumb`, `-thumb-hover`, `-thumb-active`,
-  `-highlight`, `-hairline`).
-- Chromium and Safari use `::-webkit-scrollbar`; Chrome 121+ ignores it on elements that set `scrollbar-color` or
-  `scrollbar-width`, so the stylesheet resets those on `.ant-table`, `.ant-segmented` and the date-picker time column.
-- Firefox: `scrollbar-width: thin` + `scrollbar-color`, only inside `@supports not selector(::-webkit-scrollbar)`. No hover
-  state, no shape.
-- `forced-colors: active`: no custom styling; the browser draws system-coloured scrollbars.
-- Hidden scrollers stay hidden: `.lcp-seg`, `.f-pipe`, `.sp-tabs`, `.sp-rail` (and antd Anchor, Tailwind `no-scrollbar`).
+- A new theme needs nothing here: every rule reads the theme's own tokens. A new dark container that is not a
+  `[data-section="dark"]` block: add its selector to the sidebar rule, or give it its own SURFACE/INK pair.
+- Override per container: `.my-list { --scrollbar-size: 6px; }` (the collapsed rail uses 6px, in `app/nav.css`).
+- Chromium draws the page (viewport) scrollbar from `body`'s `::-webkit-scrollbar` parts, not `html`'s; tokens on `html`
+  reach it by inheritance, a page-only override goes on `body`'s parts.
+- Chrome 121+ ignores `::-webkit-scrollbar` on elements whose `scrollbar-color` / `scrollbar-width` is not `auto`, so the
+  file resets them on `.ant-table`, `.ant-segmented` and the date-picker time column (Chromium branch only). Select,
+  Cascader and TreeSelect virtual lists draw their own thumb: coloured through `--rc-virtual-list-scrollbar-bg`, corner
+  forced over its inline 99px radius.
+- Firefox: `scrollbar-width: thin` + `scrollbar-color` with the same colours (no hover state, no corner), only inside
+  `@supports not selector(::-webkit-scrollbar)`. Browsers do not animate scrollbar parts: state changes are instant.
+- `forced-colors: active`: no custom styling; the browser draws system-coloured scrollbars. Hidden scrollers stay hidden
+  (`.lcp-seg`, `.f-pipe`, `.sp-tabs`, `.sp-rail`, antd Anchor, Tailwind `no-scrollbar`).

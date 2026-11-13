@@ -3,6 +3,7 @@ import { AimOutlined, ApartmentOutlined, ArrowLeftOutlined, ArrowRightOutlined, 
 import type { IndicatorNode, PillarNode, StandardNode } from "../../api/tier1";
 import { L, useLang } from "../../shared/i18n";
 import { stdLabel } from "../../shared/pillars";
+import { PillarCarousel, type CarouselSlide } from "./PillarCarousel";
 import {
   allIndicators, allInitiatives, allStandards, countDots, dotState, dotText, span, targetsComplete, tint, usePlan, type DotState, type View,
 } from "./model";
@@ -185,15 +186,15 @@ export function StateBar({ list }: { list: IndicatorNode[] }) {
 
 export function PlanMap() {
   const { tree } = usePlan();
+  const slides: CarouselSlide[] = tree.pillars.map((p, index) => ({ key: p.id, node: <PillarCard pillar={p} index={index} /> }));
+  if (tree.unassigned.length > 0)
+    slides.push({ key: "unassigned", node: (
+      <PillarCard index={-1} pillar={{ id: "", code: "—", nameAr: L("معايير لم تربط بركيزة", "Standards without a pillar"), nameEn: null, description: null, sortOrder: 99, version: 0, standards: tree.unassigned }} />
+    ) });
   return (
     <div className="sp-map-wrap">
       <DotLegend list={allIndicators(tree)} />
-      <div className="sp-map">
-        {tree.pillars.map((p, index) => <PillarCard key={p.id} pillar={p} index={index} />)}
-        {tree.unassigned.length > 0 && (
-          <PillarCard index={-1} pillar={{ id: "", code: "—", nameAr: L("معايير لم تربط بركيزة", "Standards without a pillar"), nameEn: null, description: null, sortOrder: 99, version: 0, standards: tree.unassigned }} />
-        )}
-      </div>
+      <PillarCarousel label={L("ركائز الخطة", "Plan pillars")} slides={slides} />
     </div>
   );
 }
@@ -210,10 +211,10 @@ function PillarCard({ pillar, index }: { pillar: PillarNode; index: number }) {
         {index >= 0 ? (
           <button type="button" className="sp-pillar-head" onClick={() => select(`P:${pillar.id}`)}>
             <span className="sp-pillar-num ltr-nums">{String(index + 1).padStart(2, "0")}</span>
-            <span className="sp-pillar-name"><small>{L(`الركيزة ${pillar.code}`, `Pillar ${pillar.code}`)}</small><b>{pillar.nameAr}</b></span>
+            <span className="sp-pillar-name"><b title={pillar.nameAr}>{pillar.nameAr}</b></span>
           </button>
         ) : (
-          <div className="sp-pillar-head"><span className="sp-pillar-name"><b>{pillar.nameAr}</b></span></div>
+          <div className="sp-pillar-head"><span className="sp-pillar-name"><b title={pillar.nameAr}>{pillar.nameAr}</b></span></div>
         )}
         <dl className="sp-pillar-stats">
           <div><dt>{L("معيار", "standards")}</dt><dd>{pillar.standards.length}</dd></div>

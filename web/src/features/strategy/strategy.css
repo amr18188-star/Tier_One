@@ -16,13 +16,13 @@
 }
 .sp-hero-top { position: relative; z-index: 1; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 18px 28px; }
 .sp-hero-id { flex: 1 1 420px; min-width: 0; }
-.sp-hero-id small { color: #a9e1e4; font-size: 13px; font-weight: 600; letter-spacing: 0.2px; }
+.sp-hero-id small { color: var(--ds-accent-on-dark); font-size: 13px; font-weight: 600; letter-spacing: 0.2px; }
 .sp-hero-id h1 { font-family: var(--font-display); font-size: clamp(26px, 3vw, 36px); line-height: 1.4; margin: 6px 0 8px; color: #fff; }
 .sp-hero-id p { margin: 0; color: #d3ddeb; line-height: 1.9; max-width: 640px; }
 .sp-hero-rings { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center; }
 .sp-ring { display: flex; align-items: center; gap: 10px; background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: var(--ds-radius-xl); padding: 8px 14px 8px 10px; }
 .sp-ring-track { fill: none; stroke: rgba(255, 255, 255, 0.14); stroke-width: 7; }
-.sp-ring-fill { fill: none; stroke: #5fd3d8; stroke-width: 7; stroke-linecap: round; }
+.sp-ring-fill { fill: none; stroke: var(--ds-accent-on-dark); stroke-width: 7; stroke-linecap: round; }
 .sp-ring text { fill: #fff; font-size: 14px; font-weight: 700; font-family: var(--font-body); }
 .sp-ring b { display: block; font-size: 13px; color: #fff; }
 .sp-ring small { color: #b9c6d8; font-size: 12px; }
@@ -38,7 +38,7 @@
 .sp-rail li::before { content: ""; position: absolute; top: 10px; inset-inline: 0; height: 2px; background: rgba(255, 255, 255, 0.22); }
 .sp-rail li:first-child::before { inset-inline-start: 50%; }
 .sp-rail li:last-child::before { inset-inline-end: 50%; }
-.sp-rail-dot { position: absolute; top: 4px; width: 14px; height: 14px; border-radius: var(--ds-radius-round); background: #183a66; border: 2px solid #8fd9dd; }
+.sp-rail-dot { position: absolute; top: 4px; width: 14px; height: 14px; border-radius: var(--ds-radius-round); background: var(--ds-band-via); border: 2px solid var(--ds-accent-on-dark); }
 .sp-rail li.base .sp-rail-dot { border-color: #b9c6d8; }
 .sp-rail li.now .sp-rail-dot { background: #f6c453; border-color: #f6c453; box-shadow: 0 0 0 5px rgba(246, 196, 83, 0.25); }
 .sp-rail b { font-size: 15px; color: #fff; }
@@ -66,7 +66,7 @@
 .sp-tabs button.on { background: var(--navy); box-shadow: 0 6px 16px rgba(22, 41, 74, 0.25); }
 .sp-tabs button.on b { color: #fff; }
 .sp-tabs button.on small { color: #c4d0e0; }
-.sp-tabs button.on .anticon { color: #7fd6da; }
+.sp-tabs button.on .anticon { color: var(--ds-accent-on-dark); }
 
 /* ----- نقاط المؤشرات ----- */
 .sp-dot { display: inline-block; width: 10px; height: 10px; border-radius: var(--ds-radius-round); flex: none; }
@@ -87,7 +87,52 @@
 /* ----- خريطة الخطة ----- */
 .sp-map-wrap { display: grid; gap: 14px; min-width: 0; }
 .sp-map-wrap > .sp-legend { background: #fff; border: 1px solid var(--hair); border-radius: var(--ds-radius-xl); padding: 10px 16px; box-shadow: var(--shadow); }
-.sp-map { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 16px; align-items: start; }
+/* شريط الركائز (PillarCarousel.tsx، embla): ثلاث بطاقات من 1100px، واثنتان من 640px، وواحدة دونها. الزران على الجانبين
+   (تحت مع النقاط على الجوال)، والبطاقات بارتفاع واحد: الشريحة flex والبطاقة تملؤها. الفجوة حشوة الشريحة وهامش سالب للمسار. */
+.sp-car {
+  --sp-car-gap: 16px;
+  position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "prev view next" ". dots ."; gap: 6px 10px; min-width: 0;
+}
+.sp-car-viewport { grid-area: view; min-width: 0; overflow: hidden; padding-block: 2px 12px; cursor: grab; }
+.sp-car-viewport[data-dragging] { cursor: grabbing; user-select: none; }
+.sp-car-track { display: flex; touch-action: pan-y pinch-zoom; margin-inline-start: calc(var(--sp-car-gap) * -1); }
+.sp-car-slide { flex: 0 0 100%; min-width: 0; display: flex; padding-inline-start: var(--sp-car-gap); }
+.sp-car-slide > * { flex: 1 1 auto; min-width: 0; }
+@media (min-width: 640px) { .sp-car-slide { flex-basis: 50%; } }
+@media (min-width: 1100px) { .sp-car-slide { flex-basis: calc(100% / 3); } }
+.sp-car-btn {
+  align-self: start; position: sticky; top: calc(50vh - 20px); margin-block-start: 56px;
+  display: inline-grid; place-items: center; width: 40px; height: 40px; padding: 0; font-size: 14px; cursor: pointer;
+  color: var(--ds-heading); background: var(--ds-surface); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-md); box-shadow: var(--ds-shadow-sm);
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+.sp-car-prev { grid-area: prev; }
+.sp-car-next { grid-area: next; }
+.sp-car-btn:not([aria-disabled="true"]):hover { background: var(--ds-btn-ghost-hover-bg); border-color: var(--ds-btn-ghost-hover-border); color: var(--ds-btn-ghost-hover-fg); }
+.sp-car-btn[aria-disabled="true"] { cursor: default; opacity: 0.4; box-shadow: none; }
+.sp-car.static .sp-car-btn { visibility: hidden; }
+.sp-car-btn:focus-visible, .sp-car-dots button:focus-visible { outline: 2px solid var(--ds-focus-ring); outline-offset: 2px; }
+.sp-car-dots { grid-area: dots; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; min-height: 24px; }
+.sp-car-dots button { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; background: none; cursor: pointer; }
+.sp-car-dots button::before { content: ""; width: 8px; height: 8px; border-radius: var(--ds-radius-pill); background: var(--ds-body); transition: width 0.2s, background-color 0.2s; }
+.sp-car-dots button:hover::before { background: var(--ds-body-strong); }
+.sp-car-dots button[aria-current="true"]::before { width: 20px; background: var(--ds-heading); }
+/* تلميح العجلة في أسفل الصفحة: مرة في الجلسة، فوق صف النقاط عند طرفه، بلا أثر في التخطيط (فلا يتغير «أسفل الصفحة»). */
+.sp-car-hint {
+  position: absolute; grid-area: dots; inset-inline-end: 0; top: 50%; transform: translateY(-50%); max-width: calc(50% - 72px); margin: 0;
+  font-size: 12px; line-height: 1.6; color: var(--ds-label); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none;
+  animation: sp-car-hint-in 0.3s ease-out;
+}
+.sp-car-hint .anticon { color: var(--ds-icon); margin-inline-start: 4px; }
+@keyframes sp-car-hint-in { from { opacity: 0; } }
+@media (max-width: 639px) {
+  .sp-car { grid-template-areas: "view view view" "prev dots next"; align-items: center; }
+  .sp-car-btn { position: static; align-self: center; margin: 0; }
+  .sp-car-hint { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sp-car-btn, .sp-car-dots button::before { transition: none; }
+}
 .sp-pillar { display: flex; flex-direction: column; background: #fff; border-radius: var(--ds-radius-xl); overflow: hidden; border: 1px solid var(--hair); box-shadow: var(--shadow); min-width: 0; }
 .sp-pillar > header {
   position: relative; overflow: hidden; color: #fff; padding: 18px 18px 14px;
@@ -97,9 +142,12 @@
 .sp-pillar-head { position: relative; z-index: 1; display: flex; align-items: center; gap: 14px; width: 100%; padding: 0; border: 0; background: none; color: inherit; text-align: start; font: inherit; cursor: pointer; }
 div.sp-pillar-head { cursor: default; }
 .sp-pillar-num { font-family: var(--font-display); font-size: 34px; font-weight: 700; line-height: 1; color: rgba(255, 255, 255, 0.9); min-width: 52px; }
-.sp-pillar-name { display: flex; flex-direction: column; min-width: 0; }
-.sp-pillar-name small { color: rgba(255, 255, 255, 0.78); font-size: 12px; }
-.sp-pillar-name b { font-family: var(--font-display); font-size: 16.5px; line-height: 1.6; }
+/* اسم الركيزة سطران دائمًا (الأقصر يتوسطهما، والأطول يقطع بنقاط والاسم كاملًا في title)، فرؤوس البطاقات بارتفاع واحد وصفوف أرقامها على خط واحد. */
+.sp-pillar-name { --sp-title-size: 16.5px; --sp-title-lh: 1.6; display: flex; flex-direction: column; justify-content: center; min-width: 0; min-height: calc(var(--sp-title-size) * var(--sp-title-lh) * 2); }
+.sp-pillar-name b {
+  font-family: var(--font-display); font-size: var(--sp-title-size); line-height: var(--sp-title-lh);
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: break-word;
+}
 .sp-pillar-head:hover .sp-pillar-name b, .sp-pillar-head:focus-visible .sp-pillar-name b { text-decoration: underline; text-underline-offset: 5px; }
 .sp-pillar-stats { position: relative; z-index: 1; display: flex; margin: 14px 0 0; background: rgba(255, 255, 255, 0.13); border-radius: var(--ds-radius-lg); }
 .sp-pillar-stats div { flex: 1; display: flex; flex-direction: column-reverse; align-items: center; padding: 6px 4px; }
@@ -124,7 +172,18 @@ div.sp-pillar-head { cursor: default; }
 .sp-pillar-more:hover { text-decoration: underline; }
 
 /* ----- الخط الزمني ----- */
-.sp-road-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin-bottom: 14px; }
+.sp-road-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; margin-bottom: var(--ds-toolbar-gap); }
+/* مرشح الركيزة: الشريط في وضع البطاقة الواحدة (PillarCarousel single)، ورأس الركيزة أفقي حين يتسع. */
+.sp-road > .sp-car { margin-bottom: var(--ds-toolbar-gap); }
+.sp-car.single .sp-car-slide { flex-basis: 100%; }
+.sp-car.single .sp-car-btn { position: static; align-self: center; margin: 0; }
+.sp-car.single .sp-car-viewport { padding-block: 2px 8px; }
+.sp-road-pick > header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding: 16px 18px; }
+.sp-road-pick .sp-pillar-head { flex: 1 1 280px; width: auto; }
+.sp-road-pick .sp-pillar-stats { flex: 0 1 380px; margin: 0; }
+@media (max-width: 639px) {
+  .sp-road-pick .sp-pillar-stats { flex-basis: 100%; }
+}
 .sp-road-scroll { overflow-x: auto; border: 1px solid var(--hair); border-radius: var(--ds-radius-xl); }
 .sp-road-grid { min-width: 880px; font-size: 13px; }
 .sp-road-row { display: grid; grid-template-columns: var(--cols); min-height: 40px; border-bottom: 1px solid var(--hair); }
@@ -133,12 +192,40 @@ div.sp-pillar-head { cursor: default; }
 .sp-road-row.head span { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px; }
 .sp-road-row.head span:first-child { align-items: flex-start; padding-inline: 14px; }
 .sp-road-row.head small { font-size: 10.5px; font-weight: 400; color: #b9c6d8; }
-.sp-road-row.pillar { background: var(--pc); color: #fff; min-height: 38px; }
-.sp-road-row.pillar span { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding: 6px 14px; font-family: var(--font-display); font-size: 14px; }
-.sp-road-row.pillar code { background: rgba(255, 255, 255, 0.2); color: #fff; border-radius: var(--ds-radius-sm); padding: 0 7px; font-size: 12px; }
-.sp-road-row.std { background: var(--pt); min-height: 34px; }
-.sp-road-row.std span { grid-column: 1 / -1; display: flex; align-items: center; padding: 4px 14px; font-weight: 600; }
-.sp-road-row.std .t1-link { color: var(--pc); }
+/* المعيار لوحة تطوى (StandardPanels في Roadmap.tsx): رأسه زر، وصفوفه في .sp-road-body تطوى بالشبكة (0fr ← 1fr) كما في
+   الشريط الجانبي (app/nav.css)، والمطوية مخفية عن Tab وقارئ الشاشة. بين المعايير فجوة صغيرة بخط شعري فتقرأ كل مجموعة كتلة.
+   overflow: clip لا يصنع حاوية تمرير، فتبقى أسماء الصفوف ثابتة عند التمرير الأفقي. */
+.sp-road-grid { background: var(--ds-bg-cool); }
+.sp-road-std + .sp-road-std { margin-top: var(--ds-space-sm); border-top: 1px solid var(--ds-border); }
+.sp-road-row.std { background: var(--pt); }
+.sp-road-row.std > .sp-road-std-cell { grid-column: 1 / -1; display: flex; align-items: center; padding: 0 8px; }
+/* رأس المعيار ثابت عند التمرير الأفقي، ولا يتجاوز عرض الجزء الظاهر من الجدول (cqi من .sp-road-scroll)، فيلتف الاسم على الجوال. */
+.sp-road-scroll { container-type: inline-size; }
+.sp-road-std-head { position: sticky; inset-inline-start: 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 0 14px; min-width: 0; max-width: calc(100cqi - 16px); }
+.sp-road-toggle {
+  display: inline-flex; align-items: baseline; gap: 8px; min-width: 0; max-width: 100%; padding: 9px 8px;
+  border: 0; border-radius: var(--ds-radius-sm); background: none; color: var(--ds-fg); font: inherit; font-weight: 600; text-align: start; cursor: pointer;
+}
+.sp-road-toggle b { min-width: 0; }
+.sp-road-toggle:hover { background: color-mix(in srgb, var(--pc) 10%, transparent); }
+.sp-road-toggle:focus-visible { outline: 2px solid var(--ds-focus-ring); outline-offset: -2px; }
+.sp-road-toggle.empty { cursor: default; background: none; }
+.sp-road-toggle code { color: var(--pc); font-weight: 700; font-size: 12px; }
+.sp-road-toggle small { color: var(--ds-label); font-weight: 400; font-size: 12px; white-space: nowrap; }
+.sp-road-chev { align-self: center; color: var(--pc); font-size: 11px; transform: rotate(-90deg); }
+:root[dir="rtl"] .sp-road-chev { transform: rotate(90deg); }
+.sp-road-std[data-open="true"] .sp-road-chev { transform: none; }
+.sp-road-row .sp-road-std-open { flex: none; font-size: 12px; color: var(--pc); }
+.sp-road-body { display: grid; grid-template-rows: 0fr; }
+.sp-road-std[data-open="true"] > .sp-road-body { grid-template-rows: 1fr; }
+.sp-road-inner { min-height: 0; overflow: clip; visibility: hidden; }
+.sp-road-std[data-open="true"] .sp-road-inner { visibility: visible; }
+@media (prefers-reduced-motion: no-preference) {
+  .sp-road-body { transition: grid-template-rows 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .sp-road-chev { transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .sp-road-inner { transition: visibility 0s linear 220ms; }
+  .sp-road-std[data-open="true"] .sp-road-inner { transition-delay: 0s; }
+}
 .sp-road-row.item { cursor: pointer; background: #fff; }
 .sp-road-row.item:hover, .sp-road-row.item:hover .sp-road-label { background: #f6f9fb; }
 .sp-road-label {
@@ -251,9 +338,14 @@ div.sp-pillar-head { cursor: default; }
 .sp-pmini-text { flex: 1; display: grid; gap: 6px; min-width: 0; }
 .sp-pmini-text b { font-size: 14.5px; line-height: 1.6; }
 .sp-pmini-text small { color: var(--muted); font-size: 12px; }
+/* بطاقات الصف الواحد بارتفاع واحد (الشبكة تمد الأقصر)، وتذييل كل بطاقة في أسفلها. في المستكشف وحده، لا في لمحة الصفحة الأولى. */
+.sp-detail .sp-pmini { align-items: stretch; }
+.sp-detail .sp-pmini-text { display: flex; flex-direction: column; }
+.sp-detail .sp-pmini-text > .sp-statebar { margin-top: auto; }
 
 .sp-sgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
-.sp-scard { background: #fff; border: 1px solid var(--line); border-top: 4px solid var(--pc); padding: 14px; gap: 9px; align-content: start; }
+.sp-scard { background: #fff; border: 1px solid var(--line); border-top: 4px solid var(--pc); padding: 14px; gap: 9px; display: flex; flex-direction: column; }
+.sp-scard > .sp-std-meta { margin-top: auto; }
 .sp-scard:hover, .sp-scard:focus-visible { box-shadow: var(--shadow-up); border-color: var(--pc); }
 .sp-scard-head code { background: var(--pt); }
 .sp-scard-desc { color: var(--muted); font-size: 13px; line-height: 1.75; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
@@ -270,6 +362,7 @@ div.sp-pillar-head { cursor: default; }
 .sp-init b { font-size: 14px; line-height: 1.6; }
 .sp-init small { font-size: 12px; }
 .sp-init.st-Stopped { opacity: 0.75; }
+.sp-init > .sp-yearbar { margin-top: auto; }
 
 .sp-yearbar-track, .sp-yearbar-years { display: grid; gap: 3px; }
 .sp-yearbar-track span { height: 8px; border-radius: var(--ds-radius-xs); background: var(--sunk); }
@@ -368,7 +461,6 @@ div.sp-pillar-head { cursor: default; }
   .sp-tabs button small { display: none; }
   .sp-tabs button b { font-size: 12.5px; }
   .sp-tabs-row > .ant-btn { width: 100%; }
-  .sp-map { grid-template-columns: 1fr; }
   .sp-dhead { padding: 16px; }
   .sp-dhead-actions { width: 100%; }
   .sp-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }

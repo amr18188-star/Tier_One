@@ -407,8 +407,9 @@ Bars (8px; square track while `CORNERS` is square, pill when rounded):
 Categorical order: `--ds-chart-1` → `-2` → `-3` → `-4`. Legend: `size-2.5 bg-ds-chart-1` swatch + `text-xs text-ds-label`.
 Donut: `style={{ stroke: "var(--ds-chart-1)" }}` per segment.
 
-shadcn / Recharts (`web/src/components/ui/chart.tsx`): give the config DS colours; shadcn exposes them as
-`--color-<key>` on the chart. Don't name a key after a primitive (`gold-400`): it would shadow `--color-gold-400` inside the chart.
+shadcn / Recharts (`web/src/components/ui/chart.tsx`): give the config DS colours (`var(--chart-1)` … `var(--chart-5)`
+are `--ds-chart-1` … `5`; use `color`, not chart.tsx's `theme` key, which targets a `.dark` class Tier1 doesn't use);
+shadcn exposes them as `--color-<key>` on the chart. Charts sit on light surfaces (navy-gold `--chart-1` is navy-800). Don't name a key after a primitive (`gold-400`): it would shadow `--color-gold-400` inside the chart.
 
 ```tsx
 import type { ChartConfig } from "@/components/ui/chart";
@@ -434,7 +435,7 @@ import { DirectionProvider } from "@/components/ui/direction";
 
 <DirectionProvider dir="rtl">
   <div data-feature="" data-theme="navy-gold">
-    <Card>{/* paper, navy text: --card, --card-foreground from the theme; corners from --radius (corners.css) */}
+    <Card>{/* paper, navy text: --card = --ds-surface, --card-foreground = --ds-fg (shadcn.css); corners from --radius (corners.css) */}
       <CardHeader><CardTitle>{L("ملخص", "Summary")}</CardTitle></CardHeader>
       <CardContent>
         <Button>{L("حفظ", "Save")}</Button>{/* navy; gold inside data-section="dark" */}
@@ -443,8 +444,9 @@ import { DirectionProvider } from "@/components/ui/direction";
 
     <Dialog>
       <DialogTrigger asChild><button className={btnGhost}>{L("فتح", "Open")}</button></DialogTrigger>
-      {/* portalled under <body>: repeat the theme (and data-section if it should be dark) and the root attribute */}
-      <DialogContent data-theme="navy-gold" data-feature="">
+      {/* portalled under <body>: <html data-theme> gives the theme (light scope); add data-section="dark" for a dark
+          block, and the root attribute for the feature's utilities */}
+      <DialogContent data-feature="">
         <DialogTitle>…</DialogTitle>
         <div className="text-sm leading-7 text-ds-body">{/* feature utilities work from here down */}</div>
       </DialogContent>
@@ -453,12 +455,15 @@ import { DirectionProvider } from "@/components/ui/direction";
 </DirectionProvider>
 ```
 
-- Same for `PopoverContent`, `TooltipContent`, `SelectContent`, `DropdownMenuContent`, `SheetContent`: pass `data-theme`
-  and the root attribute. The content element itself takes shadcn's classes; this feature's utilities apply to its children.
+- Same for `PopoverContent`, `TooltipContent`, `SelectContent`, `DropdownMenuContent`, `SheetContent`: pass the root
+  attribute, and `data-section="dark"` when the trigger sits in a dark block. The content element itself takes shadcn's
+  classes; this feature's utilities apply to its children.
+- On a dark band (`data-section="dark"`) shadcn parts read the dark tokens (gold primary, navy-800 card) and its `dark:`
+  classes. Text colour is inherited: give the band `text-ds-fg` so outline and ghost buttons and typed text are light.
 - Feature utilities are unlayered and beat shadcn's layered ones on the same element. Avoid fixed-radius and shadow
   class names (`rounded-lg`, `rounded-xl`, `shadow-sm`) anywhere in the feature folder, comments included: the scan would
   generate them with Tailwind's defaults and they would override the matching shadcn parts on the page.
-- Don't add `rounded-*` overrides to shadcn parts; the theme's `--radius` sets them.
+- Don't add `rounded-*` overrides to shadcn parts; `--radius` (`corners.css`, the `CORNERS` switch) sets them.
 - `asChild` on a plain element (as above) is safe on React 18; around a shadcn component the ref is lost.
 
 ## 12. Don't

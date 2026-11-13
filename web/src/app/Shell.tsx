@@ -18,6 +18,7 @@ import logoOnWhite from "../assets/brand/capital-university-logo-light.png";
 import "../shared/ui.css";
 import "../shared/tier1.css";
 import "../shared/theme.css";
+import "../shared/layout.css";
 import "./nav.css";
 
 interface NavItem { to: string; icon: ReactNode; label: string; end?: boolean; badge?: number; badgeText?: string; tab?: boolean }

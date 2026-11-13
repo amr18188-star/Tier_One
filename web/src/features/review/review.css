@@ -40,7 +40,7 @@
 .rv-caret { color: var(--muted); font-size: 11px; transition: transform 0.15s; }
 .rv-row.open .rv-caret { transform: rotate(180deg); }
 
-.rv-detail { border-top: 1px solid var(--hair); padding: 12px 14px 14px; background: color-mix(in srgb, var(--pt) 45%, #fff); }
+.rv-detail { border-top: 1px solid var(--hair); padding: 12px 14px 14px; background: color-mix(in srgb, var(--pt) 45%, var(--ds-surface)); }
 .rv-table { display: grid; border: 1px solid var(--hair); border-radius: var(--ds-radius-lg); overflow: hidden; background: #fff; margin-bottom: 10px; }
 .rv-tr { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); grid-template-columns: minmax(150px, 2fr); gap: 8px; align-items: center; padding: 7px 12px; border-bottom: 1px solid var(--hair); font-size: 13px; }
 .rv-tr:last-child { border-bottom: 0; }

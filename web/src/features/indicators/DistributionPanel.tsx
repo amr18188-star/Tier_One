@@ -44,7 +44,7 @@ export function DistributionPanel({ code }: { code: string }) {
                   note: s.fromEachCollegeDefault ? L("من المستهدف الموحد لكل كلية", "From the per-college target") : s.text ?? undefined,
                 }))} />
               <div className="ch-legend">
-                <span><i className="ch-key" style={{ borderColor: "#0a8c93" }} />{L("مستهدف خاص بالكلية", "College's own target")}</span>
+                <span><i className="ch-key" style={{ borderColor: "var(--ds-chart-college)" }} />{L("مستهدف خاص بالكلية", "College's own target")}</span>
                 <span><i className="ch-key" style={{ borderColor: "#c99a2e" }} />{L("المستهدف الموحد لكل كلية", "Per-college target")}</span>
               </div>
               {t!.actions.canEditColleges && (

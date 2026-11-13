@@ -85,7 +85,7 @@ export interface SectionTokens {
   /** --ds-link / --ds-link-hover: text links and codes (antd colorLink). */
   link: string;
   linkHover: string;
-  /** --destructive (shadcn): the AA error colour (antd colorError). */
+  /** --ds-destructive: the AA error colour (antd colorError, shadcn --destructive). */
   destructive: string;
   btnPrimary: ButtonTokens;
   btnGhost: ButtonTokens;
@@ -154,7 +154,8 @@ export interface ThemeTokens {
   gridHero: string;
   gridDark: string;
   chart: {
-    series: readonly [string, string, string, string];
+    /** --ds-chart-1 … 5: the categorical series (shadcn --chart-1 … 5). */
+    series: readonly [string, string, string, string, string];
     actual: string;
     target: string;
     area: string;
@@ -164,7 +165,11 @@ export interface ThemeTokens {
     axis: string;
     up: string;
     down: string;
+    /** --ds-chart-college: the "college's own target" series (DistributionPanel), = sections.light.btnPrimary.bg. */
+    college: string;
   };
+  /** --ds-status-review: the "under review" status segment (Home definition-status bar). */
+  status: { review: string };
   shadow: { sm: string; md: string };
   focus: string;
   selection: { bg: string; fg: string };
@@ -172,6 +177,8 @@ export interface ThemeTokens {
   band: BandTokens;
   /** --ds-shade: the dark ink that pillar colours (--pc) deepen toward in their gradients. */
   shade: string;
+  /** --ds-accent-on-dark: accent text and marks on navy blocks without data-section="dark" (= sections.dark.eyebrow). */
+  accentOnDark: string;
   gradient: GradientTokens;
   hatch: HatchTokens;
   sections: Record<SectionTone, SectionTokens>;
@@ -180,6 +187,8 @@ export interface ThemeTokens {
 const p = palette;
 const cairo = '"Cairo", "Geist Variable", "Segoe UI", sans-serif';
 const shadow = { sm: "0 8px 24px rgba(25, 53, 90, 0.08)", md: "0 16px 40px rgba(25, 53, 90, 0.14)" } as const;
+/** Dark-section --ds-destructive in both themes: color-mix(in srgb, soft-danger-400 55%, paper), resolved (AA on navy). */
+const darkDestructive = "#f6ada9";
 
 /** The gradient recipes of themes/*.css, filled with one theme's colours (each pair is from → to). */
 function gradients(band: BandTokens, sidebar: SidebarTokens, shade: string, c: Record<"avatar" | "progress" | "callout" | "surfaceSubtle", readonly [string, string]>): GradientTokens {
@@ -235,7 +244,7 @@ export const themes = {
     gridHero: p.navy[600],
     gridDark: p.steel[400],
     chart: {
-      series: [p.navy[800], p.gold[400], p.steel[400], p.haze[300]],
+      series: [p.navy[800], p.gold[400], p.steel[400], p.haze[300], p.gold[500]],
       actual: p.gold[500],
       target: p.steel[400],
       area: p.gold[400],
@@ -245,13 +254,16 @@ export const themes = {
       axis: p.haze[400],
       up: p.signal.green,
       down: p.signal.red,
+      college: p.navy[900],
     },
+    status: { review: p.gold[600] },
     shadow,
     focus: "rgba(201, 162, 39, 0.5)",
     selection: { bg: p.soft.gold[500], fg: p.soft.navy[950] },
     sidebar: ngSidebar,
     band: ngBand,
     shade: p.navy[950],
+    accentOnDark: p.gold[400],
     gradient: gradients(ngBand, ngSidebar, p.navy[950], {
       avatar: [p.navy[700], p.navy[900]],
       progress: [p.navy[900], p.navy[700]],
@@ -336,7 +348,7 @@ export const themes = {
         focusRing: p.gold[400],
         link: p.gold[400],
         linkHover: p.paper,
-        destructive: p.soft.danger[400],
+        destructive: darkDestructive,
         btnPrimary: { bg: p.gold[400], fg: p.navy[900], border: p.gold[400], hoverBg: "transparent", hoverFg: p.gold[400], hoverBorder: p.gold[400] },
         btnGhost: { bg: "transparent", fg: p.paper, border: "rgba(255, 255, 255, 0.2)", hoverBg: p.gold[400], hoverFg: p.navy[900], hoverBorder: p.gold[400] },
       },
@@ -348,7 +360,7 @@ export const themes = {
     gridHero: p.soft.navy[800],
     gridDark: p.soft.neutral[500],
     chart: {
-      series: [p.soft.navy[500], p.soft.gold[600], p.soft.success[700], p.soft.info[700]],
+      series: [p.soft.navy[500], p.soft.gold[600], p.soft.success[700], p.soft.info[700], p.soft.danger[600]],
       actual: p.soft.gold[600],
       target: p.soft.neutral[500],
       area: p.soft.gold[500],
@@ -358,13 +370,16 @@ export const themes = {
       axis: p.soft.neutral[600],
       up: p.soft.success[400],
       down: p.soft.danger[400],
+      college: p.soft.navy[800],
     },
+    status: { review: p.soft.gold[700] },
     shadow,
     focus: "rgba(201, 162, 39, 0.5)",
     selection: { bg: p.soft.gold[500], fg: p.soft.navy[950] },
     sidebar: softSidebar,
     band: softBand,
     shade: p.soft.navy[950],
+    accentOnDark: p.soft.gold[300],
     gradient: gradients(softBand, softSidebar, p.soft.navy[950], {
       avatar: [p.soft.navy[700], p.soft.navy[950]],
       progress: [p.soft.navy[800], p.soft.navy[500]],
@@ -449,7 +464,7 @@ export const themes = {
         focusRing: p.soft.gold[300],
         link: p.soft.gold[300],
         linkHover: p.paper,
-        destructive: p.soft.danger[400],
+        destructive: darkDestructive,
         btnPrimary: { bg: p.soft.gold[500], fg: p.soft.navy[950], border: p.soft.gold[500], hoverBg: "transparent", hoverFg: p.soft.gold[300], hoverBorder: p.soft.gold[500] },
         btnGhost: { bg: "transparent", fg: p.paper, border: "rgba(255, 255, 255, 0.2)", hoverBg: p.soft.gold[500], hoverFg: p.soft.navy[950], hoverBorder: p.soft.gold[500] },
       },

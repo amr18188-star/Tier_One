@@ -4,6 +4,7 @@
  * data-theme="app-soft" on a container, data-section="dark" | "light" re-scopes the section tokens.
  * Values follow tokens.css (light contract for light sections, its .dark block for dark sections).
  * Only custom properties here. Primitives come from ../primitives.css.
+ * No shadcn variable here: ../../shadcn.css maps them to these tokens, once for every theme.
  * No radius here: corners are their own axis (../corners.css, switch CORNERS in ../config.ts). The old /app
  * look (14px corners) is this theme + CORNERS = "rounded" (cards 12–16px).
  */
@@ -29,11 +30,12 @@
     rgba(var(--color-soft-navy-900-rgb), 0.4) 100%
   );
 
-  /* Categorical series = tokens.css --chart-1…4; all ≥ 3:1 on white (navy-gold's 4th, haze-300, is 1.5:1) */
+  /* Categorical series = tokens.css --chart-1…5; all ≥ 3:1 on white (navy-gold's 4th, haze-300, is 1.5:1) */
   --ds-chart-1: var(--color-soft-navy-500);
   --ds-chart-2: var(--color-soft-gold-600);
   --ds-chart-3: var(--color-soft-success-700);
   --ds-chart-4: var(--color-soft-info-700);
+  --ds-chart-5: var(--color-soft-danger-600); /* fifth categorical series (shadcn --chart-5) */
   --ds-chart-actual: var(--color-soft-gold-600);
   --ds-chart-target: var(--color-soft-neutral-500);
   --ds-chart-area: var(--color-soft-gold-500);
@@ -43,27 +45,14 @@
   --ds-chart-axis: var(--color-soft-neutral-600);
   --ds-chart-up: var(--color-soft-success-400);
   --ds-chart-down: var(--color-soft-danger-400);
+  --ds-chart-college: var(--color-soft-navy-800); /* = light --ds-btn-primary-bg */
+  --ds-status-review: var(--color-soft-gold-700); /* soft-gold-600 is 2.98:1 on the track */
 
   --ds-shadow-sm: 0 8px 24px color-mix(in srgb, var(--color-soft-navy-800) 8%, transparent);
   --ds-shadow-md: 0 16px 40px color-mix(in srgb, var(--color-soft-navy-800) 14%, transparent);
   --ds-focus: color-mix(in oklab, var(--color-soft-gold-500) 50%, transparent);
   --ds-selection-bg: var(--color-soft-gold-500);
   --ds-selection-fg: var(--color-soft-navy-950);
-
-  /* shadcn: theme-level variables (tokens.css; --radius comes from ../corners.css) */
-  --chart-1: var(--color-soft-navy-500);
-  --chart-2: var(--color-soft-gold-600);
-  --chart-3: var(--color-soft-success-700);
-  --chart-4: var(--color-soft-info-700);
-  --chart-5: var(--color-soft-danger-600);
-  --sidebar: var(--color-soft-navy-950);
-  --sidebar-foreground: var(--color-paper);
-  --sidebar-primary: var(--color-soft-gold-500);
-  --sidebar-primary-foreground: var(--color-soft-navy-950);
-  --sidebar-accent: color-mix(in srgb, var(--color-paper) 10%, transparent);
-  --sidebar-accent-foreground: var(--color-paper);
-  --sidebar-border: color-mix(in srgb, var(--color-paper) 14%, transparent);
-  --sidebar-ring: var(--color-soft-gold-300);
 
   /* App sidebar: the dark chrome of the signed-in shell (same names as navy-gold) */
   --ds-sidebar-bg: var(--color-soft-navy-950);
@@ -86,6 +75,7 @@
   --ds-band-to: var(--color-soft-navy-700);
   --ds-band-glow: color-mix(in srgb, var(--color-soft-navy-500) 38%, transparent);
   --ds-band-glow-accent: color-mix(in srgb, var(--color-soft-gold-500) 18%, transparent);
+  --ds-accent-on-dark: var(--color-soft-gold-300); /* = dark-section --ds-eyebrow */
 
   /* Gradients (same names and recipes as navy-gold.css; README "Gradients") */
   --ds-shade: var(--color-soft-navy-950);
@@ -143,6 +133,7 @@
   --ds-focus-ring: var(--color-soft-navy-950); /* keyboard focus outline, 2px solid */
   --ds-link: var(--color-soft-navy-700); /* text links, codes (antd colorLink) */
   --ds-link-hover: var(--color-soft-navy-950);
+  --ds-destructive: var(--color-soft-danger-700); /* error text (antd colorError, shadcn --destructive) */
 
   --ds-btn-primary-bg: var(--color-soft-navy-800);
   --ds-btn-primary-fg: var(--color-paper);
@@ -156,26 +147,6 @@
   --ds-btn-ghost-hover-bg: var(--color-soft-gold-500);
   --ds-btn-ghost-hover-fg: var(--color-soft-navy-950);
   --ds-btn-ghost-hover-border: var(--color-soft-gold-500);
-
-  /* shadcn core (tokens.css light contract) */
-  --background: var(--color-soft-neutral-50);
-  --foreground: var(--color-soft-neutral-900);
-  --card: var(--color-paper);
-  --card-foreground: var(--color-soft-neutral-900);
-  --popover: var(--color-paper);
-  --popover-foreground: var(--color-soft-neutral-900);
-  --primary: var(--color-soft-navy-800);
-  --primary-foreground: var(--color-paper);
-  --secondary: var(--color-soft-navy-100);
-  --secondary-foreground: var(--color-soft-navy-800);
-  --ui-muted: var(--color-soft-neutral-75);
-  --muted-foreground: var(--color-soft-neutral-700);
-  --accent: var(--color-soft-gold-50);
-  --accent-foreground: var(--color-soft-gold-700);
-  --destructive: var(--color-soft-danger-700);
-  --border: var(--color-soft-neutral-100);
-  --input: var(--color-soft-neutral-100);
-  --ring: var(--color-soft-gold-500);
 }
 
 /* ---------- Dark scope ---------- */
@@ -216,6 +187,8 @@
   --ds-focus-ring: var(--color-soft-gold-300); /* keyboard focus outline on dark */
   --ds-link: var(--color-soft-gold-300);
   --ds-link-hover: var(--color-paper);
+  /* error text on navy: soft-danger-400 is 4.4:1 here, so it is lightened; the text and shadcn's 20% red tint stay AA */
+  --ds-destructive: color-mix(in srgb, var(--color-soft-danger-400) 55%, var(--color-paper));
 
   --ds-btn-primary-bg: var(--color-soft-gold-500);
   --ds-btn-primary-fg: var(--color-soft-navy-950);
@@ -229,24 +202,4 @@
   --ds-btn-ghost-hover-bg: var(--color-soft-gold-500);
   --ds-btn-ghost-hover-fg: var(--color-soft-navy-950);
   --ds-btn-ghost-hover-border: var(--color-soft-gold-500);
-
-  /* shadcn core (tokens.css .dark, nearest primitives) */
-  --background: var(--color-soft-navy-900);
-  --foreground: var(--color-soft-neutral-25);
-  --card: var(--color-soft-navy-800);
-  --card-foreground: var(--color-soft-neutral-25);
-  --popover: var(--color-soft-navy-800);
-  --popover-foreground: var(--color-soft-neutral-25);
-  --primary: var(--color-soft-gold-300);
-  --primary-foreground: var(--color-soft-navy-950);
-  --secondary: var(--color-soft-navy-700);
-  --secondary-foreground: var(--color-soft-neutral-25);
-  --ui-muted: var(--color-soft-navy-800);
-  --muted-foreground: var(--color-soft-neutral-200);
-  --accent: var(--color-soft-navy-700);
-  --accent-foreground: var(--color-soft-gold-100);
-  --destructive: var(--color-soft-danger-400);
-  --border: color-mix(in srgb, var(--color-paper) 14%, transparent);
-  --input: color-mix(in srgb, var(--color-paper) 18%, transparent);
-  --ring: var(--color-soft-gold-300);
 }
