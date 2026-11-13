@@ -62,9 +62,9 @@ export function DataManagementSection() {
             {features.map((feature) => (
               <article
                 key={feature.number}
-                className="group flex gap-5 border border-ds-border p-5 transition-colors hover:border-ds-accent hover:bg-ds-surface-hover-soft sm:p-6"
+                className="group flex gap-5 rounded-ds-lg border border-ds-border p-5 transition-colors hover:border-ds-accent hover:bg-ds-surface-hover-soft sm:p-6"
               >
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center border border-ds-accent-border bg-ds-tile text-ds-icon">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-ds-md border border-ds-accent-border bg-ds-tile text-ds-icon">
                   <Icon name={feature.icon} size={22} />
                 </div>
 
@@ -84,7 +84,7 @@ export function DataManagementSection() {
           </div>
 
           {/* Ratio Calculation Card */}
-          <div data-section="dark" className="flex flex-col justify-between border border-ds-border bg-ds-bg p-6 text-ds-fg sm:p-8">
+          <div data-section="dark" className="flex flex-col justify-between rounded-ds-lg border border-ds-border bg-ds-bg p-6 text-ds-fg sm:p-8">
             <div>
               <div className="flex items-center justify-between gap-4">
                 <div>
@@ -93,7 +93,7 @@ export function DataManagementSection() {
                   <h3 className="mt-3 text-xl font-bold">احتساب المؤشرات النسبية</h3>
                 </div>
 
-                <div className="flex h-12 w-12 items-center justify-center border border-ds-accent-border bg-ds-tile text-ds-icon">
+                <div className="flex h-12 w-12 items-center justify-center rounded-ds-md border border-ds-accent-border bg-ds-tile text-ds-icon">
                   <Icon name="chart" size={23} />
                 </div>
               </div>
@@ -105,9 +105,9 @@ export function DataManagementSection() {
             </div>
 
             {/* Formula */}
-            <div className="my-10 border border-ds-border bg-ds-surface p-5 sm:p-7">
+            <div className="my-10 rounded-ds-md border border-ds-border bg-ds-surface p-5 sm:p-7">
               <div className="flex flex-col items-center gap-5">
-                <div className="w-full border border-ds-border bg-ds-bg p-4 text-center">
+                <div className="w-full rounded-ds-sm border border-ds-border bg-ds-bg p-4 text-center">
                   <span className="text-xs text-ds-body">البسط</span>
 
                   <p className="mt-2 text-lg font-bold text-ds-heading">Numerator</p>
@@ -115,13 +115,13 @@ export function DataManagementSection() {
 
                 <div className="h-px w-16 bg-ds-accent" />
 
-                <div className="w-full border border-ds-border bg-ds-bg p-4 text-center">
+                <div className="w-full rounded-ds-sm border border-ds-border bg-ds-bg p-4 text-center">
                   <span className="text-xs text-ds-body">المقام</span>
 
                   <p className="mt-2 text-lg font-bold text-ds-heading">Denominator</p>
                 </div>
 
-                <div className="flex w-full items-center justify-center gap-3 border border-ds-accent/40 bg-ds-accent/10 px-4 py-4 text-ds-highlight">
+                <div className="flex w-full items-center justify-center gap-3 rounded-ds-sm border border-ds-accent/40 bg-ds-accent/10 px-4 py-4 text-ds-highlight">
                   <Icon name="check" size={20} />
 
                   <span className="text-sm font-bold">النسبة المحسوبة تلقائيًا</span>

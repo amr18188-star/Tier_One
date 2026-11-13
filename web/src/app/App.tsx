@@ -1,5 +1,5 @@
-import { lazy, Suspense, useEffect, useState, type ComponentType, type ReactNode } from "react";
-import { App as AntApp, ConfigProvider, Spin } from "antd";
+import { lazy, Suspense, useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
+import { App as AntApp, ConfigProvider, Spin, type ThemeConfig } from "antd";
 import type { Locale } from "antd/es/locale";
 import arEG from "antd/locale/ar_EG";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -7,6 +7,8 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { onLangChange, useLang, type Lang } from "../shared/i18n";
 import { ErrorScreen, NoAccess } from "../shared/QueryState";
 import { SessionProvider, usePermissions, useSession } from "../shared/session";
+import { antdTheme } from "../styles/design-system/antd-theme";
+import { useDsCorners, useDsTheme } from "../styles/design-system/theme";
 
 /**
  * بعد نشر إصدار جديد تتغير أسماء ملفات الصفحات، فتفشل الصفحة المفتوحة قبله في تحميل صفحة لم تفتحها بعد.
@@ -60,32 +62,15 @@ const queryClient = new QueryClient({
 // ردود الخادم بلغة الطلب: تغيير اللغة يجعل كل ما في الذاكرة قديمًا فيعاد طلبه.
 onLangChange(() => void queryClient.invalidateQueries());
 
-/** ألوان هوية الجامعة: الكحلي لهيكل الواجهة ورؤوس الجداول، والتركوازي للإجراءات. */
-const theme = {
+/**
+ * خطوط antd كما هي. الألوان والزوايا من سمة نظام التصميم النشطة (styles/design-system/theme.ts):
+ * antdTheme يبنيها من tokens.ts، وتغيير data-theme على <html> يعيد تلوين antd معها.
+ * والزوايا (مربعة أو مستديرة) من CORNERS في styles/design-system/config.ts، وتغيير data-corners يتبعه antd أيضًا.
+ */
+const antdBase: ThemeConfig = {
   token: {
-    colorPrimary: "#0A8C93",
-    colorInfo: "#0A647F",
-    colorInfoBg: "#E8F6F6",
-    colorInfoBorder: "#C7E8E9",
-    colorLink: "#076B71",
-    colorText: "#15202F",
-    colorBgLayout: "#F4F6F9",
-    borderRadius: 8,
     fontFamily: '"IBM Plex Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif',
     fontSize: 14,
-  },
-  components: {
-    Table: {
-      headerBg: "#16294A",
-      headerColor: "#FFFFFF",
-      headerSortActiveBg: "#087D83",
-      headerSortHoverBg: "#087D83",
-      fixedHeaderSortActiveBg: "#087D83",
-      headerFilterHoverBg: "rgba(255, 255, 255, 0.12)",
-      headerSplitColor: "rgba(255, 255, 255, 0.22)",
-      rowHoverBg: "#E8F6F6",
-      headerBorderRadius: 0,
-    },
   },
 };
 
@@ -128,6 +113,7 @@ const LandingPage = load(() => import("../features/landing/LandingPage"));
 
 function Gate() {
   const { me, loading, error, retry } = useSession();
+  const dsTheme = useDsTheme();
   if (loading) return <div className="center-screen"><Spin size="large" /></div>;
   // خطأ الخادم أو الشبكة ليس خروجًا: شاشة إعادة محاولة بدل نموذج الدخول.
   if (error) return <ErrorScreen error={error} onRetry={retry} />;
@@ -136,7 +122,7 @@ function Gate() {
     return (
       <Suspense fallback={pageFallback}>
         <Routes>
-          {!me && <Route path="/" element={<LandingPage />} />}
+          {!me && <Route path="/" element={<LandingPage theme={dsTheme} />} />}
           <Route path="*" element={<LoginPage />} />
         </Routes>
       </Suspense>
@@ -180,6 +166,9 @@ function Gate() {
 export function App() {
   const lang = useLang();
   const locale = useAntLocale(lang);
+  const dsTheme = useDsTheme();
+  const corners = useDsCorners();
+  const theme = useMemo(() => antdTheme(dsTheme, antdBase, { corners }), [dsTheme, corners]);
   return (
     <ConfigProvider direction={lang === "ar" ? "rtl" : "ltr"} locale={locale} theme={theme}>
       <AntApp>

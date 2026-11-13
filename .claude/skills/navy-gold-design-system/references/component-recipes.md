@@ -9,80 +9,91 @@ with the `@/` alias (`@/` = `web/src/`); relative imports work too.
 
 ## Contents
 
-1. Feature CSS entry, scoped base and utilities · 2. Page root with theme · 3. Theme switch · 4. Dark and light sections ·
+1. Feature CSS entry, scoped base and utilities (copy of `landing.css`) · 2. Page root with theme · 3. Theme switch · 4. Dark and light sections ·
 5. Eyebrow + heading + highlight · 6. Cards and tiles with hairlines · 7. Stat number · 8. Buttons · 9. Icon chip,
 badge, callouts · 10. Chart colours · 11. shadcn inside a theme · 12. Don't
 
 ## 1. Feature CSS entry, scoped base and utilities
 
 ```css
-/* web/src/features/<feature>/<feature>.css — imported once, by the feature's root component (a lazy route) */
-@layer theme, base;
+/* web/src/features/<feature>/<feature>.css: imported once, by the feature's root component (a lazy route).
+   Copy of web/src/features/landing/landing.css with data-landing -> data-feature. Read that file for the full
+   comments and the complete scoped base. */
+@layer theme;
 @import "tailwindcss/theme.css" layer(theme);
 @import "../../styles/design-system/index.css";
 @import "../../styles/design-system/tailwind-theme.css";
 @source "./";
 
-/* Root: the inherited text properties. body and antd's .ant-app set others (IBM Plex, 14px). */
+/* rtl:/ltr: from the element's own direction (<html dir> follows the app language, the page root may differ). */
+@custom-variant rtl (&:where(:dir(rtl)));
+@custom-variant ltr (&:where(:dir(ltr)));
+
+/* Root: every inherited text property the page relies on (body and antd's .ant-app set IBM Plex, 14px, 1.57). */
 [data-feature] {
   font-family: var(--ds-font);
-  font-size: 1rem;
-  line-height: 1.5;
+  font-size: 1rem; /* html stays 16px: rem utilities assume it */
+  font-weight: 400;
+  line-height: 1.7;
   color: var(--ds-fg);
   -webkit-text-size-adjust: 100%;
   -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
 }
 
-/*
- * Scoped base: Tailwind's preflight, trimmed, only under the root. No preflight is loaded, so without this the
- * browser defaults survive (heading margins, link colour, button chrome, bullets, inline images).
- * In @layer base so it never beats a utility: neither this entry's (unlayered) nor shadcn's (layered).
- * Add a rule only when a browser default shows up.
- */
-@layer base {
-  :where([data-feature]) *,
-  :where([data-feature]) ::before,
-  :where([data-feature]) ::after {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    border: 0 solid var(--ds-border);
-    outline-color: var(--ds-focus);
-  }
-  :where([data-feature]) :where(h1, h2, h3, h4, h5, h6) { font-size: inherit; font-weight: inherit; }
-  :where([data-feature]) :where(b, strong) { font-weight: bolder; }
-  :where([data-feature]) :where(ol, ul, menu) { list-style: none; }
-  :where([data-feature]) :where(a) { color: inherit; text-decoration: inherit; }
-  :where([data-feature]) :where(button, input, select, optgroup, textarea) {
-    font: inherit;
-    letter-spacing: inherit;
-    color: inherit;
-    background-color: transparent;
-    border-radius: 0;
-    opacity: 1;
-  }
-  :where([data-feature]) :where(button) { cursor: pointer; }
-  :where([data-feature]) :where(img, svg, video, canvas, iframe) { display: block; vertical-align: middle; }
-  :where([data-feature]) :where(img, video) { max-width: 100%; height: auto; }
-  :where([data-feature]) ::selection { background-color: var(--ds-selection-bg); color: var(--ds-selection-fg); }
+/* Scoped base (Tailwind preflight, trimmed). [data-feature] :where(...) = 0,1,0: utilities (0,2,0) always win. */
+[data-feature] :where(*),
+[data-feature] ::before,
+[data-feature] ::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0 solid var(--ds-border);
+  outline-color: var(--ds-focus);
+}
+[data-feature] :where(h1, h2, h3, h4, h5, h6) { font-size: inherit; font-weight: inherit; }
+[data-feature] :where(a) { color: inherit; text-decoration: none; outline-color: var(--ds-focus); } /* beats antd's global link rule */
+[data-feature] :where(b, strong) { font-weight: bolder; }
+[data-feature] :where(ol, ul, menu) { list-style: none; }
+[data-feature] :where(img, svg, video, canvas, audio, iframe, embed, object) { display: block; vertical-align: middle; }
+[data-feature] :where(img, video) { max-width: 100%; height: auto; }
+[data-feature] :where(button, input, select, optgroup, textarea) {
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  border-radius: 0;
+  background-color: transparent;
+  opacity: 1;
+}
+[data-feature] :where(button) { cursor: pointer; }
+[data-feature] :where([hidden]:not([hidden="until-found"])) { display: none !important; }
+[data-feature] ::selection { background: var(--ds-selection-bg); color: var(--ds-selection-fg); }
+
+/* shared/ui.css draws a teal :focus-visible ring (0,1,0) and antd sets `a:focus { outline: 0 }` (0,1,1). Out-rank both. */
+[data-feature] :where(a, button, [role="button"], [tabindex]):focus-visible {
+  outline: auto 1px var(--ds-focus);
+  outline-offset: 0;
+  border-radius: 0;
 }
 
-/* web/src/shared/ui.css gives every link and button a teal :focus-visible outline (unlayered, 0,1,0). Out-rank it. */
-[data-feature] :is(a, button, [role="button"], [tabindex]):focus-visible {
-  outline: 2px solid var(--ds-focus);
-  outline-offset: 2px;
-  border-radius: var(--ds-radius);
-}
-
-/* Utilities: only for classes found in this folder, and only inside the root (:where keeps one-class specificity). */
-:where([data-feature]) {
+/* Utilities, scoped: every one compiles to `[data-feature] .class` (0,2,0). Unlayered on purpose. */
+[data-feature] {
   @tailwind utilities source(none);
 }
 ```
 
-What this compiles to (checked with Tier1's Tailwind 4.3.5): `:where([data-feature]) .bg-ds-surface { background-color:
-var(--ds-surface) }`. So a utility never matches outside the root, and never matches the root element itself: put
-utility classes on an inner wrapper.
+What this compiles to (checked against `landing.css`, Tailwind 4.3.5): `[data-feature] .bg-ds-surface { background-color:
+var(--ds-surface) }`, specificity 0,2,0. Why this and not `:where()` or `@layer base`:
+- Everything unlayered. `app.css`, `web/src/shared/*.css` and antd's CSS-in-JS are unlayered, and an unlayered rule beats
+  any `@layer` rule whatever its specificity. A layered base or layered utilities lose to them.
+- antd injects global link rules (`:where(.css-…) a:hover`, 0,1,1). A utility under `:where([data-feature])` has only 0,1,0
+  and loses to them; `[data-feature] .class` (0,2,0) wins. `[data-feature] :where(…)` base rules stay 0,1,0 so any
+  utility beats them.
+- `web/src/shared/ui.css` has a teal `:focus-visible` ring on links and buttons: the focus rule above (0,2,0) overrides it.
+- Only custom properties are global (Tailwind theme variables and the `--ds-*` tokens). No class or element rule leaks.
+- `source(none)` + `@source "./"`: Tailwind scans only the feature folder, so antd pages get no utilities.
+- html stays 16px (no `html { font-size }` rule): the rem utilities assume it, and the root sets its own `font-size: 1rem`.
+- Utilities match descendants of the root only, never the root element: put utility classes on an inner wrapper.
 
 Key the rules on an attribute of your own, not on `[data-theme]`: if someone later puts `data-theme` on `<html>`, rules
 keyed on `[data-theme]` would hit every antd page.
@@ -460,7 +471,7 @@ import { DirectionProvider } from "@/components/ui/direction";
 | `dark ? "text-white" : "text-navy-900"` ternaries | one class + `data-section` | the scope picks the value |
 | Global preflight, or `@import "tailwindcss"` anywhere | the entry in §1 (theme + scoped utilities, `source(none)`) | preflight resets every element; antd pages change |
 | Importing a Tailwind entry from `main.tsx`, `app.css` or a shared file | import it from the feature's root component | keeps the CSS with the feature |
-| `@import "tailwindcss/utilities.css"` unscoped (global, layered) | `@tailwind utilities source(none)` inside `:where([data-feature])` | global utilities restyle antd pages that share a class name, and lose inside your page to unlayered `web/src/styles/app.css` / `web/src/shared/*.css` |
+| `@import "tailwindcss/utilities.css"` unscoped (global, layered), or utilities under `:where([data-feature])` or in `@layer` | `[data-feature] { @tailwind utilities source(none); }`, unlayered | global utilities restyle antd pages that share a class name, and lose inside your page to unlayered `web/src/styles/app.css`, `web/src/shared/*.css` and antd's link rules (0,1,1) |
 | Utility classes on the root element itself | put them on the first inner wrapper | scoped utilities only match descendants of the root |
 | `!important` to win a clash | scope the rule under the root, or rename the class | it also wins over every theme and section |
 | Nesting two `data-theme` values | one theme per subtree | both themes' section rules match |

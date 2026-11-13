@@ -1,7 +1,7 @@
 /* ===== مراجعة مسئول ملف Tier 1 ونقل القيم إلى مؤشرات الجامعة ===== */
 .rv-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; }
 .rv-filter > button {
-  border: 1px solid var(--hair); background: #fff; border-radius: 99px; padding: 4px 12px; cursor: pointer; font: inherit; font-size: 13px; color: var(--navy);
+  border: 1px solid var(--hair); background: #fff; border-radius: var(--ds-radius-pill); padding: 4px 12px; cursor: pointer; font: inherit; font-size: 13px; color: var(--navy);
 }
 .rv-filter > button b { font-family: var(--font-display); margin-inline-start: 4px; color: var(--muted); }
 .rv-filter > button.on { background: var(--navy); border-color: var(--navy); color: #fff; }
@@ -10,7 +10,7 @@
 .rv-group { margin-bottom: 18px; }
 .rv-group .pill-band { margin-bottom: 8px; }
 
-.rv-row { border: 1px solid var(--hair); border-inline-start: 4px solid var(--pc); border-radius: 12px; background: #fff; margin-bottom: 8px; overflow: hidden; }
+.rv-row { border: 1px solid var(--hair); border-inline-start: 4px solid var(--pc); border-radius: var(--ds-radius-lg); background: #fff; margin-bottom: 8px; overflow: hidden; }
 .rv-row.open { box-shadow: 0 4px 16px rgba(22, 41, 74, 0.08); }
 .rv-head {
   display: grid; grid-template-columns: minmax(0, 1fr) 190px 120px 120px 150px; align-items: center; gap: 14px;
@@ -25,7 +25,7 @@
 /* أعمدة صغيرة: ارتفاع كل عمود نسبة الكلية من مستهدف الجامعة. */
 .rv-colleges { display: flex; align-items: flex-end; gap: 4px; height: 40px; padding-bottom: 2px; border-bottom: 1px solid var(--hair); }
 .rv-col { display: flex; align-items: flex-end; width: 16px; height: 100%; }
-.rv-col i { display: block; width: 100%; border-radius: 3px 3px 0 0; }
+.rv-col i { display: block; width: 100%; border-radius: var(--ds-radius-xs) var(--ds-radius-xs) 0 0; }
 .rv-col i.ok { background: #2f9e62; }
 .rv-col i.near { background: #d9a520; }
 .rv-col i.low { background: #d1553f; }
@@ -41,7 +41,7 @@
 .rv-row.open .rv-caret { transform: rotate(180deg); }
 
 .rv-detail { border-top: 1px solid var(--hair); padding: 12px 14px 14px; background: color-mix(in srgb, var(--pt) 45%, #fff); }
-.rv-table { display: grid; border: 1px solid var(--hair); border-radius: 10px; overflow: hidden; background: #fff; margin-bottom: 10px; }
+.rv-table { display: grid; border: 1px solid var(--hair); border-radius: var(--ds-radius-lg); overflow: hidden; background: #fff; margin-bottom: 10px; }
 .rv-tr { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); grid-template-columns: minmax(150px, 2fr); gap: 8px; align-items: center; padding: 7px 12px; border-bottom: 1px solid var(--hair); font-size: 13px; }
 .rv-tr:last-child { border-bottom: 0; }
 .rv-tr.head { background: var(--navy); color: #fff; font-size: 12px; font-weight: 600; }
@@ -52,9 +52,9 @@
 
 .rv-calc { font-size: 13px; line-height: 1.8; margin-bottom: 10px; }
 .rv-calc p { margin: 0 0 4px; }
-.rv-eq { display: inline-block; background: #fff; border: 1px dashed var(--hair); border-radius: 6px; padding: 0 8px; font-weight: 600; color: var(--navy); }
+.rv-eq { display: inline-block; background: #fff; border: 1px dashed var(--hair); border-radius: var(--ds-radius-sm); padding: 0 8px; font-weight: 600; color: var(--navy); }
 
-.rv-transfer { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; padding: 12px; border-radius: 10px; background: #fff; border: 1px solid var(--hair); }
+.rv-transfer { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; padding: 12px; border-radius: var(--ds-radius-lg); background: #fff; border: 1px solid var(--hair); }
 .rv-transfer label { display: grid; gap: 4px; font-size: 12.5px; color: var(--muted); }
 .rv-transfer label.grow { flex: 1; min-width: 240px; }
 

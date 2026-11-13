@@ -46,12 +46,12 @@ export function AnalyticsSection() {
         />
 
         {/* Dashboard */}
-        <div className="border border-ds-border bg-ds-surface shadow-ds-sm">
+        <div className="rounded-ds-lg border border-ds-border bg-ds-surface shadow-ds-sm">
           {/* Dashboard Header */}
           <div className="flex flex-col justify-between gap-4 border-b border-ds-border px-6 py-5 sm:flex-row sm:items-center sm:px-8">
             <div>
               <div className="flex items-center gap-2">
-                <span className="h-2 w-2 bg-ds-live" />
+                <span className="h-2 w-2 rounded-ds-pill bg-ds-live" />
 
                 <span className="text-xs font-semibold text-ds-heading">PERFORMANCE OVERVIEW</span>
               </div>
@@ -59,7 +59,7 @@ export function AnalyticsSection() {
               <h3 className="mt-2 text-lg font-bold text-ds-heading">لوحة متابعة الأداء المؤسسي</h3>
             </div>
 
-            <div className="flex items-center gap-2 border border-ds-border px-3 py-2 text-xs text-ds-body">
+            <div className="flex items-center gap-2 rounded-ds-pill border border-ds-border px-3 py-2 text-xs text-ds-body">
               <Icon name="calendar" size={15} />
               <span>الخطة الاستراتيجية الحالية</span>
             </div>
@@ -92,7 +92,7 @@ export function AnalyticsSection() {
 
               <PerformanceLineChart />
 
-              <p className="mt-6 border-s-2 border-ds-accent bg-ds-callout px-4 py-3 text-[11px] leading-6 text-ds-body">
+              <p className="mt-6 rounded-ds-sm border-s-2 border-ds-accent bg-ds-callout px-4 py-3 text-[11px] leading-6 text-ds-body">
                 رسم توضيحي لشكل التحليل الزمني. تُعرض النتائج الفعلية
                 عند ربط المنظومة ببيانات الأداء المعتمدة.
               </p>
@@ -112,7 +112,7 @@ export function AnalyticsSection() {
                 <div className="mt-5 grid grid-cols-2 gap-3">
                   {donutLegend.map(([label, color]) => (
                     <div key={label} className="flex items-center gap-2">
-                      <span className="h-2 w-2 shrink-0" style={{ backgroundColor: color }} />
+                      <span className="h-2 w-2 shrink-0 rounded-ds-xs" style={{ backgroundColor: color }} />
 
                       <span className="text-[10px] text-ds-body">{label}</span>
                     </div>

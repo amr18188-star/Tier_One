@@ -6,22 +6,22 @@
 .pg-sec-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
 .pg-sec-head h2 { margin: 0; font-size: 16px; color: var(--navy); }
 .pg-key { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); }
-.pg-key i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-inline-start: 8px; }
+.pg-key i { display: inline-block; width: 12px; height: 12px; border-radius: var(--ds-radius-xs); margin-inline-start: 8px; }
 .pg-key i.me, .pg-bar.me i { background: var(--teal); }
 .pg-key i.uni, .pg-bar.uni i { background: var(--navy); }
 .pg-pillars { margin-bottom: 16px; }
 .pg-pillar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
-.pg-pillar { border: 1px solid var(--hair); border-top: 4px solid var(--pc); border-radius: 12px; padding: 10px 12px; display: grid; gap: 6px; background: #fff; }
+.pg-pillar { border: 1px solid var(--hair); border-top: 4px solid var(--pc); border-radius: var(--ds-radius-lg); padding: 10px 12px; display: grid; gap: 6px; background: #fff; }
 .pg-pillar > b { font-size: 13px; color: var(--navy); line-height: 1.6; }
 .pg-bar { display: grid; grid-template-columns: minmax(0, 1fr) 56px; align-items: center; gap: 8px; }
-.pg-bar span { height: 9px; border-radius: 99px; background: var(--sunk); overflow: hidden; }
-.pg-bar i { display: block; height: 100%; border-radius: 99px; }
+.pg-bar span { height: 9px; border-radius: var(--ds-radius-pill); background: var(--sunk); overflow: hidden; }
+.pg-bar i { display: block; height: 100%; border-radius: var(--ds-radius-pill); }
 .pg-bar b { font-family: var(--font-display); font-size: 14px; color: var(--navy); text-align: end; }
 .pg-note { margin: 10px 0 0; font-size: 12.5px; }
 
 .pg-group { margin-bottom: 18px; }
 .pg-group .pill-band { margin-bottom: 8px; }
-.pg-table { border: 1px solid var(--hair); border-radius: 12px; overflow: hidden; background: #fff; }
+.pg-table { border: 1px solid var(--hair); border-radius: var(--ds-radius-lg); overflow: hidden; background: #fff; }
 .pg-tr {
   display: grid; grid-template-columns: minmax(220px, 3fr) 140px 110px 120px 140px 100px 150px; gap: 10px; align-items: center;
   padding: 8px 12px; border-bottom: 1px solid var(--hair); font-size: 13px;

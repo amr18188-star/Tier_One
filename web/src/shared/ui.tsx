@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Button, Empty, Grid, Skeleton, Table } from "antd";
+import { Button, ConfigProvider, Empty, Grid, Skeleton, Table } from "antd";
 import type { ColumnsType, TableProps } from "antd/es/table";
 import {
   ApartmentOutlined, ArrowLeftOutlined, ArrowRightOutlined, AuditOutlined, BarChartOutlined, BranchesOutlined, CalendarOutlined, CheckOutlined, ClusterOutlined, FileDoneOutlined, FormOutlined,
@@ -9,7 +9,16 @@ import { Link, useLocation } from "react-router-dom";
 import { L, useLang } from "./i18n";
 import { QueryState, type QueryLike } from "./QueryState";
 import { mergeSizes, Pager } from "./Pager";
+import { antdDarkBlockTheme } from "../styles/design-system/antd-theme";
+import { useDsTheme } from "../styles/design-system/theme";
 import "./ui.css";
+
+/** أزرار antd داخل شريط كحلي بألوان القسم الداكن من السمة النشطة (الأساسي ذهبي لا كحلي على كحلي)، وتتبع تبديلها. */
+function DarkBlock({ children }: { children: ReactNode }) {
+  const name = useDsTheme();
+  const theme = useMemo(() => antdDarkBlockTheme(name), [name]);
+  return <ConfigProvider theme={theme}>{children}</ConfigProvider>;
+}
 
 /** القسم الذي تتبعه الصفحة (كما في القائمة الجانبية) وأيقونته، من مسارها. */
 const SECTIONS: { prefix: string; ar: string; en: string; icon: ReactNode }[] = [
@@ -43,7 +52,7 @@ export function PageHeader({ title, subtitle, extra, back, stats, kicker }: {
   const Back = lang === "ar" ? ArrowRightOutlined : ArrowLeftOutlined;
   const section = SECTIONS.find((s) => pathname.startsWith(s.prefix));
   return (
-    <header className="lcp-head">
+    <header className="lcp-head" data-section="dark">
       {section && <span className="lcp-head-mark" aria-hidden>{section.icon}</span>}
       <div className="lcp-head-main">
         {back && <Link to={back.to} className="lcp-back"><Back aria-hidden /> {back.label}</Link>}
@@ -56,7 +65,7 @@ export function PageHeader({ title, subtitle, extra, back, stats, kicker }: {
           {stats.map((s) => <div key={s.label} className={s.tone ? `tone-${s.tone}` : undefined}><dt>{s.label}</dt><dd>{s.value}</dd></div>)}
         </dl>
       )}
-      {extra && <div className="lcp-head-extra">{extra}</div>}
+      {extra && <div className="lcp-head-extra"><DarkBlock>{extra}</DarkBlock></div>}
     </header>
   );
 }
@@ -228,7 +237,7 @@ export function greeting(): string {
 /** شريط الترحيب الداكن أعلى الرئيسية: سطر صغير، والعنوان، والملخص، والإجراءات. */
 export function Hero({ kicker, title, children, actions }: { kicker?: ReactNode; title: ReactNode; children?: ReactNode; actions?: ReactNode }) {
   return (
-    <section className="lcp-hero">
+    <section className="lcp-hero" data-section="dark">
       <svg className="lcp-hero-decor" viewBox="0 0 600 600" aria-hidden focusable="false">
         <path d="M120 70h250a90 90 0 0 1 90 90v120a90 90 0 0 1-90 90H230l-90 80v-80h-20a90 90 0 0 1-90-90V160a90 90 0 0 1 90-90z" />
         <path d="M330 300h170a70 70 0 0 1 70 70v80a70 70 0 0 1-70 70h-20v60l-70-60H330a70 70 0 0 1-70-70v-80a70 70 0 0 1 70-70z" />
@@ -236,7 +245,7 @@ export function Hero({ kicker, title, children, actions }: { kicker?: ReactNode;
       {kicker && <small>{kicker}</small>}
       <h1>{title}</h1>
       {children && <p>{children}</p>}
-      {actions && <div className="lcp-hero-actions">{actions}</div>}
+      {actions && <div className="lcp-hero-actions"><DarkBlock>{actions}</DarkBlock></div>}
     </section>
   );
 }

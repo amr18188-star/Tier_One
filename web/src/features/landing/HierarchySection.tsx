@@ -71,8 +71,8 @@ export function HierarchySection() {
           <div className="flex flex-col items-center">
             {levels.map((level, index) => (
               <div key={level.number} className="w-full" style={{ maxWidth: level.width }}>
-                <div className="group flex items-center gap-4 border border-ds-accent/50 bg-ds-surface px-5 py-5 shadow-ds-sm transition-all hover:border-ds-accent-strong hover:shadow-ds-md sm:px-6">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center bg-ds-tile-solid text-ds-tile-solid-fg">
+                <div className="group flex items-center gap-4 rounded-ds-lg border border-ds-accent/50 bg-ds-surface px-5 py-5 shadow-ds-sm transition-all hover:border-ds-accent-strong hover:shadow-ds-md sm:px-6">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-ds-md bg-ds-tile-solid text-ds-tile-solid-fg">
                     <Icon name={level.icon} size={22} />
                   </div>
 
@@ -100,7 +100,7 @@ export function HierarchySection() {
 
           {/* Explanation */}
           <div>
-            <div className="mb-8 border-r-4 border-ds-accent-strong bg-ds-surface p-6 sm:p-8">
+            <div className="mb-8 rounded-ds-lg border-r-4 border-ds-accent-strong bg-ds-surface p-6 sm:p-8">
               <span className="text-xs font-bold tracking-wider text-ds-eyebrow">STRUCTURED PLANNING</span>
 
               <h3 className="mt-4 text-2xl font-bold leading-relaxed text-ds-heading">

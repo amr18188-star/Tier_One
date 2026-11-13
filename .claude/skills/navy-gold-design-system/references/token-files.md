@@ -18,15 +18,20 @@ disagrees with the CSS, the CSS wins: re-read the file.
 | `web/src/styles/design-system/themes/app-soft.css` | Same names, the old `/app` palette, 14px radius | `[data-theme="app-soft"]` | `index.css` |
 | `web/src/styles/design-system/index.css` | Plain-CSS entry: primitives, then each theme (order matters) | — | a feature's Tailwind entry, or any CSS that wants `var(--ds-*)` |
 | `web/src/styles/design-system/tailwind-theme.css` | `@theme inline reference`: `--color-ds-*`, primitives, `--radius-ds`, `--font-ds`, `--shadow-ds-*` | emits nothing on `:root` | a feature's Tailwind entry, after `index.css` |
-| `web/src/styles/design-system/tokens.ts` | The same values as typed TS constants + a suggested antd `ThemeConfig` per theme | — | nothing yet |
+| `web/src/styles/design-system/tokens.ts` | The same values as typed TS constants (real colours for antd) | — | `antd-theme.ts`, `tokens.test.ts`, `LandingPage.tsx` (type) |
+| `web/src/styles/design-system/antd-theme.ts` | `antdTheme(name, base, { tone })`: tokens → antd `ThemeConfig` (section 8) | — | `web/src/app/App.tsx` |
+| `web/src/styles/design-system/theme.ts` | `ACTIVE_THEME` → `<html data-theme>`, `useDsTheme()`, `setDsTheme()`; imports `index.css` | `<html>` | `web/src/app/App.tsx` |
+| `web/src/styles/design-system/tokens.test.ts` | Parses the CSS; fails if `tokens.ts` differs or an AA pair fails | — | vitest |
+| `web/src/styles/design-system/scrollbar.css` | Scrollbar tokens and drawing (section 9) | `:root`, `[data-theme]` scopes, element selectors | `web/src/main.tsx`, once, after `app.css` |
 | `web/src/styles/design-system/README.md` | Short usage and the add-a-theme steps | — | — |
 
 Each theme file has three blocks: theme level (`[data-theme="x"]`), light scope (`[data-theme="x"]` and
 `[data-theme="x"] [data-section="light"]`), dark scope (`[data-theme="x"] [data-section="dark"]` and
 `[data-theme="x"][data-section="dark"]`). Only custom properties, no element rules.
 
-Nothing imports `index.css` globally (`main.tsx` loads only `app.css` and fonts). A feature that uses the tokens imports
-them through its own Tailwind entry (see SKILL.md).
+`theme.ts` (imported by `App.tsx`) loads `index.css` globally and sets `<html data-theme>`, so every `--ds-*` token
+exists on every page, including antd portals under `<body>`. A feature that uses Tailwind utilities imports the tokens
+again through its own Tailwind entry (see SKILL.md); the values are the same.
 
 ## 2. How scoping works
 
@@ -52,7 +57,7 @@ them through its own Tailwind entry (see SKILL.md).
 
 | Family | Steps (value) |
 |---|---|
-| navy | 950 `#06152a` · 900 `#071a33` · 800 `#0c2545` · 700 `#12345b` · 600 `#18304d` · 500 `#29415f` · `navy-900-rgb` = `7 26 51` (for `rgb(… / a)`) |
+| navy | 950 `#06152a` · 900 `#071a33` · 800 `#0c2545` · 700 `#12345b` · 600 `#18304d` · 500 `#29415f` · `navy-900-rgb` = `7, 26, 51` (comma form, used as `rgba(var(--color-navy-900-rgb), a)`) |
 | steel | 400 `#7890ac` |
 | mist | 100 `#dce5f0` · 300 `#aab8ca` (replace Tailwind's mist-100/300 where loaded; the rest of Tailwind's mist is cleared in the Tailwind mapping) |
 | gold | 200 `#e5c47e` · 400 `#d6b46a` · 500 `#b9944d` · 600 `#a7833d` · 700 `#82652b` (AA small text, not used by the landing) |
@@ -63,12 +68,13 @@ them through its own Tailwind entry (see SKILL.md).
 | ash (Tailwind v4 slate, exact OKLCH) | 100 ≈ `#f1f5f9` · 200 ≈ `#e2e8f0` · 300 ≈ `#cad5e2` · 400 ≈ `#90a1b9` · 500 ≈ `#62748e` · 600 ≈ `#45556c` |
 | haze (Tailwind v3 slate hex, chart greys) | 200 `#e2e8f0` · 300 `#cbd5e1` · 400 `#94a3b8` |
 | signal | green `#22c55e` · red `#ef4444` |
-| soft-navy | 950 `#0d2440` · 900 `#123055` · 800 `#19355a` · 700 `#234a7e` · 500 `#3567b0` · 100 `#e8eef7` · `soft-navy-900-rgb` = `18 48 85` |
+| soft-navy | 950 `#0d2440` · 900 `#123055` · 800 `#19355a` · 700 `#234a7e` · 500 `#3567b0` · 100 `#e8eef7` · `soft-navy-900-rgb` = `18, 48, 85` (same use) |
 | soft-gold | 700 `#8a6d00` · 600 `#ad8700` · 500 `#c9a227` · 300 `#e6c25a` · 100 `#f0dfa8` · 50 `#fffdf4` |
 | soft-neutral | 900 `#1b2733` · 700 `#475569` · 600 `#5c6b7a` · 500 `#7d8ea6` · 400 `#9aa8b6` · 300 `#a7b3c0` · 200 `#cddbee` · 150 `#e2e8f0` · 100 `#e3e9f1` · 75 `#edf2f7` · 50 `#f4f7fb` · 25 `#f8fafc` |
 | soft-success / danger / info | success 700 `#1c7c3d` · 400 `#64c783`; danger 700 `#b3261e` · 600 `#d0453e` · 400 `#ef6a63`; info 700 `#1e40af` |
 
-navy-gold also uses three soft primitives so it stays pixel-identical to the old app: `soft-navy-800` (shadows),
+The channel triples use the comma `rgba()` form on purpose: only it keeps Chrome's legacy gradient interpolation (the
+space form `rgb(7 26 51 / a)` and `color-mix()` shift pixels by one unit). navy-gold also uses three soft primitives so it stays pixel-identical to the old app: `soft-navy-800` (shadows),
 `soft-gold-500` (focus outline, selection) and `soft-navy-950` (selection text).
 
 ## 4. Theme-level tokens
@@ -85,7 +91,7 @@ Same in light and dark scopes.
 | `--ds-grid-dark` | steel-400 | soft-neutral-500 | colour of the dark-section grid lines |
 | `--ds-texture-hero` | 1px grid of navy-600 | 1px grid of soft-navy-800 | `backgroundImage` + `backgroundSize: 40px 40px` + `opacity-40` |
 | `--ds-texture-dark` | 1px grid of steel-400 | 1px grid of soft-neutral-500 | `backgroundImage` + `backgroundSize: 48px 48px` + `opacity-[0.08]` |
-| `--ds-hero-vignette` | radial navy-900 at .96 / .88 / .65 / .4 | same with soft-navy-900 | `background` of the hero overlay |
+| `--ds-hero-vignette` | radial `rgba(var(--color-navy-900-rgb), a)`, a = .96 / .88 / .65 / .4 | same with `soft-navy-900-rgb` | `background` of the hero overlay |
 | `--ds-chart-1` | navy-800 | soft-navy-500 | first series |
 | `--ds-chart-2` | gold-400 | soft-gold-600 | second series, highlighted bars |
 | `--ds-chart-3` | steel-400 | soft-success-700 | third series |
@@ -104,6 +110,31 @@ Same in light and dark scopes.
 | `--ds-focus` | soft-gold-500 @50% | same | `outline-color` on the feature root |
 | `--ds-selection-bg` | soft-gold-500 | same | `::selection` background |
 | `--ds-selection-fg` | soft-navy-950 | same | `::selection` text |
+
+App sidebar (the navy chrome of the signed-in shell; theme level, not per section). Utilities `bg-ds-sidebar-bg`,
+`text-ds-sidebar-fg` …; `shared/ui.css` maps the sidebar's legacy `--teal`, `--teal-100`, `--gold` to them.
+
+| Token | navy-gold | app-soft | Use (contrast in navy-gold) |
+|---|---|---|---|
+| `--ds-sidebar-bg` | navy-950 | soft-navy-950 | sidebar and mobile menu background |
+| `--ds-sidebar-fg` | mist-300 | soft-neutral-200 | link text (9.1:1) |
+| `--ds-sidebar-fg-active` | paper | paper | hovered / active link (12.6:1 on active bg) |
+| `--ds-sidebar-muted` | steel-400 | soft-neutral-400 | group titles (5.6:1) |
+| `--ds-sidebar-hover-bg` | navy-800 | soft-navy-800 | link hover |
+| `--ds-sidebar-active-bg` | navy-700 | soft-navy-700 | active link |
+| `--ds-sidebar-indicator` | gold-400 | soft-gold-500 | active-link bar (6.3:1 on active bg) |
+| `--ds-sidebar-border` | navy-500 | paper @14% | dividers |
+| `--ds-sidebar-focus` | gold-400 | soft-gold-300 | keyboard focus outline (9.2:1) |
+| `--ds-sidebar-badge-bg` / `-fg` | gold-400 / navy-900 | soft-gold-500 / soft-navy-950 | count badges (8.8:1) |
+
+Page band (the navy header strip of antd pages; `shared/theme.css` builds `--band` from these). Theme level; `band` in
+`tokens.ts`. Text on the band is white or a dark-section token (the band has `data-section="dark"`).
+
+| Token | navy-gold | app-soft | Use |
+|---|---|---|---|
+| `--ds-band-from` / `-via` / `-to` | navy-900 / navy-800 / navy-700 | soft-navy-900 / 800 / 700 | 125° linear gradient stops |
+| `--ds-band-glow` | steel-400 @30% | soft-navy-500 @38% | radial light at the top start |
+| `--ds-band-glow-accent` | gold-400 @18% | soft-gold-500 @18% | radial warm light at the bottom end |
 
 ## 5. Section tokens
 
@@ -161,6 +192,9 @@ These change with `data-section`. Utility = any colour prefix + the name without
 | `--ds-tile-solid` | navy-900 | navy-900 | soft-navy-950 | soft-navy-950 | solid tile fill |
 | `--ds-tile-solid-fg` | gold-400 | gold-400 | soft-gold-300 | soft-gold-300 | icon on the solid tile |
 | `--ds-live` | signal-green | signal-green | soft-success-700 | soft-success-400 | "live / on track" square dot |
+| `--ds-focus-ring` | navy-900 | gold-400 | soft-navy-950 | soft-gold-300 | keyboard focus outline (2px solid); antd `colorPrimaryBorder` |
+| `--ds-link` | gold-700 | gold-400 | soft-navy-700 | soft-gold-300 | text links and codes; antd `colorLink`; legacy `--teal-ink` (5.5:1 on white) |
+| `--ds-link-hover` | navy-900 | paper | soft-navy-950 | paper | link hover / active |
 
 #### Primary button
 
@@ -195,7 +229,8 @@ Available in a Tailwind entry that imports `tailwind-theme.css` (see SKILL.md fo
 `outline-`, `ring-`, `fill-`, `stroke-`, `decoration-`, `caret-`, `accent-`, `placeholder-`, `from-` / `via-` / `to-`,
 `shadow-` (shadow colour). Roles: every section token above, plus the theme-level `ds-chrome`, `ds-chart-1` … `ds-chart-4`,
 `ds-chart-actual`, `ds-chart-target`, `ds-chart-area`, `ds-chart-current`, `ds-chart-bg`, `ds-chart-grid`, `ds-chart-axis`,
-`ds-chart-up`, `ds-chart-down`, `ds-focus`, `ds-selection-bg`, `ds-selection-fg`, `ds-grid-hero`, `ds-grid-dark`.
+`ds-chart-up`, `ds-chart-down`, `ds-focus`, `ds-selection-bg`, `ds-selection-fg`, `ds-grid-hero`, `ds-grid-dark`, and the
+eleven `ds-sidebar-*` tokens.
 
 **Opacity modifiers** work: `bg-ds-accent/10` → `color-mix(in oklab, var(--ds-accent) 10%, transparent)`;
 `border-ds-line-soft/15`, `bg-ds-surface/90`, `bg-ds-chrome/95`. Don't add a modifier to a token that already carries alpha
@@ -266,7 +301,10 @@ Notes:
 - The muted surface is `--ui-muted` because `web/src/styles/app.css` owns `--muted` (a text colour on antd pages).
 - `--destructive` is a soft danger red: navy-gold's `signal-red` fails AA as text (3.8:1).
 - `:root` (shadcn.css) and `[data-theme]` have the same specificity. On a descendant element the theme wins by
-  inheritance. If you put `data-theme` on `<html>`, the design-system CSS must load after `shadcn.css`.
+  inheritance. `<html>` carries `data-theme` (`theme.ts`), so if `shadcn.css` is ever imported it must load before the
+  design-system CSS (import it in `main.tsx`, which runs before `App.tsx` imports `theme.ts`).
+- Nothing else in `web/src` declares these names (checked 2026-11-13: only `shadcn.css`, not imported), so the theme's
+  shadcn variables on `<html>` clash with nothing.
 
 ## 8. `tokens.ts` and antd
 
@@ -274,39 +312,67 @@ Notes:
 - `palette`: every primitive as a plain colour string (ash in 8-bit hex).
 - `themes`: per theme `fontFamily`, `radius` (px number), `chrome`, `gridHero`, `gridDark`, `chart` (`series`, `actual`,
   `target`, `area`, `current`, `bg`, `grid`, `axis`, `up`, `down`), `shadow`, `focus`, `selection`,
-  `sections.light` / `sections.dark` (every section token, camelCase, buttons as `btnPrimary` / `btnGhost`), and `antd`
-  (a suggested `ThemeConfig` for the light scope).
-- `themeNames`, and the types `ThemeName`, `SectionTone`, `ThemeTokens`, `SectionTokens`, `ButtonTokens`.
-- `color-mix(…, X n%, transparent)` is written as `rgba(X, n/100)`. Keep the file in sync with the CSS by hand; the
+  `sidebar` (the `--ds-sidebar-*` tokens), `sections.light` / `sections.dark` (every section token, camelCase, buttons as
+  `btnPrimary` / `btnGhost`, plus `focusRing`, `link`, `linkHover` and `destructive` from `--destructive`).
+- `themeNames`, `isThemeName()`, and the types `ThemeName`, `SectionTone`, `ThemeTokens`, `SectionTokens`,
+  `SidebarTokens`, `ButtonTokens`.
+- `color-mix(…, X n%, transparent)` is written as `rgba(X, n/100)`. `tokens.test.ts` parses the CSS and fails on any
+  difference in either direction (a CSS token without a field, a field without a CSS token, a different value); the
   `satisfies Record<ThemeName, ThemeTokens>` check makes TypeScript report a missing field.
 
-Use it where CSS variables can't reach: antd `ConfigProvider`, canvas charts, print/PDF, values computed in JS.
+Use it where CSS variables can't reach: antd (below), canvas charts, print/PDF, values computed in JS.
 
-antd is not wired to the tokens. The signed-in app's antd theme is in `web/src/app/App.tsx` (teal); changing it restyles
-every antd page, so that is a separate task the user must confirm. A scoped sketch (not wired, not part of any page):
+**antd is wired to the tokens.** `antd-theme.ts` → `antdTheme(name, base = {}, { tone = "light" } = {})` returns a
+`ThemeConfig`; `App.tsx` calls it with `useDsTheme()` and its fonts:
 
 ```tsx
-import type { ReactNode } from "react";
-import { ConfigProvider } from "antd";
-import { themes, type ThemeName } from "@/styles/design-system/tokens";
-import { useLang } from "@/shared/i18n";
-
-/** antd + DS tokens for one subtree only; the rest of the app keeps App.tsx's theme. */
-export function ThemedArea({ theme = "navy-gold", children }: { theme?: ThemeName; children: ReactNode }) {
-  const lang = useLang();
-  return (
-    <ConfigProvider theme={themes[theme].antd} direction={lang === "ar" ? "rtl" : "ltr"}>
-      {/* data-feature: the root attribute of a feature CSS entry (component-recipes.md §1) */}
-      <div data-feature="" data-theme={theme}>
-        <div className="bg-ds-bg text-ds-fg">{children}</div>
-      </div>
-    </ConfigProvider>
-  );
-}
+const antdBase: ThemeConfig = { token: { fontFamily: '"IBM Plex Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif', fontSize: 14 } };
+const dsTheme = useDsTheme();                                   // <html data-theme>, re-renders on change
+const theme = useMemo(() => antdTheme(dsTheme, antdBase), [dsTheme]);
+<ConfigProvider direction={…} locale={…} theme={theme}>…</ConfigProvider>
 ```
 
-This sketch type-checks against Tier1 (strict, `noUnusedLocals`). A nested `ConfigProvider` inherits the parent's locale. The `antd` blocks cover the light scope only; a dark antd area
-would need its own `ThemeConfig` built from `themes[name].sections.dark`.
+| antd | From `themes[name]` (light section unless noted) |
+|---|---|
+| `colorPrimary`, Button `primaryColor` | `btnPrimary.bg`, `btnPrimary.fg` |
+| `colorPrimaryBorder` (antd's focus-visible outline) | `focusRing` |
+| `colorLink`, `colorLinkHover`, `colorLinkActive` | `link`, `linkHover`, `linkHover` |
+| `colorInfo`, `colorInfoBg`, `colorInfoBorder` | `heading`, `bgCool`, `border` |
+| `colorError` | `destructive`; `colorSuccess` / `colorWarning` stay antd defaults (no AA status token) |
+| `colorText`, `colorTextHeading`, `colorTextSecondary` | `fg`, `heading`, `label` |
+| `colorBorder`, `colorBorderSecondary` | `border` |
+| `colorBgLayout`, `colorBgContainer`, `colorBgElevated`, `colorBgSpotlight` | `bgCool`, `surface`, `surface`, `sections.dark.bg` |
+| `borderRadiusLG` / `borderRadius` / `SM` / `XS` / `Outer` | `antdRadii(radius)`: r, r − 2, r − 4, r − 6, r − 4 (≥ 0) |
+| Button default (colour, bg, border, hover and active) | `btnGhost.fg`, `surface`, `btnGhost.border`, `btnGhost.hoverFg` / `hoverBg` / `hoverBorder` |
+| Input, InputNumber, DatePicker: `hoverBorderColor`, `activeBorderColor`, `activeShadow` | `accentStrong`, `focusRing`, `0 0 0 2px` + `focus` |
+| Select: same borders, `activeOutlineColor`, `optionSelectedBg` / `Color`, `optionActiveBg` | `focus`, `tile` / `heading`, `surfaceHover` |
+| Table: `headerBg`, `headerColor`, sort / filter bg, `headerSplitColor` | `sections.dark`: `bg`, `heading`, `surface` / `surfaceHover`, `border` |
+| Table: `rowHoverBg`, `bodySortBg`, `borderColor`, `headerBorderRadius` | `surfaceHover`, `bgCool`, `border`, 0 |
+| Tag `defaultBg`, `defaultColor` | `bgCool`, `fg` |
+| Modal `contentBg`, `headerBg`, `titleColor`; Drawer `colorBgElevated` | `surface`, `surface`, `heading`; `surface` |
+| Tabs `itemColor`, hover / selected / active, `inkBarColor` | `label`, `heading`, `icon` (≥ 3:1) |
+| Segmented `trackBg`, `itemColor`, `itemHoverColor`, `itemSelectedBg` / `Color` | `track`, `label`, `heading`, `btnPrimary.bg` / `.fg` |
+
+- A new theme re-themes antd as soon as it has its `tokens.ts` entry; the mapper never names a theme.
+- `tone: "dark"` reads `sections.dark` and adds antd's `darkAlgorithm`: a full dark theme for a nested `ConfigProvider`.
+  Nothing uses it yet.
+- `antdDarkBlockTheme(name)`: Button colours only, from `sections.dark` (`colorPrimary` btnPrimary.bg, `primaryColor`
+  btnPrimary.fg, `colorLink` / hover link / linkHover, `colorText` fg, component `algorithm: true` for hover and focus
+  shades). No radius, so corners come from the parent. Used by `DarkBlock` in `shared/ui.tsx` around the actions of
+  `PageHeader` (`.lcp-head`) and `Hero` (`.lcp-hero`), which also carry `data-section="dark"`.
+- Fonts, sizes, spacing: not touched (`base` wins for anything it sets).
+- The app has no antd Menu or Layout, so neither has tokens.
+
+**Legacy variables.** The `:root` blocks of `web/src/styles/app.css` and `web/src/shared/ui.css` alias the brand
+variables to light-section tokens (old hex as `var()` fallback): `--navy` → `--ds-heading`, `--navy-2` → `--ds-chrome`,
+`--teal` → `--ds-btn-primary-bg`, `--teal-ink` → `--ds-link`, `--bg` → `--ds-bg-cool`, `--surface` → `--ds-surface`,
+`--sunk` → `--ds-track`, `--ink` → `--ds-fg`, `--muted` → `--ds-label`, `--line` → `--ds-border`, `--r` → `--ds-radius`,
+`--teal-50` → `--ds-tile`, `--teal-100` → `--ds-accent`, `--navy-50` → `--ds-track`, `--gold` → `--ds-accent`,
+`--gold-50` → `--ds-bg-warm`, `--gold-ink` → `--ds-eyebrow-aa`, `--row-alt` → `--ds-bg-cool`, `--hair` → `--ds-border`.
+Inside `.lcp-side` and `.lcp-drawer .ant-drawer-body`: `--teal` → `--ds-sidebar-indicator`, `--teal-100` →
+`--ds-sidebar-focus`, `--gold` → `--ds-sidebar-badge-bg`. Status (`--warn*`, `--ok*`, `--crit*`), fonts, shadows and
+spacing are fixed. `shared/theme.css`: `--band` comes from `--ds-band-*`; on the band the kicker and `code` use
+`--ds-eyebrow`, links `--ds-link`, and the primary glow `--ds-btn-primary-bg` @45%. The open-cycle card glow is `--teal` @10%.
 
 Contrast check for a new theme (WCAG 2; take the hex values from `palette`; composite alpha colours over their background
 first):
@@ -334,4 +400,46 @@ Pairs to check per scope: `heading`, `body`, `body-strong`, `label`, `eyebrow`, 
 
 ## 9. Scrollbar tokens
 
-A scrollbar stylesheet is being added to the design system in a separate change; its tokens will be listed here.
+`web/src/styles/design-system/scrollbar.css`, imported once in `web/src/main.tsx` after `app.css`. Plain CSS, no Tailwind,
+every primitive has a hex fallback. One glass scrollbar for the site: transparent track, floating pill thumb (a transparent
+ring plus `background-clip: padding-box`), translucent fill with a soft white sheen and a 1px hairline. The thumb grows from
+6px to 8px under the pointer. The top comment of the file is the source of truth.
+
+Shape tokens (on `:root`, inherited, so a subtree can override them on its own scroller):
+
+| Token | Value | Meaning |
+|---|---|---|
+| `--scrollbar-size` | `12px` | hit area (width of a vertical bar, height of a horizontal one) |
+| `--scrollbar-gap` | `3px` | transparent ring around the thumb (visible thumb = size - 2 x gap) |
+| `--scrollbar-gap-hover` | `2px` | ring under the pointer / while dragged |
+| `--scrollbar-radius` | `999px` | pill |
+| `--scrollbar-min-thumb` | `40px` | shortest thumb |
+| `--scrollbar-track` | `transparent` | track fill (transparent everywhere) |
+
+Colour tokens per scope (rest / hover / active; the sheen and hairline are the other two):
+
+| Scope (selector) | `--scrollbar-thumb` | `-thumb-hover` | `-thumb-active` |
+|---|---|---|---|
+| Main app (`:root`) | `--navy` 56% | `--teal` | `--teal-ink` |
+| Dark sidebar (`.lcp-side`, `.lcp-drawer .ant-drawer-body`, `.json`) | white 36% | `#7fd1d5` 90% | `--teal-100` |
+| Modal overlay (`.ant-modal-wrap` bar only; tokens `--scrollbar-overlay-thumb`, `-hover`, `-active`) | white 90% | white | `--teal-50` |
+| navy-gold light (`[data-theme="navy-gold"]`, `[data-section="light"]`) | gold-600 96% | gold-700 90% | gold-700 |
+| navy-gold dark (`[data-section="dark"]`) | gold-400 55% | gold-400 90% | gold-200 |
+| app-soft light | soft-navy-950 55% | soft-gold-600 | soft-gold-700 |
+| app-soft dark | soft-gold-300 55% | soft-gold-500 | soft-gold-300 |
+
+`--scrollbar-highlight` (the sheen) is white 34% on light scopes and white 22% on dark ones; `--scrollbar-hairline` is the
+scope's navy at 14-16% on light, white 12-14% on dark.
+
+Rules:
+- Page scrollbar: the `html` element is outside the theme root, so each theme also lists
+  `html:has([data-ds-page][data-theme="<name>"])` in its light rule. Mark the page root with `data-ds-page` and
+  `data-theme`. Without `:has()` support the page keeps the main-app palette.
+- A new theme adds a light and a dark rule with the five colour tokens (`-thumb`, `-thumb-hover`, `-thumb-active`,
+  `-highlight`, `-hairline`).
+- Chromium and Safari use `::-webkit-scrollbar`; Chrome 121+ ignores it on elements that set `scrollbar-color` or
+  `scrollbar-width`, so the stylesheet resets those on `.ant-table`, `.ant-segmented` and the date-picker time column.
+- Firefox: `scrollbar-width: thin` + `scrollbar-color`, only inside `@supports not selector(::-webkit-scrollbar)`. No hover
+  state, no shape.
+- `forced-colors: active`: no custom styling; the browser draws system-coloured scrollbars.
+- Hidden scrollers stay hidden: `.lcp-seg`, `.f-pipe`, `.sp-tabs`, `.sp-rail` (and antd Anchor, Tailwind `no-scrollbar`).

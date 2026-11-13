@@ -23,13 +23,16 @@ Paths are relative to the Tier1 root: `F:\Projects\angular\Indecators\Context\Ti
 | `web/src/styles/design-system/themes/app-soft.css` | `[data-theme="app-soft"]`: same names, the softer palette |
 | `web/src/styles/design-system/index.css` | Plain-CSS entry: primitives, then every theme |
 | `web/src/styles/design-system/tailwind-theme.css` | Tailwind v4 `@theme inline reference`: `bg-ds-*`, `rounded-ds`, `font-ds`, `shadow-ds-*`, primitives |
-| `web/src/styles/design-system/tokens.ts` | Same values as typed TS + a suggested antd `ThemeConfig` per theme (not wired) |
-| `web/src/features/landing/` | The landing page port, the live reference implementation (in progress) |
+| `web/src/styles/design-system/theme.ts` | The one site-wide switch: `ACTIVE_THEME` → `<html data-theme>` (before first render), `useDsTheme()`, `setDsTheme()`; imports `index.css` globally |
+| `web/src/styles/design-system/antd-theme.ts` | `antdTheme(name, base, { tone })`: theme tokens → antd `ThemeConfig` (colours, radius) |
+| `web/src/styles/design-system/tokens.ts` | Same values as typed TS (antd needs real colours); `tokens.test.ts` proves it equals the CSS and checks AA pairs |
+| `web/src/features/landing/` | The landing page port: the live reference implementation (file list below) |
+| `web/src/styles/design-system/scrollbar.css` | Scrollbar tokens and drawing, imported once in `main.tsx` (see Scrollbar) |
 | `web/src/styles/shadcn.css` | shadcn's Tailwind entry and default variables (not imported yet) |
 | `web/src/components/ui/` | 60 shadcn (radix-nova, RTL) components |
 | `web/src/shared/i18n.ts` | Sets `<html lang dir>`; `useLang()`, `L(ar, en)` |
-| `web/src/styles/app.css`, `web/src/shared/ui.css`, `web/src/shared/tier1.css`, `web/src/shared/theme.css` | The existing antd app's styles. Not part of the design system |
-| `web/src/app/App.tsx` | antd `ConfigProvider` (teal theme) for the signed-in app |
+| `web/src/styles/app.css`, `web/src/shared/ui.css`, `web/src/shared/tier1.css`, `web/src/shared/theme.css` | The antd app's styles. The brand variables in the `:root` blocks of `app.css` and `ui.css` are aliases of `--ds-*` (see antd pages) |
+| `web/src/app/App.tsx` | antd `ConfigProvider`: `antdTheme(useDsTheme(), fonts)`; passes the theme to the landing |
 
 Token files are shared by every page. Edit them only when the task is about tokens (a new role, a new theme), never to
 fix one component.
@@ -42,8 +45,8 @@ fix one component.
    second theme breaks silently. Free values: `transparent`, `currentColor` / `bg-current`, `inherit`.
 2. **`--ds-*` in components, primitives only in theme files.** `--color-navy-900` and `bg-navy-900` are fixed paint;
    themes map them to roles. If no role fits, add one (below) instead of reaching for a primitive.
-3. **One `data-theme`, a `data-section` per dark block.** Put `data-theme="navy-gold"` (or `"app-soft"`) on the page
-   root. Light is the default scope. Put `data-section="dark"` on the header, footer, dark sections, and any dark card
+3. **One `data-theme`, a `data-section` per dark block.** The site theme is on `<html>` (`theme.ts`, `ACTIVE_THEME`).
+   A page root may repeat the same value (take it from `useDsTheme()`), never a different one. Light is the default scope. Put `data-section="dark"` on the header, footer, dark sections, and any dark card
    inside a light section; `data-section="light"` flips back inside a dark block. One class then gives the right value
    in both: `text-ds-heading` is navy on light and white on dark. So no `dark ? … : …` colour ternaries. Never nest two
    different `data-theme` values: both themes' section rules would match.
@@ -72,42 +75,54 @@ fix one component.
 
 Each feature that uses the design system has its own Tailwind entry, imported by the feature's root component (a lazy
 route), never by `main.tsx`, `app.css` or a shared file. Everything is scoped to a root attribute of the feature
-(`data-<feature>`; the landing uses `data-landing`). Full file with the scoped base: recipe 1 in
-`references/component-recipes.md`.
+(`data-<feature>`; the landing uses `data-landing`). The working file is `web/src/features/landing/landing.css`; copy it
+and rename the attribute. Full file with the scoped base: recipe 1 in `references/component-recipes.md`.
 
 ```css
-/* web/src/features/<feature>/<feature>.css */
-@layer theme, base;
+/* web/src/features/<feature>/<feature>.css (skeleton) */
+@layer theme;
 @import "tailwindcss/theme.css" layer(theme);
 @import "../../styles/design-system/index.css";
 @import "../../styles/design-system/tailwind-theme.css";
 @source "./";
-/* [data-feature] root rule + scoped base in @layer base + focus override: recipe 1 */
-:where([data-feature]) {
-  @tailwind utilities source(none);
+/* [data-feature] root text props, then [data-feature] :where(…) base rules, then the focus rule: recipe 1 */
+[data-feature] {
+  @tailwind utilities source(none); /* every utility compiles to `[data-feature] .class`, unlayered */
 }
 ```
+
+Root element (copied from `LandingPage.tsx`): `<div data-landing="" data-ds-page="" data-theme="navy-gold" dir="rtl" lang="ar">`
+with the utility classes on the first inner `<div>` (utilities match descendants only).
 
 Why it looks like this:
 - **No preflight.** `@import "tailwindcss"` includes it, and preflight resets every element in the document, so the
   antd screens, `app.css` and the login page would change. Vite never unloads CSS after navigation: anything a feature
-  loads stays in the document for the session, on every page.
-- **Utilities scoped under `:where([data-feature])`.** Each compiles to `:where([data-feature]) .grow { … }`, so it can't
-  restyle an antd page that uses the same class name (`grow` at `web/src/features/review/ReviewPage.tsx:269`, `grid`,
-  `w-full`), and `:where()` keeps the utility's own specificity. They match descendants only: put utility classes on an
-  inner wrapper, not on the root element.
-- **Unlayered on purpose.** `app.css`, `web/src/shared/*.css` and antd's CSS-in-JS are unlayered, and an unlayered rule
-  beats every `@layer` rule whatever its specificity. Layered utilities would lose inside the page, for example to the
-  teal `:focus-visible` outline in `web/src/shared/ui.css` (loaded once the signed-in shell has been visited).
+  loads stays in the document for the session, on every page. Only custom properties are global.
+- **Utilities scoped as `[data-feature] .class` (0,2,0), unlayered.** They can't restyle an antd page that uses the same
+  class name (`grow` at `web/src/features/review/ReviewPage.tsx:269`, `grid`, `w-full`). `app.css`, `web/src/shared/*.css`
+  and antd's CSS-in-JS are unlayered, and an unlayered rule beats every `@layer` rule whatever its specificity, so
+  `@layer` utilities or an `@layer base` reset lose to them. antd also injects global link rules
+  (`:where(.css-…) a:hover`, 0,1,1): a `:where([data-feature])` scope (0,1,0) loses to those, the 0,2,0 scope wins.
+- **Base rules as `[data-feature] :where(…)` (0,1,0).** Reset the browser defaults (heading and paragraph margins, link
+  colour, `button` chrome, bullets, inline images) and set `outline-color` (`--ds-focus`) and `::selection`
+  (`--ds-selection-*`) there; every utility out-ranks them. A focus rule at 0,2,0 beats `web/src/shared/ui.css`'s teal
+  `:focus-visible` ring (loaded once the signed-in shell has been visited).
 - **`source(none)` + `@source "./"`.** Tailwind scans only the feature folder. Automatic detection would scan all of
   `web/` and emit utilities for every class-like word in the antd pages.
-- **Browser defaults survive** (heading and paragraph margins, link colour, `button` chrome, bullets, inline images).
-  Reset them under the root in `@layer base`, so no utility loses to the reset, and set the focus outline (`--ds-focus`)
-  and `::selection` (`--ds-selection-*`) there.
+- **html stays 16px.** Don't set `html { font-size }`; the root sets `font-size: 1rem` for its own subtree, because
+  antd's `.ant-app` is 14px.
 - `tailwindcss/theme.css` puts Tailwind's defaults on `:root` inside `@layer theme`. The only name it shares with
   `app.css` is `--font-mono`, and `app.css` wins. `tailwind-theme.css` is `reference`, so it emits nothing on `:root`.
-- The token folder's README shows a shorter layered entry (`utilities.css layer(utilities) source(none)`, global). It
-  compiles, but its utilities leak to every page and lose to the unlayered app CSS inside yours; prefer the scoped form.
+- `rtl:` / `ltr:` come from `@custom-variant … :dir()` in the entry (as in `landing.css`), not Tailwind's `[dir]` form.
+
+## Scrollbar
+
+`web/src/styles/design-system/scrollbar.css` (imported once in `main.tsx`) draws one glass scrollbar site-wide. Tokens
+(inherited, so a subtree re-colours its own scrollers): `--scrollbar-size` 12px, `-gap` 3px, `-gap-hover` 2px, `-radius`
+999px, `-min-thumb` 40px, `-track`, `-thumb`, `-thumb-hover`, `-thumb-active`, `-highlight`, `-hairline`, `-overlay-thumb*`.
+A themed page re-colours the page scrollbar through `html:has([data-ds-page][data-theme="…"])`, so keep `data-ds-page` on
+the root; Firefox gets `scrollbar-width: thin` in an `@supports` fallback; hidden scrollers (`.lcp-seg`, `.f-pipe`,
+`.sp-tabs`, `.sp-rail`) stay hidden. Values per scope: `references/token-files.md` §9.
 
 ## shadcn inside a themed subtree
 
@@ -121,9 +136,9 @@ Why it looks like this:
 - **Portals need the attribute too.** Radix renders Dialog, Sheet, Popover, Tooltip, Select and DropdownMenu content
   under `<body>`, outside the subtree, where shadcn's teal `:root` defaults apply. Pass `data-theme` (and
   `data-section="dark"` if needed) plus the feature's root attribute to the content element:
-  `<DialogContent data-theme="navy-gold" data-feature="">`; feature utilities then work on its children. Setting
-  `data-theme` on `<html>` also works, but then the DS CSS must load after `shadcn.css` (`:root` and `[data-theme]` tie
-  on specificity).
+  `<DialogContent data-theme="navy-gold" data-feature="">`; feature utilities then work on its children. `<html>` now
+  carries `data-theme`, which covers the colours; if `shadcn.css` is ever imported, load it before the DS CSS
+  (in `main.tsx` before `App`), because `:root` and `[data-theme]` tie on specificity.
 - The feature's utilities are unlayered and beat shadcn's layered ones. Keep fixed-radius and shadow class names
   (`rounded-lg`, `shadow-sm`) out of the feature folder, comments included: the scan would generate them with
   Tailwind's defaults and they would override the matching shadcn parts on the page.
@@ -133,10 +148,29 @@ Why it looks like this:
 
 ## antd pages
 
-The signed-in app is antd 5 with the teal `ConfigProvider` theme in `web/src/app/App.tsx` and the `app.css` palette. It
-is not on the design system. Don't restyle antd pages with DS tokens unless the user asks. `tokens.ts` has
-`themes[name].antd`, a suggested `ThemeConfig`; wiring it app-wide changes every antd screen, so treat that as its own,
-confirmed task. A scoped sketch is in `references/token-files.md` §8.
+The whole site runs on one theme (user decision 2026-11-13: `navy-gold`). Switch it in one place:
+`ACTIVE_THEME` in `web/src/styles/design-system/theme.ts` (or `<html data-theme>` at run time; antd follows through a
+MutationObserver in `useDsTheme()`).
+
+- **antd** gets its `ConfigProvider` theme from `antdTheme(name, base)` (`antd-theme.ts`): colours and radius from
+  `tokens.ts`, fonts from `base` in `App.tsx` (IBM Plex Sans Arabic 14px, unchanged; no Cairo on antd pages). Light-section
+  tokens for app surfaces; Table header from dark-section tokens. Radius in one helper, `antdRadii(r)`. A new theme needs
+  only its `tokens.ts` entry. Full token → antd table: `references/token-files.md` §8 and the design-system README.
+- **Legacy variables** (`--navy`, `--teal`, `--teal-ink`, `--bg`, `--ink`, `--muted`, `--line`, `--hair`, `--gold`, `--r` …
+  in the `:root` blocks of `app.css` and `shared/ui.css`) are aliases of `--ds-*` with the old hex as fallback, so the
+  antd app's own CSS follows the theme. Status colours (`--warn*`, `--ok*`, `--crit*`) are fixed. Inside the sidebar
+  (`.lcp-side`, drawer body) `--teal`, `--teal-100`, `--gold` map to `--ds-sidebar-*`.
+- **Sidebar tokens** (theme level): `--ds-sidebar-bg`, `-fg`, `-fg-active`, `-muted`, `-hover-bg`, `-active-bg`,
+  `-indicator`, `-border`, `-focus`, `-badge-bg`, `-badge-fg`.
+- **Band tokens** (theme level): `--ds-band-from`, `-via`, `-to`, `-glow`, `-glow-accent`. `shared/theme.css` builds
+  `--band` (the navy page header strip) from them.
+- Colours and radii written directly in legacy rules (gradients with teal glow, `border-radius: 10px` …) don't follow the
+  theme; convert them to tokens when you touch those rules.
+- **Navy block inside an antd page.** Put `data-section="dark"` on the block, so `var(--ds-*)` in its CSS gives the dark
+  values, and wrap its antd actions in `DarkBlock` (`shared/ui.tsx`): a nested `ConfigProvider` with
+  `antdDarkBlockTheme(useDsTheme())`, which sets Button colours only (gold primary, navy text, gold links). `PageHeader`
+  and `Hero` already do this. For a block whose fields should go dark too, use `antdTheme(name, {}, { tone: "dark" })`.
+- Don't style antd parts with page CSS when a token or component token can do it; add the mapping to `antd-theme.ts`.
 
 ## Brand / logo
 
@@ -163,8 +197,9 @@ takes the tone as a prop; don't recolour the artwork with CSS filters. More in `
 3. Give every `--ds-*` and shadcn variable a value in all three blocks. Keep every name: a missing token is unset, so its
    utility paints nothing.
 4. Import the file in `index.css`, after the other themes.
-5. Add `<name>` to `ThemeName` and to `themes` in `tokens.ts` (the `satisfies` check lists missing fields), run the
-   contrast check, then use `data-theme="<name>"`.
+5. Add `<name>` to `ThemeName` and to `themes` in `tokens.ts` (the `satisfies` check lists missing fields), then run
+   `npx vitest run src/styles/design-system` in `web/` (fails on any CSS ≠ TS value and on the AA pairs). antd follows
+   automatically. Use it via `ACTIVE_THEME` in `theme.ts`.
 
 Contrast check: per scope, every text token on every background it sits on, 4.5:1 for small text and 3:1 for large text
 (≥ 24px, or ≥ 18.7px bold), UI borders and chart marks. Composite alpha tokens over their background first. The pair
@@ -177,7 +212,7 @@ to `tailwind-theme.css`, and the field to `tokens.ts`.
 
 - Search your changed files for raw colours: `rg -n "#[0-9a-fA-F]{3,8}\b|\[#|rgba?\(" web/src/features/<feature>`.
 - Flip `data-theme` between `navy-gold` and `app-soft`, and the language between Arabic and English; both must hold.
-- Check an antd page (indicators, strategy) still looks the same after your CSS loads.
+- Check an antd page (indicators, strategy) still looks the same after your CSS loads (feature CSS must not restyle it).
 - `npm run typecheck` in `web/`. To test a build use `npx vite build --outDir <scratch dir> --emptyOutDir`: plain
   `npm run build` writes into `src/Tier1.Api/wwwroot`, which the API serves. Don't stop the user's dev server (5188) or API.
 
@@ -192,5 +227,15 @@ to `tailwind-theme.css`, and the field to `tokens.ts`.
 - `references/design-system.md`: read when designing a new screen or matching the landing look. The full Navy & Gold
   spec (identity, palette with token names, type scale, spacing, section rhythm, textures, icons and motion, component
   anatomy, charts, accessibility with measured failures, RTL).
-- `web/src/features/landing/`: the working example of all of the above (in progress; read its CSS entry and root
-  component before starting a new feature).
+- `web/src/features/landing/`: the working example of all of the above. Read `landing.css` and `LandingPage.tsx` before
+  starting a new feature.
+
+## Reference implementation
+
+Folder `web/src/features/landing/`: `LandingPage.tsx` (root: `data-landing`, `data-ds-page`, `data-theme`, `dir`, `lang`;
+imports Cairo and `landing.css`), `landing.css` (the Tailwind entry), `LandingChrome.tsx` (header, footer),
+`HeroSection.tsx`, `OverviewSection.tsx`, `PillarsSection.tsx`, `AnalyticsSection.tsx`, `HierarchySection.tsx`,
+`DataManagementSection.tsx`, `IntegrationSection.tsx`, `CtaSection.tsx`, `SectionHeading.tsx`, `Icon.tsx`, `charts.tsx`,
+`sections.ts`. It matches the original `Home.jsx` except for three deliberate user changes: quarters wording instead of
+seasons, the redesigned footer, and the analytics section (القيادة bar removed, horizontal KPI rows, RTL-mirrored trend
+chart).

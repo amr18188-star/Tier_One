@@ -12,7 +12,8 @@
  *   --scrollbar-size           12px   hit area: width of a vertical bar, height of a horizontal one
  *   --scrollbar-gap            3px    transparent ring around the thumb (visible thumb = size - 2 x gap)
  *   --scrollbar-gap-hover      2px    ring under the pointer (thumb grows to 8px)
- *   --scrollbar-radius         999px  pill
+ *   --scrollbar-radius         var(--ds-radius-pill): follows <html data-corners> (corners.css), square thumb
+ *                              when square, the glass pill when rounded
  *   --scrollbar-min-thumb      40px   shortest thumb
  *   --scrollbar-track                 track fill (transparent everywhere)
  *   --scrollbar-thumb                 thumb at rest
@@ -57,7 +58,7 @@
   --scrollbar-size: 12px;
   --scrollbar-gap: 3px;
   --scrollbar-gap-hover: 2px;
-  --scrollbar-radius: 999px;
+  --scrollbar-radius: var(--ds-radius-pill);
   --scrollbar-min-thumb: 40px;
   --scrollbar-track: transparent;
   --scrollbar-thumb: color-mix(in srgb, var(--navy, #16294a) 56%, transparent);
@@ -68,6 +69,10 @@
   --scrollbar-overlay-thumb: rgb(255 255 255 / 0.9);
   --scrollbar-overlay-thumb-hover: #ffffff;
   --scrollbar-overlay-thumb-active: var(--teal-50, #e8f6f6);
+}
+/* A subtree with its own data-corners re-resolves the thumb shape too. */
+[data-corners] {
+  --scrollbar-radius: var(--ds-radius-pill);
 }
 
 /* Dark chrome of the main app: sidebar, mobile menu drawer, JSON blocks */

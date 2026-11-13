@@ -78,7 +78,7 @@ export function PillarsSection() {
               className="group relative flex min-h-[290px] flex-col bg-ds-surface p-7 transition-colors hover:bg-ds-surface-hover sm:p-8"
             >
               <div className="mb-8 flex items-center justify-between">
-                <div className="flex h-12 w-12 items-center justify-center border border-ds-accent-border bg-ds-tile text-ds-icon transition-colors group-hover:bg-ds-tile-active group-hover:text-ds-tile-active-fg">
+                <div className="flex h-12 w-12 items-center justify-center rounded-ds-md border border-ds-accent-border bg-ds-tile text-ds-icon transition-colors group-hover:bg-ds-tile-active group-hover:text-ds-tile-active-fg">
                   <Icon name={pillar.icon} size={23} />
                 </div>
 

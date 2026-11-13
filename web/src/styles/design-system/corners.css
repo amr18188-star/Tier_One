@@ -1,0 +1,45 @@
+/*
+ * Corner style: a second axis next to the colour theme. Any [data-theme] works with either style.
+ * The switch is CORNERS in ./config.ts; theme.ts puts it on <html data-corners> before the first render.
+ * Without TypeScript: set <html data-corners="rounded"> (devtools), or override here with
+ * :root[data-corners="rounded"] { … }. No attribute = square.
+ *
+ *   token               square  rounded   use
+ *   --ds-radius-xs      0       4px       bars, swatches, small codes, active-link bars
+ *   --ds-radius-sm      0       6px       code pills, focus rings, small buttons
+ *   --ds-radius-md      0       8px       inputs, buttons, list rows (= --ds-radius, rounded-ds)
+ *   --ds-radius-lg      0       12px      cards, tiles, panels, tables, modals (= shadcn --radius)
+ *   --ds-radius-xl      0       16px      page bands, large panels (legacy --r)
+ *   --ds-radius-pill    0       999px     chips, count badges, progress bars
+ *   --ds-radius-round   50%     50%       real circles only (avatars, dots, step numbers)
+ *
+ * The px numbers are mirrored in tokens.ts (`corners`) for antd; tokens.test.ts fails if the two differ.
+ * Aliases (--ds-radius, --radius) are declared with the scale, so a subtree with its own data-corners
+ * re-resolves them too. Only custom properties here, no element rules.
+ */
+:root,
+[data-corners="square"] {
+  --ds-radius-xs: 0px;
+  --ds-radius-sm: 0px;
+  --ds-radius-md: 0px;
+  --ds-radius-lg: 0px;
+  --ds-radius-xl: 0px;
+  --ds-radius-pill: 0px;
+}
+
+[data-corners="rounded"] {
+  --ds-radius-xs: 4px;
+  --ds-radius-sm: 6px;
+  --ds-radius-md: 8px;
+  --ds-radius-lg: 12px;
+  --ds-radius-xl: 16px;
+  --ds-radius-pill: 999px;
+}
+
+:root,
+[data-corners] {
+  --ds-radius-round: 50%;
+  --ds-radius: var(--ds-radius-md);
+  /* shadcn base radius (rounded-lg). shadcn.css derives its steps from the scale, never below 0. */
+  --radius: var(--ds-radius-lg);
+}

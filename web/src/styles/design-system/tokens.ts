@@ -1,14 +1,13 @@
 /**
- * Design-system token values for TypeScript (for example a future antd ConfigProvider).
- * Not wired anywhere yet. The CSS files are the source of truth:
- *   primitives.css → `palette`, themes/<name>.css → `themes[name]`.
- * Values are resolved to plain colour strings (antd cannot read CSS variables):
+ * Design-system token values for TypeScript. antd-theme.ts builds the antd ConfigProvider theme from them
+ * (antd derives hover and active shades in JS, so it needs real colours, not var()).
+ * The CSS files are the source of truth:
+ *   primitives.css → `palette`, themes/<name>.css → `themes[name]`, corners.css → `corners`.
+ * Values are resolved to plain colour strings:
  * - ash-* are Tailwind v4 slate in OKLCH in the CSS; here they are their 8-bit hex.
- * - CSS color-mix(in oklab, X n%, transparent) is written as rgba(X, n/100) (the same colour).
- * Keep both in sync when a value changes.
+ * - CSS color-mix(in oklab|srgb, X n%, transparent) is written as rgba(X, n/100) (the same colour).
+ * Keep both in sync when a value changes: tokens.test.ts parses the CSS and fails on any difference.
  */
-import type { ThemeConfig } from "antd";
-
 export const palette = {
   navy: { 950: "#06152a", 900: "#071a33", 800: "#0c2545", 700: "#12345b", 600: "#18304d", 500: "#29415f" },
   steel: { 400: "#7890ac" },
@@ -80,14 +79,43 @@ export interface SectionTokens {
   tileSolid: string;
   tileSolidFg: string;
   live: string;
+  /** --ds-focus-ring: keyboard focus outline. */
+  focusRing: string;
+  /** --ds-link / --ds-link-hover: text links and codes (antd colorLink). */
+  link: string;
+  linkHover: string;
+  /** --destructive (shadcn): the AA error colour (antd colorError). */
+  destructive: string;
   btnPrimary: ButtonTokens;
   btnGhost: ButtonTokens;
 }
 
+/** --ds-sidebar-*: the dark chrome of the signed-in shell (theme level, not per section). */
+export interface SidebarTokens {
+  bg: string;
+  fg: string;
+  fgActive: string;
+  muted: string;
+  hoverBg: string;
+  activeBg: string;
+  indicator: string;
+  border: string;
+  focus: string;
+  badgeBg: string;
+  badgeFg: string;
+}
+
+/** --ds-band-*: the navy page band of antd pages (shared/theme.css --band), theme level. */
+export interface BandTokens {
+  from: string;
+  via: string;
+  to: string;
+  glow: string;
+  glowAccent: string;
+}
+
 export interface ThemeTokens {
   fontFamily: string;
-  /** --ds-radius in px. */
-  radius: number;
   chrome: string;
   gridHero: string;
   gridDark: string;
@@ -106,9 +134,9 @@ export interface ThemeTokens {
   shadow: { sm: string; md: string };
   focus: string;
   selection: { bg: string; fg: string };
+  sidebar: SidebarTokens;
+  band: BandTokens;
   sections: Record<SectionTone, SectionTokens>;
-  /** Suggested antd theme (light scope). */
-  antd: ThemeConfig;
 }
 
 const p = palette;
@@ -118,7 +146,6 @@ const shadow = { sm: "0 8px 24px rgba(25, 53, 90, 0.08)", md: "0 16px 40px rgba(
 export const themes = {
   "navy-gold": {
     fontFamily: cairo,
-    radius: 0,
     chrome: p.navy[950],
     gridHero: p.navy[600],
     gridDark: p.steel[400],
@@ -137,6 +164,20 @@ export const themes = {
     shadow,
     focus: "rgba(201, 162, 39, 0.5)",
     selection: { bg: p.soft.gold[500], fg: p.soft.navy[950] },
+    sidebar: {
+      bg: p.navy[950],
+      fg: p.mist[300],
+      fgActive: p.paper,
+      muted: p.steel[400],
+      hoverBg: p.navy[800],
+      activeBg: p.navy[700],
+      indicator: p.gold[400],
+      border: p.navy[500],
+      focus: p.gold[400],
+      badgeBg: p.gold[400],
+      badgeFg: p.navy[900],
+    },
+    band: { from: p.navy[900], via: p.navy[800], to: p.navy[700], glow: "rgba(120, 144, 172, 0.3)", glowAccent: "rgba(214, 180, 106, 0.18)" },
     sections: {
       light: {
         bg: p.paper,
@@ -171,6 +212,10 @@ export const themes = {
         tileSolid: p.navy[900],
         tileSolidFg: p.gold[400],
         live: p.signal.green,
+        focusRing: p.navy[900],
+        link: p.gold[700],
+        linkHover: p.navy[900],
+        destructive: p.soft.danger[700],
         btnPrimary: { bg: p.navy[900], fg: p.paper, border: p.navy[900], hoverBg: p.gold[400], hoverFg: p.navy[900], hoverBorder: p.gold[400] },
         btnGhost: { bg: "transparent", fg: p.navy[900], border: "rgba(7, 26, 51, 0.2)", hoverBg: p.gold[400], hoverFg: p.navy[900], hoverBorder: p.gold[400] },
       },
@@ -207,31 +252,17 @@ export const themes = {
         tileSolid: p.navy[900],
         tileSolidFg: p.gold[400],
         live: p.signal.green,
+        focusRing: p.gold[400],
+        link: p.gold[400],
+        linkHover: p.paper,
+        destructive: p.soft.danger[400],
         btnPrimary: { bg: p.gold[400], fg: p.navy[900], border: p.gold[400], hoverBg: "transparent", hoverFg: p.gold[400], hoverBorder: p.gold[400] },
         btnGhost: { bg: "transparent", fg: p.paper, border: "rgba(255, 255, 255, 0.2)", hoverBg: p.gold[400], hoverFg: p.navy[900], hoverBorder: p.gold[400] },
       },
     },
-    antd: {
-      token: {
-        colorPrimary: p.navy[900],
-        colorLink: p.navy[900],
-        colorInfo: p.navy[800],
-        colorSuccess: p.soft.success[700],
-        colorError: p.soft.danger[700],
-        colorTextBase: p.navy[900],
-        colorBgBase: p.paper,
-        colorBgLayout: p.paper,
-        colorBorder: p.ash[200],
-        colorBorderSecondary: p.ash[200],
-        borderRadius: 0,
-        fontFamily: cairo,
-      },
-      components: { Layout: { headerBg: p.navy[950], siderBg: p.navy[950], bodyBg: p.paper } },
-    },
   },
   "app-soft": {
     fontFamily: cairo,
-    radius: 14,
     chrome: p.soft.navy[950],
     gridHero: p.soft.navy[800],
     gridDark: p.soft.neutral[500],
@@ -250,6 +281,20 @@ export const themes = {
     shadow,
     focus: "rgba(201, 162, 39, 0.5)",
     selection: { bg: p.soft.gold[500], fg: p.soft.navy[950] },
+    sidebar: {
+      bg: p.soft.navy[950],
+      fg: p.soft.neutral[200],
+      fgActive: p.paper,
+      muted: p.soft.neutral[400],
+      hoverBg: p.soft.navy[800],
+      activeBg: p.soft.navy[700],
+      indicator: p.soft.gold[500],
+      border: "rgba(255, 255, 255, 0.14)",
+      focus: p.soft.gold[300],
+      badgeBg: p.soft.gold[500],
+      badgeFg: p.soft.navy[950],
+    },
+    band: { from: p.soft.navy[900], via: p.soft.navy[800], to: p.soft.navy[700], glow: "rgba(53, 103, 176, 0.38)", glowAccent: "rgba(201, 162, 39, 0.18)" },
     sections: {
       light: {
         bg: p.paper,
@@ -284,6 +329,10 @@ export const themes = {
         tileSolid: p.soft.navy[950],
         tileSolidFg: p.soft.gold[300],
         live: p.soft.success[700],
+        focusRing: p.soft.navy[950],
+        link: p.soft.navy[700],
+        linkHover: p.soft.navy[950],
+        destructive: p.soft.danger[700],
         btnPrimary: { bg: p.soft.navy[800], fg: p.paper, border: p.soft.navy[800], hoverBg: p.soft.gold[500], hoverFg: p.soft.navy[950], hoverBorder: p.soft.gold[500] },
         btnGhost: { bg: "transparent", fg: p.soft.navy[800], border: "rgba(25, 53, 90, 0.2)", hoverBg: p.soft.gold[500], hoverFg: p.soft.navy[950], hoverBorder: p.soft.gold[500] },
       },
@@ -320,29 +369,43 @@ export const themes = {
         tileSolid: p.soft.navy[950],
         tileSolidFg: p.soft.gold[300],
         live: p.soft.success[400],
+        focusRing: p.soft.gold[300],
+        link: p.soft.gold[300],
+        linkHover: p.paper,
+        destructive: p.soft.danger[400],
         btnPrimary: { bg: p.soft.gold[500], fg: p.soft.navy[950], border: p.soft.gold[500], hoverBg: "transparent", hoverFg: p.soft.gold[300], hoverBorder: p.soft.gold[500] },
         btnGhost: { bg: "transparent", fg: p.paper, border: "rgba(255, 255, 255, 0.2)", hoverBg: p.soft.gold[500], hoverFg: p.soft.navy[950], hoverBorder: p.soft.gold[500] },
       },
-    },
-    antd: {
-      token: {
-        colorPrimary: p.soft.navy[800],
-        colorLink: p.soft.navy[800],
-        colorInfo: p.soft.info[700],
-        colorSuccess: p.soft.success[700],
-        colorError: p.soft.danger[700],
-        colorTextBase: p.soft.neutral[900],
-        colorBgBase: p.paper,
-        colorBgLayout: p.soft.neutral[50],
-        colorBorder: p.soft.neutral[100],
-        colorBorderSecondary: p.soft.neutral[75],
-        borderRadius: 14,
-        fontFamily: cairo,
-      },
-      components: { Layout: { headerBg: p.soft.navy[950], siderBg: p.soft.navy[950], bodyBg: p.soft.neutral[50] } },
     },
   },
 } as const satisfies Record<ThemeName, ThemeTokens>;
 
 /** The value to put on data-theme. */
 export const themeNames = Object.keys(themes) as ThemeName[];
+
+export function isThemeName(value: unknown): value is ThemeName {
+  return typeof value === "string" && Object.prototype.hasOwnProperty.call(themes, value);
+}
+
+// ---------- Corners: a second axis, independent of the theme (corners.css, switch in config.ts) ----------
+
+/** The value to put on data-corners. */
+export type CornerStyle = "square" | "rounded";
+export type CornerStep = "xs" | "sm" | "md" | "lg" | "xl" | "pill";
+
+/**
+ * --ds-radius-<step> in px, per corner style (corners.css). --ds-radius-round is 50% in both styles (real circles)
+ * and --ds-radius is an alias of md, so neither is listed here.
+ */
+export const corners = {
+  square: { xs: 0, sm: 0, md: 0, lg: 0, xl: 0, pill: 0 },
+  rounded: { xs: 4, sm: 6, md: 8, lg: 12, xl: 16, pill: 999 },
+} as const satisfies Record<CornerStyle, Record<CornerStep, number>>;
+
+export type CornerScale = Readonly<Record<CornerStep, number>>;
+
+export const cornerStyles = Object.keys(corners) as CornerStyle[];
+
+export function isCornerStyle(value: unknown): value is CornerStyle {
+  return typeof value === "string" && Object.prototype.hasOwnProperty.call(corners, value);
+}

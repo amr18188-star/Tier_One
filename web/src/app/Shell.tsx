@@ -1,15 +1,14 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { AutoComplete, Button, Drawer, Dropdown, Input } from "antd";
 import {
-  ApartmentOutlined, AuditOutlined, BarChartOutlined, BranchesOutlined, CalendarOutlined, ClusterOutlined, FileDoneOutlined, FilePdfOutlined, FormOutlined, GlobalOutlined, HomeOutlined, LogoutOutlined, MenuOutlined,
+  ApartmentOutlined, AuditOutlined, BarChartOutlined, BranchesOutlined, CalendarOutlined, ClusterOutlined, DownOutlined, FileDoneOutlined, FilePdfOutlined, FormOutlined, GlobalOutlined, HomeOutlined, LogoutOutlined, MenuOutlined,
   PartitionOutlined, RiseOutlined, SafetyCertificateOutlined, SearchOutlined, SettingOutlined, TeamOutlined, TrophyOutlined, UnorderedListOutlined,
 } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, matchPath, useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { RbacChange } from "../api/types";
 import type { IndicatorRow, OrgUnit } from "../api/tier1";
-import type { FormRow } from "../api/collection";
 import { L, setLang, useLang } from "../shared/i18n";
 import { usePermissions, useSession } from "../shared/session";
 import { initials } from "../shared/ui";
@@ -19,9 +18,34 @@ import logoOnWhite from "../assets/brand/capital-university-logo-light.png";
 import "../shared/ui.css";
 import "../shared/tier1.css";
 import "../shared/theme.css";
+import "./nav.css";
 
 interface NavItem { to: string; icon: ReactNode; label: string; end?: boolean; badge?: number; badgeText?: string; tab?: boolean }
 interface NavGroup { key: string; title?: string; items: (NavItem | false)[] }
+interface VisibleGroup { key: string; title?: string; items: NavItem[] }
+
+// مجموعة واحدة مفتوحة في القائمة الجانبية (أكورديون)، ومفتاحها يحفظ في المتصفح؛ مجموعة الصفحة الحالية تتقدم عليه.
+const NAV_OPEN_KEY = "t1-nav-open";
+
+function readNavOpen(): string | null {
+  try {
+    const raw = localStorage.getItem(NAV_OPEN_KEY);
+    const value: unknown = raw ? JSON.parse(raw) : null;
+    // القيمة القديمة كانت قائمة مفاتيح؛ يؤخذ أولها.
+    const key = Array.isArray(value) ? value[0] : value;
+    return typeof key === "string" ? key : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeNavOpen(key: string | null) {
+  try {
+    localStorage.setItem(NAV_OPEN_KEY, JSON.stringify(key));
+  } catch {
+    // المتصفح يمنع التخزين؛ تبقى الحالة لهذه الجلسة فقط.
+  }
+}
 
 /**
  * إطار المنظومة: قائمة جانبية داكنة مقسمة بحسب الصلاحيات (لا يرى المستخدم ما لا يملكه)، وبحث موحد أعلى كل صفحة
@@ -41,13 +65,6 @@ export function Shell({ children }: { children: ReactNode }) {
     refetchInterval: 60_000,
   });
   const waiting = pending.data?.filter((c) => c.canDecide).length ?? 0;
-  const mine = useQuery({
-    queryKey: ["forms", "mine"],
-    queryFn: () => api.get<FormRow[]>("/api/forms?awaitingMe=true"),
-    enabled: perms.can("dc.forms", "V"),
-    refetchInterval: 120_000,
-  });
-  const awaiting = mine.data?.length ?? 0;
   const anyLog = ["log.audit", "log.security", "log.access", "log.tech"].some((f) => perms.can(f, "V"));
 
   // الأيقونات زخرفية؛ اسم الرابط نصه.
@@ -55,10 +72,8 @@ export function Shell({ children }: { children: ReactNode }) {
     { key: "home", items: [{ to: "/", icon: <HomeOutlined aria-hidden />, label: L("الرئيسية", "Home"), end: true, tab: true }] },
     {
       key: "data", title: L("جمع البيانات والنتائج", "Data and results"), items: [
-        perms.can("dc.forms", "V") && {
-          to: "/forms", icon: <FormOutlined aria-hidden />, label: L("نماذج الجهات", "Unit forms"), tab: true,
-          badge: awaiting, badgeText: L(`${awaiting} نموذج ينتظرك`, `${awaiting} forms waiting for you`),
-        },
+        // بلا عداد في القائمة الجانبية (طلب المستخدم)؛ عدد النماذج المنتظرة يظهر في الرئيسية وصفحة النماذج.
+        perms.can("dc.forms", "V") && { to: "/forms", icon: <FormOutlined aria-hidden />, label: L("نماذج الجهات", "Unit forms"), tab: true },
         // بطاقة الجامعة كاملة لمن نطاقه الجامعة؛ مستخدم الكلية أو الإدارة يرى تقدم جهته.
         perms.scopeOf("dc.results", "V") === "A" && { to: "/scorecard", icon: <TrophyOutlined aria-hidden />, label: L("بطاقة الأداء والتصنيف", "Scorecard and tier"), tab: true },
         perms.can("dc.university", "V") && { to: "/review", icon: <FileDoneOutlined aria-hidden />, label: L("مراجعة مؤشرات الكليات", "Review college indicators"), tab: true },
@@ -93,9 +108,20 @@ export function Shell({ children }: { children: ReactNode }) {
       ],
     },
   ];
-  const visible = groups
+  const visible: VisibleGroup[] = groups
     .map((g) => ({ ...g, items: g.items.filter((i): i is NavItem => !!i) }))
     .filter((g) => g.items.length > 0);
+
+  // أكورديون: مجموعة واحدة مفتوحة. مجموعة الصفحة الحالية هي المفتوحة عند الدخول وعند الانتقال إليها؛
+  // فتح غيرها يطوي ما سواها، والضغط على رأس المفتوحة يطويها.
+  const { pathname } = useLocation();
+  const activeGroup = visible.find((g) => g.title && g.items.some((n) => matchPath({ path: n.to, end: !!n.end }, pathname)))?.key;
+  const [openGroup, setOpenGroup] = useState<string | null>(() => activeGroup ?? readNavOpen());
+  useEffect(() => {
+    if (activeGroup) setOpenGroup(activeGroup);
+  }, [activeGroup]);
+  useEffect(() => writeNavOpen(openGroup), [openGroup]);
+  const toggleGroup = useCallback((key: string) => setOpenGroup((prev) => (prev === key ? null : key)), []);
 
   async function logout() {
     try {
@@ -116,19 +142,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <small>{L("جامعة العاصمة · الأداء الاستراتيجي", "Capital University · Strategic performance")}</small>
         </span>
       </Link>
-      <nav className="lcp-nav" aria-label={L("القوائم الرئيسية", "Main menu")}>
-        {visible.map((g) => (
-          <div key={g.key} className="lcp-nav-sec" role="group" aria-label={g.title}>
-            {g.title && <div className="lcp-nav-group" aria-hidden>{g.title}</div>}
-            {g.items.map((n) => (
-              <NavLink key={n.to} to={n.to} end={n.end} onClick={() => setDrawer(false)}>
-                {n.icon}<span>{n.label}</span>
-                {!!n.badge && <><span className="lcp-badge" aria-hidden>{n.badge}</span><span className="sr-only">{n.badgeText}</span></>}
-              </NavLink>
-            ))}
-          </div>
-        ))}
-      </nav>
+      <SideNav groups={visible} open={openGroup} onToggle={toggleGroup} onNavigate={() => setDrawer(false)} />
       <div className="lcp-side-foot">
         <button type="button" onClick={toggleLang}><GlobalOutlined aria-hidden /> {lang === "ar" ? "English" : "العربية"}</button>
         <button type="button" onClick={logout}><LogoutOutlined aria-hidden /> {L("تسجيل الخروج", "Sign out")}</button>
@@ -186,6 +200,56 @@ export function Shell({ children }: { children: ReactNode }) {
         {side}
       </Drawer>
     </div>
+  );
+}
+
+/**
+ * روابط القائمة الجانبية. كل مجموعة بعنوان لوحة تطوى: الرأس زر يفتحها ويطويها، ويعرض وهي مطوية مجموع شارات روابطها.
+ * تعرض القائمة مرتين (الشريط الجانبي ودرج الجوال)، فمعرفات الرؤوس واللوحات من useId لكل نسخة، والحالة المفتوحة مشتركة من Shell.
+ */
+function SideNav({ groups, open, onToggle, onNavigate }: {
+  groups: VisibleGroup[];
+  open: string | null;
+  onToggle: (key: string) => void;
+  onNavigate: () => void;
+}) {
+  const uid = useId();
+  return (
+    <nav className="lcp-nav" aria-label={L("القوائم الرئيسية", "Main menu")}>
+      {groups.map((g) => {
+        const links = g.items.map((n) => (
+          <NavLink key={n.to} to={n.to} end={n.end} onClick={onNavigate}>
+            {n.icon}<span>{n.label}</span>
+            {!!n.badge && <><span className="lcp-badge" aria-hidden>{n.badge}</span><span className="sr-only">{n.badgeText}</span></>}
+          </NavLink>
+        ));
+        if (!g.title) return <div key={g.key} className="lcp-nav-sec" role="group">{links}</div>;
+
+        const isOpen = open === g.key;
+        const headId = `${uid}-${g.key}-head`;
+        const panelId = `${uid}-${g.key}-panel`;
+        const badged = g.items.filter((n) => !!n.badge);
+        const total = badged.reduce((sum, n) => sum + (n.badge ?? 0), 0);
+        const sep = L("، ", ", ");
+        return (
+          <div key={g.key} className="lcp-nav-sec lcp-nav-panel" data-open={isOpen ? "true" : "false"}>
+            <button type="button" id={headId} className="lcp-nav-group lcp-nav-head" aria-expanded={isOpen} aria-controls={panelId} onClick={() => onToggle(g.key)}>
+              <span className="lcp-nav-title">{g.title}</span>
+              {!isOpen && total > 0 && (
+                <>
+                  <span className="lcp-badge" aria-hidden>{total}</span>
+                  <span className="sr-only">{sep}{badged.map((n) => n.badgeText).filter(Boolean).join(sep)}</span>
+                </>
+              )}
+              <DownOutlined className="lcp-nav-chev" aria-hidden />
+            </button>
+            <div id={panelId} className="lcp-nav-body" role="group" aria-labelledby={headId}>
+              <div className="lcp-nav-inner">{links}</div>
+            </div>
+          </div>
+        );
+      })}
+    </nav>
   );
 }
 

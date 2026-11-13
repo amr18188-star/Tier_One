@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Icon } from "./Icon";
+// White + gold artwork for the navy hero (the footer uses the same file).
+import logo from "../../assets/brand/capital-university-logo-dark.png";
 
 /** Two decorative signal lines (rising and falling) behind the hero text. */
 function HeroChart() {
@@ -84,7 +86,7 @@ export function HeroSection() {
   return (
     <section
       data-section="dark"
-      className="relative isolate flex min-h-[650px] items-center overflow-hidden bg-ds-bg px-5 py-24 text-ds-fg sm:px-10 lg:min-h-[700px]"
+      className="relative isolate flex h-screen items-center overflow-hidden bg-ds-bg px-5 pb-24 pt-24 text-ds-fg supports-[height:100svh]:h-svh sm:px-10 sm:pt-32 lg:pt-36 short:pb-12 short:pt-24 tiny:pb-6 tiny:pt-16"
     >
       {/* Grid */}
       <div
@@ -97,18 +99,17 @@ export function HeroSection() {
       {/* Overlay */}
       <div className="pointer-events-none absolute inset-0" style={{ background: "var(--ds-hero-vignette)" }} />
 
-      <div className="relative z-10 mx-auto w-full max-w-7xl text-center">
-        {/* Eyebrow */}
-        <div className="mb-6 inline-flex items-center gap-3 border border-ds-line-soft/15 bg-ds-surface/90 px-5 py-3">
-          <span className="h-2 w-2 bg-ds-live" />
-
-          <span className="text-xs font-medium tracking-wide text-ds-body-strong sm:text-sm">
-            منظومة الأداء المؤسسي والتخطيط الاستراتيجي للجامعات
-          </span>
+      {/* Logo in the top start corner (right in RTL), on the content edge. It ends above the section's top padding
+          in every tier (80 < 96, 112 < 128, 128 < 144; short screens 80 < 96; tiny 56 < 64), so it never reaches the title. */}
+      <div className="pointer-events-none absolute inset-x-0 top-6 z-10 px-5 sm:top-8 sm:px-10 short:top-6 tiny:top-4">
+        <div className="mx-auto max-w-7xl">
+          <img src={logo} alt="جامعة العاصمة" className="h-14 w-auto object-contain sm:h-20 lg:h-24 short:h-14 tiny:h-10" />
         </div>
+      </div>
 
+      <div className="relative z-10 mx-auto w-full max-w-7xl text-center">
         {/* Title */}
-        <h1 className="mx-auto max-w-5xl text-4xl font-bold leading-[1.5] tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
+        <h1 className="mx-auto max-w-5xl text-4xl font-bold leading-[1.5] tracking-tight sm:text-5xl md:text-6xl lg:text-7xl short:text-3xl short:sm:text-4xl short:md:text-5xl short:lg:text-6xl tiny:text-2xl tiny:md:text-3xl tiny:lg:text-4xl">
           <span className="block text-ds-heading">
             نحو أداء جامعي
           </span>
@@ -119,12 +120,12 @@ export function HeroSection() {
         </h1>
 
         {/* Subtitle */}
-        <h2 className="mx-auto mt-5 max-w-3xl text-lg font-semibold leading-8 text-ds-body-strong sm:text-xl">
+        <h2 className="mx-auto mt-5 max-w-3xl text-lg font-semibold leading-8 text-ds-body-strong sm:text-xl short:mt-3 tiny:mt-2 tiny:text-base tiny:leading-7">
           منظومة متكاملة لقياس وتطوير الأداء المؤسسي في جامعة العاصمة
         </h2>
 
         {/* Description */}
-        <p className="mx-auto mt-4 max-w-3xl text-sm leading-8 text-ds-body sm:text-base">
+        <p className="mx-auto mt-4 max-w-3xl text-sm leading-8 text-ds-body sm:text-base short:mt-3 short:leading-7 tiny:mt-2 tiny:text-sm tiny:leading-6">
           إطار استراتيجي متكامل لتخطيط وقياس ومتابعة الأداء الجامعي،
           يربط الأهداف المؤسسية بمؤشرات الأداء والمبادرات عبر مختلف
           الركائز والمعايير، ويوفر رؤية موحدة لمتابعة الإنجاز وتعزيز
@@ -133,25 +134,14 @@ export function HeroSection() {
         </p>
 
         {/* CTA */}
-        <div className="mt-8 flex justify-center">
+        <div className="mt-8 flex justify-center short:mt-6 tiny:mt-4">
           <Link
             to="/login"
-            className="group flex items-center gap-4 border border-ds-btn-primary-border bg-ds-btn-primary-bg px-8 py-4 text-sm font-bold text-ds-btn-primary-fg transition-all hover:border-ds-btn-primary-hover-border hover:bg-ds-btn-primary-hover-bg hover:text-ds-btn-primary-hover-fg"
+            className="group flex items-center gap-4 rounded-ds-md border border-ds-btn-primary-border bg-ds-btn-primary-bg px-8 py-4 text-sm font-bold text-ds-btn-primary-fg transition-all hover:border-ds-btn-primary-hover-border hover:bg-ds-btn-primary-hover-bg hover:text-ds-btn-primary-hover-fg tiny:py-3"
           >
             <span>الدخول إلى المنظومة</span>
             <Icon name="arrow" size={19} className="transition-transform rtl:group-hover:-translate-x-1 ltr:group-hover:translate-x-1" />
           </Link>
-        </div>
-
-        {/* Supporting Note */}
-        <div className="mx-auto mt-8 flex max-w-3xl items-start gap-4 border border-ds-accent-border bg-ds-surface/90 px-5 py-4 text-right">
-          <Icon name="shield" size={22} className="mt-1 shrink-0 text-ds-icon" />
-
-          <p className="text-xs leading-7 text-ds-body-strong sm:text-sm">
-            منصة موحدة لإدارة الخطط الاستراتيجية، ومتابعة المستهدفات،
-            وتقييم مؤشرات الأداء على مستوى الجامعة وكلياتها، بما يعزز
-            الشفافية والحوكمة واتخاذ القرار المبني على البيانات.
-          </p>
         </div>
       </div>
 

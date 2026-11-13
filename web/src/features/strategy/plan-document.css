@@ -6,7 +6,7 @@
 .pd-versions { min-width: 200px; }
 .pd-page { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
 .pd-page .ant-input-number { width: 64px; }
-.pd-frame { position: relative; height: calc(100vh - 230px); min-height: 520px; border: 1px solid var(--hair); border-radius: 12px; overflow: hidden; background: #525659; }
+.pd-frame { position: relative; height: calc(100vh - 230px); min-height: 520px; border: 1px solid var(--hair); border-radius: var(--ds-radius-lg); overflow: hidden; background: #525659; }
 .pd-frame:fullscreen { height: 100vh; border-radius: 0; }
 .pd-frame iframe { display: block; width: 100%; height: 100%; border: 0; }
 .pd-empty { font-size: 48px; color: var(--muted); }

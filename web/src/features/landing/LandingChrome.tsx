@@ -4,30 +4,6 @@ import { sectionLinks } from "./sections";
 // The official logo, white + gold for dark backgrounds; byte-identical to the old page's /images/Capital_University_Logo (1).png.
 import logo from "../../assets/brand/capital-university-logo-dark.png";
 
-export function LandingHeader() {
-  return (
-    <header
-      data-section="dark"
-      className="relative z-30 shrink-0 border-b border-ds-line-soft/10 bg-ds-chrome/95 px-5 py-3 backdrop-blur-md sm:px-10"
-    >
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-6">
-        <img src={logo} alt="Capital University" className="h-14 w-auto object-contain sm:h-16" />
-
-        <Link
-          to="/login"
-          className="inline-flex items-center gap-3 border border-ds-btn-ghost-border px-6 py-3 text-sm font-semibold text-ds-btn-ghost-fg transition-all hover:border-ds-btn-ghost-hover-border hover:bg-ds-btn-ghost-hover-bg hover:text-ds-btn-ghost-hover-fg"
-        >
-          <span>تسجيل الدخول</span>
-          <Icon name="arrow" size={17} />
-        </Link>
-      </div>
-    </header>
-  );
-}
-
-/** Solid gold keyboard ring for the footer links (9:1 on the navy chrome). */
-const focusRing = "focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ds-accent";
-
 /** Small gold-ruled label above a footer column. */
 function ColumnLabel({ id, children }: { id: string; children: string }) {
   return (
@@ -75,7 +51,7 @@ export function LandingFooter() {
                 <li key={link.id} className="flex">
                   <a
                     href={`#${link.id}`}
-                    className={`group inline-flex items-center gap-3 rounded-ds py-1 text-sm text-ds-body transition-colors hover:text-ds-heading ${focusRing}`}
+                    className="group inline-flex items-center gap-3 rounded-ds py-1 text-sm text-ds-body transition-colors hover:text-ds-heading"
                   >
                     <span aria-hidden className="h-px w-3 bg-ds-accent transition-all group-hover:w-5" />
                     {link.label}
@@ -93,7 +69,7 @@ export function LandingFooter() {
 
             <Link
               to="/login"
-              className={`group mt-5 inline-flex items-center gap-3 rounded-ds border border-ds-btn-ghost-border px-5 py-3 text-sm font-semibold text-ds-btn-ghost-fg transition-all hover:border-ds-btn-ghost-hover-border hover:bg-ds-btn-ghost-hover-bg hover:text-ds-btn-ghost-hover-fg ${focusRing}`}
+              className="group mt-5 inline-flex items-center gap-3 rounded-ds border border-ds-btn-ghost-border px-5 py-3 text-sm font-semibold text-ds-btn-ghost-fg transition-all hover:border-ds-btn-ghost-hover-border hover:bg-ds-btn-ghost-hover-bg hover:text-ds-btn-ghost-hover-fg"
             >
               <span>الدخول إلى المنظومة</span>
               <Icon name="arrow" size={17} className="transition-transform rtl:group-hover:-translate-x-1 ltr:group-hover:translate-x-1" />

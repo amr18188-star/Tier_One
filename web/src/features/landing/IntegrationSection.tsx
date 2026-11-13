@@ -64,7 +64,7 @@ export function IntegrationSection() {
           {integrations.map((item) => (
             <article key={item.code} className="bg-ds-surface p-7 transition-colors hover:bg-ds-surface-hover sm:p-8">
               <div className="mb-8 flex items-center justify-between">
-                <div className="flex h-12 w-12 items-center justify-center border border-ds-accent-border bg-ds-tile text-ds-icon">
+                <div className="flex h-12 w-12 items-center justify-center rounded-ds-md border border-ds-accent-border bg-ds-tile text-ds-icon">
                   <Icon name={item.icon} size={23} />
                 </div>
 
