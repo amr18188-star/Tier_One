@@ -20,6 +20,7 @@ public static class StartupGuards
         Require(CairoTime.ZoneFound, "Time-zone data for Africa/Cairo is missing; deadlines and appointments would shift. Install tzdata.");
         Require(c.GetValue("Auth:RequireMfa", true), "Auth:RequireMfa=false is allowed in Development only.");
         Require(!c.GetValue<bool>("Seed:Demo"), "Seed:Demo must be false outside Development.");
+        Require(!c.GetValue<bool>("Seed:DemoData"), "Seed:DemoData must be false outside Development.");
         Require(!string.IsNullOrWhiteSpace(c["DataProtection:KeysPath"]), "DataProtection:KeysPath is required outside Development.");
         // مفاتيح حماية البيانات تفك أسرار التحقق بخطوتين؛ لا تحفظ مكشوفة.
         Require(!string.IsNullOrWhiteSpace(c["DataProtection:CertificatePath"]) || OperatingSystem.IsWindows(),

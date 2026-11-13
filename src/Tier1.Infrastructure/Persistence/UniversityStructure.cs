@@ -10,7 +10,7 @@ using Tier1.Domain.Organization;
 namespace Tier1.Infrastructure.Persistence;
 
 /// <summary>
-/// هيكل الجامعة الرسمي (Seed/university-structure.json، يولده tools/import_structure.py من ملف الهيكل):
+/// هيكل الجامعة الرسمي (Seed/university-structure.json، يولده SeedImporters (--import-structure) من ملف الهيكل):
 /// القطاعات والإدارات العامة والكليات والمعاهد وأقسامها، ووحدة التخطيط الاستراتيجي ومركز الاتصالات وتكنولوجيا المعلومات.
 /// التحميل يضيف الجهات أو يحدث اسمها وتبعيتها بالرمز، ويحل محل الجهات التجريبية: تنقل نطاقات حساباتها إلى الجهات المقابلة ثم تحذف.
 /// الجهات غير الموجودة في الملف تبقى كما هي (لا تغلق تلقائيًا).

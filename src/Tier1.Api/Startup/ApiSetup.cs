@@ -22,6 +22,8 @@ public static class ApiSetup
     public static IServiceCollection AddApi(this IServiceCollection services, IConfiguration config)
     {
         services.Configure<CookieNames>(config.GetSection("Cookies"));
+        // Demo data after the server starts (Development only): Seed:DemoData=true.
+        if (config.GetValue<bool>("Seed:DemoData")) services.AddHostedService<Tier1.Api.Startup.DemoData.DemoDataSeeder>();
         services.ConfigureHttpJsonOptions(o =>
         {
             o.SerializerOptions.Converters.Add(new JsonStringEnumConverter());

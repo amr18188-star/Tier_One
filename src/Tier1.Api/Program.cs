@@ -55,6 +55,19 @@ if (args.Contains("--load-structure"))
     await Console.Out.WriteLineAsync(await UniversityStructure.LoadAsync(app.Services));
     return;
 }
+// Full backup and restore test (replace the old PowerShell scripts).
+if (args.Contains("--backup")) { Environment.ExitCode = await Maintenance.BackupAsync(args, app.Configuration); return; }
+if (args.Contains("--restore-test")) { Environment.ExitCode = await Maintenance.RestoreTestAsync(args, app.Configuration); return; }
+// Seed extraction from the source workbooks (replace the old Python import tools).
+// --repo-root <dir> chooses where Seed/ and reference/ are written (default: the repository root, found from Tier1.sln).
+if (args.Contains("--import-structure") || args.Contains("--import-kpi"))
+{
+    var kpi = args.Contains("--import-kpi");
+    var workbook = Maintenance.Option(args, kpi ? "--import-kpi" : "--import-structure") ?? throw new ArgumentException("Usage: --import-structure <xlsx> | --import-kpi <xlsx> [--repo-root <dir>]");
+    var repoRoot = Maintenance.Option(args, "--repo-root") is { } chosen ? Path.GetFullPath(chosen) : Tier1.Infrastructure.Files.SeedImporters.FindRepoRoot();
+    await Console.Out.WriteLineAsync(kpi ? Tier1.Infrastructure.Files.SeedImporters.ImportKpi(workbook, repoRoot) : Tier1.Infrastructure.Files.SeedImporters.ImportStructure(workbook, repoRoot));
+    return;
+}
 var createSa = Array.IndexOf(args, "--create-superadmin");
 if (createSa >= 0)
 {

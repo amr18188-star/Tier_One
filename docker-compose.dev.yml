@@ -30,6 +30,8 @@ services:
       MongoLogs__SetupOnStartup: "true"
       MongoLogs__ChainKey: ybMmZEAJWMsrFElpEXuzGX81cfjMp1jnFHpxbzNRqgk=            # dev-only key
       Seed__Demo: "true"                    # demo accounts *@tier1.local
+      Seed__Structure: "true"               # the official university structure (23 colleges, 192 departments)
+      Seed__DemoData: "true"                # cycles, forms, values and structures; loaded once after startup
       Seed__DemoPassword: Tier1-Demo-Pass1
       Auth__RequireMfa: "false"             # Development only
       Cookies__Secure: "false"
