@@ -4,7 +4,7 @@
 دورة ربعية رسمية للسنة 1 الربع 1، وإدخال كل النماذج واعتمادها بمسار الاعتماد كاملًا بفصل المهام،
 ثم الدرجة والفئة كما يحسبها ملف KPI.xlsx، وتصدير الملف نفسه بالقيم.
 
-التشغيل (الخادم يعمل على http://localhost:5150 بعد scripts\\reset-kpi.ps1):
+التشغيل (الخادم يعمل على http://localhost:5150 بعد: dotnet run --project src/Tier1.Api -- --reset-kpi --confirm):
     python tests/e2e/scorecard_test.py
 """
 import datetime

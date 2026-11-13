@@ -5,7 +5,7 @@
     python tools/import_structure.py "C:/Users/IT/Downloads/Capital-University-Structure - fINAL.xlsx"
 الناتج:
     src/Tier1.Infrastructure/Persistence/Seed/university-structure.json   يحملها الخادم بأمر --load-structure
-                                                                          (scripts/load-structure.ps1) وتبذر النسخة التجريبية منها
+                                                                          (`--load-structure`) وتبذر النسخة التجريبية منها
     reference/university-structure.xlsx                                   نسخة الملف المصدر
 
 أوراق الملف:

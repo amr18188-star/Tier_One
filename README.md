@@ -19,43 +19,34 @@
 | `docs/user-guide.md` | دليل المستخدم لكل دور |
 | `reference/` و`tools/` | القاموس المستخرج من ملفي الخطة وأدوات توليده |
 
-## التشغيل للتطوير بـ Docker
+## التشغيل للتطوير
 
-يحتاج Docker Desktop فقط (و.NET SDK للخيار 2). القاعدتان والخادم والواجهة كلها حاويات، والمستودع مركب فيها: `dotnet watch` يعيد بناء الخادم عند كل حفظ، وVite يحدث الواجهة فورًا، فلا بناء للصور لتغيير شيفرة.
+يحتاج Docker Desktop فقط (و.NET SDK للخيار 2). لا سكربتات ولا إعداد مسبق: كلمات المرور والإعدادات مثبتة في `docker-compose.yml` و`docker-compose.dev.yml` و`src/Tier1.Api/appsettings.Development.json`.
+القاعدتان والخادم والواجهة كلها حاويات، والمستودع مركب فيها: `dotnet watch` يعيد بناء الخادم عند كل حفظ، وVite يحدث الواجهة فورًا، فلا بناء للصور لتغيير شيفرة.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\dev-setup.ps1        # مرة واحدة: .env وappsettings.Development.json
-docker compose -p tier1-dev -f docker-compose.dev.yml up              # أول مرة بضع دقائق (الصور والحزم)
+```bash
+docker compose -p tier1-dev -f docker-compose.dev.yml up      # أول مرة بضع دقائق (الصور والحزم)
 ```
+
+عند أول بدء يملأ الخادم نفسه البيانات التجريبية (`Seed:DemoData`، نحو 30 ثانية): هياكل الكليات وثلاثة أرباع لعام 2027 بنماذج في كل مراحل الاعتماد.
+الشيفرة في `src/Tier1.Api/Startup/DemoData`، وتعمل مرة واحدة (تتخطى إن وجدت دوراتها).
 
 | | الخيار 1: الخادم داخل Docker | الخيار 2: الخادم على جهازك |
 |---|---|---|
-| الأمر | `docker compose -p tier1-dev -f docker-compose.dev.yml up` | `docker compose -p tier1-dev up -d` ثم `dotnet run --project src\Tier1.Api` |
+| الأمر | `docker compose -p tier1-dev -f docker-compose.dev.yml up` | `docker compose -p tier1-dev up -d` ثم `dotnet run --project src/Tier1.Api` |
 | الخادم | http://localhost:5150 | http://localhost:5150 |
-| الواجهة (Vite) | http://localhost:5188 | `cd web; npm run dev` ثم http://localhost:5188 |
+| الواجهة (Vite) | http://localhost:5188 | `cd web && npm run dev` ثم http://localhost:5188 |
 
-- القاعدتان على عنوان الجهاز: PostgreSQL `5440` وMongoDB `27031` (غيرهما في `.env` بـ `POSTGRES_PORT` و`MONGO_PORT` إن كانا مشغولين). الحسابات التجريبية كما في القسم التالي.
-- في الخيار 2 يشير `appsettings.Development.json` إلى MongoDB على `27017`؛ مرر عنوان الحاوية: `$env:ConnectionStrings__Mongo="mongodb://127.0.0.1:27031/tier1_logs"; $env:ConnectionStrings__MongoAdmin="mongodb://127.0.0.1:27031/"`.
+- القاعدتان على عنوان الجهاز: PostgreSQL `5440` (`tier1_dev` / `tier1_dev`) وMongoDB `27031` (غيّر المنفذين بالمتغيرين `POSTGRES_PORT` و`MONGO_PORT` إن كانا مشغولين). `appsettings.Development.json` يشير إليهما.
 - القاعدتان والبيانات مشتركة بين الخيارين (المشروع `tier1-dev`). لا تشغل الخيارين معًا (المنفذ 5150).
-- الرسائل تكتب ملفات `.eml` في `data\mail` على جهازك.
+- الرسائل تكتب ملفات `.eml` في `data/mail`.
 - الخادم في الحاوية يستمع على كل عناوينها (`ASPNETCORE_HTTP_PORTS`)، لأن حاجز التطوير في `StartupGuards` يمنع غير loopback في `ASPNETCORE_URLS`؛ والمنفذان منشوران على `127.0.0.1` فلا ينكشفان على الشبكة.
 - تُبنى الصورة من جديد (`up --build`) فقط عند تغيير `Dockerfile.dev`. لمخرجات بناء قديمة: `down` ثم `docker volume rm tier1-dev_tier1_api_out`.
-- الإيقاف: `docker compose -p tier1-dev -f docker-compose.dev.yml down` (البيانات تبقى)، ومع `-v` تحذف كل البيانات.
+- الإيقاف: `docker compose -p tier1-dev -f docker-compose.dev.yml down` (البيانات تبقى)، ومع `-v` تحذف كل البيانات ويعاد ملؤها عند البدء التالي.
+- أوامر الصيانة أوامر .NET (لا سكربتات): `dotnet run --project src/Tier1.Api -- --reset-kpi --confirm` و`--load-structure --confirm` و`--backup <مجلد>` و`--restore-test <نسخة>`.
 - هذا للتطوير فقط؛ الإنتاج في `deploy/` (راجع `docs/deployment.md`).
 
-## التشغيل للتطوير (بلا Docker)
-
-يتطلب .NET SDK 10 وNode 24 وPython 3، وPostgreSQL 18 وMongoDB مثبتين على الجهاز.
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\dev-setup.ps1   # الأسرار والإعدادات (مرة واحدة)
-powershell -ExecutionPolicy Bypass -File scripts\dev-db.ps1      # قاعدة خاصة بالمشروع على 127.0.0.1:5440
-cd web; npm install; npx vite build; cd ..
-dotnet run --project src\Tier1.Api                                # http://localhost:5150
-```
-
-قاعدة المشروع نسخة مستقلة في `data\pgdata` لا تمس خدمة PostgreSQL المثبتة ولا تحتاج كلمة مرور `postgres`.
-إيقافها: `scripts\dev-db.ps1 stop`. الحسابات التجريبية `*@tier1.local` بكلمة المرور `T1_DEMO_PASSWORD` في `.env`.
+الحسابات التجريبية `*@tier1.local` بكلمة المرور `Tier1-Demo-Pass1` (من `Seed__DemoPassword` في `docker-compose.dev.yml`).
 
 | الحساب | الدور |
 |---|---|
@@ -66,16 +57,6 @@ dotnet run --project src\Tier1.Api                                # http://local
 | `deptrep@` | ممثل قسم المدنية (نطاق `ENG-CIV`) |
 | `vp@` و`viewer@` و`quality@` | نائب الرئيس، اطلاع، الجودة |
 | `sa1@` و`sysadmin@` و`auditor@` | المدير الأعلى، مسؤول النظام، المراجع الرقابي |
-
-### النسخة التجريبية بالبيانات (للعرض والتجربة)
-
-قاعدة منفصلة `tier1_demo` على http://localhost:5160 مملوءة ببيانات واقعية مولدة: ثلاث دورات، ونماذج في كل مراحل الاعتماد، ونتائج ومقارنات.
-الحسابات وما ينتظر كل منها في [docs/demo.md](docs/demo.md).
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\demo.ps1 -Reset   # قاعدة فارغة، ويبقى الخادم يعمل
-python tools\demo_data.py                                          # في نافذة أخرى: يملؤها (نحو 40 ثانية)
-```
 
 ## الاختبارات
 
@@ -92,7 +73,7 @@ python tests\load\load_test.py --users 100 --seconds 60
 ## الإنتاج
 
 راجع [docs/deployment.md](docs/deployment.md): Docker Compose أو IIS، والشهادات، وأوامر `--migrate` و`--mongo-setup` و`--create-superadmin`،
-والنسخ الاحتياطي اليومي (`scriptsackup.ps1`) واختبار الاسترجاع الشهري (`scriptsestore-test.ps1`).
+والنسخ الاحتياطي اليومي (`--backup`) واختبار الاسترجاع الشهري (`--restore-test`).
 
 ## إعادة بناء البيانات المرجعية
 

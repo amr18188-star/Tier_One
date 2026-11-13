@@ -64,15 +64,16 @@ cp deploy/.env.example deploy/.env     # املأ كل القيم (كلمات م
 
 ## النسخ الاحتياطي والاسترجاع
 
-```powershell
-$env:PGPASSWORD = '<password>'
-powershell -File scripts\backup.ps1 -Destination E:\Backups\Tier1 -DataRoot D:\Tier1Data -MongoUri "mongodb://tier1_reader:<pw>@127.0.0.1/tier1_logs?authSource=tier1_logs"
-powershell -File scripts\restore-test.ps1 -Backup E:\Backups\Tier1\tier1-YYYYMMDD-HHMMSS
+```bash
+# الاتصالات من إعدادات الخادم نفسها (ConnectionStrings:Tier1 وMongo وFiles:Root وDataProtection:KeysPath وMongoLogs:CheckpointDirectory)؛
+# يلزم تثبيت pg_dump وpg_restore وmongodump، أو --pg-bin لمجلد أدوات PostgreSQL.
+dotnet Tier1.Api.dll --backup E:\Backups\Tier1 --mongo-uri "mongodb://tier1_reader:<pw>@127.0.0.1/tier1_logs?authSource=tier1_logs"
+dotnet Tier1.Api.dll --restore-test E:\Backups\Tier1	ier1-YYYYMMDD-HHMMSS
 ```
 
 - النسخة: `pg_dump` بصيغة مخصصة، و`mongodump` للسجلات، وأرشيف للأدلة والمفاتيح ونقاط التثبيت، وملف بصمات SHA-256.
 - الجدولة: يوميًا الثانية صباحًا من Task Scheduler (أو cron في الخيار الأول بـ `docker compose exec postgres pg_dump ...`)، والاحتفاظ 30 يومًا افتراضيًا.
-- **اختبار الاسترجاع شهريًا** بالسكربت الثاني: يتحقق من البصمات، ويسترجع في قاعدة مؤقتة، ويقارن عدد السجلات بالأصلية، ثم يحذفها.
+- **اختبار الاسترجاع شهريًا** بأمر `--restore-test`: يتحقق من البصمات، ويسترجع في قاعدة مؤقتة، ويقارن عدد السجلات بالأصلية، ثم يحذفها.
 - نسخة خارج الخادم (قرص آخر أو مبنى آخر) لكل نسخة أسبوعية على الأقل.
 
 ## المراقبة

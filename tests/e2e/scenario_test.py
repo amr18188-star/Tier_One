@@ -5,7 +5,7 @@
 
 التشغيل (الخادم يعمل على http://localhost:5150 بقاعدة تجريبية):
     python tests/e2e/scenario_test.py
-كلمة مرور الحسابات التجريبية تقرأ من .env (T1_DEMO_PASSWORD).
+كلمة مرور الحسابات التجريبية: المتغير T1_DEMO_PASSWORD، وإلا Tier1-Demo-Pass1 (المثبتة في docker-compose.dev.yml).
 """
 import datetime
 import http.cookiejar
@@ -21,11 +21,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 
 
 def demo_password() -> str:
-    with open(os.path.join(ROOT, ".env"), encoding="ascii") as f:
-        for line in f:
-            if line.startswith("T1_DEMO_PASSWORD="):
-                return line.split("=", 1)[1].strip()
-    raise SystemExit("T1_DEMO_PASSWORD is missing from .env")
+    return os.environ.get("T1_DEMO_PASSWORD", "Tier1-Demo-Pass1")
 
 
 PASSWORD = demo_password()

@@ -55,6 +55,9 @@ if (args.Contains("--load-structure"))
     await Console.Out.WriteLineAsync(await UniversityStructure.LoadAsync(app.Services));
     return;
 }
+// Full backup and restore test (replace the old PowerShell scripts).
+if (args.Contains("--backup")) { Environment.ExitCode = await Maintenance.BackupAsync(args, app.Configuration); return; }
+if (args.Contains("--restore-test")) { Environment.ExitCode = await Maintenance.RestoreTestAsync(args, app.Configuration); return; }
 var createSa = Array.IndexOf(args, "--create-superadmin");
 if (createSa >= 0)
 {
