@@ -1,0 +1,113 @@
+/*
+ * Design-system primitives: the raw palettes, as plain CSS custom properties on :root.
+ * Framework-agnostic (no Tailwind needed). Components never use these directly:
+ * they use the semantic --ds-* tokens that each theme (themes/*.css) builds from them.
+ *
+ * Nothing else in this folder is global. Every theme token lives under [data-theme].
+ *
+ * Sources
+ * - Navy & Gold: Frontend/React/HERO_DESIGN_SYSTEM.md §2 and §10 (landing page, Home.jsx).
+ * - Soft:        Frontend/React/src/styles/tokens.css (the old signed-in /app palette).
+ *
+ * Additions that are NOT in HERO_DESIGN_SYSTEM.md §10 (needed so that every colour
+ * Home.jsx renders equals a primitive):
+ * - --color-paper            #FFFFFF. "white" in the doc. Named paper so it never overrides Tailwind's --color-white.
+ * - --color-ash-100 … 600    Tailwind v4 slate, exact OKLCH. Home.jsx uses them through slate-* classes.
+ *                            Named ash so they never override Tailwind's --color-slate-*.
+ * - --color-haze-200 … 400   Tailwind v3 slate hex. Home.jsx hard-codes them in SVG and inline styles
+ *                            (#E2E8F0, #CBD5E1, #94A3B8). ash-200 and haze-200 render the same 8-bit colour;
+ *                            ash-300/haze-300 and ash-400/haze-400 differ by 1–4 per channel.
+ * - --color-navy-900-rgb     "7, 26, 51": comma channels of navy-900 for rgba(var(--…), alpha). Home.jsx's hero
+ *                            vignette is rgba(7, 26, 51, a). Only the comma rgba() form keeps Chrome's legacy
+ *                            gradient interpolation; the space form rgb(7 26 51 / a) and color-mix() do not
+ *                            (measured: 1-unit differences over ~9.4k hero pixels).
+ * - --color-soft-*           The old /app palette, for the app-soft theme. Navy & Gold also uses three of them
+ *                            to stay pixel-identical: the old app's shadow-sm/md (soft-navy-800), its global
+ *                            focus outline and ::selection (soft-gold-500, soft-navy-950).
+ *
+ * Name check (Tailwind 4.3.5 theme.css): Tailwind also ships a "mist" palette (--color-mist-50 … 950).
+ * The doc's mist-100 and mist-300 keep their names, so on any page that loads this file they replace
+ * Tailwind's mist-100 and mist-300. Tier1 uses no mist-* utility; tailwind-theme.css clears Tailwind's
+ * mist scale so only these two steps exist there. Every other name here is free in Tailwind, app.css and shadcn.css.
+ */
+:root {
+  /* Navy: brand mass and dark surfaces (§2.1) */
+  --color-navy-950: #06152a; /* header and footer chrome */
+  --color-navy-900: #071a33; /* brand base: dark sections, heading text on light */
+  --color-navy-800: #0c2545; /* raised surface on dark, first chart series */
+  --color-navy-700: #12345b; /* card hover on dark */
+  --color-navy-600: #18304d; /* hero grid lines only */
+  --color-navy-500: #29415f; /* borders and 1px dividers on dark */
+  --color-navy-900-rgb: 7, 26, 51;
+  --color-steel-400: #7890ac; /* muted data (target line), grid on dark sections */
+
+  /* Mist: text on dark (§2.4) */
+  --color-mist-100: #dce5f0; /* subtitle, emphasized body on dark */
+  --color-mist-300: #aab8ca; /* body on dark */
+
+  /* Gold: the single accent (§2.2) */
+  --color-gold-200: #e5c47e; /* display highlight on dark (hero H1 line 2) */
+  --color-gold-400: #d6b46a; /* primary accent */
+  --color-gold-500: #b9944d; /* highlight words on light, actual data line, thick rules */
+  --color-gold-600: #a7833d; /* eyebrows, captions and icons on light (large text only) */
+  --color-gold-700: #82652b; /* AA-safe small gold text on light (doc addition, unused by Home.jsx) */
+
+  /* Light surfaces (§2.3) */
+  --color-paper: #ffffff; /* white */
+  --color-cloud: #f8f9fb; /* cool section, inner info panels */
+  --color-sand-200: #f4ebd8; /* warm section */
+  --color-sand-100: #f8f3e9; /* stat cells on sand */
+  --color-sand-50: #f8f4ea; /* icon-tile fill on light */
+  --color-ivory: #f8f6f1; /* hover tint on white cells, inline callout */
+  --color-ivory-50: #fcfbf8; /* feature-card hover */
+
+  /* Text and lines on light: Tailwind v4 slate, exact (§2.4, §2.5) */
+  --color-ash-100: oklch(96.8% 0.007 247.896); /* ≈ #F1F5F9 progress track */
+  --color-ash-200: oklch(92.9% 0.013 255.508); /* ≈ #E2E8F0 borders */
+  --color-ash-300: oklch(86.9% 0.022 252.894); /* ≈ #CAD5E2 muted index numbers */
+  --color-ash-400: oklch(70.4% 0.04 256.788); /* ≈ #90A1B9 captions (decorative) */
+  --color-ash-500: oklch(55.4% 0.046 257.417); /* ≈ #62748E body */
+  --color-ash-600: oklch(44.6% 0.043 257.281); /* ≈ #45556C labels */
+
+  /* Chart greys: Tailwind v3 slate hex, as hard-coded in Home.jsx (§9) */
+  --color-haze-200: #e2e8f0; /* gridlines */
+  --color-haze-300: #cbd5e1; /* fourth categorical series */
+  --color-haze-400: #94a3b8; /* axis labels */
+
+  /* Signal (§2.6): status and the hero background lines only */
+  --color-signal-green: #22c55e;
+  --color-signal-red: #ef4444;
+
+  /* Soft palette: the old /app tokens (tokens.css), for the app-soft theme */
+  --color-soft-navy-950: #0d2440;
+  --color-soft-navy-900: #123055;
+  --color-soft-navy-800: #19355a;
+  --color-soft-navy-700: #234a7e;
+  --color-soft-navy-500: #3567b0;
+  --color-soft-navy-100: #e8eef7;
+  --color-soft-gold-700: #8a6d00;
+  --color-soft-gold-600: #ad8700;
+  --color-soft-gold-500: #c9a227;
+  --color-soft-gold-300: #e6c25a;
+  --color-soft-gold-100: #f0dfa8;
+  --color-soft-gold-50: #fffdf4;
+  --color-soft-neutral-900: #1b2733;
+  --color-soft-neutral-700: #475569;
+  --color-soft-neutral-600: #5c6b7a;
+  --color-soft-neutral-500: #7d8ea6;
+  --color-soft-neutral-400: #9aa8b6;
+  --color-soft-neutral-300: #a7b3c0;
+  --color-soft-neutral-200: #cddbee;
+  --color-soft-neutral-150: #e2e8f0;
+  --color-soft-neutral-100: #e3e9f1;
+  --color-soft-neutral-75: #edf2f7;
+  --color-soft-neutral-50: #f4f7fb;
+  --color-soft-neutral-25: #f8fafc;
+  --color-soft-navy-900-rgb: 18, 48, 85;
+  --color-soft-success-700: #1c7c3d;
+  --color-soft-success-400: #64c783; /* tokens.css .dark --success */
+  --color-soft-danger-700: #b3261e;
+  --color-soft-danger-600: #d0453e;
+  --color-soft-danger-400: #ef6a63; /* tokens.css .dark --destructive */
+  --color-soft-info-700: #1e40af;
+}

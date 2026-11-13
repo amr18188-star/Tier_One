@@ -1,0 +1,135 @@
+/*
+ * Landing page styles. Imported only by LandingPage.tsx, which App.tsx loads lazily.
+ *
+ * Once loaded, a stylesheet stays in the document after navigation, so nothing here may style the rest of the app.
+ * Only custom properties are global: Tailwind's theme variables and the design-system tokens.
+ * - No Tailwind preflight. The reset the old page got from it lives below, scoped to [data-landing].
+ * - Utilities are generated only for classes found in this folder (source(none) + @source "./"), and every one
+ *   is nested under [data-landing]. A class name shared with the app (`grid`, `grow`, `w-full` …) therefore
+ *   never styles the login screen or the antd pages.
+ * - Specificity ladder inside the page:
+ *     base reset        [data-landing] :where(…)      0,1,0
+ *     utilities         [data-landing] .class         0,2,0   (hover / group-hover variants one step more, as in Tailwind)
+ *   The scope step lifts every utility above antd's global link rules (`:where(.css-…) a:hover`, 0,1,1)
+ *   and above any single-class rule of the app, while keeping Tailwind's own order between utilities.
+ * - Everything is unlayered on purpose: app.css, shared/*.css and antd's CSS-in-JS are unlayered, and an
+ *   unlayered rule beats any @layer rule whatever its specificity.
+ */
+@layer theme;
+@import "tailwindcss/theme.css" layer(theme);
+@import "../../styles/design-system/index.css";
+@import "../../styles/design-system/tailwind-theme.css";
+@source "./";
+
+/* Direction variants from the element's own direction (:dir), not from any [dir] ancestor. Tailwind's defaults
+   (`[dir="rtl"] *`) would match both rtl: and ltr: here, because <html dir> follows the app language while this
+   page root is always dir="rtl". */
+@custom-variant rtl (&:where(:dir(rtl)));
+@custom-variant ltr (&:where(:dir(ltr)));
+
+/* ---------- Page root: the html/body styles of the old app (index.html, index.css, preflight) ----------
+   Tier1's body and .ant-app (antd: 14px, IBM Plex Sans Arabic, line-height 1.57) are inherited here,
+   so the root sets every inherited text property the page relies on. */
+[data-landing] {
+  font-family: var(--ds-font);
+  font-size: 1rem; /* 16px: the rem-based utilities assume it; Tier1 does not resize html */
+  font-weight: 400;
+  font-style: normal;
+  line-height: 1.7;
+  letter-spacing: normal;
+  text-align: right; /* the old body is rtl, so its `[dir] { text-align: match-parent }` rule gave right */
+  color: var(--ds-fg);
+  font-feature-settings: normal;
+  font-variation-settings: normal;
+  tab-size: 4;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: clip; /* the old body and #root hid horizontal overflow */
+}
+
+/* ---------- Scoped base: Tailwind preflight + the old index.css base layer ---------- */
+[data-landing] :where(*),
+[data-landing] ::before,
+[data-landing] ::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  border: 0 solid var(--ds-border);
+  outline-color: var(--ds-focus);
+}
+
+[data-landing] :where([dir]:not(input, textarea, select, button, pre)) {
+  text-align: match-parent;
+  text-align: -webkit-match-parent;
+}
+
+[data-landing] :where(h1, h2, h3, h4, h5, h6) {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+/* Also neutralises antd's global link rule (`:where(.css-…) a`: teal colour, outline none, 0,0,1). */
+[data-landing] :where(a) {
+  color: inherit;
+  text-decoration: none;
+  outline-color: var(--ds-focus);
+}
+
+[data-landing] :where(b, strong) {
+  font-weight: bolder;
+}
+
+[data-landing] :where(ol, ul, menu) {
+  list-style: none;
+}
+
+[data-landing] :where(img, svg, video, canvas, audio, iframe, embed, object) {
+  display: block;
+  vertical-align: middle;
+}
+
+[data-landing] :where(img, video) {
+  max-width: 100%;
+  height: auto;
+}
+
+[data-landing] :where(button, input, select, optgroup, textarea) {
+  font: inherit;
+  font-feature-settings: inherit;
+  font-variation-settings: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  border-radius: 0;
+  background-color: transparent;
+  opacity: 1;
+}
+
+[data-landing] :where(button) {
+  cursor: pointer;
+}
+
+[data-landing] :where([hidden]:not([hidden="until-found"])) {
+  display: none !important;
+}
+
+[data-landing] ::selection {
+  background: var(--ds-selection-bg);
+  color: var(--ds-selection-fg);
+}
+
+/* Keyboard focus as the old page drew it: the browser ring in the theme's focus colour.
+   0,2,0 out-ranks shared/ui.css `:where(a, button, [role="button"], [tabindex]):focus-visible` (0,1,0: teal 2px
+   outline, 6px radius) and antd's `:where(.css-…) a:focus { outline: 0 }` (0,1,1); utilities written later in this
+   file (`rounded-ds`, `focus-visible:outline-*`) still win. */
+[data-landing] :where(a, button, [role="button"], [tabindex]):focus-visible {
+  outline: auto 1px var(--ds-focus);
+  outline-offset: 0;
+  border-radius: 0;
+}
+
+/* ---------- Utilities, scoped to the page ---------- */
+[data-landing] {
+  @tailwind utilities source(none);
+}

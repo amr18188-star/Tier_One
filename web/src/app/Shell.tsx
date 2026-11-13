@@ -13,7 +13,9 @@ import type { FormRow } from "../api/collection";
 import { L, setLang, useLang } from "../shared/i18n";
 import { usePermissions, useSession } from "../shared/session";
 import { initials } from "../shared/ui";
-import mark from "../assets/brand/tier1-mark.svg";
+// شعار الجامعة الرسمي. أسماء الملفات بلون الخلفية: «-dark» حروفه بيضاء للقائمة الكحلية، و«-light» حروفه كحلية للشريط الأبيض.
+import logoOnNavy from "../assets/brand/capital-university-logo-dark.png";
+import logoOnWhite from "../assets/brand/capital-university-logo-light.png";
 import "../shared/ui.css";
 import "../shared/tier1.css";
 import "../shared/theme.css";
@@ -108,7 +110,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const side = (
     <>
       <Link to="/" className="lcp-brand" onClick={() => setDrawer(false)}>
-        <img src={mark} alt="" aria-hidden />
+        <img src={logoOnNavy} alt={L("جامعة العاصمة", "Capital University")} />
         <span>
           <b>{L("منظومة Tier 1", "Tier 1 system")}</b>
           <small>{L("جامعة العاصمة · الأداء الاستراتيجي", "Capital University · Strategic performance")}</small>
@@ -143,7 +145,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <header className="lcp-top">
           <Button className="lcp-burger" type="text" icon={<MenuOutlined aria-hidden />} onClick={() => setDrawer(true)} aria-label={L("القائمة", "Menu")} />
           <Link to="/" className="lcp-top-brand">
-            <img src={mark} alt="" aria-hidden />
+            <img src={logoOnWhite} alt={L("جامعة العاصمة", "Capital University")} />
             <b>Tier 1</b>
           </Link>
           <GlobalSearch />

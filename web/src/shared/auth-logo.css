@@ -1,0 +1,7 @@
+/* شاشة الدخول على الجوال: يبقى شعار الجامعة في الشريط الكحلي بجانب العنوان (styles/app.css يخفي كتلة الجامعة تحت 900 بكسل).
+   الصورة وحدها؛ الاسم مكتوب في الشعار نفسه وفي العنوان. */
+@media (max-width: 900px) {
+  .auth-side .auth-uni { display: flex; }
+  .auth-side .auth-uni span { display: none; }
+  .auth-side .auth-uni img { height: 64px; width: auto; flex: none; }
+}

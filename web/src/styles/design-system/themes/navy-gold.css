@@ -1,0 +1,221 @@
+/*
+ * Theme "navy-gold": the landing / hero identity (HERO_DESIGN_SYSTEM.md).
+ * Under this theme every --ds-* token resolves to exactly the colour Home.jsx renders.
+ *
+ * Scheme
+ * - <div data-theme="navy-gold"> turns the theme on for its subtree. Default scope: light.
+ * - data-section="dark" | "light" on any element inside re-scopes the section tokens
+ *   (background, surface, text, border, accent, tile, buttons, shadcn core) for that subtree (§2.7).
+ *   Put it on dark sections, the header and footer, and on any dark card inside a light section.
+ * - Theme-level tokens (font, radius, chrome, textures, charts, shadows, focus, sidebar) do not
+ *   change with the section.
+ * - Only custom properties here, no element rules. Primitives come from ../primitives.css.
+ * - Do not nest a second [data-theme] inside this one: section rules of both themes would match.
+ */
+
+/* ---------- Theme level ---------- */
+[data-theme="navy-gold"] {
+  --ds-font: "Cairo", "Geist Variable", "Segoe UI", sans-serif;
+  --ds-font-heading: "Cairo", "Geist Variable", "Segoe UI", sans-serif;
+  --ds-radius: 0px; /* square everywhere (§4); a length, so calc() on it stays valid */
+
+  /* Header and footer chrome (§2.1): bg-ds-chrome/95 + backdrop-blur in the header */
+  --ds-chrome: var(--color-navy-950);
+
+  /* Textures (§6). Use as background-image; keep the layer opacity (40% hero, 7–8% dark). */
+  --ds-grid-hero: var(--color-navy-600);
+  --ds-grid-dark: var(--color-steel-400);
+  --ds-texture-hero: linear-gradient(to right, var(--color-navy-600) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-navy-600) 1px, transparent 1px);
+  --ds-texture-dark: linear-gradient(to right, var(--color-steel-400) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-steel-400) 1px, transparent 1px);
+  --ds-hero-vignette: radial-gradient(
+    ellipse at center,
+    rgba(var(--color-navy-900-rgb), 0.96) 0%,
+    rgba(var(--color-navy-900-rgb), 0.88) 40%,
+    rgba(var(--color-navy-900-rgb), 0.65) 75%,
+    rgba(var(--color-navy-900-rgb), 0.4) 100%
+  ); /* comma rgba() on purpose: legacy interpolation, identical to Home.jsx */
+
+  /* Data visualisation (§9) */
+  --ds-chart-1: var(--color-navy-800);
+  --ds-chart-2: var(--color-gold-400);
+  --ds-chart-3: var(--color-steel-400);
+  --ds-chart-4: var(--color-haze-300);
+  --ds-chart-actual: var(--color-gold-500);
+  --ds-chart-target: var(--color-steel-400);
+  --ds-chart-area: var(--color-gold-400); /* gradient stop, 30% → 1% */
+  --ds-chart-current: var(--color-gold-400);
+  --ds-chart-bg: var(--color-paper); /* point fill and halo */
+  --ds-chart-grid: var(--color-haze-200);
+  --ds-chart-axis: var(--color-haze-400);
+  --ds-chart-up: var(--color-signal-green); /* hero rising line */
+  --ds-chart-down: var(--color-signal-red); /* hero falling line */
+
+  /* Elevation and global states, as the old app rendered them (tokens.css --shadow-1/2, --ring, ::selection) */
+  --ds-shadow-sm: 0 8px 24px color-mix(in srgb, var(--color-soft-navy-800) 8%, transparent);
+  --ds-shadow-md: 0 16px 40px color-mix(in srgb, var(--color-soft-navy-800) 14%, transparent);
+  --ds-focus: color-mix(in oklab, var(--color-soft-gold-500) 50%, transparent); /* outline colour */
+  --ds-selection-bg: var(--color-soft-gold-500);
+  --ds-selection-fg: var(--color-soft-navy-950);
+
+  /* shadcn: theme-level variables */
+  --radius: 0px;
+  --chart-1: var(--color-navy-800);
+  --chart-2: var(--color-gold-400);
+  --chart-3: var(--color-steel-400);
+  --chart-4: var(--color-haze-300);
+  --chart-5: var(--color-gold-500);
+  --sidebar: var(--color-navy-950);
+  --sidebar-foreground: var(--color-paper);
+  --sidebar-primary: var(--color-gold-400);
+  --sidebar-primary-foreground: var(--color-navy-900);
+  --sidebar-accent: var(--color-navy-800);
+  --sidebar-accent-foreground: var(--color-paper);
+  --sidebar-border: var(--color-navy-500);
+  --sidebar-ring: var(--color-gold-400);
+}
+
+/* ---------- Light scope (default) ---------- */
+[data-theme="navy-gold"],
+[data-theme="navy-gold"] [data-section="light"] {
+  --ds-bg: var(--color-paper); /* section background */
+  --ds-bg-cool: var(--color-cloud); /* analytics section, inner info panel */
+  --ds-bg-warm: var(--color-sand-200); /* hierarchy and final CTA sections */
+  --ds-fg: var(--color-navy-900); /* inherited text colour */
+  --ds-surface: var(--color-paper); /* card */
+  --ds-surface-hover: var(--color-ivory);
+  --ds-surface-hover-soft: var(--color-ivory-50);
+  --ds-surface-warm: var(--color-sand-100); /* stat cell on sand */
+  --ds-callout: var(--color-ivory); /* inline note fill */
+  --ds-border: var(--color-ash-200);
+  --ds-line-soft: var(--color-navy-900); /* translucent lines: use with /10 /15 /20 */
+  --ds-track: var(--color-ash-100); /* progress-bar track */
+  --ds-accent: var(--color-gold-400); /* accent lines, rules, highlighted bars; never text on light */
+  --ds-accent-strong: var(--color-gold-500); /* thick rules, connectors, hover border */
+  --ds-accent-border: color-mix(in oklab, var(--color-gold-400) 40%, transparent);
+  --ds-heading: var(--color-navy-900);
+  --ds-highlight: var(--color-gold-500); /* highlighted words */
+  --ds-highlight-display: var(--color-gold-500); /* stacked display highlight */
+  --ds-body: var(--color-ash-500);
+  --ds-body-strong: var(--color-ash-600);
+  --ds-label: var(--color-ash-600); /* chart legend and bar labels */
+  --ds-faint: var(--color-ash-400); /* captions, axis (decorative only) */
+  --ds-index: var(--color-ash-300); /* muted index numbers */
+  --ds-eyebrow: var(--color-gold-600); /* eyebrows, captions, suffixes */
+  --ds-eyebrow-aa: var(--color-gold-700); /* AA alternative for small gold text (changes pixels) */
+  --ds-icon: var(--color-gold-600);
+  --ds-tile: var(--color-sand-50); /* icon-tile fill */
+  --ds-tile-active: var(--color-gold-400); /* icon tile in a hovered card */
+  --ds-tile-active-fg: var(--color-navy-900);
+  --ds-tile-solid: var(--color-navy-900);
+  --ds-tile-solid-fg: var(--color-gold-400);
+  --ds-live: var(--color-signal-green); /* "live" square dot */
+
+  /* Primary button on light: navy, inverts to gold */
+  --ds-btn-primary-bg: var(--color-navy-900);
+  --ds-btn-primary-fg: var(--color-paper);
+  --ds-btn-primary-border: var(--color-navy-900);
+  --ds-btn-primary-hover-bg: var(--color-gold-400);
+  --ds-btn-primary-hover-fg: var(--color-navy-900);
+  --ds-btn-primary-hover-border: var(--color-gold-400);
+  /* Ghost button on light */
+  --ds-btn-ghost-bg: transparent;
+  --ds-btn-ghost-fg: var(--color-navy-900);
+  --ds-btn-ghost-border: color-mix(in oklab, var(--color-navy-900) 20%, transparent);
+  --ds-btn-ghost-hover-bg: var(--color-gold-400);
+  --ds-btn-ghost-hover-fg: var(--color-navy-900);
+  --ds-btn-ghost-hover-border: var(--color-gold-400);
+
+  /* shadcn core (light) */
+  --background: var(--color-paper);
+  --foreground: var(--color-navy-900);
+  --card: var(--color-paper);
+  --card-foreground: var(--color-navy-900);
+  --popover: var(--color-paper);
+  --popover-foreground: var(--color-navy-900);
+  --primary: var(--color-navy-900);
+  --primary-foreground: var(--color-paper);
+  --secondary: var(--color-cloud);
+  --secondary-foreground: var(--color-navy-900);
+  --ui-muted: var(--color-cloud); /* shadcn muted surface; app.css owns --muted */
+  --muted-foreground: var(--color-ash-500);
+  --accent: var(--color-gold-400);
+  --accent-foreground: var(--color-navy-900);
+  --destructive: var(--color-soft-danger-700); /* signal-red fails AA as text (3.8:1) */
+  --border: var(--color-ash-200);
+  --input: var(--color-ash-200);
+  --ring: var(--color-gold-400);
+}
+
+/* ---------- Dark scope ---------- */
+[data-theme="navy-gold"] [data-section="dark"],
+[data-theme="navy-gold"][data-section="dark"] {
+  --ds-bg: var(--color-navy-900);
+  --ds-bg-cool: var(--color-navy-900);
+  --ds-bg-warm: var(--color-navy-900);
+  --ds-fg: var(--color-paper);
+  --ds-surface: var(--color-navy-800);
+  --ds-surface-hover: var(--color-navy-700);
+  --ds-surface-hover-soft: var(--color-navy-700);
+  --ds-surface-warm: var(--color-navy-800);
+  --ds-callout: var(--color-navy-800);
+  --ds-border: var(--color-navy-500);
+  --ds-line-soft: var(--color-paper);
+  --ds-track: var(--color-navy-700);
+  --ds-accent: var(--color-gold-400);
+  --ds-accent-strong: var(--color-gold-400);
+  --ds-accent-border: color-mix(in oklab, var(--color-gold-400) 30%, transparent);
+  --ds-heading: var(--color-paper);
+  --ds-highlight: var(--color-gold-400);
+  --ds-highlight-display: var(--color-gold-200);
+  --ds-body: var(--color-mist-300);
+  --ds-body-strong: var(--color-mist-100);
+  --ds-label: var(--color-mist-100);
+  --ds-faint: var(--color-steel-400);
+  --ds-index: color-mix(in oklab, var(--color-paper) 20%, transparent);
+  --ds-eyebrow: var(--color-gold-400);
+  --ds-eyebrow-aa: var(--color-gold-400);
+  --ds-icon: var(--color-gold-400);
+  --ds-tile: color-mix(in oklab, var(--color-gold-400) 10%, transparent);
+  --ds-tile-active: var(--color-gold-400);
+  --ds-tile-active-fg: var(--color-navy-900);
+  --ds-tile-solid: var(--color-navy-900);
+  --ds-tile-solid-fg: var(--color-gold-400);
+  --ds-live: var(--color-signal-green);
+
+  /* Primary button on dark: gold, inverts to outline */
+  --ds-btn-primary-bg: var(--color-gold-400);
+  --ds-btn-primary-fg: var(--color-navy-900);
+  --ds-btn-primary-border: var(--color-gold-400);
+  --ds-btn-primary-hover-bg: transparent;
+  --ds-btn-primary-hover-fg: var(--color-gold-400);
+  --ds-btn-primary-hover-border: var(--color-gold-400);
+  /* Ghost button on dark (header) */
+  --ds-btn-ghost-bg: transparent;
+  --ds-btn-ghost-fg: var(--color-paper);
+  --ds-btn-ghost-border: color-mix(in oklab, var(--color-paper) 20%, transparent);
+  --ds-btn-ghost-hover-bg: var(--color-gold-400);
+  --ds-btn-ghost-hover-fg: var(--color-navy-900);
+  --ds-btn-ghost-hover-border: var(--color-gold-400);
+
+  /* shadcn core (dark) */
+  --background: var(--color-navy-900);
+  --foreground: var(--color-paper);
+  --card: var(--color-navy-800);
+  --card-foreground: var(--color-paper);
+  --popover: var(--color-navy-800);
+  --popover-foreground: var(--color-paper);
+  --primary: var(--color-gold-400);
+  --primary-foreground: var(--color-navy-900);
+  --secondary: var(--color-navy-700);
+  --secondary-foreground: var(--color-paper);
+  --ui-muted: var(--color-navy-800);
+  --muted-foreground: var(--color-mist-300);
+  --accent: var(--color-navy-700);
+  --accent-foreground: var(--color-paper);
+  --destructive: var(--color-soft-danger-400);
+  --border: var(--color-navy-500);
+  --input: var(--color-navy-500);
+  --ring: var(--color-gold-400);
+}

@@ -6,6 +6,7 @@ import "@fontsource/ibm-plex-sans-arabic/600.css";
 import "@fontsource/noto-kufi-arabic/600.css";
 import "@fontsource/noto-kufi-arabic/700.css";
 import "./styles/app.css";
+import "./styles/design-system/scrollbar.css";
 import { App } from "./app/App";
 import { getLang, setLang } from "./shared/i18n";
 
