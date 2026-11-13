@@ -6,7 +6,7 @@
 # volumes are shared with Option 2 (API via `dotnet run`).
 # The repository is bind-mounted; `dotnet watch` inside the container picks up every
 # saved file and Vite hot-reloads the UI, so a code change needs NO image rebuild.
-# Run scripts/dev-setup.ps1 once first (generates .env and appsettings.Development.json).
+# All development settings and passwords are hard-coded below; no setup script is needed.
 include:
   - docker-compose.yml
 
@@ -23,12 +23,20 @@ services:
       # ASPNETCORE_HTTP_PORTS, not ASPNETCORE_URLS: StartupGuards rejects non-loopback
       # URLS in Development, but a container must listen on all its addresses.
       ASPNETCORE_HTTP_PORTS: "5150"
-      # Inside the Compose network the services are reached by name on their internal
-      # ports; these override the host addresses in appsettings.Development.json.
-      ConnectionStrings__Tier1: Host=postgres;Port=5432;Database=tier1;Username=tier1_dev;Password=${POSTGRES_PASSWORD:?run scripts/dev-setup.ps1 first}
+      # Inside the Compose network the services are reached by name on their internal ports.
+      ConnectionStrings__Tier1: Host=postgres;Port=5432;Database=tier1;Username=tier1_dev;Password=tier1_dev
       ConnectionStrings__Mongo: mongodb://mongo:27017/tier1_logs
       ConnectionStrings__MongoAdmin: mongodb://mongo:27017/
-      # Windows paths from appsettings.Development.json do not exist in the container.
+      MongoLogs__SetupOnStartup: "true"
+      MongoLogs__ChainKey: ybMmZEAJWMsrFElpEXuzGX81cfjMp1jnFHpxbzNRqgk=            # dev-only key
+      Seed__Demo: "true"                    # demo accounts *@tier1.local
+      Seed__DemoPassword: Tier1-Demo-Pass1
+      Auth__RequireMfa: "false"             # Development only
+      Cookies__Secure: "false"
+      RateLimiting__LoginPerMinute: "600"
+      RateLimiting__SensitivePerMinute: "2000"
+      App__PublicUrl: http://localhost:5188
+      Email__From: tier1@capu.local
       DataProtection__KeysPath: /data/keys
       Files__Root: /data/files
       MongoLogs__CheckpointDirectory: /data/checkpoints
