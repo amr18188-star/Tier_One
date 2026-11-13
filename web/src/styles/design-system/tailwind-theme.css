@@ -100,6 +100,25 @@
   --color-ds-tile-solid-fg: var(--ds-tile-solid-fg);
   --color-ds-live: var(--ds-live);
   --color-ds-focus: var(--ds-focus);
+  --color-ds-focus-ring: var(--ds-focus-ring);
+  --color-ds-link: var(--ds-link);
+  --color-ds-link-hover: var(--ds-link-hover);
+  --color-ds-sidebar-bg: var(--ds-sidebar-bg);
+  --color-ds-sidebar-fg: var(--ds-sidebar-fg);
+  --color-ds-sidebar-fg-active: var(--ds-sidebar-fg-active);
+  --color-ds-sidebar-muted: var(--ds-sidebar-muted);
+  --color-ds-sidebar-hover-bg: var(--ds-sidebar-hover-bg);
+  --color-ds-sidebar-active-bg: var(--ds-sidebar-active-bg);
+  --color-ds-sidebar-indicator: var(--ds-sidebar-indicator);
+  --color-ds-sidebar-border: var(--ds-sidebar-border);
+  --color-ds-sidebar-focus: var(--ds-sidebar-focus);
+  --color-ds-sidebar-badge-bg: var(--ds-sidebar-badge-bg);
+  --color-ds-sidebar-badge-fg: var(--ds-sidebar-badge-fg);
+  --color-ds-band-from: var(--ds-band-from);
+  --color-ds-band-via: var(--ds-band-via);
+  --color-ds-band-to: var(--ds-band-to);
+  --color-ds-band-glow: var(--ds-band-glow);
+  --color-ds-band-glow-accent: var(--ds-band-glow-accent);
   --color-ds-selection-bg: var(--ds-selection-bg);
   --color-ds-selection-fg: var(--ds-selection-fg);
   --color-ds-grid-hero: var(--ds-grid-hero);
@@ -132,8 +151,17 @@
   --color-ds-chart-up: var(--ds-chart-up);
   --color-ds-chart-down: var(--ds-chart-down);
 
-  /* ---------- Shape, type, elevation: rounded-ds, font-ds, font-ds-heading, shadow-ds-sm, shadow-ds-md */
+  /* ---------- Shape, type, elevation: rounded-ds*, font-ds, font-ds-heading, shadow-ds-sm, shadow-ds-md
+     Corners follow <html data-corners> (corners.css): 0 when square, the px step when rounded.
+     rounded-ds = md. rounded-ds-round stays 50% in both styles: real circles only. */
   --radius-ds: var(--ds-radius);
+  --radius-ds-xs: var(--ds-radius-xs);
+  --radius-ds-sm: var(--ds-radius-sm);
+  --radius-ds-md: var(--ds-radius-md);
+  --radius-ds-lg: var(--ds-radius-lg);
+  --radius-ds-xl: var(--ds-radius-xl);
+  --radius-ds-pill: var(--ds-radius-pill);
+  --radius-ds-round: var(--ds-radius-round);
   --font-ds: var(--ds-font);
   --font-ds-heading: var(--ds-font-heading);
   --shadow-ds-sm: var(--ds-shadow-sm);

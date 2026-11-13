@@ -1,15 +1,16 @@
 ---
 name: navy-gold-design-system
-description: "Navy & Gold design system and multi-theme CSS tokens for the Tier1 university performance app (Context/Tier1/web: React, antd, Tailwind v4, shadcn/ui). Use it for any visual or styling work in Tier1, in Arabic or English: colours, a theme or a second style system, design tokens, data-theme switching, a landing or hero section, dark and light sections, RTL pages, Tailwind or shadcn styling, cards, buttons, stat tiles, chart colours, 'make it look like the landing page', or an antd theme from the tokens. Arabic cues: ألوان، ثيم، هوية بصرية، ستايل، تصميم الصفحة، صفحة هبوط، هيرو، الوضع الداكن. Gives the rules (data-theme + data-section + --ds-* tokens, never raw hex, rounded-ds, hairlines, logical RTL utilities), the Tailwind entry without global preflight that keeps antd pages unchanged, shadcn inside a themed subtree, recipes, and how to add a theme. Use it even for 'style this page' or 'change the colours' on a Tier1 screen."
+description: "Navy & Gold design system and multi-theme CSS tokens for the Tier1 university performance app (Context/Tier1/web: React, antd, Tailwind v4, shadcn/ui). Use it for any visual or styling work in Tier1, in Arabic or English: colours, a theme or a second style system, design tokens, data-theme switching, a landing or hero section, dark and light sections, RTL pages, Tailwind or shadcn styling, cards, buttons, stat tiles, chart colours, 'make it look like the landing page', or an antd theme from the tokens. Arabic cues: ألوان، ثيم، هوية بصرية، ستايل، تصميم الصفحة، صفحة هبوط، هيرو، الوضع الداكن. Also for square vs rounded corners (one CORNERS switch, --ds-radius-* scale, rounded-ds-*; زوايا مربعة أو مستديرة). Gives the rules (data-theme + data-section + --ds-* tokens, never raw hex, rounded-ds-* radius steps, hairlines, logical RTL utilities), the Tailwind entry without global preflight that keeps antd pages unchanged, shadcn inside a themed subtree, recipes, and how to add a theme. Use it even for 'style this page' or 'change the colours' on a Tier1 screen."
 ---
 
 # Navy & Gold design system (Tier1)
 
 Tier1's frontend has one set of semantic colour tokens (`--ds-*`) and several themes that fill them. A page turns a
 theme on with `data-theme`, and marks its dark blocks with `data-section="dark"`. Components name roles only
-(`text-ds-heading`, `bg-ds-surface`), so the same JSX renders as **navy-gold** (the landing look: square, Cairo, navy
-and antique gold) or **app-soft** (the old `/app` palette: softer navy, 14px corners). A new style system is one more
-theme file, with no component changes.
+(`text-ds-heading`, `bg-ds-surface`), so the same JSX renders as **navy-gold** (the landing look: Cairo, navy
+and antique gold) or **app-soft** (the old `/app` palette: softer navy). A new style system is one more
+theme file, with no component changes. Corners are a separate axis: `CORNERS` in `config.ts` (`"square"` by default,
+the navy-gold choice, or `"rounded"`) → `<html data-corners>`; any theme works with either (section "Corners").
 
 Paths are relative to the Tier1 root: `F:\Projects\angular\Indecators\Context\Tier1`.
 
@@ -21,15 +22,20 @@ Paths are relative to the Tier1 root: `F:\Projects\angular\Indecators\Context\Ti
 | `web/src/styles/design-system/primitives.css` | Raw palettes on `:root` (`--color-navy-900` …). The only global file |
 | `web/src/styles/design-system/themes/navy-gold.css` | `[data-theme="navy-gold"]`: `--ds-*` + shadcn variables, light and dark scopes |
 | `web/src/styles/design-system/themes/app-soft.css` | `[data-theme="app-soft"]`: same names, the softer palette |
-| `web/src/styles/design-system/index.css` | Plain-CSS entry: primitives, then every theme |
-| `web/src/styles/design-system/tailwind-theme.css` | Tailwind v4 `@theme inline reference`: `bg-ds-*`, `rounded-ds`, `font-ds`, `shadow-ds-*`, primitives |
-| `web/src/styles/design-system/tokens.ts` | Same values as typed TS + a suggested antd `ThemeConfig` per theme (not wired) |
-| `web/src/features/landing/` | The landing page port, the live reference implementation (in progress) |
+| `web/src/styles/design-system/corners.css` | The corner scale `--ds-radius-xs … xl`, `-pill`, `-round` for `data-corners="square" \| "rounded"` |
+| `web/src/styles/design-system/config.ts` | `CORNERS`: the one line that makes the whole site square or rounded |
+| `web/src/styles/design-system/index.css` | Plain-CSS entry: primitives, every theme, then `corners.css` |
+| `web/src/styles/design-system/tailwind-theme.css` | Tailwind v4 `@theme inline reference`: `bg-ds-*`, `rounded-ds-*`, `font-ds`, `shadow-ds-*`, primitives |
+| `web/src/styles/design-system/theme.ts` | The site-wide switches, on `<html>` before first render: `ACTIVE_THEME` → `data-theme`, `CORNERS` → `data-corners`; `useDsTheme()`, `setDsTheme()`, `useDsCorners()`, `setDsCorners()`; imports `index.css` globally |
+| `web/src/styles/design-system/antd-theme.ts` | `antdTheme(name, base, { tone, corners })`: theme tokens + corner scale → antd `ThemeConfig` (colours, radius) |
+| `web/src/styles/design-system/tokens.ts` | Same values as typed TS (antd needs real colours and px): `palette`, `themes`, `corners`; `tokens.test.ts` proves it equals the CSS and checks AA pairs |
+| `web/src/features/landing/` | The landing page port: the live reference implementation (file list below) |
+| `web/src/styles/design-system/scrollbar.css` | Scrollbar tokens and drawing, imported once in `main.tsx` (see Scrollbar) |
 | `web/src/styles/shadcn.css` | shadcn's Tailwind entry and default variables (not imported yet) |
 | `web/src/components/ui/` | 60 shadcn (radix-nova, RTL) components |
 | `web/src/shared/i18n.ts` | Sets `<html lang dir>`; `useLang()`, `L(ar, en)` |
-| `web/src/styles/app.css`, `web/src/shared/ui.css`, `web/src/shared/tier1.css`, `web/src/shared/theme.css` | The existing antd app's styles. Not part of the design system |
-| `web/src/app/App.tsx` | antd `ConfigProvider` (teal theme) for the signed-in app |
+| `web/src/styles/app.css`, `web/src/shared/ui.css`, `web/src/shared/tier1.css`, `web/src/shared/theme.css` | The antd app's styles. The brand variables in the `:root` blocks of `app.css` and `ui.css` are aliases of `--ds-*` (see antd pages) |
+| `web/src/app/App.tsx` | antd `ConfigProvider`: `antdTheme(useDsTheme(), fonts, { corners: useDsCorners() })`; passes the theme to the landing |
 
 Token files are shared by every page. Edit them only when the task is about tokens (a new role, a new theme), never to
 fix one component.
@@ -42,13 +48,16 @@ fix one component.
    second theme breaks silently. Free values: `transparent`, `currentColor` / `bg-current`, `inherit`.
 2. **`--ds-*` in components, primitives only in theme files.** `--color-navy-900` and `bg-navy-900` are fixed paint;
    themes map them to roles. If no role fits, add one (below) instead of reaching for a primitive.
-3. **One `data-theme`, a `data-section` per dark block.** Put `data-theme="navy-gold"` (or `"app-soft"`) on the page
-   root. Light is the default scope. Put `data-section="dark"` on the header, footer, dark sections, and any dark card
+3. **One `data-theme`, a `data-section` per dark block.** The site theme is on `<html>` (`theme.ts`, `ACTIVE_THEME`).
+   A page root may repeat the same value (take it from `useDsTheme()`), never a different one. Light is the default scope. Put `data-section="dark"` on the header, footer, dark sections, and any dark card
    inside a light section; `data-section="light"` flips back inside a dark block. One class then gives the right value
    in both: `text-ds-heading` is navy on light and white on dark. So no `dark ? … : …` colour ternaries. Never nest two
    different `data-theme` values: both themes' section rules would match.
-4. **Shape through `rounded-ds`.** Cards, tiles, buttons, badges, inputs, panels. It is 0 in navy-gold and 14px in
-   app-soft. Fixed radii (`rounded-lg`, `rounded-xl`, `rounded-full`) ignore the theme. Only chart marks are round.
+4. **Shape through the corner scale.** `rounded-ds-xs|sm|md|lg|xl|pill` (CSS: `var(--ds-radius-<step>)`): md for
+   buttons, inputs and icon tiles, lg for cards and panels, xl for big panels, pill for chips, badges, bars and status
+   dots, xs for swatches. All 0 while `CORNERS` is square, 4/6/8/12/16/999px when rounded. `rounded-ds-round` (50% in
+   both styles) only for real circles. Fixed radii (`rounded-lg`, `rounded-full`, `border-radius: 10px`) ignore the switch.
+   Don't round a hairline grid without `overflow-hidden`: its filled cells would poke past the curve.
 5. **Hairlines, not shadows.** 1px `border-ds-border`. Card groups as a hairline grid: parent
    `grid gap-px border border-ds-border bg-ds-border`, children `bg-ds-surface`. Accent rules:
    `border-s-2 border-ds-accent`. Shadows only `shadow-ds-sm` / `hover:shadow-ds-md`, only on light (Tailwind's own
@@ -72,58 +81,71 @@ fix one component.
 
 Each feature that uses the design system has its own Tailwind entry, imported by the feature's root component (a lazy
 route), never by `main.tsx`, `app.css` or a shared file. Everything is scoped to a root attribute of the feature
-(`data-<feature>`; the landing uses `data-landing`). Full file with the scoped base: recipe 1 in
-`references/component-recipes.md`.
+(`data-<feature>`; the landing uses `data-landing`). The working file is `web/src/features/landing/landing.css`; copy it
+and rename the attribute. Full file with the scoped base: recipe 1 in `references/component-recipes.md`.
 
 ```css
-/* web/src/features/<feature>/<feature>.css */
-@layer theme, base;
+/* web/src/features/<feature>/<feature>.css (skeleton) */
+@layer theme;
 @import "tailwindcss/theme.css" layer(theme);
 @import "../../styles/design-system/index.css";
 @import "../../styles/design-system/tailwind-theme.css";
 @source "./";
-/* [data-feature] root rule + scoped base in @layer base + focus override: recipe 1 */
-:where([data-feature]) {
-  @tailwind utilities source(none);
+/* [data-feature] root text props, then [data-feature] :where(…) base rules, then the focus rule: recipe 1 */
+[data-feature] {
+  @tailwind utilities source(none); /* every utility compiles to `[data-feature] .class`, unlayered */
 }
 ```
+
+Root element (copied from `LandingPage.tsx`): `<div data-landing="" data-ds-page="" data-theme="navy-gold" dir="rtl" lang="ar">`
+with the utility classes on the first inner `<div>` (utilities match descendants only).
 
 Why it looks like this:
 - **No preflight.** `@import "tailwindcss"` includes it, and preflight resets every element in the document, so the
   antd screens, `app.css` and the login page would change. Vite never unloads CSS after navigation: anything a feature
-  loads stays in the document for the session, on every page.
-- **Utilities scoped under `:where([data-feature])`.** Each compiles to `:where([data-feature]) .grow { … }`, so it can't
-  restyle an antd page that uses the same class name (`grow` at `web/src/features/review/ReviewPage.tsx:269`, `grid`,
-  `w-full`), and `:where()` keeps the utility's own specificity. They match descendants only: put utility classes on an
-  inner wrapper, not on the root element.
-- **Unlayered on purpose.** `app.css`, `web/src/shared/*.css` and antd's CSS-in-JS are unlayered, and an unlayered rule
-  beats every `@layer` rule whatever its specificity. Layered utilities would lose inside the page, for example to the
-  teal `:focus-visible` outline in `web/src/shared/ui.css` (loaded once the signed-in shell has been visited).
+  loads stays in the document for the session, on every page. Only custom properties are global.
+- **Utilities scoped as `[data-feature] .class` (0,2,0), unlayered.** They can't restyle an antd page that uses the same
+  class name (`grow` at `web/src/features/review/ReviewPage.tsx:269`, `grid`, `w-full`). `app.css`, `web/src/shared/*.css`
+  and antd's CSS-in-JS are unlayered, and an unlayered rule beats every `@layer` rule whatever its specificity, so
+  `@layer` utilities or an `@layer base` reset lose to them. antd also injects global link rules
+  (`:where(.css-…) a:hover`, 0,1,1): a `:where([data-feature])` scope (0,1,0) loses to those, the 0,2,0 scope wins.
+- **Base rules as `[data-feature] :where(…)` (0,1,0).** Reset the browser defaults (heading and paragraph margins, link
+  colour, `button` chrome, bullets, inline images) and set `outline-color` (`--ds-focus`) and `::selection`
+  (`--ds-selection-*`) there; every utility out-ranks them. A focus rule at 0,2,0 beats `web/src/shared/ui.css`'s teal
+  `:focus-visible` ring (loaded once the signed-in shell has been visited).
 - **`source(none)` + `@source "./"`.** Tailwind scans only the feature folder. Automatic detection would scan all of
   `web/` and emit utilities for every class-like word in the antd pages.
-- **Browser defaults survive** (heading and paragraph margins, link colour, `button` chrome, bullets, inline images).
-  Reset them under the root in `@layer base`, so no utility loses to the reset, and set the focus outline (`--ds-focus`)
-  and `::selection` (`--ds-selection-*`) there.
+- **html stays 16px.** Don't set `html { font-size }`; the root sets `font-size: 1rem` for its own subtree, because
+  antd's `.ant-app` is 14px.
 - `tailwindcss/theme.css` puts Tailwind's defaults on `:root` inside `@layer theme`. The only name it shares with
   `app.css` is `--font-mono`, and `app.css` wins. `tailwind-theme.css` is `reference`, so it emits nothing on `:root`.
-- The token folder's README shows a shorter layered entry (`utilities.css layer(utilities) source(none)`, global). It
-  compiles, but its utilities leak to every page and lose to the unlayered app CSS inside yours; prefer the scoped form.
+- `rtl:` / `ltr:` come from `@custom-variant … :dir()` in the entry (as in `landing.css`), not Tailwind's `[dir]` form.
+
+## Scrollbar
+
+`web/src/styles/design-system/scrollbar.css` (imported once in `main.tsx`) draws one glass scrollbar site-wide. Tokens
+(inherited, so a subtree re-colours its own scrollers): `--scrollbar-size` 12px, `-gap` 3px, `-gap-hover` 2px, `-radius`
+`var(--ds-radius-pill)` (square thumb when square, glass pill when rounded), `-min-thumb` 40px, `-track`, `-thumb`, `-thumb-hover`, `-thumb-active`, `-highlight`, `-hairline`, `-overlay-thumb*`.
+A themed page re-colours the page scrollbar through `html:has([data-ds-page][data-theme="…"])`, so keep `data-ds-page` on
+the root; Firefox gets `scrollbar-width: thin` in an `@supports` fallback; hidden scrollers (`.lcp-seg`, `.f-pipe`,
+`.sp-tabs`, `.sp-rail`) stay hidden. Values per scope: `references/token-files.md` §9.
 
 ## shadcn inside a themed subtree
 
 - The theme files set shadcn's variables per theme and per section (`--background`, `--primary`, `--ui-muted`,
-  `--border`, `--ring`, `--radius`, `--chart-*`, `--sidebar-*`). A `<Button>` or `<Card>` under `data-theme="navy-gold"`
-  is navy and square; inside `data-section="dark"` its primary turns gold. shadcn's radius scale multiplies `--radius`,
-  so don't add `rounded-*` overrides to shadcn parts.
+  `--border`, `--ring`, `--chart-*`, `--sidebar-*`). `--radius` comes from `corners.css` (= `--ds-radius-lg`), and
+  `shadcn.css` maps `rounded-xs … xl` to the same scale (2xl–4xl are xl × 1.25–1.75; never negative). A `<Button>` or
+  `<Card>` under `data-theme="navy-gold"` is navy, square or rounded with `CORNERS`; inside `data-section="dark"` its
+  primary turns gold. Don't add `rounded-*` overrides to shadcn parts.
 - shadcn's utilities come from `web/src/styles/shadcn.css`, which nothing imports yet. Using shadcn needs
   `import "./styles/shadcn.css";` in `web/src/main.tsx` after `app.css`. That edits a shared file: confirm with the user.
 - Muted surface is `--ui-muted` (`bg-muted`), because `app.css` owns `--muted` (a text colour).
 - **Portals need the attribute too.** Radix renders Dialog, Sheet, Popover, Tooltip, Select and DropdownMenu content
   under `<body>`, outside the subtree, where shadcn's teal `:root` defaults apply. Pass `data-theme` (and
   `data-section="dark"` if needed) plus the feature's root attribute to the content element:
-  `<DialogContent data-theme="navy-gold" data-feature="">`; feature utilities then work on its children. Setting
-  `data-theme` on `<html>` also works, but then the DS CSS must load after `shadcn.css` (`:root` and `[data-theme]` tie
-  on specificity).
+  `<DialogContent data-theme="navy-gold" data-feature="">`; feature utilities then work on its children. `<html>` now
+  carries `data-theme`, which covers the colours; if `shadcn.css` is ever imported, load it before the DS CSS
+  (in `main.tsx` before `App`), because `:root` and `[data-theme]` tie on specificity.
 - The feature's utilities are unlayered and beat shadcn's layered ones. Keep fixed-radius and shadow class names
   (`rounded-lg`, `shadow-sm`) out of the feature folder, comments included: the scan would generate them with
   Tailwind's defaults and they would override the matching shadcn parts on the page.
@@ -133,10 +155,61 @@ Why it looks like this:
 
 ## antd pages
 
-The signed-in app is antd 5 with the teal `ConfigProvider` theme in `web/src/app/App.tsx` and the `app.css` palette. It
-is not on the design system. Don't restyle antd pages with DS tokens unless the user asks. `tokens.ts` has
-`themes[name].antd`, a suggested `ThemeConfig`; wiring it app-wide changes every antd screen, so treat that as its own,
-confirmed task. A scoped sketch is in `references/token-files.md` §8.
+The whole site runs on one theme (user decision 2026-11-13: `navy-gold`). Switch it in one place:
+`ACTIVE_THEME` in `web/src/styles/design-system/theme.ts` (or `<html data-theme>` at run time; antd follows through a
+MutationObserver in `useDsTheme()`).
+
+- **antd** gets its `ConfigProvider` theme from `antdTheme(name, base)` (`antd-theme.ts`): colours and radius from
+  `tokens.ts`, fonts from `base` in `App.tsx` (IBM Plex Sans Arabic 14px, unchanged; no Cairo on antd pages). Light-section
+  tokens for app surfaces; Table header from dark-section tokens. Radius from the corner style, not the theme:
+  `antdRadii(corners[style])` (borderRadius md, LG lg, SM sm, XS/Outer xs; Table header lg; Progress bar pill); App.tsx
+  passes `useDsCorners()`, so flipping `<html data-corners>` re-themes antd live. A new theme needs only its `tokens.ts` entry. Full token → antd table: `references/token-files.md` §8 and the design-system README.
+- **Legacy variables** (`--navy`, `--teal`, `--teal-ink`, `--bg`, `--ink`, `--muted`, `--line`, `--hair`, `--gold` …
+  in the `:root` blocks of `app.css` and `shared/ui.css`) are aliases of `--ds-*` with the old hex as fallback, so the
+  antd app's own CSS follows the theme. `--r` (ui.css, theme.css) is `var(--ds-radius-xl)`, and every radius in the
+  app CSS is a scale token (map: `corners-map.md` in the session notes). Status colours (`--warn*`, `--ok*`, `--crit*`) are fixed. Inside the sidebar
+  (`.lcp-side`, drawer body) `--teal`, `--teal-100`, `--gold` map to `--ds-sidebar-*`.
+- **Sidebar tokens** (theme level): `--ds-sidebar-bg`, `-fg`, `-fg-active`, `-muted`, `-hover-bg`, `-active-bg`,
+  `-indicator`, `-border`, `-focus`, `-badge-bg`, `-badge-fg`.
+- **Band tokens** (theme level): `--ds-band-from`, `-via`, `-to`, `-glow`, `-glow-accent`. `shared/theme.css` builds
+  `--band` (the navy page header strip) from them.
+- Colours written directly in legacy rules (gradients with teal glow …) don't follow the theme; convert them to tokens
+  when you touch those rules. New radii: a scale token, never px.
+- **Navy block inside an antd page.** Put `data-section="dark"` on the block, so `var(--ds-*)` in its CSS gives the dark
+  values, and wrap its antd actions in `DarkBlock` (`shared/ui.tsx`): a nested `ConfigProvider` with
+  `antdDarkBlockTheme(useDsTheme())`, which sets Button colours only (gold primary, navy text, gold links). `PageHeader`
+  and `Hero` already do this. For a block whose fields should go dark too, use `antdTheme(name, {}, { tone: "dark" })`.
+- Don't style antd parts with page CSS when a token or component token can do it; add the mapping to `antd-theme.ts`.
+
+## Corners (square | rounded)
+
+Change this one line in `web/src/styles/design-system/config.ts`:
+
+```ts
+export const CORNERS: CornerStyle = "square"; // or "rounded"
+```
+
+`theme.ts` puts it on `<html data-corners>` before the first render. Without TS: set the attribute in devtools, or
+`:root[data-corners="rounded"] { … }` in CSS. No attribute = square.
+
+| Token | Utility | square | rounded | Use |
+|---|---|---|---|---|
+| `--ds-radius-xs` | `rounded-ds-xs` | 0 | 4px | bars, swatches, small codes |
+| `--ds-radius-sm` | `rounded-ds-sm` | 0 | 6px | code pills, focus rings, inner boxes |
+| `--ds-radius-md` = `--ds-radius` | `rounded-ds-md`, `rounded-ds` | 0 | 8px | buttons, inputs, icon tiles (antd `borderRadius`) |
+| `--ds-radius-lg` = shadcn `--radius` | `rounded-ds-lg` | 0 | 12px | cards, panels, tables, modals (antd `borderRadiusLG`) |
+| `--ds-radius-xl` = legacy `--r` | `rounded-ds-xl` | 0 | 16px | page bands, hero, large panels |
+| `--ds-radius-pill` | `rounded-ds-pill` | 0 | 999px | chips, count badges, progress bars, status dots, scrollbar thumb |
+| `--ds-radius-round` | `rounded-ds-round` | 50% | 50% | real circles only (avatars, step numbers, chart dots) |
+
+- **Themes and corners combine freely.** Theme files hold no radius (`tokens.test.ts` fails if one does), so
+  `navy-gold` + `rounded` and `app-soft` + `square` both work. Two switches: `ACTIVE_THEME` (theme.ts) and `CORNERS`.
+- **Follows the switch:** antd (global radius tokens, Table header, Progress), shadcn, `rounded-ds*`, the landing
+  (cards, tiles, CTA buttons, chips, bars, dots), the scrollbar thumb, and all legacy app CSS.
+- **Stays the same:** real circles, antd internals without a radius token (Switch, Radio, Badge, Spin, Timeline dots,
+  Drawer edges), shadcn's own `rounded-full` / `rounded-[2px]` in `components/ui`, hairline grids on the landing.
+- A subtree may take its own style (`data-corners="rounded"` on a div): tokens, `rounded-ds*` and the scrollbar follow;
+  antd and `--r` follow `<html>` only.
 
 ## Brand / logo
 
@@ -161,10 +234,11 @@ takes the tone as a prop; don't recolour the artwork with CSS filters. More in `
 2. Copy `themes/app-soft.css` to `themes/<name>.css` and replace `app-soft` in its three selectors (theme level, light
    scope, dark scope).
 3. Give every `--ds-*` and shadcn variable a value in all three blocks. Keep every name: a missing token is unset, so its
-   utility paints nothing.
-4. Import the file in `index.css`, after the other themes.
-5. Add `<name>` to `ThemeName` and to `themes` in `tokens.ts` (the `satisfies` check lists missing fields), run the
-   contrast check, then use `data-theme="<name>"`.
+   utility paints nothing. No radius: corners come from `corners.css` for every theme.
+4. Import the file in `index.css`, after the other themes and before `corners.css`.
+5. Add `<name>` to `ThemeName` and to `themes` in `tokens.ts` (the `satisfies` check lists missing fields), then run
+   `npx vitest run src/styles/design-system` in `web/` (fails on any CSS ≠ TS value and on the AA pairs). antd follows
+   automatically. Use it via `ACTIVE_THEME` in `theme.ts`.
 
 Contrast check: per scope, every text token on every background it sits on, 4.5:1 for small text and 3:1 for large text
 (≥ 24px, or ≥ 18.7px bold), UI borders and chart marks. Composite alpha tokens over their background first. The pair
@@ -176,8 +250,9 @@ to `tailwind-theme.css`, and the field to `tokens.ts`.
 ## Before you finish
 
 - Search your changed files for raw colours: `rg -n "#[0-9a-fA-F]{3,8}\b|\[#|rgba?\(" web/src/features/<feature>`.
-- Flip `data-theme` between `navy-gold` and `app-soft`, and the language between Arabic and English; both must hold.
-- Check an antd page (indicators, strategy) still looks the same after your CSS loads.
+- Flip `data-theme` between `navy-gold` and `app-soft`, `data-corners` between `square` and `rounded`, and the language
+  between Arabic and English; all must hold, with no layout shift between the corner styles.
+- Check an antd page (indicators, strategy) still looks the same after your CSS loads (feature CSS must not restyle it).
 - `npm run typecheck` in `web/`. To test a build use `npx vite build --outDir <scratch dir> --emptyOutDir`: plain
   `npm run build` writes into `src/Tier1.Api/wwwroot`, which the API serves. Don't stop the user's dev server (5188) or API.
 
@@ -192,5 +267,15 @@ to `tailwind-theme.css`, and the field to `tokens.ts`.
 - `references/design-system.md`: read when designing a new screen or matching the landing look. The full Navy & Gold
   spec (identity, palette with token names, type scale, spacing, section rhythm, textures, icons and motion, component
   anatomy, charts, accessibility with measured failures, RTL).
-- `web/src/features/landing/`: the working example of all of the above (in progress; read its CSS entry and root
-  component before starting a new feature).
+- `web/src/features/landing/`: the working example of all of the above. Read `landing.css` and `LandingPage.tsx` before
+  starting a new feature.
+
+## Reference implementation
+
+Folder `web/src/features/landing/`: `LandingPage.tsx` (root: `data-landing`, `data-ds-page`, `data-theme`, `dir`, `lang`;
+imports Cairo and `landing.css`), `landing.css` (the Tailwind entry), `LandingChrome.tsx` (header, footer),
+`HeroSection.tsx`, `OverviewSection.tsx`, `PillarsSection.tsx`, `AnalyticsSection.tsx`, `HierarchySection.tsx`,
+`DataManagementSection.tsx`, `IntegrationSection.tsx`, `CtaSection.tsx`, `SectionHeading.tsx`, `Icon.tsx`, `charts.tsx`,
+`sections.ts`. It matches the original `Home.jsx` except for three deliberate user changes: quarters wording instead of
+seasons, the redesigned footer, and the analytics section (القيادة bar removed, horizontal KPI rows, RTL-mirrored trend
+chart).

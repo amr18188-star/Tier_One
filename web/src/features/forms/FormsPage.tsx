@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Input, Progress, Segmented, Select, Tag } from "antd";
 import { CheckCircleOutlined, ClockCircleOutlined, EditOutlined, InboxOutlined, RollbackOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
@@ -46,6 +46,12 @@ export default function FormsPage() {
     else next.delete(key);
     setParams(next, { replace: true });
   };
+
+  // الرابط يتغير داخل انتقال (startTransition في React Router) مع إعادة رسم القائمة، فيبقى الخيار القديم محددًا حتى يكتمل.
+  // لذلك يعرض الشريط الخيار المنقور فورًا، ويعود إلى قيمة الرابط متى تغيرت.
+  const [picked, setPicked] = useState<{ from: View; to: View } | null>(null);
+  if (picked && picked.from !== view) setPicked(null);
+  const shownView = picked && picked.from === view ? picked.to : view;
 
   const all = useQuery({
     queryKey: ["forms", cycleId],
@@ -99,7 +105,7 @@ export default function FormsPage() {
 
           <Panel>
             <div className="lcp-filters">
-              <Segmented value={view} onChange={(v) => set("view", v === "mine" ? undefined : String(v))}
+              <Segmented value={shownView} onChange={(v) => { setPicked({ from: view, to: v as View }); set("view", v === "mine" ? undefined : String(v)); }}
                 options={[
                   { value: "mine", label: L("مطلوب مني", "Waiting for me") },
                   { value: "all", label: L("الكل", "All") },

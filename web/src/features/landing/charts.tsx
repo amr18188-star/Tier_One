@@ -45,7 +45,7 @@ export function PerformanceLineChart() {
       {/* Legend */}
       <div className="mb-7 flex flex-wrap items-center gap-6">
         <div className="flex items-center gap-2">
-          <span className="h-2.5 w-2.5 bg-ds-chart-actual" />
+          <span className="h-2.5 w-2.5 rounded-ds-xs bg-ds-chart-actual" />
           <span className="text-xs font-medium text-ds-label">الأداء الفعلي</span>
         </div>
 
@@ -166,9 +166,9 @@ export function PerformanceBarChart() {
             <span className="text-xs font-bold text-ds-heading">{item.value}%</span>
           </div>
 
-          <div className="h-2 w-full bg-ds-track">
+          <div className="h-2 w-full rounded-ds-pill bg-ds-track">
             <div
-              className="h-full transition-all duration-700"
+              className="h-full rounded-ds-pill transition-all duration-700"
               style={{
                 width: `${item.value}%`,
                 backgroundColor: index === 1 || index === 4 ? "var(--ds-chart-2)" : "var(--ds-chart-1)",

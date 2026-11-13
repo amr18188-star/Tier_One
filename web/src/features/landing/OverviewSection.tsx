@@ -58,7 +58,7 @@ export function OverviewSection() {
                 index !== 0 ? "lg:border-r lg:border-ds-border" : ""
               }`}
             >
-              <div className="mb-5 flex h-12 w-12 items-center justify-center border border-ds-accent-border bg-ds-tile text-ds-icon transition-colors group-hover:bg-ds-tile-active group-hover:text-ds-tile-active-fg">
+              <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-ds-md border border-ds-accent-border bg-ds-tile text-ds-icon transition-colors group-hover:bg-ds-tile-active group-hover:text-ds-tile-active-fg">
                 <Icon name={stat.icon} size={23} />
               </div>
 
@@ -74,7 +74,7 @@ export function OverviewSection() {
         </div>
 
         {/* Bottom Info */}
-        <div className="mt-8 grid gap-6 border border-ds-border bg-ds-bg-cool p-6 md:grid-cols-2 md:items-center md:p-8">
+        <div className="mt-8 grid gap-6 rounded-ds-lg border border-ds-border bg-ds-bg-cool p-6 md:grid-cols-2 md:items-center md:p-8">
           <div>
             <span className="text-xs font-bold tracking-wider text-ds-eyebrow">STRATEGIC PLANNING</span>
 

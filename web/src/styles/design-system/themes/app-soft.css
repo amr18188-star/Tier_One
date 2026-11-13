@@ -1,16 +1,17 @@
 /*
  * Theme "app-soft": the softer palette of the old signed-in /app (Frontend/React/src/styles/tokens.css):
- * navy #0d2440, gold #c9a227, 14px radius, Cairo. Same token names and the same scheme as navy-gold.css:
+ * navy #0d2440, gold #c9a227, Cairo. Same token names and the same scheme as navy-gold.css:
  * data-theme="app-soft" on a container, data-section="dark" | "light" re-scopes the section tokens.
  * Values follow tokens.css (light contract for light sections, its .dark block for dark sections).
  * Only custom properties here. Primitives come from ../primitives.css.
+ * No radius here: corners are their own axis (../corners.css, switch CORNERS in ../config.ts). The old /app
+ * look (14px corners) is this theme + CORNERS = "rounded" (cards 12–16px).
  */
 
 /* ---------- Theme level ---------- */
 [data-theme="app-soft"] {
   --ds-font: "Cairo", "Geist Variable", "Segoe UI", sans-serif; /* tokens.css --font-family-sans */
   --ds-font-heading: "Cairo", "Geist Variable", "Segoe UI", sans-serif;
-  --ds-radius: 0.875rem; /* 14px, tokens.css --radius */
 
   --ds-chrome: var(--color-soft-navy-950); /* the app sidebar colour */
 
@@ -49,8 +50,7 @@
   --ds-selection-bg: var(--color-soft-gold-500);
   --ds-selection-fg: var(--color-soft-navy-950);
 
-  /* shadcn: theme-level variables (tokens.css) */
-  --radius: 0.875rem;
+  /* shadcn: theme-level variables (tokens.css; --radius comes from ../corners.css) */
   --chart-1: var(--color-soft-navy-500);
   --chart-2: var(--color-soft-gold-600);
   --chart-3: var(--color-soft-success-700);
@@ -64,6 +64,26 @@
   --sidebar-accent-foreground: var(--color-paper);
   --sidebar-border: color-mix(in srgb, var(--color-paper) 14%, transparent);
   --sidebar-ring: var(--color-soft-gold-300);
+
+  /* App sidebar: the dark chrome of the signed-in shell (same names as navy-gold) */
+  --ds-sidebar-bg: var(--color-soft-navy-950);
+  --ds-sidebar-fg: var(--color-soft-neutral-200);
+  --ds-sidebar-fg-active: var(--color-paper);
+  --ds-sidebar-muted: var(--color-soft-neutral-400);
+  --ds-sidebar-hover-bg: var(--color-soft-navy-800);
+  --ds-sidebar-active-bg: var(--color-soft-navy-700);
+  --ds-sidebar-indicator: var(--color-soft-gold-500);
+  --ds-sidebar-border: color-mix(in srgb, var(--color-paper) 14%, transparent);
+  --ds-sidebar-focus: var(--color-soft-gold-300);
+  --ds-sidebar-badge-bg: var(--color-soft-gold-500);
+  --ds-sidebar-badge-fg: var(--color-soft-navy-950);
+
+  /* Page band (shared/theme.css --band) */
+  --ds-band-from: var(--color-soft-navy-900);
+  --ds-band-via: var(--color-soft-navy-800);
+  --ds-band-to: var(--color-soft-navy-700);
+  --ds-band-glow: color-mix(in srgb, var(--color-soft-navy-500) 38%, transparent);
+  --ds-band-glow-accent: color-mix(in srgb, var(--color-soft-gold-500) 18%, transparent);
 }
 
 /* ---------- Light scope (default) ---------- */
@@ -101,6 +121,9 @@
   --ds-tile-solid: var(--color-soft-navy-950);
   --ds-tile-solid-fg: var(--color-soft-gold-300);
   --ds-live: var(--color-soft-success-700);
+  --ds-focus-ring: var(--color-soft-navy-950); /* keyboard focus outline, 2px solid */
+  --ds-link: var(--color-soft-navy-700); /* text links, codes (antd colorLink) */
+  --ds-link-hover: var(--color-soft-navy-950);
 
   --ds-btn-primary-bg: var(--color-soft-navy-800);
   --ds-btn-primary-fg: var(--color-paper);
@@ -171,6 +194,9 @@
   --ds-tile-solid: var(--color-soft-navy-950);
   --ds-tile-solid-fg: var(--color-soft-gold-300);
   --ds-live: var(--color-soft-success-400);
+  --ds-focus-ring: var(--color-soft-gold-300); /* keyboard focus outline on dark */
+  --ds-link: var(--color-soft-gold-300);
+  --ds-link-hover: var(--color-paper);
 
   --ds-btn-primary-bg: var(--color-soft-gold-500);
   --ds-btn-primary-fg: var(--color-soft-navy-950);

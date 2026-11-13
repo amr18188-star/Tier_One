@@ -36,7 +36,9 @@ Institutional, calm, and authoritative. A **deep midnight navy** carries the wei
 **Five rules that define the look**
 
 1. Navy for mass, gold for meaning. Gold never fills more than one element per view, apart from thin lines and icons.
-2. `border-radius: 0` on everything except charts (donut, data points). **Tier1:** `rounded-ds` (`--ds-radius`, 0 in navy-gold).
+2. `border-radius: 0` on everything except charts (donut, data points). **Tier1:** the corner scale `rounded-ds-*` /
+   `var(--ds-radius-<step>)`, all 0 while `CORNERS` (`web/src/styles/design-system/config.ts`) is `"square"`, the default.
+   Setting it to `"rounded"` rounds the same markup (4–16px, pills) without a code change.
 3. Hairline dividers (1px) and grid textures instead of drop shadows.
 4. Two-tone headlines: a neutral line followed by a gold highlight.
 5. Generous Arabic line height: 1.5 for headings, 2.0 for body.
@@ -181,7 +183,7 @@ Weights actually used: **300** (decorative numbers), **400** (body), **500** (ba
 
 | Property | Value |
 |---|---|
-| Border radius | **0 everywhere.** Status dots (`8×8`) and legend swatches are squares too. **Tier1:** `rounded-ds`. |
+| Border radius | **0 everywhere.** Status dots (`8×8`) and legend swatches are squares too. **Tier1:** `rounded-ds-md` (buttons, tiles), `-lg` (cards), `-pill` (dots, chips, bars), `-xs` (swatches): 0 while `CORNERS` is square. |
 | Border width | 1px default. 2px for inline callout rules, 4px for the panel accent rule and the hero's bottom bar. |
 | Accent rule | `border-inline-start` in gold (`border-r-2` / `border-r-4` in RTL). Marks quotes, notes and key panels. **Tier1:** `border-s-2` / `border-s-4` + `border-ds-accent` / `border-ds-accent-strong`. |
 | Hairline grid | Parent `background = border color` + `gap: 1px`, children carry the surface color. Gives perfect 1px dividers between cards with no doubled borders. **Tier1:** `gap-px border border-ds-border bg-ds-border` + children `bg-ds-surface`. |
@@ -460,7 +462,8 @@ Group stat cells inside a single `border border-slate-200` wrapper with internal
 - 10.2 lives in `web/src/styles/design-system/tailwind-theme.css` as `@theme inline reference` (values via `var()`, nothing
   emitted on `:root`). Never `@import "tailwindcss"` in Tier1: it includes preflight, which changes the antd pages.
 - 10.3 does not apply: Tier1 uses Tailwind 4.3.5.
-- `--font-sans` → `--ds-font`; `--radius` → `--ds-radius` (plus shadcn `--radius`, set per theme). `--container`,
+- `--font-sans` → `--ds-font`; `--radius` → the corner scale `--ds-radius-*` in `corners.css` (shadcn `--radius` = lg),
+  switched by `CORNERS`, not by the theme. `--container`,
   `--section-y`, `--gutter` are not tokens in Tier1: use `max-w-7xl`, `py-24 lg:py-28`, `px-5 sm:px-10`.
 
 ### 10.1 Plain CSS (framework-agnostic, works in Angular)
@@ -560,7 +563,7 @@ module.exports = {
 
 If the target project uses shadcn/ui, set `--radius: 0` and map `--primary → navy-900`, `--accent → gold-400`, `--ring → gold-400`.
 
-**Tier1:** done per theme and per section in `themes/navy-gold.css`. In a dark section `--primary` is gold-400 and
+**Tier1:** done per theme and per section in `themes/navy-gold.css` (radius: `corners.css`). In a dark section `--primary` is gold-400 and
 `--accent` is navy-700. Full table in `token-files.md`.
 
 ---
@@ -648,7 +651,8 @@ Mirror with the `ltr:` / `rtl:` variants (`ltr:-scale-x-100`, `rtl:group-hover:-
 
 **Don't**
 
-- Round corners, use pills, or add soft drop shadows on dark backgrounds.
+- Round corners, use pills, or add soft drop shadows on dark backgrounds. (**Tier1:** corners come only from the
+  `CORNERS` switch; never hard-code a radius.)
 - Use gold as large background fills (the CTA button is the only filled gold surface).
 - Introduce new hues. Green and red appear only as status signals.
 - Set body text in gold on light backgrounds below 18px (use `gold-700` if you must).

@@ -27,6 +27,11 @@
 @custom-variant rtl (&:where(:dir(rtl)));
 @custom-variant ltr (&:where(:dir(ltr)));
 
+/* Viewport-height tiers for the one-screen hero (mutually exclusive, so they never fight each other):
+   short = laptops and phones 561–760px tall, tiny = landscape phones and very short windows. */
+@custom-variant short (@media (min-height: 561px) and (max-height: 760px));
+@custom-variant tiny (@media (max-height: 560px));
+
 /* ---------- Page root: the html/body styles of the old app (index.html, index.css, preflight) ----------
    Tier1's body and .ant-app (antd: 14px, IBM Plex Sans Arabic, line-height 1.57) are inherited here,
    so the root sets every inherited text property the page relies on. */
@@ -119,14 +124,17 @@
   color: var(--ds-selection-fg);
 }
 
-/* Keyboard focus as the old page drew it: the browser ring in the theme's focus colour.
+/* Keyboard focus: 2px solid ring with an offset, in the section's focus colour (--ds-focus-ring: navy on light
+   sections, gold on dark ones, 7:1 or more against the background around it). :focus-visible only, so nothing
+   changes at rest or on mouse click.
    0,2,0 out-ranks shared/ui.css `:where(a, button, [role="button"], [tabindex]):focus-visible` (0,1,0: teal 2px
-   outline, 6px radius) and antd's `:where(.css-…) a:focus { outline: 0 }` (0,1,1); utilities written later in this
-   file (`rounded-ds`, `focus-visible:outline-*`) still win. */
+   outline) and antd's `:where(.css-…) a:focus { outline: 0 }` (0,1,1); utilities written later in this
+   file (`rounded-ds*`, `focus-visible:outline-*`) still win. The ring's corner is the sm step, like the app's
+   (0 when square). The preflight reset above keeps `border-radius: 0`: corners come from rounded-ds* classes only. */
 [data-landing] :where(a, button, [role="button"], [tabindex]):focus-visible {
-  outline: auto 1px var(--ds-focus);
-  outline-offset: 0;
-  border-radius: 0;
+  outline: 2px solid var(--ds-focus-ring);
+  outline-offset: 3px;
+  border-radius: var(--ds-radius-sm);
 }
 
 /* ---------- Utilities, scoped to the page ---------- */

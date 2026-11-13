@@ -7,8 +7,10 @@
  * - data-section="dark" | "light" on any element inside re-scopes the section tokens
  *   (background, surface, text, border, accent, tile, buttons, shadcn core) for that subtree (§2.7).
  *   Put it on dark sections, the header and footer, and on any dark card inside a light section.
- * - Theme-level tokens (font, radius, chrome, textures, charts, shadows, focus, sidebar) do not
+ * - Theme-level tokens (font, chrome, textures, charts, shadows, focus, sidebar) do not
  *   change with the section.
+ * - No radius here: corners are their own axis (../corners.css, switch CORNERS in ../config.ts).
+ *   navy-gold is designed square (§4), which is the default.
  * - Only custom properties here, no element rules. Primitives come from ../primitives.css.
  * - Do not nest a second [data-theme] inside this one: section rules of both themes would match.
  */
@@ -17,7 +19,6 @@
 [data-theme="navy-gold"] {
   --ds-font: "Cairo", "Geist Variable", "Segoe UI", sans-serif;
   --ds-font-heading: "Cairo", "Geist Variable", "Segoe UI", sans-serif;
-  --ds-radius: 0px; /* square everywhere (§4); a length, so calc() on it stays valid */
 
   /* Header and footer chrome (§2.1): bg-ds-chrome/95 + backdrop-blur in the header */
   --ds-chrome: var(--color-navy-950);
@@ -59,8 +60,7 @@
   --ds-selection-bg: var(--color-soft-gold-500);
   --ds-selection-fg: var(--color-soft-navy-950);
 
-  /* shadcn: theme-level variables */
-  --radius: 0px;
+  /* shadcn: theme-level variables (--radius comes from ../corners.css) */
   --chart-1: var(--color-navy-800);
   --chart-2: var(--color-gold-400);
   --chart-3: var(--color-steel-400);
@@ -74,6 +74,26 @@
   --sidebar-accent-foreground: var(--color-paper);
   --sidebar-border: var(--color-navy-500);
   --sidebar-ring: var(--color-gold-400);
+
+  /* App sidebar: the dark chrome of the signed-in shell (navy, whatever the section). Contrast in tokens.test.ts. */
+  --ds-sidebar-bg: var(--color-navy-950);
+  --ds-sidebar-fg: var(--color-mist-300); /* link text, 9:1 on the bg */
+  --ds-sidebar-fg-active: var(--color-paper); /* hovered and active link */
+  --ds-sidebar-muted: var(--color-steel-400); /* group titles, 5.5:1 */
+  --ds-sidebar-hover-bg: var(--color-navy-800);
+  --ds-sidebar-active-bg: var(--color-navy-700);
+  --ds-sidebar-indicator: var(--color-gold-400); /* active-link bar, 6:1 on the active bg */
+  --ds-sidebar-border: var(--color-navy-500); /* dividers */
+  --ds-sidebar-focus: var(--color-gold-400); /* keyboard focus outline */
+  --ds-sidebar-badge-bg: var(--color-gold-400);
+  --ds-sidebar-badge-fg: var(--color-navy-900);
+
+  /* Page band: the navy header strip of antd pages (shared/theme.css --band); text on it uses the dark section */
+  --ds-band-from: var(--color-navy-900);
+  --ds-band-via: var(--color-navy-800);
+  --ds-band-to: var(--color-navy-700);
+  --ds-band-glow: color-mix(in srgb, var(--color-steel-400) 30%, transparent); /* top-start light */
+  --ds-band-glow-accent: color-mix(in srgb, var(--color-gold-400) 18%, transparent); /* bottom-end warm light */
 }
 
 /* ---------- Light scope (default) ---------- */
@@ -111,6 +131,9 @@
   --ds-tile-solid: var(--color-navy-900);
   --ds-tile-solid-fg: var(--color-gold-400);
   --ds-live: var(--color-signal-green); /* "live" square dot */
+  --ds-focus-ring: var(--color-navy-900); /* keyboard focus outline, 2px solid: 15:1 or more on every light background */
+  --ds-link: var(--color-gold-700); /* text links, codes (antd colorLink): 5.5:1 on white */
+  --ds-link-hover: var(--color-navy-900);
 
   /* Primary button on light: navy, inverts to gold */
   --ds-btn-primary-bg: var(--color-navy-900);
@@ -183,6 +206,9 @@
   --ds-tile-solid: var(--color-navy-900);
   --ds-tile-solid-fg: var(--color-gold-400);
   --ds-live: var(--color-signal-green);
+  --ds-focus-ring: var(--color-gold-400); /* keyboard focus outline on dark: 7:1 or more */
+  --ds-link: var(--color-gold-400);
+  --ds-link-hover: var(--color-paper);
 
   /* Primary button on dark: gold, inverts to outline */
   --ds-btn-primary-bg: var(--color-gold-400);

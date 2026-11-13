@@ -3,7 +3,7 @@
 .un-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
 .un-search { width: 240px; }
 .un-bulk { display: inline-flex; gap: 6px; margin-inline-start: auto; }
-.un-std { border: 1px solid var(--hair); border-radius: 10px; margin-bottom: 10px; overflow: hidden; background: #fff; }
+.un-std { border: 1px solid var(--hair); border-radius: var(--ds-radius-lg); margin-bottom: 10px; overflow: hidden; background: #fff; }
 .un-std > header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 7px 12px; background: var(--sunk); font-size: 13px; color: var(--navy); }
 .un-std > header .muted { font-size: 12px; }
 .un-std-count { margin-inline-start: auto; font-size: 12px; color: var(--muted); font-family: var(--font-display); }
@@ -33,9 +33,9 @@
 .un-tree .ant-table-tbody > tr.un-k-Institute > td:first-child { font-weight: 600; color: var(--uk); }
 .un-tree .ant-table-tbody > tr.un-k-University > td:first-child { font-size: 15px; }
 .un-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--uk); white-space: nowrap; }
-.un-chip i { width: 10px; height: 10px; border-radius: 3px; background: var(--uk); flex: none; }
+.un-chip i { width: 10px; height: 10px; border-radius: var(--ds-radius-xs); background: var(--uk); flex: none; }
 .un-legend { display: inline-flex; flex-wrap: wrap; gap: 6px 14px; margin-inline-start: auto; }
-.un-legend .un-chip { padding: 2px 8px; border-radius: 99px; background: var(--uk-bg); border: 1px solid color-mix(in srgb, var(--uk) 30%, transparent); }
+.un-legend .un-chip { padding: 2px 8px; border-radius: var(--ds-radius-pill); background: var(--uk-bg); border: 1px solid color-mix(in srgb, var(--uk) 30%, transparent); }
 
 @media (max-width: 600px) {
   .un-row { grid-template-columns: auto 40px minmax(0, 1fr); }

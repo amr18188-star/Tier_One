@@ -5,7 +5,7 @@ import { DataManagementSection } from "./DataManagementSection";
 import { HeroSection } from "./HeroSection";
 import { HierarchySection } from "./HierarchySection";
 import { IntegrationSection } from "./IntegrationSection";
-import { LandingFooter, LandingHeader } from "./LandingChrome";
+import { LandingFooter } from "./LandingChrome";
 import { OverviewSection } from "./OverviewSection";
 import { PillarsSection } from "./PillarsSection";
 // Cairo, self-hosted (no Google Fonts on the university servers): the five weights and two subsets the page uses.
@@ -35,8 +35,7 @@ export default function LandingPage({ theme = "navy-gold" }: LandingPageProps) {
   return (
     <div data-landing="" data-ds-page="" data-theme={theme} dir="rtl" lang="ar">
       <div dir="rtl" className="min-h-screen w-full bg-ds-bg text-ds-fg">
-        <LandingHeader />
-
+        {/* No header bar (removed on request): the logo sits in the hero, the sign-in link is the hero CTA. */}
         <main>
           <HeroSection />
 

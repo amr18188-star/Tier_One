@@ -1,9 +1,11 @@
 /*
  * Design-system tokens: one entry, plain CSS (no Tailwind directives), safe to import anywhere.
- * Order matters: primitives first, then the themes that build on them.
+ * Order matters: primitives first, then the themes that build on them, then the corner scale
+ * (data-corners, independent of the theme; last, so it wins any equal-specificity rule on <html>).
  * Tailwind utilities (bg-ds-surface, bg-navy-900 …) come from ./tailwind-theme.css, which is
  * imported separately from a Tailwind entry. See README.md.
  */
 @import "./primitives.css";
 @import "./themes/navy-gold.css";
 @import "./themes/app-soft.css";
+@import "./corners.css";
