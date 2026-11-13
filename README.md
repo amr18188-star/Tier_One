@@ -33,6 +33,9 @@ dotnet run --project src\Tier1.Api                                # http://local
 قاعدة المشروع نسخة مستقلة في `data\pgdata` لا تمس خدمة PostgreSQL المثبتة ولا تحتاج كلمة مرور `postgres`.
 إيقافها: `scripts\dev-db.ps1 stop`. الحسابات التجريبية `*@tier1.local` بكلمة المرور `T1_DEMO_PASSWORD` في `.env`.
 
+إذا كانت قاعدة `tier1` ومستخدم `tier1_dev` موجودين بالفعل على PostgreSQL المثبت في الجهاز، ضع `T1_POSTGRES_PORT=5432` في `.env` ثم شغّل `scripts\dev-setup.ps1` من جديد. في هذه الحالة لا تحتاج تشغيل `scripts\dev-db.ps1`؛ سيستخدم التطبيق السيرفر الموجود في pgAdmin، وكذلك `scripts\demo.ps1`.
+اسم قاعدة سجلات MongoDB يضبط بـ `T1_MONGO_DB` في `.env` (الافتراضي `tier1_logs`). سلسلة السجلات تبدأ من جديد مع كل قاعدة `tier1` فارغة، فاختر اسمًا جديدًا بعد كل تفريغ ثم شغّل `scripts\dev-setup.ps1`.
+
 | الحساب | الدور |
 |---|---|
 | `planner@` | مدير متابعة الخطة |
@@ -42,6 +45,23 @@ dotnet run --project src\Tier1.Api                                # http://local
 | `deptrep@` | ممثل قسم المدنية (نطاق `ENG-CIV`) |
 | `vp@` و`viewer@` و`quality@` | نائب الرئيس، اطلاع، الجودة |
 | `sa1@` و`sysadmin@` و`auditor@` | المدير الأعلى، مسؤول النظام، المراجع الرقابي |
+
+### النسخة التجريبية بالبيانات (للعرض والتجربة)
+
+قاعدة منفصلة `tier1_demo` على http://localhost:5160 مملوءة ببيانات واقعية مولدة: ثلاث دورات، ونماذج في كل مراحل الاعتماد، ونتائج ومقارنات.
+الحسابات وما ينتظر كل منها في [docs/demo.md](docs/demo.md).
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\demo.ps1 -Reset   # قاعدة فارغة، ويبقى الخادم يعمل
+python tools\demo_data.py                                          # في نافذة أخرى: يملؤها (نحو 40 ثانية، Python 3.10 فأحدث)
+```
+
+`demo.ps1` ينشئ `tier1_demo` على منفذ `T1_POSTGRES_PORT`، فيحتاج حساب `tier1_dev` صلاحية CREATEDB على ذلك السيرفر، أو قاعدة `tier1_demo` ينشئها مسؤول القاعدة من pgAdmin مملوكة لـ `tier1_dev`.
+
+**على جهاز التطوير الحالي (11 نوفمبر 2026):** البيانات التجريبية محملة في قاعدة التطوير نفسها `tier1` على 127.0.0.1:5432، وتعرض على http://localhost:5150. لا توجد قاعدة على 5440.
+لإعادة ملئها من الصفر: أوقف الخادم، واحذف المخططات `adm, dc, iam, kpi, logs, org` من `tier1` (بعد نسخة احتياطية)، وغيّر `T1_MONGO_DB` إلى اسم جديد، وانقل `data\checkpoints` جانبًا، ثم شغّل `scripts\dev-setup.ps1` والخادم، وبعده:
+`$env:T1_BASE='http://localhost:5150'; py -3.12 tools\demo_data.py`.
+اختبارات `tests/e2e` تضيف بياناتها (دورات تجريبية) إلى القاعدة نفسها.
 
 ## الاختبارات
 
