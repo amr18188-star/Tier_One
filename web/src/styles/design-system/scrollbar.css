@@ -3,7 +3,8 @@
  *
  * One glass scrollbar for the whole site: transparent track, a floating pill thumb (a transparent ring
  * plus background-clip: padding-box), a translucent fill with a soft white sheen and a 1px hairline.
- * The thumb grows from 6px to 8px under the pointer and changes colour on hover and press.
+ * The thumb grows from 6px to 8px under the pointer and changes colour on hover and press (instantly:
+ * browsers do not animate scrollbar pseudo-elements).
  * Imported once in src/main.tsx, after app.css. Plain CSS, no Tailwind, works without primitives.css
  * (every primitive has a hex fallback).
  *
@@ -22,20 +23,22 @@
  *   --scrollbar-overlay-thumb, -hover, -active   scrollers that sit on a modal mask (.ant-modal-wrap)
  *
  * Palettes (rest / hover / active):
- *   :root (main app)          navy 52% / teal 90% / teal-ink           (app.css --navy, --teal, --teal-ink)
+ *   :root (main app)          navy 56% / teal / teal-ink               (app.css --navy, --teal, --teal-ink)
  *   dark app chrome           white 36% / #7fd1d5 90% / teal-100        (.lcp-side, .lcp-drawer, .json)
  *   modal mask                white 90% / white / teal-50
- *   navy-gold, light scope    gold-600 94% / gold-700 90% / gold-700
+ *   navy-gold, light scope    gold-600 96% / gold-700 90% / gold-700
  *   navy-gold, dark sections  gold-400 55% / gold-400 90% / gold-200
- *   app-soft, light scope     soft-navy-950 50% / soft-gold-600 / soft-gold-700
+ *   app-soft, light scope     soft-navy-950 55% / soft-gold-600 / soft-gold-700
  *   app-soft, dark sections   soft-gold-300 55% / soft-gold-500 / soft-gold-300
- *   Every rest colour is about 3:1 or more on its usual background (white, #f4f6f9, #071a33).
+ *   Rest colours are about 3:1 or more on their usual backgrounds (white, #f4f6f9, #071a33, the sidebar);
+ *   the sheen covers only the outer half of the thumb, so its centre is the pure fill.
  *
  * Scopes:
  *   - [data-theme="…"] re-colours the subtree; [data-section="dark"] inside it switches to the dark palette.
  *   - The page scrollbar follows the theme of a page root marked [data-ds-page][data-theme="…"]
  *     (rule on html:has(…); without :has() support the page keeps the main-app palette).
- *   - A new theme: add a light rule and a dark rule below with the seven colour tokens.
+ *   - A new theme: add a light rule and a dark rule below with the five colour tokens
+ *     (--scrollbar-thumb, -thumb-hover, -thumb-active, -highlight, -hairline).
  *   - Override per component: set any token on the scroller, e.g. `.my-list { --scrollbar-size: 8px; }`.
  *
  * Engines:
@@ -57,8 +60,8 @@
   --scrollbar-radius: 999px;
   --scrollbar-min-thumb: 40px;
   --scrollbar-track: transparent;
-  --scrollbar-thumb: color-mix(in srgb, var(--navy, #16294a) 52%, transparent);
-  --scrollbar-thumb-hover: color-mix(in srgb, var(--teal, #0a8c93) 90%, transparent);
+  --scrollbar-thumb: color-mix(in srgb, var(--navy, #16294a) 56%, transparent);
+  --scrollbar-thumb-hover: var(--teal, #0a8c93);
   --scrollbar-thumb-active: var(--teal-ink, #076b71);
   --scrollbar-highlight: rgb(255 255 255 / 0.34);
   --scrollbar-hairline: color-mix(in srgb, var(--navy, #16294a) 16%, transparent);
@@ -82,7 +85,7 @@
 :is(html:has([data-ds-page][data-theme="navy-gold"])),
 [data-theme="navy-gold"],
 [data-theme="navy-gold"] [data-section="light"] {
-  --scrollbar-thumb: color-mix(in srgb, var(--color-gold-600, #a7833d) 94%, transparent);
+  --scrollbar-thumb: color-mix(in srgb, var(--color-gold-600, #a7833d) 96%, transparent);
   --scrollbar-thumb-hover: color-mix(in srgb, var(--color-gold-700, #82652b) 90%, transparent);
   --scrollbar-thumb-active: var(--color-gold-700, #82652b);
   --scrollbar-highlight: rgb(255 255 255 / 0.34);
@@ -101,7 +104,7 @@
 :is(html:has([data-ds-page][data-theme="app-soft"])),
 [data-theme="app-soft"],
 [data-theme="app-soft"] [data-section="light"] {
-  --scrollbar-thumb: color-mix(in srgb, var(--color-soft-navy-950, #0d2440) 50%, transparent);
+  --scrollbar-thumb: color-mix(in srgb, var(--color-soft-navy-950, #0d2440) 55%, transparent);
   --scrollbar-thumb-hover: var(--color-soft-gold-600, #ad8700);
   --scrollbar-thumb-active: var(--color-soft-gold-700, #8a6d00);
   --scrollbar-highlight: rgb(255 255 255 / 0.34);
@@ -142,14 +145,14 @@
       border: var(--scrollbar-gap) solid transparent;
       border-radius: var(--scrollbar-radius);
       background-color: var(--scrollbar-thumb);
-      background-image: linear-gradient(to right, var(--scrollbar-highlight), transparent 70%);
+      background-image: linear-gradient(to right, var(--scrollbar-highlight), transparent 48%);
       background-clip: padding-box;
       box-shadow: inset 0 0 0 1px var(--scrollbar-hairline);
     }
     ::-webkit-scrollbar-thumb:horizontal {
       min-width: var(--scrollbar-min-thumb);
       min-height: 0;
-      background-image: linear-gradient(to bottom, var(--scrollbar-highlight), transparent 70%);
+      background-image: linear-gradient(to bottom, var(--scrollbar-highlight), transparent 48%);
     }
     ::-webkit-scrollbar-thumb:hover {
       border-width: var(--scrollbar-gap-hover);
@@ -220,12 +223,9 @@
   }
 }
 
+/* Chromium and Safari do not animate ::-webkit-scrollbar-* (measured: a 4s transition had already reached its
+   end colour 1.5s in), so the native thumb changes state instantly. The virtual-list thumb is a real element. */
 @media (forced-colors: none) and (prefers-reduced-motion: no-preference) {
-  @supports selector(::-webkit-scrollbar) {
-    ::-webkit-scrollbar-thumb {
-      transition: background-color 0.18s ease, border-width 0.18s ease;
-    }
-  }
   .rc-virtual-list-scrollbar-thumb {
     transition: background-color 0.18s ease;
   }

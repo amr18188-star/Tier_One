@@ -138,6 +138,22 @@ is not on the design system. Don't restyle antd pages with DS tokens unless the 
 `themes[name].antd`, a suggested `ThemeConfig`; wiring it app-wide changes every antd screen, so treat that as its own,
 confirmed task. A scoped sketch is in `references/token-files.md` §8.
 
+## Brand / logo
+
+Official logos: `web/src/assets/brand/` (223×336 PNG, transparent). The file name says the background the logo sits on
+(artwork colours measured 2026-11-13):
+
+| File | Artwork | Use on |
+|---|---|---|
+| `capital-university-logo-dark.png` | white + gold | dark backgrounds: navy sections, the dark header and footer (`data-section="dark"`) |
+| `capital-university-logo-light.png` | navy + gold | light backgrounds: white, ivory, sand, cloud sections |
+
+Import them as Vite assets, never copy them into `public/`:
+`import logo from "@/assets/brand/capital-university-logo-light.png";` then
+`<img src={logo} alt={L("جامعة العاصمة", "Capital University")} className="h-14 w-auto sm:h-16" />`. The landing header
+uses the `-dark` file: it is byte-identical to the logo of the original page. A component that can sit in either scope
+takes the tone as a prop; don't recolour the artwork with CSS filters. More in `references/design-system.md` §14.
+
 ## Add a theme
 
 1. Add new raw colours to `primitives.css` as `--color-<family>-<step>` with a family prefix of your own (like `soft-*`).

@@ -1,5 +1,6 @@
 import { Icon, type IconName } from "./Icon";
 import { SectionHeading } from "./SectionHeading";
+import { sectionIds } from "./sections";
 
 interface Level {
   number: string;
@@ -22,9 +23,9 @@ const levels: Level[] = [
   },
   {
     number: "02",
-    title: "دورات المتابعة",
-    subtitle: "Seasons",
-    description: "عشرون دورة قياس ومتابعة موزعة على الخطة الخمسية.",
+    title: "الدورات الربعية",
+    subtitle: "Quarters",
+    description: "أربعة أرباع كل سنة، عشرون ربعًا على مدى الخطة الخمسية.",
     icon: "calendar",
     width: "90%",
   },
@@ -56,7 +57,7 @@ const levels: Level[] = [
 
 export function HierarchySection() {
   return (
-    <section className="bg-ds-bg-warm px-5 py-24 sm:px-10 lg:py-28">
+    <section id={sectionIds.hierarchy} className="bg-ds-bg-warm px-5 py-24 sm:px-10 lg:py-28">
       <div className="mx-auto max-w-7xl">
         <SectionHeading
           eyebrow="FRAMEWORK HIERARCHY"
@@ -110,7 +111,7 @@ export function HierarchySection() {
 
               <p className="mt-5 text-sm leading-8 text-ds-body">
                 يضمن هذا التسلسل وضوح العلاقة بين الأهداف الاستراتيجية
-                والمستهدفات السنوية ودورات المتابعة ومجالات التقييم،
+                والمستهدفات السنوية والدورات الربعية ومجالات التقييم،
                 وصولًا إلى المؤشرات والمبادرات التي تقيس النتائج
                 وتدعم تحسين الأداء.
               </p>

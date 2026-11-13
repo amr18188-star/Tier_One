@@ -13,7 +13,7 @@ token `--ds-x` (utility `bg-ds-x`, `text-ds-x` …); "light" / "dark" is the sec
 
 1. Identity · 2. Color tokens · 3. Typography · 4. Shape, borders, elevation · 5. Layout and spacing ·
 6. Backgrounds and texture · 7. Iconography and motion · 8. Components · 9. Data visualisation ·
-10. Drop-in tokens · 11. Accessibility · 12. RTL and bilingual rules · 13. Do and don't
+10. Drop-in tokens · 11. Accessibility · 12. RTL and bilingual rules · 13. Do and don't · 14. Brand / logo (Tier1 addition)
 
 Extracted from the old app's landing page (`Frontend/React/src/Layout/Home.jsx`), checked against its live render.
 Use this file as the single reference when you rebuild the look.
@@ -653,3 +653,46 @@ Mirror with the `ltr:` / `rtl:` variants (`ltr:-scale-x-100`, `rtl:group-hover:-
 - Introduce new hues. Green and red appear only as status signals.
 - Set body text in gold on light backgrounds below 18px (use `gold-700` if you must).
 - Animate on scroll, scale cards, or bounce. Motion stays a quiet color swap.
+
+---
+
+## 14. Brand / logo (Tier1 addition)
+
+Not in the original doc. The official Capital University logos live in `web/src/assets/brand/`: two 223×336 PNGs with a
+transparent background, the same drawing in two colourways. The file name names the **background** the logo goes on,
+not the colour of the artwork (dominant colours measured from the pixels on 2026-11-13):
+
+| File | Artwork (measured) | Use on | Examples |
+|---|---|---|---|
+| `capital-university-logo-dark.png` | white lettering and arch + gold atom | dark backgrounds | navy sections, the header (`bg-ds-chrome/95`) and footer, a dark card, the antd app's navy sidebar |
+| `capital-university-logo-light.png` | navy lettering and arch + gold atom | light backgrounds | white, ivory, sand and cloud sections, a light card, print |
+
+- Pick by the scope the logo sits in: `data-section="dark"` → `-dark`; light scope → `-light`. The navy artwork on navy
+  or the white artwork on white disappears.
+- The landing page uses the `-dark` file in its dark header. It is byte-identical to the logo the original page loaded
+  (`Frontend/React/public/images/`), so the port stays pixel-identical. The signed-in shell (`web/src/app/Shell.tsx`)
+  imports the same two files, `-dark` on its navy sidebar and `-light` on white.
+- Import as a Vite asset so it is hashed and bundled; never copy the files into `public/` (Tier1's `web/` has none):
+
+  ```tsx
+  import logoOnDark from "@/assets/brand/capital-university-logo-dark.png";
+  import logoOnLight from "@/assets/brand/capital-university-logo-light.png";
+  import { L } from "@/shared/i18n";
+
+  export function BrandLogo({ tone }: { tone: "light" | "dark" }) {
+    return (
+      <img
+        src={tone === "dark" ? logoOnDark : logoOnLight}
+        alt={L("جامعة العاصمة", "Capital University")}
+        className="h-14 w-auto sm:h-16"
+      />
+    );
+  }
+  ```
+
+- Size: the original header shows it at 56px tall, 64px from 640px (`h-14 w-auto sm:h-16`). Keep `w-auto` so the
+  223:336 ratio holds; never set both width and height.
+- Don't recolour it (CSS `filter`, `mix-blend-mode`, SVG tracing), crop it, add a shadow, or put it on a gold fill. Both
+  colourways are on transparent: let the section background show through.
+- Alt text: the university name in the page language (`L("جامعة العاصمة", "Capital University")`). In a link to home,
+  the link's accessible name is that alt.

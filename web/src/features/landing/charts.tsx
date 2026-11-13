@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-/** Actual vs. target over the follow-up cycles (illustrative data). */
+/** Actual vs. target over the plan's quarterly cycles (illustrative data, one point per quarter). */
 export function PerformanceLineChart() {
   const chart = useMemo(() => {
     const actual = [22, 29, 27, 36, 34, 43, 40, 49, 46, 58, 62, 72];
@@ -28,6 +28,7 @@ export function PerformanceLineChart() {
 
     return {
       actual,
+      width,
       actualPoints: actualPoints.join(" "),
       targetPoints: targetPoints.join(" "),
       areaPath,
@@ -35,6 +36,9 @@ export function PerformanceLineChart() {
       getY,
     };
   }, []);
+
+  /** Labelled quarters (1, 3 … 11) and the index of their point. */
+  const xLabels = [1, 3, 5, 7, 9, 11].map((quarter) => ({ quarter, index: quarter - 1 }));
 
   return (
     <div className="w-full">
@@ -61,70 +65,81 @@ export function PerformanceLineChart() {
             </linearGradient>
           </defs>
 
-          {/* Grid */}
-          {[0, 25, 50, 75, 100].map((value) => {
-            const y = chart.getY(value);
+          {/* Plot, drawn left to right. In RTL the group is mirrored around the middle of the view box, so the
+              first quarter sits on the right and the trend rises toward the left, as Arabic reads. */}
+          <g className="origin-center rtl:-scale-x-100">
+            {/* Grid */}
+            {[0, 25, 50, 75, 100].map((value) => {
+              const y = chart.getY(value);
 
-            return (
-              <g key={value}>
-                <line x1="20" y1={y} x2="680" y2={y} className="stroke-ds-chart-grid" strokeWidth="1" strokeDasharray="4 6" />
+              return (
+                <line key={value} x1="20" y1={y} x2="680" y2={y} className="stroke-ds-chart-grid" strokeWidth="1" strokeDasharray="4 6" />
+              );
+            })}
 
-                <text x="0" y={y + 4} className="fill-ds-chart-axis" fontSize="10">
-                  {value}
-                </text>
-              </g>
-            );
-          })}
+            {/* Area */}
+            <path d={chart.areaPath} fill="url(#performanceArea)" />
 
-          {/* Area */}
-          <path d={chart.areaPath} fill="url(#performanceArea)" />
-
-          {/* Target Line */}
-          <polyline
-            points={chart.targetPoints}
-            className="stroke-ds-chart-target"
-            strokeWidth="2"
-            strokeDasharray="6 7"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-
-          {/* Actual Line */}
-          <polyline
-            points={chart.actualPoints}
-            className="stroke-ds-chart-actual"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-
-          {/* Points */}
-          {chart.actual.map((value, index) => (
-            <circle
-              key={index}
-              cx={chart.getX(index)}
-              cy={chart.getY(value)}
-              r="4"
-              className="fill-ds-chart-bg stroke-ds-chart-actual"
-              strokeWidth="2.5"
+            {/* Target Line */}
+            <polyline
+              points={chart.targetPoints}
+              className="stroke-ds-chart-target"
+              strokeWidth="2"
+              strokeDasharray="6 7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             />
-          ))}
 
-          {/* Current Point */}
-          <circle
-            cx={chart.getX(11)}
-            cy={chart.getY(chart.actual[11])}
-            r="7"
-            className="fill-ds-chart-current stroke-ds-chart-bg"
-            strokeWidth="3"
-          />
+            {/* Actual Line */}
+            <polyline
+              points={chart.actualPoints}
+              className="stroke-ds-chart-actual"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+
+            {/* Points */}
+            {chart.actual.map((value, index) => (
+              <circle
+                key={index}
+                cx={chart.getX(index)}
+                cy={chart.getY(value)}
+                r="4"
+                className="fill-ds-chart-bg stroke-ds-chart-actual"
+                strokeWidth="2.5"
+              />
+            ))}
+
+            {/* Current Point */}
+            <circle
+              cx={chart.getX(11)}
+              cy={chart.getY(chart.actual[11])}
+              r="7"
+              className="fill-ds-chart-current stroke-ds-chart-bg"
+              strokeWidth="3"
+            />
+          </g>
+
+          {/* Y axis values, never mirrored: in the start-side gutter (text-anchor start follows the direction). */}
+          {[0, 25, 50, 75, 100].map((value) => (
+            <text key={value} x="0" y={chart.getY(value) + 4} className="fill-ds-chart-axis rtl:translate-x-[700px]" fontSize="10">
+              {value}
+            </text>
+          ))}
         </svg>
       </div>
 
-      {/* X Axis */}
-      <div className="mt-3 flex justify-between pr-5 text-[10px] text-ds-faint sm:text-xs">
-        {["الموسم 01", "الموسم 03", "الموسم 05", "الموسم 07", "الموسم 09", "الموسم 11"].map((label) => (
-          <span key={label}>{label}</span>
+      {/* X Axis: each label centred under its point, in the same order as the plot in both directions */}
+      <div className="relative mt-3 h-5 text-[10px] text-ds-faint sm:text-xs">
+        {xLabels.map(({ quarter, index }) => (
+          <span
+            key={quarter}
+            className="absolute top-0 whitespace-nowrap leading-5 ltr:-translate-x-1/2 rtl:translate-x-1/2"
+            style={{ insetInlineStart: `${(chart.getX(index) / chart.width) * 100}%` }}
+          >
+            الربع {quarter}
+          </span>
         ))}
       </div>
     </div>
@@ -137,13 +152,12 @@ const bars = [
   { label: "المالي", value: 68 },
   { label: "التشغيلي", value: 76 },
   { label: "الابتكار", value: 88 },
-  { label: "القيادة", value: 73 },
 ];
 
 /** Score per pillar; the second and fifth bars are highlighted. */
 export function PerformanceBarChart() {
   return (
-    <div className="flex h-full flex-col justify-center gap-6">
+    <div className="flex flex-1 flex-col justify-center gap-6">
       {bars.map((item, index) => (
         <div key={item.label}>
           <div className="mb-2 flex items-center justify-between gap-3">

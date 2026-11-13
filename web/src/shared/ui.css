@@ -215,13 +215,7 @@ a.lcp-list-item:hover { background: var(--teal-50); color: var(--ink); }
 .dt-service { display: grid; gap: 3px; min-width: 220px; }
 .dt-service small { font-size: 12.5px; line-height: 1.6; }
 .dt-ref { font-family: var(--font-mono); color: var(--navy); font-weight: 600; direction: ltr; unicode-bidi: isolate; white-space: nowrap; }
-.dt-foot {
-  display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px 24px; padding: 8px 16px;
-  border-top: 1px solid var(--hair); color: var(--muted); font-size: 13.5px;
-}
-.dt-size { display: inline-flex; align-items: center; gap: 4px; }
-.dt-range { font-variant-numeric: tabular-nums; }
-.dt-nav { display: inline-flex; gap: 2px; }
+/* تذييل الجدول (الترقيم) في pager.css. */
 .dt-cards { display: grid; gap: 10px; padding: 12px; background: #f8fafc; }
 .dt-card {
   display: grid; gap: 8px; padding: 14px 16px; border-radius: 14px; background: #fff; box-shadow: var(--shadow);

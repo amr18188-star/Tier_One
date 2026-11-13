@@ -1,5 +1,6 @@
 import { Icon, type IconName } from "./Icon";
 import { SectionHeading } from "./SectionHeading";
+import { sectionIds } from "./sections";
 
 interface Feature {
   number: string;
@@ -20,10 +21,10 @@ const features: Feature[] = [
   },
   {
     number: "02",
-    title: "إدخال دوري للبيانات",
-    subtitle: "Season-based Reporting",
+    title: "إدخال ربع سنوي للبيانات",
+    subtitle: "Quarterly Reporting",
     description:
-      "تُسجل النتائج الفعلية خلال دورات المتابعة، وفق نطاق إدخال محدد لكل مؤشر على مستوى الجامعة أو الكلية أو كليهما.",
+      "تُسجل النتائج الفعلية في كل دورة ربعية، وفق نطاق إدخال محدد لكل مؤشر على مستوى الجامعة أو الكلية أو كليهما.",
     icon: "calendar",
   },
   {
@@ -36,17 +37,17 @@ const features: Feature[] = [
   },
   {
     number: "04",
-    title: "متابعة تراكمية أو دورية",
-    subtitle: "Cumulative & Momentary",
+    title: "متابعة تراكمية أو ربعية",
+    subtitle: "Cumulative & Quarterly",
     description:
-      "تدعم المنظومة المؤشرات التراكمية التي تجمع نتائج الدورات، والمؤشرات غير التراكمية التي تقيس أداء كل دورة بصورة مستقلة.",
+      "تدعم المنظومة المؤشرات التراكمية التي تجمع قيم الأرباع، والمؤشرات غير التراكمية التي تقيس أداء كل ربع بصورة مستقلة.",
     icon: "database",
   },
 ];
 
 export function DataManagementSection() {
   return (
-    <section className="bg-ds-bg px-5 py-24 sm:px-10 lg:py-28">
+    <section id={sectionIds.data} className="bg-ds-bg px-5 py-24 sm:px-10 lg:py-28">
       <div className="mx-auto max-w-7xl">
         <SectionHeading
           eyebrow="DATA GOVERNANCE"

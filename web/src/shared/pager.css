@@ -48,8 +48,11 @@
   .dt > .pg > .pg-meta { padding-inline: 12px; }
   .pg-meta, .pg-nav { flex-basis: 100%; }
   .pg-nav { display: flex; justify-content: center; }
-  .pg-list { min-width: 0; max-width: 100%; }
-  .pg-list > li { flex: 0 1 40px; min-width: 32px; }
+  /* فراغ 2 بكسل و«…» بعرض 24 (ليست زرًا): سبع خانات 40 بكسل تحتاج 292 بكسل، فتبقى 40 في بطاقات الجداول الضيقة (297 في قاموس المؤشرات). */
+  .pg-list { min-width: 0; max-width: 100%; gap: 2px; }
+  /* width مع flex-basis: بدونها تحسب القائمة عرضها من نص الرقم فتنكمش كل الخانات إلى 32. */
+  .pg-list > li { flex: 0 1 40px; width: 40px; min-width: 32px; }
+  .pg-list > li.pg-gap { flex-basis: 24px; width: 24px; min-width: 16px; }
   .pg-btn, .pg-step, .pg-gap { width: 100%; min-width: 0; height: 40px; }
   .pg-btn { padding: 0 2px; font-size: 15px; }
   .pg-step { padding: 0; }

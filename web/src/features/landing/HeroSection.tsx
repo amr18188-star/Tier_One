@@ -139,7 +139,7 @@ export function HeroSection() {
             className="group flex items-center gap-4 border border-ds-btn-primary-border bg-ds-btn-primary-bg px-8 py-4 text-sm font-bold text-ds-btn-primary-fg transition-all hover:border-ds-btn-primary-hover-border hover:bg-ds-btn-primary-hover-bg hover:text-ds-btn-primary-hover-fg"
           >
             <span>الدخول إلى المنظومة</span>
-            <Icon name="arrow" size={19} className="transition-transform group-hover:-translate-x-1" />
+            <Icon name="arrow" size={19} className="transition-transform rtl:group-hover:-translate-x-1 ltr:group-hover:translate-x-1" />
           </Link>
         </div>
 

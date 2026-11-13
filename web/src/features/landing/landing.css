@@ -21,6 +21,12 @@
 @import "../../styles/design-system/tailwind-theme.css";
 @source "./";
 
+/* Direction variants from the element's own direction (:dir), not from any [dir] ancestor. Tailwind's defaults
+   (`[dir="rtl"] *`) would match both rtl: and ltr: here, because <html dir> follows the app language while this
+   page root is always dir="rtl". */
+@custom-variant rtl (&:where(:dir(rtl)));
+@custom-variant ltr (&:where(:dir(ltr)));
+
 /* ---------- Page root: the html/body styles of the old app (index.html, index.css, preflight) ----------
    Tier1's body and .ant-app (antd: 14px, IBM Plex Sans Arabic, line-height 1.57) are inherited here,
    so the root sets every inherited text property the page relies on. */
@@ -113,10 +119,11 @@
   color: var(--ds-selection-fg);
 }
 
-/* Keyboard focus as the old page drew it: the browser ring in the theme's focus colour. Out-ranks
-   shared/ui.css `:where(a, button, [role="button"], [tabindex]):focus-visible` (teal 2px outline, 6px radius)
-   and antd's `:where(.css-…) a:focus { outline: 0 }`. */
-[data-landing] :is(a, button, [role="button"], [tabindex]):focus-visible {
+/* Keyboard focus as the old page drew it: the browser ring in the theme's focus colour.
+   0,2,0 out-ranks shared/ui.css `:where(a, button, [role="button"], [tabindex]):focus-visible` (0,1,0: teal 2px
+   outline, 6px radius) and antd's `:where(.css-…) a:focus { outline: 0 }` (0,1,1); utilities written later in this
+   file (`rounded-ds`, `focus-visible:outline-*`) still win. */
+[data-landing] :where(a, button, [role="button"], [tabindex]):focus-visible {
   outline: auto 1px var(--ds-focus);
   outline-offset: 0;
   border-radius: 0;

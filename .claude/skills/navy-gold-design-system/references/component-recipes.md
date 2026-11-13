@@ -460,7 +460,7 @@ import { DirectionProvider } from "@/components/ui/direction";
 | `dark ? "text-white" : "text-navy-900"` ternaries | one class + `data-section` | the scope picks the value |
 | Global preflight, or `@import "tailwindcss"` anywhere | the entry in §1 (theme + scoped utilities, `source(none)`) | preflight resets every element; antd pages change |
 | Importing a Tailwind entry from `main.tsx`, `app.css` or a shared file | import it from the feature's root component | keeps the CSS with the feature |
-| `@import "tailwindcss/utilities.css"` unscoped (global, layered) | `@tailwind utilities source(none)` inside `:where([data-feature])` | global utilities restyle antd pages that share a class name, and lose inside your page to unlayered `app.css` / `shared/*.css` |
+| `@import "tailwindcss/utilities.css"` unscoped (global, layered) | `@tailwind utilities source(none)` inside `:where([data-feature])` | global utilities restyle antd pages that share a class name, and lose inside your page to unlayered `web/src/styles/app.css` / `web/src/shared/*.css` |
 | Utility classes on the root element itself | put them on the first inner wrapper | scoped utilities only match descendants of the root |
 | `!important` to win a clash | scope the rule under the root, or rename the class | it also wins over every theme and section |
 | Nesting two `data-theme` values | one theme per subtree | both themes' section rules match |

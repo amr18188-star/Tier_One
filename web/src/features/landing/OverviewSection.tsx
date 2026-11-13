@@ -1,5 +1,6 @@
 import { Icon, type IconName } from "./Icon";
 import { SectionHeading } from "./SectionHeading";
+import { sectionIds } from "./sections";
 
 interface Stat {
   value: string;
@@ -17,8 +18,8 @@ const stats: Stat[] = [
   },
   {
     value: "20",
-    suffix: "موسمًا",
-    label: "دورات قياس ومتابعة الأداء",
+    suffix: "ربعًا",
+    label: "دورات قياس ومتابعة ربع سنوية",
     icon: "chart",
   },
   {
@@ -37,7 +38,7 @@ const stats: Stat[] = [
 
 export function OverviewSection() {
   return (
-    <section className="bg-ds-bg px-5 py-24 text-ds-fg sm:px-10 lg:py-28">
+    <section id={sectionIds.framework} className="bg-ds-bg px-5 py-24 text-ds-fg sm:px-10 lg:py-28">
       <div className="mx-auto max-w-7xl">
         <SectionHeading
           eyebrow="THE FRAMEWORK"

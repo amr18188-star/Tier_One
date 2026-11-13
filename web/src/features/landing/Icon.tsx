@@ -135,6 +135,16 @@ const icons = {
 
 export type IconName = keyof typeof icons;
 
+/**
+ * Icons whose drawing has a reading direction. Each is drawn once; CSS mirrors it for the other direction:
+ * - `arrow` points left, forward in RTL; mirrored in LTR.
+ * - `chart` rises to the right (LTR); mirrored in RTL so the trend rises toward the left, forward in Arabic.
+ */
+const directional: Partial<Record<IconName, string>> = {
+  arrow: "ltr:-scale-x-100",
+  chart: "rtl:-scale-x-100",
+};
+
 interface IconProps {
   name: IconName;
   size?: number;
@@ -142,6 +152,8 @@ interface IconProps {
 }
 
 export function Icon({ name, size = 24, className = "" }: IconProps) {
+  const classes = [directional[name], className].filter(Boolean).join(" ");
+
   return (
     <svg
       width={size}
@@ -152,7 +164,7 @@ export function Icon({ name, size = 24, className = "" }: IconProps) {
       strokeWidth="1.6"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={className}
+      className={classes}
     >
       {icons[name]}
     </svg>

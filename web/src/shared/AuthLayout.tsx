@@ -2,8 +2,9 @@ import type { ReactNode } from "react";
 import { Button } from "antd";
 import { CheckOutlined } from "@ant-design/icons";
 import { L, setLang, useLang } from "./i18n";
-import uniLogo from "../assets/brand/capu-logo-light.webp";
-import mark from "../assets/brand/tier1-mark.svg";
+// شعار الجامعة الرسمي؛ «-dark» حروفه بيضاء للوحة الكحلية. شعار واحد في الشاشة، فلا علامة للمنظومة فوق النموذج.
+import uniLogo from "../assets/brand/capital-university-logo-dark.png";
+import "./auth-logo.css";
 
 /** أعمدة متصاعدة بخط رفيع، زخرفة خلف اللوحة الداكنة. */
 function GrowthDecor() {
@@ -59,13 +60,12 @@ export function AuthLayout({ wide = false, title, subtitle, children }: { wide?:
         <div className="auth-card">
           {title ? (
             <header className="auth-head">
-              <img src={mark} alt="" aria-hidden />
               <div>
                 <h2>{title}</h2>
                 {subtitle && <p>{subtitle}</p>}
               </div>
             </header>
-          ) : <img className="auth-card-mark" src={mark} alt="" aria-hidden />}
+          ) : null}
           {children}
         </div>
         <p className="auth-copy auth-copy-main">{copyright}</p>

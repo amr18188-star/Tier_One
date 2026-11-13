@@ -17,9 +17,10 @@
  * - --color-haze-200 … 400   Tailwind v3 slate hex. Home.jsx hard-codes them in SVG and inline styles
  *                            (#E2E8F0, #CBD5E1, #94A3B8). ash-200 and haze-200 render the same 8-bit colour;
  *                            ash-300/haze-300 and ash-400/haze-400 differ by 1–4 per channel.
- * - --color-navy-900-rgb     "7 26 51": channels of navy-900 for rgb(… / alpha). Home.jsx's hero vignette is
- *                            rgba(7, 26, 51, a); rgb() keeps it a legacy sRGB colour, so the gradient still
- *                            interpolates in sRGB (color-mix() would switch it to OKLab).
+ * - --color-navy-900-rgb     "7, 26, 51": comma channels of navy-900 for rgba(var(--…), alpha). Home.jsx's hero
+ *                            vignette is rgba(7, 26, 51, a). Only the comma rgba() form keeps Chrome's legacy
+ *                            gradient interpolation; the space form rgb(7 26 51 / a) and color-mix() do not
+ *                            (measured: 1-unit differences over ~9.4k hero pixels).
  * - --color-soft-*           The old /app palette, for the app-soft theme. Navy & Gold also uses three of them
  *                            to stay pixel-identical: the old app's shadow-sm/md (soft-navy-800), its global
  *                            focus outline and ::selection (soft-gold-500, soft-navy-950).
@@ -37,7 +38,7 @@
   --color-navy-700: #12345b; /* card hover on dark */
   --color-navy-600: #18304d; /* hero grid lines only */
   --color-navy-500: #29415f; /* borders and 1px dividers on dark */
-  --color-navy-900-rgb: 7 26 51;
+  --color-navy-900-rgb: 7, 26, 51;
   --color-steel-400: #7890ac; /* muted data (target line), grid on dark sections */
 
   /* Mist: text on dark (§2.4) */
@@ -102,7 +103,7 @@
   --color-soft-neutral-75: #edf2f7;
   --color-soft-neutral-50: #f4f7fb;
   --color-soft-neutral-25: #f8fafc;
-  --color-soft-navy-900-rgb: 18 48 85;
+  --color-soft-navy-900-rgb: 18, 48, 85;
   --color-soft-success-700: #1c7c3d;
   --color-soft-success-400: #64c783; /* tokens.css .dark --success */
   --color-soft-danger-700: #b3261e;

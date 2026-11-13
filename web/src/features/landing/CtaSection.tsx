@@ -30,7 +30,7 @@ export function CtaSection() {
         >
           <span>الدخول إلى المنظومة</span>
 
-          <Icon name="arrow" size={19} className="transition-transform group-hover:-translate-x-1" />
+          <Icon name="arrow" size={19} className="transition-transform rtl:group-hover:-translate-x-1 ltr:group-hover:translate-x-1" />
         </Link>
       </div>
     </section>

@@ -1,6 +1,7 @@
 import { DonutChart, PerformanceBarChart, PerformanceLineChart } from "./charts";
 import { Icon } from "./Icon";
 import { SectionHeading } from "./SectionHeading";
+import { sectionIds } from "./sections";
 
 const kpis = [
   {
@@ -19,9 +20,9 @@ const kpis = [
     note: "معيارًا مؤسسيًا",
   },
   {
-    label: "دورات المتابعة",
+    label: "الدورات الربعية",
     value: "20",
-    note: "على مدار خمس سنوات",
+    note: "ربعًا في الخطة الخمسية",
   },
 ];
 
@@ -35,7 +36,7 @@ const donutLegend: [label: string, color: string][] = [
 
 export function AnalyticsSection() {
   return (
-    <section className="bg-ds-bg-cool px-5 py-24 sm:px-10 lg:py-28">
+    <section id={sectionIds.analytics} className="bg-ds-bg-cool px-5 py-24 sm:px-10 lg:py-28">
       <div className="mx-auto max-w-7xl">
         <SectionHeading
           eyebrow="PERFORMANCE ANALYTICS"
@@ -64,20 +65,17 @@ export function AnalyticsSection() {
             </div>
           </div>
 
-          {/* KPI Summary */}
-          <div className="grid grid-cols-2 border-b border-ds-border lg:grid-cols-4">
-            {kpis.map((item, index) => (
-              <div
-                key={item.label}
-                className={`border-ds-border px-5 py-6 ${index % 2 === 0 ? "border-l" : ""} ${
-                  index < 2 ? "border-b lg:border-b-0" : ""
-                }`}
-              >
-                <p className="text-xs text-ds-body">{item.label}</p>
+          {/* KPI Summary: compact rows (label and note at the start, number at the end), hairline grid */}
+          <div className="grid grid-cols-2 gap-px border-b border-ds-border bg-ds-border lg:grid-cols-4">
+            {kpis.map((item) => (
+              <div key={item.label} className="flex items-center justify-between gap-3 bg-ds-surface px-4 py-4 sm:px-5">
+                <div className="min-w-0 text-start">
+                  <p className="text-xs text-ds-body">{item.label}</p>
 
-                <p className="mt-3 text-3xl font-bold text-ds-heading">{item.value}</p>
+                  <p className="mt-1 text-[11px] text-ds-eyebrow">{item.note}</p>
+                </div>
 
-                <p className="mt-1 text-[11px] text-ds-eyebrow">{item.note}</p>
+                <p className="shrink-0 text-end text-2xl font-bold text-ds-heading sm:text-3xl">{item.value}</p>
               </div>
             ))}
           </div>
@@ -85,16 +83,16 @@ export function AnalyticsSection() {
           {/* Charts */}
           <div className="grid lg:grid-cols-3">
             {/* Main Chart */}
-            <div className="border-b border-ds-border p-6 lg:col-span-2 lg:border-b-0 lg:border-l lg:p-8">
+            <div className="border-b border-ds-border p-6 lg:col-span-2 lg:border-b-0 lg:border-e lg:p-8">
               <div className="mb-8">
-                <h4 className="text-base font-bold text-ds-heading">تطور الأداء عبر دورات المتابعة</h4>
+                <h4 className="text-base font-bold text-ds-heading">تطور الأداء عبر الدورات الربعية</h4>
 
-                <p className="mt-2 text-xs text-ds-faint">مقارنة الأداء الفعلي بالمستهدفات الدورية</p>
+                <p className="mt-2 text-xs text-ds-faint">مقارنة القيم الربعية الفعلية بالمستهدفات</p>
               </div>
 
               <PerformanceLineChart />
 
-              <p className="mt-6 border-r-2 border-ds-accent bg-ds-callout px-4 py-3 text-[11px] leading-6 text-ds-body">
+              <p className="mt-6 border-s-2 border-ds-accent bg-ds-callout px-4 py-3 text-[11px] leading-6 text-ds-body">
                 رسم توضيحي لشكل التحليل الزمني. تُعرض النتائج الفعلية
                 عند ربط المنظومة ببيانات الأداء المعتمدة.
               </p>
@@ -122,7 +120,8 @@ export function AnalyticsSection() {
                 </div>
               </div>
 
-              <div className="flex-1 p-6">
+              {/* A flex column, so the bars fill only the space under the heading (h-full overflowed it by the heading's height). */}
+              <div className="flex flex-1 flex-col p-6">
                 <h4 className="text-sm font-bold text-ds-heading">الأداء حسب الركائز</h4>
 
                 <p className="mb-6 mt-2 text-xs text-ds-faint">نموذج لعرض مستويات الأداء</p>

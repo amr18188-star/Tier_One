@@ -123,7 +123,8 @@ export function Pager({ page, size, total, count, onPage, sizes, onSize, label }
         {sizes && onSize && (
           <span className="pg-size">
             {narrow ? L("لكل صفحة", "Per page") : sizeLabel}
-            <Select size={narrow ? "large" : "small"} variant="borderless" value={size} onChange={onSize}
+            {/* القائمة بعرض محتواها: بعرض الحقل الصغير تقطع «100» و«120». */}
+            <Select size={narrow ? "large" : "small"} variant="borderless" value={size} onChange={onSize} popupMatchSelectWidth={false}
               options={sizes.map((n) => ({ value: n, label: n }))} aria-label={sizeLabel} />
           </span>
         )}

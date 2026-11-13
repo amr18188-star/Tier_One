@@ -1,5 +1,6 @@
 import { Icon, type IconName } from "./Icon";
 import { SectionHeading } from "./SectionHeading";
+import { sectionIds } from "./sections";
 
 interface Pillar {
   number: string;
@@ -55,7 +56,7 @@ const pillars: Pillar[] = [
 
 export function PillarsSection() {
   return (
-    <section data-section="dark" className="relative overflow-hidden bg-ds-bg px-5 py-24 text-ds-fg sm:px-10 lg:py-28">
+    <section id={sectionIds.pillars} data-section="dark" className="relative overflow-hidden bg-ds-bg px-5 py-24 text-ds-fg sm:px-10 lg:py-28">
       {/* Background Pattern */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.08]"
