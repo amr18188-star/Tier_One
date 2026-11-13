@@ -136,6 +136,8 @@ public static class IndicatorRules
         Exclusions = s.Exclusions,
         Numerator = s.Numerator,
         Denominator = s.Denominator,
+        Formula = s.Formula,
+        Accumulation = s.Accumulation,
         Unit = s.Unit,
         Direction = s.Direction,
         Frequency = s.Frequency,

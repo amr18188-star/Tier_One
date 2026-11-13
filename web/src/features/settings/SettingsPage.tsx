@@ -1,3 +1,5 @@
+import { ApartmentOutlined, ClusterOutlined, SafetyCertificateOutlined, TeamOutlined } from "@ant-design/icons";
+import { Link } from "react-router-dom";
 import { useState } from "react";
 import { Alert, Button, Form, Input, InputNumber, Modal, Tag } from "antd";
 import { EditOutlined } from "@ant-design/icons";
@@ -48,6 +50,20 @@ export default function SettingsPage() {
     <>
       <PageHeader title={L("إعدادات النظام", "System settings")}
         subtitle={L("قيم تضبط سلوك المنظومة. كل تعديل يُسجل بسببه.", "Values that tune how the system behaves. Every change is recorded with its reason.")} />
+      {/* ما يبحث عنه المدير عادة في «الإعدادات» وله صفحاته الخاصة. */}
+      <nav className="set-links" aria-label={L("إدارة المنظومة", "Administration")}>
+        {[
+          { to: "/units", icon: <ApartmentOutlined />, ar: "الجهات", en: "Units", hint: "إضافة الكليات والمعاهد والأقسام والإدارات والمراكز وتعديلها وإغلاقها", need: perms.can("org.units", "V") },
+          { to: "/users", icon: <TeamOutlined />, ar: "الحسابات والأدوار", en: "Accounts and roles", hint: "إنشاء حسابات الموظفين وإسناد الأدوار ونطاق كل دور", need: perms.can("adm.users", "V") || perms.can("adm.grants", "V") },
+          { to: "/matrix", icon: <SafetyCertificateOutlined />, ar: "مصفوفة الصلاحيات", en: "Permission matrix", hint: "ما يستطيعه كل دور في كل شاشة", need: perms.can("adm.roles", "V") },
+          { to: "/structure", icon: <ClusterOutlined />, ar: "هياكل Tier 1 بالكليات", en: "College structures", hint: "أعضاء فرق Tier 1 في كل كلية", need: perms.can("org.structure", "V") },
+        ].filter((x) => x.need).map((x) => (
+          <Link key={x.to} to={x.to}>
+            <span className="set-links-icon" aria-hidden>{x.icon}</span>
+            <span><b>{L(x.ar, x.en)}</b><small>{L(x.hint, "")}</small></span>
+          </Link>
+        ))}
+      </nav>
       {!canView ? <EmptyNote>{L("لا صلاحية لعرض الإعدادات.", "You are not allowed to view the settings.")}</EmptyNote> : (
         <QueryState query={list}>
           <DataTable<SystemSetting> rowKey={(s) => s.key} loading={list.isLoading} data={list.data ?? []} minWidth={720}

@@ -75,11 +75,15 @@ public sealed class AccessService(IAppDb db, IClock clock, ICurrentUser current,
             var overrides = await db.UserOverrides.AsNoTracking()
                 .Where(o => o.UserId == userId && o.RevokedAt == null && o.ValidFrom <= now && (o.ValidTo == null || o.ValidTo > now))
                 .ToListAsync(ct);
+            var wide = assignments.Any(a => a.ScopeValues.Count > 0)
+                ? await db.OrgUnits.AsNoTracking().Where(u => u.ViewsWholeUniversity && u.Active).Select(u => u.Code).ToListAsync(ct)
+                : [];
             access = EffectiveAccessCalculator.Compute(
                 userId,
                 assignments.Where(a => roles.ContainsKey(a.RoleId)).Select(a => new AssignedRole(roles[a.RoleId].Code, roles[a.RoleId].IsLocked, roles[a.RoleId].Grants, a)),
                 overrides,
-                now);
+                now,
+                wide);
         }
         cache.Set(key, access, CacheFor);
         cache.Set(RolesKey(userId), access.RoleCodes, TimeSpan.FromHours(1));

@@ -1,4 +1,4 @@
-# النسخة التجريبية للعرض والتجربة: قاعدة منفصلة tier1_demo وسجلات ومجلد بيانات خاصة بها،
+﻿# النسخة التجريبية للعرض والتجربة: قاعدة منفصلة tier1_demo وسجلات ومجلد بيانات خاصة بها،
 # فلا تختلط ببيانات اختبارات التطوير (قاعدة tier1 على المنفذ 5150).
 # الاستخدام:
 #   powershell -ExecutionPolicy Bypass -File scripts\demo.ps1            تشغيل النسخة التجريبية على http://localhost:5160
@@ -46,6 +46,8 @@ $env:Files__Root = Join-Path $demoData 'files'
 $env:Email__PickupDirectory = Join-Path $demoData 'mail'
 $env:App__PublicUrl = "http://localhost:$Port"
 # الكوكيز لا تفصل بالمنفذ؛ أسماء خاصة حتى لا تتداخل جلسة النسخة التجريبية مع خادم التطوير في المتصفح نفسه.
+# النسخة التجريبية على هيكل الجامعة الرسمي (Seed/university-structure.json) بدل الكليات التجريبية.
+$env:Seed__Structure = 'true'
 $env:Cookies__Session = 't1demo_session'
 $env:Cookies__Antiforgery = 't1demo_af'
 

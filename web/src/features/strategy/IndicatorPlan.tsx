@@ -4,11 +4,11 @@ import { AimOutlined, LineChartOutlined, SaveOutlined } from "@ant-design/icons"
 import { useMutation } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import type { IndicatorNode, StrategyTree } from "../../api/tier1";
-import { TrendChart } from "../../shared/charts";
 import { errorText } from "../../shared/format";
 import { L } from "../../shared/i18n";
 import { horizon, withUnit } from "../../shared/labels";
 import { Panel } from "../../shared/ui";
+import { TargetChart, type ActualPoint } from "./PlanCharts";
 import { useRefreshPlan } from "./StrategyForms";
 
 const INTEGER_UNITS = new Set(["عدد", "برنامج", "دولة", "سرير", "مركز"]);
@@ -18,7 +18,7 @@ const INTEGER_UNITS = new Set(["عدد", "برنامج", "دولة", "سرير",
  * وقيمة كل سنة، وشرح المستهدف. قبل سنة البدء لا مستهدف، وبعد سنة التحقق يستمر آخر مستهدف.
  * «تدرج تلقائي» يوزع المسافة من خط الأساس إلى قيمة سنة التحقق على السنوات بالتساوي، ثم تعدل أي سنة يدويًا.
  */
-export function IndicatorPlan({ node, tree }: { node: IndicatorNode; tree: StrategyTree }) {
+export function IndicatorPlan({ node, tree, actual }: { node: IndicatorNode; tree: StrategyTree; actual?: ActualPoint | null }) {
   const { message } = App.useApp();
   const refresh = useRefreshPlan();
   const years = tree.years;
@@ -81,8 +81,9 @@ export function IndicatorPlan({ node, tree }: { node: IndicatorNode; tree: Strat
   const yearOptions = (none: string) => [{ value: 0, label: none }, ...years.map((y) => ({ value: y, label: String(y) }))];
 
   return (
-    <Panel title={L("خطة المستهدف على سنوات الخطة", "Target plan by year")} icon={<AimOutlined aria-hidden />}
+    <Panel className="sp-planpanel" title={L("مسار المستهدف وخطته على سنوات الخطة", "Target path and plan by year")} icon={<AimOutlined aria-hidden />}
       extra={<Tag color="cyan">{horizon(start, end, first, last)}</Tag>}>
+      <TargetChart baselineYear={tree.baselineYear} baseline={node.baseline} years={years} values={values} start={s} end={e} unit={node.unit} actual={actual} />
       <div className="t1-plan-years-head">
         <label>
           <span>{L("يبدأ المستهدف في", "Starts in")}</span>
@@ -149,9 +150,6 @@ export function IndicatorPlan({ node, tree }: { node: IndicatorNode; tree: Strat
         </div>
       )}
 
-      <TrendChart title={L("مسار المستهدف من خط الأساس", "Target path from the baseline")} unit={node.unit}
-        points={[{ year: tree.baselineYear, value: node.baseline, kind: "baseline" as const },
-          ...years.map((y) => ({ year: y, value: y < s ? null : values[y], kind: "target" as const }))]} />
       {node.eachCollege && (
         <div className="t1-summary mt">
           <b>{L("المستهدف الموحد لكل كلية:", "Per-college target:")}</b>{" "}

@@ -35,6 +35,7 @@ public static class DependencyInjection
         services.AddSingleton<IQrCodes, QrCodes>();
         services.AddSingleton<IFileStore, Files.LocalFileStore>();
         services.AddSingleton<ISpreadsheets, Files.ClosedXmlSpreadsheets>();
+        services.AddSingleton<IKpiWorkbook, Files.KpiWorkbook>();
         services.AddScoped<ICurrentUser, HttpCurrentUser>();
         var dp = services.AddDataProtection().SetApplicationName("Tier1");
         if (config["DataProtection:KeysPath"] is { Length: > 0 } keys) dp.PersistKeysToFileSystem(new DirectoryInfo(keys));

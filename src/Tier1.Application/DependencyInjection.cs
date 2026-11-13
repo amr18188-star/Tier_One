@@ -36,6 +36,7 @@ public static class DependencyInjection
 
         // Tier 1: الجهات والهيكل، والقاموس والمستهدفات والتعارضات، والصفحة الأولى.
         services.AddScoped<Organization.OrgUnitsService>();
+        services.AddScoped<Organization.UnitIndicatorsService>();
         services.AddScoped<Structure.StructureService>();
         services.AddScoped<Kpi.DictionaryService>();
         services.AddScoped<Kpi.TargetsService>();
@@ -49,6 +50,11 @@ public static class DependencyInjection
         services.AddScoped<Collection.FormsService>();
         services.AddScoped<Collection.DocumentsService>();
         services.AddScoped<Collection.ResultsService>();
+
+        // بطاقة أداء الجامعة وفئتها بمعادلات الإطار الشامل.
+        services.AddScoped<Scorecard.ScorecardService>();
+        services.AddScoped<Scorecard.ReviewService>();
+        services.AddScoped<Scorecard.ProgressService>();
         return services;
     }
 }

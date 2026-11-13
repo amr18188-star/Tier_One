@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Button, Input, Segmented, Select, Tag } from "antd";
 import { CalendarOutlined, CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined, WarningOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
@@ -6,11 +7,17 @@ import { api, query } from "../../api/client";
 import type { Conflict, ConflictList, ConflictSeverity, ConflictStatus } from "../../api/tier1";
 import { L } from "../../shared/i18n";
 import { conflictSeverity, conflictStatus } from "../../shared/labels";
-import { DataTable, FilterMeta, oneOf, PageHeader, Panel, StatTile } from "../../shared/ui";
+import { DataTable, FilterMeta, oneOf, PageHeader, Panel } from "../../shared/ui";
 import { ConflictDrawer } from "./ConflictDrawer";
 
 const STATUSES: ConflictStatus[] = ["Open", "Ready", "Deferred", "Resolved"];
 const SEVERITIES: ConflictSeverity[] = ["High", "Medium", "Low"];
+const PIPE: { status: ConflictStatus; tone: string; icon: ReactNode; ar: string; en: string }[] = [
+  { status: "Open", tone: "bad", icon: <ExclamationCircleOutlined aria-hidden />, ar: "مفتوح يحتاج تجهيزًا", en: "Open" },
+  { status: "Ready", tone: "review", icon: <CalendarOutlined aria-hidden />, ar: "جاهز للجنة", en: "Ready" },
+  { status: "Deferred", tone: "work", icon: <ClockCircleOutlined aria-hidden />, ar: "مؤجل", en: "Deferred" },
+  { status: "Resolved", tone: "ok", icon: <CheckCircleOutlined aria-hidden />, ar: "محسوم برقم المحضر", en: "Resolved" },
+];
 
 /** سجل التعارضات: الأخطر والمفتوح أولًا، والمرشحات في الرابط، والنقر يفتح التفاصيل في درج دون مغادرة القائمة. */
 export default function ConflictsPage() {
@@ -38,14 +45,31 @@ export default function ConflictsPage() {
       <PageHeader title={L("سجل التعارضات", "Conflict register")}
         subtitle={L("تعارضات الملفين المرجعيين تحسمها اللجنة العليا لـ Tier 1 برقم المحضر. القرار لا يغير الأرقام تلقائيًا.",
           "Conflicts between the two reference files are decided by the Tier 1 higher committee. A decision never changes numbers automatically.")}
+        stats={all.data ? [
+          ...SEVERITIES.map((s) => ({
+            label: L(`مفتوح — ${conflictSeverity[s].text}`, `Open — ${s}`),
+            value: all.data!.items.filter((c) => c.severity === s && c.status !== "Resolved").length,
+            tone: s === "High" ? "bad" as const : s === "Medium" ? "warn" as const : undefined,
+          })),
+          { label: L("نسبة المحسوم", "Resolved"), value: <span className="ltr">{all.data.items.length ? Math.round((100 * count("Resolved")) / all.data.items.length) : 0}%</span>, tone: "ok" },
+        ] : undefined}
         extra={<Link to="/conflicts/agenda"><Button icon={<CalendarOutlined />}>{L("جدول أعمال اللجنة", "Committee agenda")}</Button></Link>} />
 
-      <div className="lcp-stats">
-        <StatTile icon={<ExclamationCircleOutlined />} tone="rose" label={L("مفتوح يحتاج تجهيزًا", "Open, needs preparation")} value={count("Open")} to="/conflicts?status=Open" loading={all.isLoading} />
-        <StatTile icon={<CalendarOutlined />} label={L("جاهز للجنة", "Ready for the committee")} value={count("Ready")} to="/conflicts?status=Ready" loading={all.isLoading} />
-        <StatTile icon={<ClockCircleOutlined />} tone="gold" label={L("مؤجل", "Deferred")} value={count("Deferred")} to="/conflicts?status=Deferred" loading={all.isLoading} />
-        <StatTile icon={<CheckCircleOutlined />} tone="green" label={L("محسوم", "Resolved")} value={count("Resolved")} to="/conflicts?status=Resolved" loading={all.isLoading} />
-      </div>
+      {/* مسار التعارض: يجهز، ثم يعرض على اللجنة، فيحسم أو يؤجل. النقر يعرض ما في المرحلة. */}
+      <nav className="f-pipe cf-pipe" aria-label={L("التعارضات بحسب مرحلتها", "Conflicts by stage")}>
+        {PIPE.map((p, k) => {
+          const n = count(p.status);
+          const on = status === p.status;
+          return (
+            <button key={p.status} type="button" className={`f-pipe-step tone-${p.tone}${on ? " on" : ""}`} aria-pressed={on} onClick={() => set("status", on ? undefined : p.status)}>
+              <span className="f-pipe-n ltr">{all.isLoading ? "…" : n}</span>
+              <span className="f-pipe-label">{p.icon}{L(p.ar, p.en)}</span>
+              <span className="f-pipe-bar"><i style={{ width: `${(100 * n) / (all.data?.items.length || 1)}%` }} /></span>
+              {k < PIPE.length - 1 && <span className="f-pipe-arrow" aria-hidden />}
+            </button>
+          );
+        })}
+      </nav>
 
       <Panel>
         <div className="lcp-filters">

@@ -435,6 +435,10 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("period_label");
 
+                    b.Property<int?>("Quarter")
+                        .HasColumnType("integer")
+                        .HasColumnName("quarter");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer")
                         .HasColumnName("status");
@@ -489,6 +493,10 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                     b.Property<int>("Level")
                         .HasColumnType("integer")
                         .HasColumnName("level");
+
+                    b.PrimitiveCollection<List<Guid>>("UnitIds")
+                        .HasColumnType("uuid[]")
+                        .HasColumnName("unit_ids");
 
                     b.Property<Guid>("VersionId")
                         .HasColumnType("uuid")
@@ -788,6 +796,93 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_values_kind", "(kind = 1) = (value IS NOT NULL) AND (kind = 1 OR reason IS NOT NULL)");
 
                             t.HasCheckConstraint("ck_values_ratio", "denominator IS NULL OR denominator > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Tier1.Domain.Collection.UniversityValue", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal?>("ComputedValue")
+                        .HasColumnType("numeric")
+                        .HasColumnName("computed_value");
+
+                    b.Property<Guid>("CycleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cycle_id");
+
+                    b.Property<decimal?>("Denominator")
+                        .HasColumnType("numeric")
+                        .HasColumnName("denominator");
+
+                    b.Property<int>("Expected")
+                        .HasColumnType("integer")
+                        .HasColumnName("expected");
+
+                    b.Property<Guid>("IndicatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("indicator_id");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("note");
+
+                    b.Property<decimal?>("Numerator")
+                        .HasColumnType("numeric")
+                        .HasColumnName("numerator");
+
+                    b.Property<int>("Quarter")
+                        .HasColumnType("integer")
+                        .HasColumnName("quarter");
+
+                    b.Property<int>("Reported")
+                        .HasColumnType("integer")
+                        .HasColumnName("reported");
+
+                    b.Property<DateTimeOffset>("TransferredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("transferred_at");
+
+                    b.Property<Guid>("TransferredBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("transferred_by");
+
+                    b.Property<string>("TransferredByName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("transferred_by_name");
+
+                    b.Property<decimal?>("Value")
+                        .HasColumnType("numeric")
+                        .HasColumnName("value");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer")
+                        .HasColumnName("year");
+
+                    b.HasKey("Id")
+                        .HasName("pk_university_values");
+
+                    b.HasIndex("CycleId")
+                        .HasDatabaseName("ix_university_values_cycle_id");
+
+                    b.HasIndex("IndicatorId", "Year", "Quarter")
+                        .IsUnique()
+                        .HasDatabaseName("ix_university_values_indicator_id_year_quarter");
+
+                    b.ToTable("university_values", "dc", t =>
+                        {
+                            t.HasCheckConstraint("ck_university_values_quarter", "quarter BETWEEN 1 AND 4");
                         });
                 });
 
@@ -1125,6 +1220,11 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.PrimitiveCollection<List<int>>("Perspectives")
+                        .IsRequired()
+                        .HasColumnType("integer[]")
+                        .HasColumnName("perspectives");
+
                     b.Property<int?>("PlanEndYear")
                         .HasColumnType("integer")
                         .HasColumnName("plan_end_year");
@@ -1137,6 +1237,26 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                     b.Property<int?>("PlanStartYear")
                         .HasColumnType("integer")
                         .HasColumnName("plan_start_year");
+
+                    b.Property<string>("PssRationale")
+                        .HasColumnType("text")
+                        .HasColumnName("pss_rationale");
+
+                    b.Property<int?>("SdgInduced")
+                        .HasColumnType("integer")
+                        .HasColumnName("sdg_induced");
+
+                    b.Property<int?>("SdgPrimary")
+                        .HasColumnType("integer")
+                        .HasColumnName("sdg_primary");
+
+                    b.Property<string>("SdgRationale")
+                        .HasColumnType("text")
+                        .HasColumnName("sdg_rationale");
+
+                    b.Property<int?>("SdgSecondary")
+                        .HasColumnType("integer")
+                        .HasColumnName("sdg_secondary");
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer")
@@ -1276,6 +1396,10 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<int>("Accumulation")
+                        .HasColumnType("integer")
+                        .HasColumnName("accumulation");
+
                     b.Property<int>("Aggregation")
                         .HasColumnType("integer")
                         .HasColumnName("aggregation");
@@ -1348,6 +1472,10 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")
                         .HasColumnName("exclusions");
+
+                    b.Property<string>("Formula")
+                        .HasColumnType("text")
+                        .HasColumnName("formula");
 
                     b.Property<int>("Frequency")
                         .HasColumnType("integer")
@@ -2192,6 +2320,10 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<bool>("CustomIndicators")
+                        .HasColumnType("boolean")
+                        .HasColumnName("custom_indicators");
+
                     b.Property<DateOnly?>("EstablishedOn")
                         .HasColumnType("date")
                         .HasColumnName("established_on");
@@ -2234,6 +2366,10 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("xid")
                         .HasColumnName("xmin");
+
+                    b.Property<bool>("ViewsWholeUniversity")
+                        .HasColumnType("boolean")
+                        .HasColumnName("views_whole_university");
 
                     b.HasKey("Id")
                         .HasName("pk_units");
@@ -2306,6 +2442,25 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_unit_changes_unit_id_effective_on");
 
                     b.ToTable("unit_changes", "org");
+                });
+
+            modelBuilder.Entity("Tier1.Domain.Organization.UnitIndicator", b =>
+                {
+                    b.Property<Guid>("UnitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("unit_id");
+
+                    b.Property<Guid>("IndicatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("indicator_id");
+
+                    b.HasKey("UnitId", "IndicatorId")
+                        .HasName("pk_unit_indicators");
+
+                    b.HasIndex("IndicatorId")
+                        .HasDatabaseName("ix_unit_indicators_indicator_id");
+
+                    b.ToTable("unit_indicators", "org");
                 });
 
             modelBuilder.Entity("Tier1.Domain.Structure.IndustryPartner", b =>
@@ -2698,6 +2853,23 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_values_submissions_submission_id");
                 });
 
+            modelBuilder.Entity("Tier1.Domain.Collection.UniversityValue", b =>
+                {
+                    b.HasOne("Tier1.Domain.Collection.CollectionCycle", null)
+                        .WithMany()
+                        .HasForeignKey("CycleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_university_values_cycles_cycle_id");
+
+                    b.HasOne("Tier1.Domain.Kpi.Indicator", null)
+                        .WithMany()
+                        .HasForeignKey("IndicatorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_university_values_indicators_indicator_id");
+                });
+
             modelBuilder.Entity("Tier1.Domain.Identity.UserSession", b =>
                 {
                     b.HasOne("Tier1.Domain.Identity.AppUser", null)
@@ -2809,6 +2981,23 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_unit_changes_units_unit_id");
+                });
+
+            modelBuilder.Entity("Tier1.Domain.Organization.UnitIndicator", b =>
+                {
+                    b.HasOne("Tier1.Domain.Kpi.Indicator", null)
+                        .WithMany()
+                        .HasForeignKey("IndicatorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_unit_indicators_indicators_indicator_id");
+
+                    b.HasOne("Tier1.Domain.Organization.OrgUnit", null)
+                        .WithMany()
+                        .HasForeignKey("UnitId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_unit_indicators_units_unit_id");
                 });
 
             modelBuilder.Entity("Tier1.Domain.Structure.IndustryPartner", b =>

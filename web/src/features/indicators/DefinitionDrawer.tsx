@@ -8,7 +8,7 @@ import { L, useLang } from "../../shared/i18n";
 import { aggregation, direction, frequency, level, options } from "../../shared/labels";
 
 type FormValues = Pick<Version, "nameAr" | "nameEn" | "definition" | "purpose" | "exclusions" | "numerator" | "denominator" | "unit" | "direction"
-  | "frequency" | "level" | "aggregation" | "aggregationNote" | "dataSource" | "ownerUnitId" | "evidenceRequired"> & { changeReason?: string };
+  | "frequency" | "level" | "aggregation" | "aggregationNote" | "dataSource" | "ownerUnitId" | "evidenceRequired" | "formula" | "accumulation"> & { changeReason?: string };
 
 /** أثر كل قاعدة تجميع بجملة واحدة، تحت اختيارها مباشرة. */
 const AGG_HELP: Record<Version["aggregation"], string> = {
@@ -81,7 +81,10 @@ export function DefinitionDrawer({ detail, onClose }: { detail: IndicatorDetail;
           extra={L("ما الذي يقيسه بالضبط، بلغة يفهمها مدخل البيانات دون شرح إضافي.", "Exactly what it measures, clear enough for data entry without extra explanation.")}>
           <Input.TextArea rows={3} maxLength={2000} showCount />
         </Form.Item>
-        <Form.Item name="purpose" label={L("الغرض", "Purpose")}><Input.TextArea rows={2} maxLength={1000} /></Form.Item>
+        <Form.Item name="formula" label={L("معادلة التقييم", "Evaluation formula")} extra={L("متى يقاس المؤشر وكيف يحسب، كما في الإطار الشامل.", "When and how it is measured.")}>
+            <Input.TextArea rows={2} maxLength={2000} />
+          </Form.Item>
+          <Form.Item name="purpose" label={L("الغرض", "Purpose")}><Input.TextArea rows={2} maxLength={1000} /></Form.Item>
         <Form.Item name="exclusions" label={L("الاستبعادات", "Exclusions")} extra={L("ما لا يدخل في الحساب، مثل البرامج المجمدة.", "What is not counted.")}>
           <Input.TextArea rows={2} maxLength={1000} />
         </Form.Item>
@@ -95,6 +98,10 @@ export function DefinitionDrawer({ detail, onClose }: { detail: IndicatorDetail;
             <Select options={options(direction)} />
           </Form.Item>
           <Form.Item name="frequency" label={L("الدورية", "Frequency")}><Select options={options(frequency)} /></Form.Item>
+          <Form.Item name="accumulation" label={L("نوع المؤشر حسب طريقة الحساب", "Indicator type")}
+            extra={L("التراكمي: قيمة السنة آخر ربع فيها. اللحظي: متوسط أرباعها.", "Cumulative: last quarter. Snapshot: average of quarters.")}>
+            <Select options={[{ value: "Snapshot", label: L("غير تراكمي (لحظي)", "Snapshot") }, { value: "Cumulative", label: L("تراكمي", "Cumulative") }]} />
+          </Form.Item>
           <Form.Item name="level" label={L("مستوى جمع البيانات", "Collection level")} extra={L("أدنى جهة تدخل البيانات.", "The lowest unit that enters the data.")}>
             <Select options={options(level)} />
           </Form.Item>

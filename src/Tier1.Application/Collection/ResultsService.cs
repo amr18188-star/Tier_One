@@ -38,6 +38,16 @@ public sealed record UnitResult(
 
 public sealed record TrendPoint(Guid CycleId, string Label, decimal? Actual, decimal? Target);
 
+/// <summary>قيمة جهة في مؤشر ضمن دورة: ببسطها ومقامها، وكم جهة تحتها أبلغت، وحالة نموذجها، ومستهدفها.</summary>
+public sealed record UnitBreakdown(
+    Guid UnitId, string UnitName, OrgUnitKind Kind, decimal? Value, decimal? Numerator, decimal? Denominator, int Reported, int Expected, string? Note,
+    SubmissionStatus? FormStatus, decimal? Target, Kpi.TargetSource TargetSource);
+
+/// <summary>مؤشر في دورة: قيمة الجامعة المحسوبة من الجهات ومستهدفها، وقيمة كل جهة.</summary>
+public sealed record IndicatorBreakdown(
+    Guid IndicatorId, string Code, IndicatorVersion Version, string StandardCode, CollectionLevel Level, Aggregate University, decimal? UniversityTarget,
+    IReadOnlyList<UnitBreakdown> Units);
+
 public sealed record IndicatorResultsDto(IndicatorResult University, IReadOnlyList<UnitResult> Colleges, IReadOnlyList<TrendPoint> Trend);
 
 /// <summary>
@@ -167,6 +177,57 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
         return (bytes, $"results-{cycle.PeriodLabel}.xlsx");
     }
 
+    /// <summary>
+    /// تفصيل كل مؤشر في دورة: قيمة كل كلية (أو الجهة المركزية) من قيمها المعتمدة ببسطها ومقامها وحالة نموذجها ومستهدفها،
+    /// وقيمة الجامعة المحسوبة منها بقاعدة التجميع ومستهدف الجامعة لسنة الدورة. لمراجعة مسئول ملف Tier 1 قبل نقل القيمة.
+    /// </summary>
+    public async Task<IReadOnlyList<IndicatorBreakdown>> BreakdownAsync(CollectionCycle cycle, CancellationToken ct)
+    {
+        var snap = await SnapshotAsync(cycle, ct);
+        var formOf = snap.Submissions.ToDictionary(s => s.UnitId, s => s.Status);
+        var colleges = snap.Units.Values.Where(u => u.IsCollegeLevel && u.Active).OrderBy(u => u.SortOrder).ThenBy(u => u.NameAr).ToList();
+        var list = new List<IndicatorBreakdown>();
+        foreach (var i in snap.Indicators)
+        {
+            var uni = Actual(snap, i, snap.Root);
+            var uniTarget = Kpi.TargetLookup.University([.. snap.Targets[i.Ci.IndicatorId]], snap.Root.Id, cycle.TargetYear, snap.PlanStart.GetValueOrDefault(i.Ci.IndicatorId));
+            IEnumerable<OrgUnit> contributors = i.Ci.Level == CollectionLevel.University
+                ? [snap.Units[i.Ci.CentralUnitId ?? snap.Root.Id]]
+                // الكليات المكلفة به (هي أو أقسامها) في هذه الدورة فقط.
+                : colleges.Where(c => snap.Submissions.Any(s => snap.Units[s.UnitId] is var su && su.Path.StartsWith(c.Path, StringComparison.Ordinal)
+                                                                && (su.Kind == OrgUnitKind.Department || su.IsCollegeLevel) && FormsService.Applies(i.Ci, su)));
+            var units = contributors.Select(u =>
+            {
+                var a = u.Kind == OrgUnitKind.University ? uni : Actual(snap, i, u);
+                var t = TargetFor(snap, i, u);
+                return new UnitBreakdown(u.Id, u.NameAr, u.Kind, a.Value, a.Numerator, a.Denominator, a.Reported, a.Expected, a.Note,
+                    formOf.TryGetValue(u.Id, out var st) ? st : null, t.Value, t.Source);
+            }).ToList();
+            list.Add(new IndicatorBreakdown(i.Ci.IndicatorId, i.Ci.Code, i.Version, i.Standard.Code, i.Ci.Level, uni, uniTarget, units));
+        }
+        return list;
+    }
+
+    /// <summary>
+    /// قيم جهة (كلية) في كل ربع من الدورات الربع سنوية الرسمية: (السنة، الربع) ← (المؤشر ← القيمة ببسطها ومقامها)،
+    /// للمؤشرات التي تجمع منها (لا مؤشرات الجامعة المركزية).
+    /// </summary>
+    public async Task<Dictionary<(int Year, int Quarter), Dictionary<Guid, Aggregate>>> UnitQuartersAsync(Guid unitId, CancellationToken ct)
+    {
+        var cycles = await db.Cycles.AsNoTracking()
+            .Where(c => c.Status != CycleStatus.Draft && !c.Trial && c.Quarter != null)
+            .OrderBy(c => c.CreatedAt).ToListAsync(ct);
+        var result = new Dictionary<(int, int), Dictionary<Guid, Aggregate>>();
+        foreach (var c in cycles)
+        {
+            var snap = await SnapshotAsync(c, ct);
+            if (!snap.Units.TryGetValue(unitId, out var unit)) continue;
+            result[(c.TargetYear, c.Quarter!.Value)] = snap.Indicators.Where(i => i.Ci.Level != CollectionLevel.University)
+                .ToDictionary(i => i.Ci.IndicatorId, i => Actual(snap, i, unit));
+        }
+        return result;
+    }
+
     public static string PerformanceText(Performance p) => p switch
     {
         Performance.Achieved => "محقق",
@@ -264,7 +325,8 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
         var level = i.Ci.Level == CollectionLevel.Department ? OrgUnitKind.Department : OrgUnitKind.College;
         var contributors = s.Units.Values
             .Where(u => formUnits.Contains(u.Id) && u.Path.StartsWith(unit.Path, StringComparison.Ordinal)
-                        && (level == OrgUnitKind.Department ? u.Kind == OrgUnitKind.Department : u.IsCollegeLevel))
+                        && (level == OrgUnitKind.Department ? u.Kind == OrgUnitKind.Department : u.IsCollegeLevel)
+                        && FormsService.Applies(i.Ci, u))
             .Select(u => u.Id).ToList();
         var values = Values(s, i, contributors);
         // قيمة جهة واحدة (كلية لمؤشر على مستوى الكلية) تؤخذ كما هي.

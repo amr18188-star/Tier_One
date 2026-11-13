@@ -65,6 +65,13 @@ public sealed class Seeder(Tier1DbContext db, IPasswordHasher hasher, ISecretPro
         ("rep.acc@" + DemoDomain, "ممثل Tier 1 بقسم المحاسبة", "Accounting representative", "DREP", ["COM-ACC"]),
         ("rep.bus@" + DemoDomain, "ممثل Tier 1 بقسم إدارة الأعمال", "Business administration representative", "DREP", ["COM-BUS"]),
         ("entry.central@" + DemoDomain, "مدخل بيانات الجهات المركزية", "Central units data entry", "DE", ["QAC", "STU", "DIG", "INTL"]),
+        // مؤشرات الإطار التي تقاس على مستوى الجامعة كلها (المالية والحوكمة والتحول الرقمي...) تدخل في نموذج الجامعة نفسها.
+        ("tier1@" + DemoDomain, "مسئول ملف Tier 1", "Tier 1 file officer", "T1O", []),
+        ("entry.uni@" + DemoDomain, "مدخل بيانات الجامعة (المؤشرات المركزية)", "University-level data entry", "DE", ["CU"]),
+        // على الهيكل الرسمي: وحدة التخطيط الاستراتيجي (QAC ← SPU) ومركز الاتصالات وتكنولوجيا المعلومات (DIG ← ICT)، يطلعان على الجامعة كاملة.
+        // الوحدة تعد الخطة الاستراتيجية، فحسابها بدور مدير متابعة الخطة (يرفع وثيقة الخطة ويدير شجرتها).
+        ("spu@" + DemoDomain, "مسئول وحدة التخطيط الاستراتيجي", "Strategic planning unit", "PM", ["QAC"]),
+        ("ict@" + DemoDomain, "مسئول مركز الاتصالات وتكنولوجيا المعلومات", "ICT centre", "DE", ["DIG"]),
     ];
 
     public async Task SeedAsync(CancellationToken ct)
@@ -74,8 +81,16 @@ public sealed class Seeder(Tier1DbContext db, IPasswordHasher hasher, ISecretPro
         await ReferenceSeed.ApplyAsync(db, now, log, ct);
         if (config.GetValue<bool>("Seed:Demo"))
         {
-            await SeedDemoCollegesAsync(now, ct);
-            await SeedDemoUsersAsync(now, ct);
+            // النسخة التجريبية تعمل على هيكل الجامعة الرسمي (Seed:Structure)؛ قاعدة التطوير والاختبارات على الكليات التجريبية الثلاث.
+            var structure = await UniversityStructure.LoadedAsync(db, ct);
+            if (!structure && config.GetValue<bool>("Seed:Structure"))
+            {
+                await UniversityStructure.ApplyAsync(db, now, ct);
+                structure = true;
+                log.LogInformation("Loaded the official university structure.");
+            }
+            if (!structure) await SeedDemoCollegesAsync(now, ct);
+            await SeedDemoUsersAsync(structure, now, ct);
         }
     }
 
@@ -112,6 +127,30 @@ public sealed class Seeder(Tier1DbContext db, IPasswordHasher hasher, ISecretPro
         }
         await db.SaveChangesAsync(ct);
         await SeedNewFeatureGrantsAsync(now, ct);
+        await ScopeUnitDirectoryOnceAsync(now, ct);
+    }
+
+    /// <summary>
+    /// قرار الجامعة (نوفمبر 2026): مستخدم الكلية أو الإدارة لا يرى إلا جهته، ومنها دليل الجهات نفسه.
+    /// تحول منح «الجهات» في أدوار الكتالوج المقيدة بجهة من «الكل» إلى «نطاقه» مرة واحدة؛ ما يغيره المدير بعدها من المصفوفة يبقى.
+    /// </summary>
+    private async Task ScopeUnitDirectoryOnceAsync(DateTimeOffset now, CancellationToken ct)
+    {
+        const string key = "catalog-fix:org.units-unit-scope";
+        if (await db.Settings.AnyAsync(s => s.Key == key, ct)) return;
+        string[] unitRoles = ["VP", "DEAN", "CTC", "DREP", "DE", "VIEW"];
+        var grants = await (from g in db.RoleGrants
+                            join r in db.Roles on g.RoleId equals r.Id
+                            where r.IsSystem && unitRoles.Contains(r.Code) && g.Feature == Features.Units && g.Scope == AccessScope.All
+                            select g).ToListAsync(ct);
+        foreach (var g in grants) g.Scope = AccessScope.Unit;
+        db.Settings.Add(new SystemSetting { Key = key, Value = "1", UpdatedAt = now });
+        await db.SaveChangesAsync(ct);
+        if (grants.Count > 0)
+        {
+            await db.AccessStates.Where(s => s.Id == 1).ExecuteUpdateAsync(s => s.SetProperty(x => x.Version, x => x.Version + 1), ct);
+            log.LogInformation("Unit-bound roles now see only their own units in the unit directory ({Count} grants).", grants.Count);
+        }
     }
 
     /// <summary>
@@ -173,16 +212,19 @@ public sealed class Seeder(Tier1DbContext db, IPasswordHasher hasher, ISecretPro
         await db.SaveChangesAsync(ct);
     }
 
-    private async Task SeedDemoUsersAsync(DateTimeOffset now, CancellationToken ct)
+    private async Task SeedDemoUsersAsync(bool structure, DateTimeOffset now, CancellationToken ct)
     {
         var password = config["Seed:DemoPassword"];
         if (string.IsNullOrWhiteSpace(password) || password.Length < 12)
             throw new InvalidOperationException("Seed:DemoPassword (>= 12 chars) is required when Seed:Demo is true.");
         var totp = config["Seed:DemoTotpSecret"];
         var roles = await db.Roles.ToDictionaryAsync(r => r.Code, ct);
-        foreach (var (email, nameAr, nameEn, roleCode, scope) in DemoUsers)
+        foreach (var (email, demoName, nameEn, roleCode, demoScope) in DemoUsers)
         {
             if (await db.Users.AnyAsync(u => u.Email == email, ct)) continue;
+            // على الهيكل الرسمي: نطاق الحساب واسمه بالجهة الحقيقية المقابلة للجهة التجريبية.
+            var scope = structure ? demoScope.Select(UniversityStructure.MapDemoCode).ToArray() : demoScope;
+            var nameAr = structure ? UniversityStructure.MapDemoName(demoName) : demoName;
             var user = new AppUser
             {
                 Email = email,

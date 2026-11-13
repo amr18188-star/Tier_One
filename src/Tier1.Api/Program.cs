@@ -36,6 +36,25 @@ if (args.Contains("--mongo-setup"))
         app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("MongoSetup"), CancellationToken.None);
     return;
 }
+// يمسح بيانات المؤشرات كلها (التعريفات والمستهدفات والتعارضات والمبادرات والدورات والنماذج والقيم وأدلتها) ويحمل الإطار الشامل.
+// تبقى الحسابات والأدوار والجهات والإعدادات وهياكل الكليات والسجلات. لا يعمل دون --confirm.
+// قيد السجل المختوم يبقى في صندوق الصادر بالقاعدة ويكتب إلى السجل عند تشغيل الخادم التالي.
+if (args.Contains("--reset-kpi"))
+{
+    if (!args.Contains("--confirm")) throw new ArgumentException("--reset-kpi deletes all indicator data. Add --confirm to proceed.");
+    await DatabaseMigrator.MigrateAsync(app.Services, app.Configuration);
+    await Console.Out.WriteLineAsync(await KpiFramework.ResetAsync(app.Services));
+    return;
+}
+// يحمل هيكل الجامعة الرسمي (Seed/university-structure.json) ويحل محل الجهات التجريبية: تنقل نطاقات حساباتها ثم تحذف.
+// لا يعمل دون --confirm.
+if (args.Contains("--load-structure"))
+{
+    if (!args.Contains("--confirm")) throw new ArgumentException("--load-structure replaces the demo units. Add --confirm to proceed.");
+    await DatabaseMigrator.MigrateAsync(app.Services, app.Configuration);
+    await Console.Out.WriteLineAsync(await UniversityStructure.LoadAsync(app.Services));
+    return;
+}
 var createSa = Array.IndexOf(args, "--create-superadmin");
 if (createSa >= 0)
 {
@@ -65,10 +84,10 @@ app.MapGet("/health/ready", async (NpgsqlDataSource pg, CancellationToken ct) =>
     await DatabaseMigrator.CanConnectAsync(pg, ct) ? Results.Ok(new { status = "ready" }) : Results.Json(new { status = "unavailable" }, statusCode: 503)).AllowAnonymous();
 
 app.MapFallback("/api/{**rest}", () => Results.NotFound()).AllowAnonymous();
-app.MapFallbackToFile("index.html", new StaticFileOptions
-{
-    OnPrepareResponse = c => c.Context.Response.Headers.CacheControl = "no-cache",
-}).AllowAnonymous();
+var spa = new StaticFileOptions { OnPrepareResponse = c => c.Context.Response.Headers.CacheControl = "no-cache" };
+app.MapFallbackToFile("index.html", spa).AllowAnonymous();
+// أكواد المؤشرات فيها نقطة (1.01) فيظنها المسار العام ملفًا؛ صفحة المؤشر تعاد إلى الواجهة صراحة.
+app.MapFallbackToFile("indicators/{code}", "index.html", spa).AllowAnonymous();
 
 await app.RunAsync();
 

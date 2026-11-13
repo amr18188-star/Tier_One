@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Alert, App, Button, DatePicker, Drawer, Form, Input, InputNumber, Modal, Space, Switch, Tag } from "antd";
+import { Alert, App, Button, DatePicker, Drawer, Form, Input, Modal, Select, Space, Switch, Tag } from "antd";
 import { CalendarOutlined, EditOutlined, LockOutlined, PlayCircleOutlined, PlusOutlined, UnorderedListOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs, { type Dayjs } from "dayjs";
 import { Link } from "react-router-dom";
 import { api } from "../../api/client";
 import type { Cycle, OpenPreview, SaveCycle, SubmissionStatus } from "../../api/collection";
+import type { PlanQuarter } from "../../api/scorecard";
 import { SegmentBar } from "../../shared/charts";
 import { DecisionModal } from "../../shared/DecisionModal";
 import { errorText, formatDate } from "../../shared/format";
@@ -38,6 +39,11 @@ export default function CyclesPage() {
       <PageHeader title={L("دورات جمع البيانات", "Collection cycles")}
         subtitle={L("افتح دورة لفترة محددة فتصل النماذج للجهات، وتابع الإدخال والاعتماد حتى الإغلاق وإصدار تقرير الجامعة.",
           "Open a cycle for a period, follow entry and approval, then close it and issue the university report.")}
+        stats={cycles.data ? [
+          { label: L("دورات", "Cycles"), value: cycles.data.length },
+          { label: L("مفتوحة الآن", "Open now"), value: cycles.data.filter((c) => c.status === "Open").length, tone: "ok" },
+          { label: L("نماذج متأخرة", "Overdue forms"), value: cycles.data.reduce((n, c) => n + c.overdue, 0), tone: cycles.data.some((c) => c.overdue > 0) ? "bad" : undefined },
+        ] : undefined}
         extra={canAdd && <Button type="primary" icon={<PlusOutlined />} onClick={() => setEditing("new")}>{L("دورة جديدة", "New cycle")}</Button>} />
 
       <Panel query={cycles}>
@@ -48,7 +54,8 @@ export default function CyclesPage() {
         ) : (
           <div className="cy-list">
             {cycles.data!.map((c) => (
-              <article key={c.id} className="cy-card">
+              <article key={c.id} className={`cy-card st-${c.status}`}>
+                {c.status === "Open" && <CycleClock cycle={c} />}
                 <h3>
                   <CalendarOutlined aria-hidden /> {c.name}
                   <Tag color={cycleStatus[c.status].color}>{cycleStatus[c.status].text}</Tag>
@@ -94,17 +101,51 @@ export default function CyclesPage() {
   );
 }
 
-interface CycleFields { name: string; periodLabel: string; targetYear: number; dates: [Dayjs, Dayjs]; trial: boolean }
+/** الدورة المفتوحة: كم انقضى من مدتها، وكم اعتمد من نماذجها، في سطر واحد يقارن الوقت بالإنجاز. */
+function CycleClock({ cycle: c }: { cycle: Cycle }) {
+  const start = dayjs(c.opensOn), end = dayjs(c.dueOn), today = dayjs();
+  const total = Math.max(1, end.diff(start, "day"));
+  const passed = Math.min(total, Math.max(0, today.diff(start, "day")));
+  const left = end.diff(today, "day");
+  const time = Math.round((100 * passed) / total);
+  const done = c.forms ? Math.round((100 * (c.formsByStatus.Approved ?? 0)) / c.forms) : 0;
+  return (
+    <div className="cy-clock">
+      <div>
+        <span>{L("انقضى من مدة الدورة", "Time elapsed")} <b className="ltr">{time}%</b> · {left >= 0 ? L(`باقٍ ${left} يومًا`, `${left} days left`) : L(`تجاوزت الموعد بـ${-left} يومًا`, `${-left} days late`)}</span>
+        <span className="cy-bar time"><i style={{ width: `${time}%` }} /></span>
+      </div>
+      <div>
+        <span>{L("نماذج معتمدة نهائيًا", "Forms approved")} <b className="ltr">{done}%</b></span>
+        <span className={`cy-bar ${done >= time ? "ahead" : "behind"}`}><i style={{ width: `${done}%` }} /></span>
+      </div>
+    </div>
+  );
+}
 
+interface CycleFields { slot: number; name: string; dates: [Dayjs, Dayjs]; trial: boolean }
+
+/**
+ * الدورة لربع من أرباع الخطة العشرين: يختار الربع من تقويم الخطة (يضبط بدايته المدير من الإعدادات)، فيقترح الاسم والفترة والمواعيد:
+ * يفتح الإدخال بعد انتهاء الربع ويستمر شهرًا. كل ربع له دورة رسمية واحدة؛ البروفة لا تدخل بطاقة الأداء.
+ */
 function CycleDrawer({ cycle, onClose }: { cycle: Cycle | null; onClose: () => void }) {
   const [form] = Form.useForm<CycleFields>();
   const qc = useQueryClient();
   const { message } = App.useApp();
-  const year = new Date().getFullYear();
+  const calendar = useQuery({ queryKey: ["plan", "calendar"], queryFn: () => api.get<PlanQuarter[]>("/api/plan/calendar") });
+  const cycles = useQuery({ queryKey: ["cycles"], queryFn: () => api.get<Cycle[]>("/api/cycles") });
+  const quarters = calendar.data ?? [];
+  const taken = new Set((cycles.data ?? []).filter((x) => x.id !== cycle?.id && !x.trial && x.quarter).map((x) => `${x.targetYear}-${x.quarter}`));
+  const suggest = (q: PlanQuarter) => {
+    const opens = dayjs(q.end).add(1, "day");
+    return { name: L(`دورة ${q.label}`, `Cycle Y${q.yearIndex} Q${q.quarter}`), dates: [opens, opens.add(30, "day")] as [Dayjs, Dayjs] };
+  };
   const save = useMutation({
     mutationFn: (v: CycleFields) => {
+      const q = quarters.find((x) => x.index === v.slot)!;
       const body: SaveCycle = {
-        name: v.name, periodLabel: v.periodLabel, targetYear: v.targetYear, trial: v.trial,
+        name: v.name, periodLabel: null, targetYear: q.year, quarter: q.quarter, trial: v.trial,
         opensOn: v.dates[0].format("YYYY-MM-DD"), dueOn: v.dates[1].format("YYYY-MM-DD"), version: cycle?.version ?? null,
       };
       return cycle ? api.put<Cycle>(`/api/cycles/${cycle.id}`, body) : api.post<Cycle>("/api/cycles", body);
@@ -116,38 +157,54 @@ function CycleDrawer({ cycle, onClose }: { cycle: Cycle | null; onClose: () => v
     },
   });
   const open = cycle?.status === "Open";
+  // الافتراضي للدورة الجديدة: أول ربع انتهى ولا دورة رسمية له، وإلا الربع الحالي.
+  const today = dayjs().format("YYYY-MM-DD");
+  const firstFree = quarters.find((q) => q.end < today && !taken.has(`${q.year}-${q.quarter}`)) ?? quarters.find((q) => q.current) ?? quarters[0];
+  const current = cycle?.quarter ? quarters.find((q) => q.year === cycle.targetYear && q.quarter === cycle.quarter) : undefined;
+
   return (
-    <Drawer open width={480} title={cycle ? L("تعديل الدورة", "Edit cycle") : L("دورة جديدة", "New cycle")} onClose={onClose} destroyOnHidden
-      extra={<Space><Button onClick={onClose}>{L("إلغاء", "Cancel")}</Button><Button type="primary" loading={save.isPending} onClick={() => form.submit()}>{L("حفظ", "Save")}</Button></Space>}>
+    <Drawer open width={520} title={cycle ? L("تعديل الدورة", "Edit cycle") : L("دورة ربعية جديدة", "New quarterly cycle")} onClose={onClose} destroyOnHidden
+      extra={<Space><Button onClick={onClose}>{L("إلغاء", "Cancel")}</Button><Button type="primary" loading={save.isPending} disabled={quarters.length === 0} onClick={() => form.submit()}>{L("حفظ", "Save")}</Button></Space>}>
       {save.error && <Alert type="error" showIcon message={errorText(save.error)} className="mb" />}
-      {open && <Alert type="info" showIcon className="mb" message={L("الدورة مفتوحة: يمكن تمديد الموعد النهائي فيتحدث لكل نموذج لم يغير موعده.", "The cycle is open: extending the deadline updates the forms.")} />}
-      <Form form={form} layout="vertical" onFinish={(v) => save.mutate(v)} requiredMark="optional"
-        initialValues={cycle
-          ? { name: cycle.name, periodLabel: cycle.periodLabel, targetYear: cycle.targetYear, trial: cycle.trial, dates: [dayjs(cycle.opensOn), dayjs(cycle.dueOn)] }
-          : { name: L(`دورة العام الجامعي ${year - 1}/${year}`, `Academic year ${year - 1}/${year}`), periodLabel: `${year - 1}-${year}`, targetYear: Math.max(2027, year), trial: false, dates: [dayjs(), dayjs().add(30, "day")] }}>
-        <Form.Item name="name" label={L("اسم الدورة", "Name")} rules={[{ required: true, message: L("اكتب اسم الدورة", "Enter the name") }]}>
-          <Input maxLength={150} />
-        </Form.Item>
-        <Form.Item name="periodLabel" label={L("الفترة المقيسة", "Period measured")} extra={L("تظهر في التقارير والمقارنات، مثل 2025-2026.", "Shown in reports, e.g. 2025-2026.")}
-          rules={[{ required: true, message: L("اكتب الفترة", "Enter the period") }]}>
-          <Input maxLength={40} className="ltr" />
-        </Form.Item>
-        <Form.Item name="targetYear" label={L("سنة المستهدف للمقارنة", "Target year to compare")} rules={[{ required: true }]}>
-          <InputNumber min={2026} max={2031} disabled={open} />
-        </Form.Item>
-        <Form.Item name="dates" label={L("الفتح والموعد النهائي", "Opens and due")} rules={[{ required: true, message: L("حدد التاريخين", "Pick both dates") }]}>
-          <DatePicker.RangePicker style={{ width: "100%" }} />
-        </Form.Item>
-        <Form.Item name="trial" valuePropName="checked" label={L("بروفة داخلية", "Internal rehearsal")}
-          extra={L("البروفة تشمل المؤشرات غير المعتمدة بعد بتعريفها الحالي لاختبار النماذج ومسار الاعتماد قبل فتح الدورة للجهات، ولا تقارن نتائجها بالدورات الفعلية. الدورة الفعلية (ومنها التجريبية الأولى للجامعة) بالمؤشرات المعتمدة فقط.",
-            "Includes unapproved indicators to test forms before the real cycle; results are not compared with real cycles.")}>
-          <Switch disabled={open} />
-        </Form.Item>
-      </Form>
+      {open && <Alert type="info" showIcon className="mb" message={L("الدورة مفتوحة: يمكن تعديل الاسم وتمديد الموعد النهائي فقط.", "The cycle is open: only the name and deadline can change.")} />}
+      {quarters.length === 0 ? <p>{L("جار تحميل تقويم الخطة…", "Loading…")}</p> : (
+        <Form form={form} layout="vertical" onFinish={(v) => save.mutate(v)} requiredMark="optional"
+          onValuesChange={(changed) => {
+            if (changed.slot && !cycle) {
+              const q = quarters.find((x) => x.index === changed.slot);
+              if (q) form.setFieldsValue(suggest(q));
+            }
+          }}
+          initialValues={cycle
+            ? { slot: current?.index, name: cycle.name, trial: cycle.trial, dates: [dayjs(cycle.opensOn), dayjs(cycle.dueOn)] }
+            : { slot: firstFree?.index, trial: false, ...(firstFree ? suggest(firstFree) : {}) }}>
+          <Form.Item name="slot" label={L("الربع الذي تقيسه الدورة", "Quarter measured")} rules={[{ required: true, message: L("اختر الربع", "Pick the quarter") }]}
+            extra={L("بداية الربع الأول من السنة الأولى يضبطها مدير النظام من «إعدادات النظام».", "Quarter 1 of year 1 is set in system settings.")}>
+            <Select disabled={open} showSearch optionFilterProp="label"
+              options={quarters.map((q) => {
+                const busy = taken.has(`${q.year}-${q.quarter}`);
+                return {
+                  value: q.index, disabled: busy,
+                  label: `${q.label} · ${formatDate(q.start)} – ${formatDate(q.end)}${q.current ? L(" (الربع الحالي)", " (current)") : ""}${busy ? L(" — له دورة", " — has a cycle") : ""}`,
+                };
+              })} />
+          </Form.Item>
+          <Form.Item name="name" label={L("اسم الدورة", "Name")} rules={[{ required: true, message: L("اكتب اسم الدورة", "Enter the name") }]}>
+            <Input maxLength={150} />
+          </Form.Item>
+          <Form.Item name="dates" label={L("فتح الإدخال والموعد النهائي", "Opens and due")} rules={[{ required: true, message: L("حدد التاريخين", "Pick both dates") }]}
+            extra={L("المقترح: يفتح الإدخال بعد انتهاء الربع ويستمر شهرًا.", "Suggested: opens after the quarter ends, for a month.")}>
+            <DatePicker.RangePicker style={{ width: "100%" }} />
+          </Form.Item>
+          <Form.Item name="trial" valuePropName="checked" label={L("بروفة داخلية", "Internal rehearsal")}
+            extra={L("البروفة لاختبار النماذج ومسار الاعتماد، ولا تدخل قيمها بطاقة الأداء ولا ملف المجلس.", "Rehearsal values never enter the scorecard.")}>
+            <Switch disabled={open} />
+          </Form.Item>
+        </Form>
+      )}
     </Drawer>
   );
 }
-
 function OpenModal({ cycle, onClose }: { cycle: Cycle; onClose: () => void }) {
   const qc = useQueryClient();
   const { message } = App.useApp();

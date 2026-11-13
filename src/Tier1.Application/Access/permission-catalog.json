@@ -76,6 +76,13 @@
       "isNew": true
     },
     {
+      "code": "T1O",
+      "ar": "مسئول ملف Tier 1",
+      "en": "Tier 1 file officer",
+      "descriptionAr": "يراجع مؤشرات الكليات مؤشرًا مؤشرًا بحساب كل كلية وحساب الجامعة، وينقل القيمة إلى مؤشر الجامعة في كل ربع؛ منها تحسب بطاقة الأداء والفئة وملف المجلس.",
+      "isNew": true
+    },
+    {
       "code": "DEAN",
       "ar": "عميد الكلية",
       "en": "Dean",
@@ -173,18 +180,19 @@
       "specials": [],
       "defaults": {
         "PRES": "V:A",
-        "VP": "V:A",
+        "VP": "V:U",
         "HC": "V:A",
         "PM": "VPEAD:A",
         "QA": "V:A",
-        "DEAN": "V:A",
-        "CTC": "V:A",
-        "DREP": "V:A",
-        "DE": "V:A",
+        "DEAN": "V:U",
+        "CTC": "V:U",
+        "DREP": "V:U",
+        "DE": "V:U",
         "INIT": "V:A",
-        "VIEW": "V:A",
+        "VIEW": "V:U",
         "SYS": "VPEA:A",
-        "AUD": "V:A"
+        "AUD": "V:A",
+        "T1O": "V:A"
       }
     },
     {
@@ -223,7 +231,8 @@
         "DREP": "V:U",
         "DE": "V:U",
         "VIEW": "V:U",
-        "AUD": "V:A"
+        "AUD": "V:A",
+        "T1O": "V:A"
       }
     },
     {
@@ -251,7 +260,8 @@
         "DE": "V:A",
         "INIT": "VP:A",
         "VIEW": "V:A",
-        "AUD": "VP:A"
+        "AUD": "VP:A",
+        "T1O": "VP:A"
       }
     },
     {
@@ -288,7 +298,8 @@
         "DE": "V:A",
         "INIT": "V:A",
         "VIEW": "V:A",
-        "AUD": "VP:A"
+        "AUD": "VP:A",
+        "T1O": "VP:A"
       }
     },
     {
@@ -324,7 +335,8 @@
         "DE": "V:U",
         "INIT": "V:A",
         "VIEW": "V:U",
-        "AUD": "VP:A"
+        "AUD": "VP:A",
+        "T1O": "VP:A"
       }
     },
     {
@@ -391,7 +403,8 @@
         "DREP": "V:A",
         "DE": "V:A",
         "VIEW": "V:A",
-        "AUD": "V:A"
+        "AUD": "V:A",
+        "T1O": "VP:A"
       }
     },
     {
@@ -449,7 +462,8 @@
         "DREP": "VPE:U",
         "DE": "VPE:U",
         "VIEW": "V:U",
-        "AUD": "V:A"
+        "AUD": "V:A",
+        "T1O": "VP:A"
       }
     },
     {
@@ -470,7 +484,8 @@
             "PRES",
             "PM",
             "QA",
-            "AUD"
+            "AUD",
+            "T1O"
           ]
         }
       ],
@@ -486,7 +501,27 @@
         "DE": "V:U",
         "INIT": "V:A",
         "VIEW": "V:U",
-        "AUD": "VP:A"
+        "AUD": "VP:A",
+        "T1O": "VP:A"
+      }
+    },
+    {
+      "key": "dc.university",
+      "module": "dc",
+      "ar": "القيم الرسمية للجامعة",
+      "en": "University official values",
+      "caps": {
+        "V": "مراجعة مؤشرات الكليات بحساب كل كلية والجامعة",
+        "E": "نقل القيمة إلى مؤشر الجامعة في الربع"
+      },
+      "specials": [],
+      "defaults": {
+        "T1O": "VE:A",
+        "PRES": "V:A",
+        "HC": "V:A",
+        "PM": "V:A",
+        "QA": "V:A",
+        "AUD": "V:A"
       }
     },
     {

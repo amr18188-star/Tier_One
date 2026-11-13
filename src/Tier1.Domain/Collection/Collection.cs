@@ -27,8 +27,14 @@ public sealed class CollectionCycle
     /// <summary>الفترة التي تقيسها الدورة كما تكتب في النماذج: «العام الأكاديمي 2025/2026».</summary>
     public string PeriodLabel { get; set; } = "";
 
-    /// <summary>سنة المستهدف الذي تقارن به النتائج.</summary>
+    /// <summary>سنة المستهدف الذي تقارن به النتائج: سنة الخطة (2027 هي السنة الأولى).</summary>
     public int TargetYear { get; set; }
+
+    /// <summary>
+    /// الربع من سنة الخطة (1–4) في الدورات الربع سنوية؛ قيم الأرباع تحسب منها قيمة السنة ودرجة الجامعة وفئتها.
+    /// فارغ في الدورات القديمة غير الربعية.
+    /// </summary>
+    public int? Quarter { get; set; }
 
     public DateOnly OpensOn { get; set; }
 
@@ -71,6 +77,12 @@ public sealed class CycleIndicator
 
     /// <summary>عدد مميز على مستوى القسم: تدخل الكلية أيضًا عددها بعد إزالة التكرار بين أقسامها، لأن أعداد الأقسام لا تجمع.</summary>
     public bool CollegeEntry { get; set; }
+
+    /// <summary>
+    /// الكليات والأقسام المكلفة بالمؤشر عند فتح الدورة (لقطة من تكليف الجهات)؛ فارغ = كل جهات مستواه.
+    /// تغيير التكليف بعد الفتح لا يغير نماذج الدورة المفتوحة.
+    /// </summary>
+    public List<Guid>? UnitIds { get; set; }
 }
 
 /// <summary>خطوات مسار الاعتماد بترتيبها؛ كل جهة تمر بالخطوات التي تخص نوعها فقط.</summary>
@@ -240,4 +252,52 @@ public sealed class StoredDocument
 
     public const string ValueOwner = "value";
     public const string StructureOwner = "structure";
+
+    /// <summary>وثيقة الخطة الاستراتيجية للجامعة (مالكها الجامعة): يطلع عليها كل من يرى الخطة.</summary>
+    public const string PlanOwner = "plan";
+}
+
+/// <summary>
+/// القيمة الرسمية للجامعة لمؤشر في ربع من أرباع الخطة: ينقلها مسئول ملف Tier 1 بعد مراجعة قيم الكليات وحساب الجامعة منها.
+/// منها وحدها تحسب بطاقة الأداء والفئة وملف المجلس، فلا يصل إلى الجامعة رقم لم يراجع. النقل من جديد يستبدلها ويبقى السابق في السجل.
+/// </summary>
+public sealed class UniversityValue
+{
+    public Guid Id { get; set; } = Guid.CreateVersion7();
+
+    public Guid IndicatorId { get; set; }
+
+    /// <summary>سنة الخطة (2027–2031).</summary>
+    public int Year { get; set; }
+
+    /// <summary>الربع من السنة (1–4).</summary>
+    public int Quarter { get; set; }
+
+    /// <summary>الدورة التي أخذت منها القيمة.</summary>
+    public Guid CycleId { get; set; }
+
+    public decimal? Value { get; set; }
+
+    public decimal? Numerator { get; set; }
+
+    public decimal? Denominator { get; set; }
+
+    /// <summary>ما حسبه البرنامج من قيم الجهات المعتمدة لحظة النقل؛ يختلف عن Value إن عدلها المسئول بسبب.</summary>
+    public decimal? ComputedValue { get; set; }
+
+    /// <summary>كم جهة أبلغت من المتوقع لحظة النقل.</summary>
+    public int Reported { get; set; }
+
+    public int Expected { get; set; }
+
+    /// <summary>سبب تعديل القيمة عن المحسوبة، أو ملاحظة المسئول.</summary>
+    public string? Note { get; set; }
+
+    public Guid TransferredBy { get; set; }
+
+    public string? TransferredByName { get; set; }
+
+    public DateTimeOffset TransferredAt { get; set; }
+
+    public uint Version { get; set; }
 }

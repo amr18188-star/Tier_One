@@ -26,6 +26,13 @@ public sealed partial class LocalFileStore(IConfiguration config) : IFileStore
 
     public Stream OpenRead(string key) => new FileStream(PathFor(key), FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
 
+    public Task DeleteAsync(string key, CancellationToken ct)
+    {
+        var path = PathFor(key);
+        if (File.Exists(path)) File.Delete(path);
+        return Task.CompletedTask;
+    }
+
     private string PathFor(string key)
     {
         if (!KeyPattern().IsMatch(key)) throw new ArgumentException("Invalid storage key.", nameof(key));

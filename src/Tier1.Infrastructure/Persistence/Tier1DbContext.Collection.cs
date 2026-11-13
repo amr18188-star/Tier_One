@@ -20,6 +20,8 @@ public sealed partial class Tier1DbContext
 
     public DbSet<StoredDocument> Documents => Set<StoredDocument>();
 
+    public DbSet<UniversityValue> UniversityValues => Set<UniversityValue>();
+
     private static void ConfigureCollection(ModelBuilder b)
     {
         b.Entity<CollectionCycle>(e =>
@@ -77,6 +79,17 @@ public sealed partial class Tier1DbContext
             e.Property(x => x.ByName).HasMaxLength(200);
             e.Property(x => x.Note).HasMaxLength(2000);
             e.HasOne<Submission>().WithMany().HasForeignKey(x => x.SubmissionId).OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<UniversityValue>(e =>
+        {
+            e.ToTable("university_values", "dc", t => t.HasCheckConstraint("ck_university_values_quarter", "quarter BETWEEN 1 AND 4"));
+            // قيمة رسمية واحدة لكل مؤشر في كل ربع.
+            e.HasIndex(x => new { x.IndicatorId, x.Year, x.Quarter }).IsUnique();
+            e.Property(x => x.Note).HasMaxLength(1000);
+            e.Property(x => x.TransferredByName).HasMaxLength(200);
+            e.Property(x => x.Version).IsRowVersion();
+            e.HasOne<Indicator>().WithMany().HasForeignKey(x => x.IndicatorId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<CollectionCycle>().WithMany().HasForeignKey(x => x.CycleId).OnDelete(DeleteBehavior.Restrict);
         });
         b.Entity<StoredDocument>(e =>
         {

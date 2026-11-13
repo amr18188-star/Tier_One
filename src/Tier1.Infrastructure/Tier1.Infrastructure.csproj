@@ -26,6 +26,9 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Persistence\Seed\reference-seed.json" />
+    <EmbeddedResource Include="Persistence\Seed\kpi-framework.json" />
+    <EmbeddedResource Include="Persistence\Seed\university-structure.json" />
+    <EmbeddedResource Include="..\..\reference\KPI.xlsx" LogicalName="Tier1.Infrastructure.Templates.KPI.xlsx" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Tier1.Tests" />

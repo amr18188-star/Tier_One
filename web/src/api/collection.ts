@@ -13,9 +13,13 @@ export type TargetSource = "None" | "Unit" | "EachCollege" | "University";
 export interface Cycle {
   id: string; name: string; periodLabel: string; targetYear: number; opensOn: string; dueOn: string; status: CycleStatus; trial: boolean;
   indicators: number; forms: number; formsByStatus: Partial<Record<SubmissionStatus, number>>; overdue: number; version: number;
+  /** الربع من سنة الخطة (1–4) في الدورات الربع سنوية. */
+  quarter: number | null;
 }
 
-export interface SaveCycle { name: string; periodLabel: string; targetYear: number; opensOn: string; dueOn: string; trial: boolean; version: number | null }
+export interface SaveCycle {
+  name: string; periodLabel: string | null; targetYear: number; opensOn: string; dueOn: string; trial: boolean; version: number | null; quarter: number | null;
+}
 
 export interface OpenPreview { indicators: number; forms: number; departments: number; colleges: number; central: number; skipped: string[] }
 

@@ -8,14 +8,12 @@ using Tier1.Domain.Structure;
 namespace Tier1.Infrastructure.Persistence;
 
 /// <summary>
-/// البيانات المرجعية المستخرجة من ملفي الخطة (Seed/reference-seed.json، يولده tools/export_seed.py):
-/// الجامعة، والركائز والمعايير، والمؤشرات بإصدارها الأول «مسودة»، ومستهدفات الجامعة والمستهدف الموحد لكل كلية «مقترحة»،
-/// وسجل التعارضات «مفتوحة»، والهيكل المرجعي لـ Tier 1. تبذر مرة واحدة على قاعدة فارغة؛ لا شيء معتمد قبل قرار اللجنة.
+/// بذرة القاعدة الفارغة: الجامعة، والهيكل المرجعي لـ Tier 1 (من Seed/reference-seed.json)، ثم الإطار الشامل لتقييم أداء الجامعات
+/// (Seed/kpi-framework.json: الركائز والمعايير والمؤشرات ومستهدفاتها معتمدة). المؤشرات القديمة وسجل التعارضات في reference-seed.json لم تعد تبذر.
 /// </summary>
 internal static class ReferenceSeed
 {
     public const string UniversityCode = "CU";
-    private const int BaselineYear = 2026;
 
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
     {
@@ -51,87 +49,6 @@ internal static class ReferenceSeed
         };
         db.OrgUnits.Add(university);
 
-        var pillars = seed.Pillars.ToDictionary(p => p.Code, p => new Pillar { Code = p.Code, NameAr = p.NameAr, SortOrder = p.SortOrder });
-        db.Pillars.AddRange(pillars.Values);
-
-        var standards = seed.Standards.ToDictionary(s => s.Code, s => new Standard
-        {
-            Code = s.Code,
-            NameAr = s.NameAr,
-            PillarId = s.Pillar is { } p ? pillars[p].Id : null,
-            SortOrder = s.SortOrder,
-            SourcePages = s.SourcePages,
-            ClassificationNote = s.ClassificationNote,
-        });
-        db.Standards.AddRange(standards.Values);
-
-        foreach (var s in seed.Indicators)
-        {
-            var indicator = new Indicator { Code = s.Code, StandardId = standards[s.Standard].Id, SortOrder = s.SortOrder, ConflictCodes = s.Conflicts, CreatedAt = now };
-            indicator.Versions.Add(new IndicatorVersion
-            {
-                IndicatorId = indicator.Id,
-                Number = 1,
-                Status = DefinitionStatus.Draft,
-                NameAr = s.NameAr,
-                AlternateName = s.AlternateName,
-                Definition = s.Definition,
-                Numerator = s.Numerator,
-                Denominator = s.Denominator,
-                Unit = s.Unit,
-                Direction = s.Direction,
-                Level = s.Level,
-                Aggregation = s.Aggregation,
-                AggregationNote = s.AggregationNote,
-                DataSource = s.DataSource,
-                SourcePages = s.SourcePages,
-                CreatedAt = now,
-            });
-            db.Indicators.Add(indicator);
-
-            foreach (var t in s.University)
-            {
-                db.Targets.Add(new IndicatorTarget
-                {
-                    IndicatorId = indicator.Id,
-                    UnitId = university.Id,
-                    Year = t.Year,
-                    Kind = t.Year == BaselineYear ? TargetKind.Baseline : TargetKind.Target,
-                    Value = t.Value,
-                    Source = "ملف Tier 1",
-                    Note = s.UniversityNote,
-                    UpdatedAt = now,
-                });
-            }
-            if (s.EachCollege is { } each)
-            {
-                db.Targets.Add(new IndicatorTarget
-                {
-                    IndicatorId = indicator.Id,
-                    UnitId = university.Id,
-                    Year = 2027,
-                    Kind = TargetKind.EachCollege,
-                    Value = each.Value,
-                    Text = each.Text,
-                    Source = "ملف مؤشرات الكليات" + (each.UnitAsWritten is { } u ? $" (الوحدة كما وردت: {u})" : ""),
-                    UpdatedAt = now,
-                });
-            }
-        }
-
-        db.Conflicts.AddRange(seed.Conflicts.Select(c => new DataConflict
-        {
-            Code = c.Code,
-            Scope = c.Scope,
-            Type = c.Type,
-            Severity = c.Severity,
-            Description = c.Description,
-            ValueA = c.ValueA,
-            ValueB = c.ValueB,
-            Proposal = c.Proposal,
-            CreatedAt = now,
-        }));
-
         foreach (var u in seed.Structure)
         {
             var unit = new StructureUnit
@@ -162,7 +79,8 @@ internal static class ReferenceSeed
         }
 
         await db.SaveChangesAsync(ct);
-        log.LogInformation("Seeded the Tier 1 reference data: {Indicators} indicators, {Conflicts} conflicts.", seed.Indicators.Count, seed.Conflicts.Count);
+        await KpiFramework.LoadAsync(db, university, now, ct);
+        log.LogInformation("Seeded the university, the Tier 1 structure template and the performance framework ({Indicators} indicators).", KpiFramework.Read().Indicators.Count);
     }
 
     private static SeedFile Load()

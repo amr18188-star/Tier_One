@@ -1,0 +1,1982 @@
+{
+ "source": "Capital-University-Structure - fINAL.xlsx",
+ "university": "جامعة العاصمة",
+ "units": [
+  {
+   "code": "L01",
+   "nameAr": "قطاع رئيس الجامعة",
+   "kind": "Sector",
+   "parent": null,
+   "sortOrder": 1,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "S01",
+   "nameAr": "قطاع شئون التعليم والطلاب",
+   "kind": "Sector",
+   "parent": null,
+   "sortOrder": 2,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "S02",
+   "nameAr": "قطاع الدراسات العليا والبحوث",
+   "kind": "Sector",
+   "parent": null,
+   "sortOrder": 3,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "S03",
+   "nameAr": "قطاع خدمة المجتمع وتنمية البيئة",
+   "kind": "Sector",
+   "parent": null,
+   "sortOrder": 4,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "L02",
+   "nameAr": "قطاع أمين الجامعة",
+   "kind": "Sector",
+   "parent": null,
+   "sortOrder": 5,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "HR01",
+   "nameAr": "قطاع أمين الجامعة - الإدارة المركزية للموارد البشرية",
+   "kind": "Administration",
+   "parent": "L02",
+   "sortOrder": 6,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "A01",
+   "nameAr": "الإدارة العامة للإدارة الاستراتيجية",
+   "kind": "Administration",
+   "parent": "L01",
+   "sortOrder": 1,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "A02",
+   "nameAr": "الإدارة العامة للعلاقات العامة والإعلام",
+   "kind": "Administration",
+   "parent": "L01",
+   "sortOrder": 2,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "A03",
+   "nameAr": "الإدارة العامة لنظم المعلومات والتحول الرقمي",
+   "kind": "Administration",
+   "parent": "L01",
+   "sortOrder": 3,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "A04",
+   "nameAr": "الإدارة العامة للمراجعة الداخلية والحوكمة",
+   "kind": "Administration",
+   "parent": "L01",
+   "sortOrder": 4,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "A05",
+   "nameAr": "الإدارة العامة للشئون القانونية",
+   "kind": "Administration",
+   "parent": "L01",
+   "sortOrder": 5,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "A06",
+   "nameAr": "الإدارة العامة لرعاية الطلاب",
+   "kind": "Administration",
+   "parent": "S01",
+   "sortOrder": 6,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "A07",
+   "nameAr": "الإدارة العامة للمدن الجامعية والتغذية",
+   "kind": "Administration",
+   "parent": "S01",
+   "sortOrder": 7,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "A08",
+   "nameAr": "الإدارة العامة للشئون الطبية",
+   "kind": "Administration",
+   "parent": "S01",
+   "sortOrder": 8,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "A09",
+   "nameAr": "الإدارة العامة للدراسات العليا والبحوث",
+   "kind": "Administration",
+   "parent": "S02",
+   "sortOrder": 9,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "A10",
+   "nameAr": "الإدارة العامة للمكتبات",
+   "kind": "Administration",
+   "parent": "S02",
+   "sortOrder": 10,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "A11",
+   "nameAr": "الإدارة العامة للعلاقات الثقافية",
+   "kind": "Administration",
+   "parent": "S02",
+   "sortOrder": 11,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "A12",
+   "nameAr": "الإدارة العامة لعمليات الموارد البشرية",
+   "kind": "Administration",
+   "parent": "HR01",
+   "sortOrder": 12,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "A13",
+   "nameAr": "الإدارة العامة للتطوير المؤسسي",
+   "kind": "Administration",
+   "parent": "HR01",
+   "sortOrder": 13,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "A14",
+   "nameAr": "الإدارة العامة لإدارة وتنمية المواهب",
+   "kind": "Administration",
+   "parent": "HR01",
+   "sortOrder": 14,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "A15",
+   "nameAr": "الإدارة العامة للاستحقاقات والمزايا",
+   "kind": "Administration",
+   "parent": "HR01",
+   "sortOrder": 15,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "A16",
+   "nameAr": "الإدارة العامة للتنظيم والإدارة",
+   "kind": "Administration",
+   "parent": "HR01",
+   "sortOrder": 16,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "A17",
+   "nameAr": "الإدارة العامة للاحتياجات",
+   "kind": "Administration",
+   "parent": "L02",
+   "sortOrder": 17,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "A18",
+   "nameAr": "الإدارة العامة للشئون الإدارية",
+   "kind": "Administration",
+   "parent": "L02",
+   "sortOrder": 18,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "A19",
+   "nameAr": "الإدارة العامة للصناديق الخاصة والوحدات ذات الطابع الخاص",
+   "kind": "Administration",
+   "parent": "L02",
+   "sortOrder": 19,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "A20",
+   "nameAr": "الإدارة العامة للشئون الهندسية",
+   "kind": "Administration",
+   "parent": "L02",
+   "sortOrder": 20,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "A21",
+   "nameAr": "مكتب رئيس الجامعة",
+   "kind": "Administration",
+   "parent": "L01",
+   "sortOrder": 21,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "A22",
+   "nameAr": "إدارة الأمن الجامعي",
+   "kind": "Administration",
+   "parent": "L01",
+   "sortOrder": 22,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01",
+   "nameAr": "كلية الطب",
+   "kind": "College",
+   "parent": null,
+   "sortOrder": 100,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F02",
+   "nameAr": "كلية الصيدلة",
+   "kind": "College",
+   "parent": null,
+   "sortOrder": 101,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F03",
+   "nameAr": "كلية التمريض",
+   "kind": "College",
+   "parent": null,
+   "sortOrder": 102,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F04",
+   "nameAr": "كلية علوم التغذية",
+   "kind": "College",
+   "parent": null,
+   "sortOrder": 103,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F05",
+   "nameAr": "كلية العلوم",
+   "kind": "College",
+   "parent": null,
+   "sortOrder": 104,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F06",
+   "nameAr": "كلية الهندسة بحلوان",
+   "kind": "College",
+   "parent": null,
+   "sortOrder": 105,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F07",
+   "nameAr": "كلية الهندسة بالمطرية",
+   "kind": "College",
+   "parent": null,
+   "sortOrder": 106,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F08",
+   "nameAr": "كلية الحاسبات والذكاء الاصطناعي",
+   "kind": "College",
+   "parent": null,
+   "sortOrder": 107,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F09",
+   "nameAr": "كلية التكنولوجيا والتعليم",
+   "kind": "College",
+   "parent": null,
+   "sortOrder": 108,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F10",
+   "nameAr": "كلية الفنون التطبيقية",
+   "kind": "College",
+   "parent": null,
+   "sortOrder": 109,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F11",
+   "nameAr": "كلية الفنون الجميلة",
+   "kind": "College",
+   "parent": null,
+   "sortOrder": 110,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F12",
+   "nameAr": "كلية التربية الفنية",
+   "kind": "College",
+   "parent": null,
+   "sortOrder": 111,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F13",
+   "nameAr": "كلية التربية الموسيقية",
+   "kind": "College",
+   "parent": null,
+   "sortOrder": 112,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F14",
+   "nameAr": "كلية التربية",
+   "kind": "College",
+   "parent": null,
+   "sortOrder": 113,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F15",
+   "nameAr": "كلية الآداب",
+   "kind": "College",
+   "parent": null,
+   "sortOrder": 114,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F16",
+   "nameAr": "كلية الحقوق",
+   "kind": "College",
+   "parent": null,
+   "sortOrder": 115,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F17",
+   "nameAr": "كلية التجارة وإدارة الأعمال",
+   "kind": "College",
+   "parent": null,
+   "sortOrder": 116,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F18",
+   "nameAr": "كلية الاقتصاد المنزلي",
+   "kind": "College",
+   "parent": null,
+   "sortOrder": 117,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F19",
+   "nameAr": "كلية الخدمة الاجتماعية",
+   "kind": "College",
+   "parent": null,
+   "sortOrder": 118,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F20",
+   "nameAr": "كلية السياحة والفنادق",
+   "kind": "College",
+   "parent": null,
+   "sortOrder": 119,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F21",
+   "nameAr": "كلية علوم الرياضة بنين",
+   "kind": "College",
+   "parent": null,
+   "sortOrder": 120,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F22",
+   "nameAr": "كلية علوم الرياضة بنات",
+   "kind": "College",
+   "parent": null,
+   "sortOrder": 121,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F23",
+   "nameAr": "كلية الدراسات العليا والبحوث البينية",
+   "kind": "College",
+   "parent": null,
+   "sortOrder": 122,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F24",
+   "nameAr": "المعهد القومي للملكية الفكرية",
+   "kind": "Institute",
+   "parent": null,
+   "sortOrder": 123,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F25",
+   "nameAr": "المعهد الفني للتمريض",
+   "kind": "Institute",
+   "parent": null,
+   "sortOrder": 124,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D01",
+   "nameAr": "قسم التشريح وعلم الأجنة",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 1,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D02",
+   "nameAr": "قسم الفسيولوجيا الطبية",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 2,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D03",
+   "nameAr": "قسم الكيمياء الحيوية الطبية والبيولوجيا الجزيئية",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 3,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D04",
+   "nameAr": "قسم الهستولوجي",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 4,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D05",
+   "nameAr": "قسم الباثولوجيا",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 5,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D06",
+   "nameAr": "قسم الباثولوجيا الإكلينيكية والكيميائية",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 6,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D07",
+   "nameAr": "قسم جراحة المسالك البولية",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 7,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D08",
+   "nameAr": "قسم جراحة التجميل",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 8,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D09",
+   "nameAr": "قسم طب الحالات الحرجة والطوارئ",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 9,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D10",
+   "nameAr": "قسم الفارماكولوجيا الطبية",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 10,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D11",
+   "nameAr": "قسم الميكروبيولوجيا الطبية والمناعة",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 11,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D12",
+   "nameAr": "قسم الطفيليات الطبية",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 12,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D13",
+   "nameAr": "قسم طب الأسرة",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 13,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D14",
+   "nameAr": "قسم طب المجتمع والبيئة وطب الصناعات",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 14,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D15",
+   "nameAr": "قسم التخدير والعناية المركزة وعلاج الألم",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 15,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D16",
+   "nameAr": "قسم التوليد وأمراض النساء",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 16,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D17",
+   "nameAr": "قسم جراحة العظام",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 17,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D18",
+   "nameAr": "قسم جراحة الأوعية الدموية",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 18,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D19",
+   "nameAr": "قسم الطب الشرعي والسموم الإكلينيكية",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 19,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D20",
+   "nameAr": "قسم أمراض الباطنة العامة",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 20,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D21",
+   "nameAr": "قسم الأطفال",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 21,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D22",
+   "nameAr": "قسم الجراحة العامة",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 22,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D23",
+   "nameAr": "قسم الأمراض الصدرية",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 23,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D24",
+   "nameAr": "قسم الأشعة التشخيصية والعلاجية",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 24,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D25",
+   "nameAr": "قسم طب وجراحة العيون",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 25,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D26",
+   "nameAr": "قسم طب المخ والأعصاب والطب النفسي",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 26,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D27",
+   "nameAr": "قسم طب وصحة المسنين",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 27,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D28",
+   "nameAr": "قسم الأمراض الجلدية والتناسلية والذكورة",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 28,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D29",
+   "nameAr": "قسم جراحة المخ والأعصاب",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 29,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D30",
+   "nameAr": "قسم الأمراض المتوطنة",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 30,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D31",
+   "nameAr": "قسم أمراض القلب والأوعية الدموية",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 31,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D32",
+   "nameAr": "قسم الطب الطبيعي والروماتيزم والتأهيل",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 32,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D33",
+   "nameAr": "قسم علاج الأورام والطب النووي",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 33,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D34",
+   "nameAr": "قسم الأنف والأذن والحنجرة",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 34,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D35",
+   "nameAr": "قسم جراحة القلب والصدر",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 35,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F01-D36",
+   "nameAr": "قسم جراحة الأطفال",
+   "kind": "Department",
+   "parent": "F01",
+   "sortOrder": 36,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F02-D01",
+   "nameAr": "قسم الصيدلانيات والصيدلة الصناعية",
+   "kind": "Department",
+   "parent": "F02",
+   "sortOrder": 1,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F02-D02",
+   "nameAr": "قسم العقاقير",
+   "kind": "Department",
+   "parent": "F02",
+   "sortOrder": 2,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F02-D03",
+   "nameAr": "قسم الكيمياء الحيوية والبيولوجيا الجزيئية",
+   "kind": "Department",
+   "parent": "F02",
+   "sortOrder": 3,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F02-D04",
+   "nameAr": "قسم الأدوية والسموم",
+   "kind": "Department",
+   "parent": "F02",
+   "sortOrder": 4,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F02-D05",
+   "nameAr": "قسم الميكروبيولوجيا والمناعة",
+   "kind": "Department",
+   "parent": "F02",
+   "sortOrder": 5,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F02-D06",
+   "nameAr": "قسم الكيمياء العضوية الصيدلية",
+   "kind": "Department",
+   "parent": "F02",
+   "sortOrder": 6,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F02-D07",
+   "nameAr": "قسم الكيمياء التحليلية الصيدلية",
+   "kind": "Department",
+   "parent": "F02",
+   "sortOrder": 7,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F02-D08",
+   "nameAr": "قسم الكيمياء الصيدلية",
+   "kind": "Department",
+   "parent": "F02",
+   "sortOrder": 8,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F02-D09",
+   "nameAr": "قسم ممارسة الصيدلة",
+   "kind": "Department",
+   "parent": "F02",
+   "sortOrder": 9,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F03-D01",
+   "nameAr": "قسم إدارة التمريض",
+   "kind": "Department",
+   "parent": "F03",
+   "sortOrder": 1,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F03-D02",
+   "nameAr": "قسم تمريض صحة البالغين",
+   "kind": "Department",
+   "parent": "F03",
+   "sortOrder": 2,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F03-D03",
+   "nameAr": "قسم تمريض صحة الطفل",
+   "kind": "Department",
+   "parent": "F03",
+   "sortOrder": 3,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F03-D04",
+   "nameAr": "قسم تمريض صحة الأم وحديثي الولادة",
+   "kind": "Department",
+   "parent": "F03",
+   "sortOrder": 4,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F03-D05",
+   "nameAr": "قسم تمريض صحة المجتمع والصحة المهنية",
+   "kind": "Department",
+   "parent": "F03",
+   "sortOrder": 5,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F03-D06",
+   "nameAr": "قسم تمريض الصحة النفسية",
+   "kind": "Department",
+   "parent": "F03",
+   "sortOrder": 6,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F04-D01",
+   "nameAr": "قسم التغذية العلاجية",
+   "kind": "Department",
+   "parent": "F04",
+   "sortOrder": 1,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F04-D02",
+   "nameAr": "قسم تغذية المجتمع",
+   "kind": "Department",
+   "parent": "F04",
+   "sortOrder": 2,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F04-D03",
+   "nameAr": "قسم علوم الأغذية",
+   "kind": "Department",
+   "parent": "F04",
+   "sortOrder": 3,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F05-D01",
+   "nameAr": "قسم الكيمياء",
+   "kind": "Department",
+   "parent": "F05",
+   "sortOrder": 1,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F05-D02",
+   "nameAr": "قسم الفيزياء",
+   "kind": "Department",
+   "parent": "F05",
+   "sortOrder": 2,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F05-D03",
+   "nameAr": "قسم الرياضيات",
+   "kind": "Department",
+   "parent": "F05",
+   "sortOrder": 3,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F05-D04",
+   "nameAr": "قسم النبات والميكروبيولوجي",
+   "kind": "Department",
+   "parent": "F05",
+   "sortOrder": 4,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F05-D05",
+   "nameAr": "قسم علم الحيوان والحشرات",
+   "kind": "Department",
+   "parent": "F05",
+   "sortOrder": 5,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F05-D06",
+   "nameAr": "قسم الجيولوجيا",
+   "kind": "Department",
+   "parent": "F05",
+   "sortOrder": 6,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F06-D01",
+   "nameAr": "قسم هندسة الإلكترونيات والاتصالات",
+   "kind": "Department",
+   "parent": "F06",
+   "sortOrder": 1,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F06-D02",
+   "nameAr": "قسم هندسة القوى والآلات الكهربائية",
+   "kind": "Department",
+   "parent": "F06",
+   "sortOrder": 2,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F06-D03",
+   "nameAr": "قسم الهندسة الميكانيكية",
+   "kind": "Department",
+   "parent": "F06",
+   "sortOrder": 3,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F06-D04",
+   "nameAr": "قسم الهندسة الحيوية الطبية",
+   "kind": "Department",
+   "parent": "F06",
+   "sortOrder": 4,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F06-D05",
+   "nameAr": "قسم هندسة الحاسبات والنظم",
+   "kind": "Department",
+   "parent": "F06",
+   "sortOrder": 5,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F07-D01",
+   "nameAr": "قسم الهندسة المدنية",
+   "kind": "Department",
+   "parent": "F07",
+   "sortOrder": 1,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F07-D02",
+   "nameAr": "قسم هندسة القوى الميكانيكية",
+   "kind": "Department",
+   "parent": "F07",
+   "sortOrder": 2,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F07-D03",
+   "nameAr": "قسم هندسة السيارات والجرارات",
+   "kind": "Department",
+   "parent": "F07",
+   "sortOrder": 3,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F07-D04",
+   "nameAr": "قسم الهندسة المعمارية",
+   "kind": "Department",
+   "parent": "F07",
+   "sortOrder": 4,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F07-D05",
+   "nameAr": "قسم التصميم الميكانيكي",
+   "kind": "Department",
+   "parent": "F07",
+   "sortOrder": 5,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F07-D06",
+   "nameAr": "قسم الفيزيقا والرياضيات",
+   "kind": "Department",
+   "parent": "F07",
+   "sortOrder": 6,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F08-D01",
+   "nameAr": "قسم علوم الحاسب",
+   "kind": "Department",
+   "parent": "F08",
+   "sortOrder": 1,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F08-D02",
+   "nameAr": "قسم نظم المعلومات",
+   "kind": "Department",
+   "parent": "F08",
+   "sortOrder": 2,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F08-D03",
+   "nameAr": "قسم تكنولوجيا المعلومات",
+   "kind": "Department",
+   "parent": "F08",
+   "sortOrder": 3,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F08-D04",
+   "nameAr": "قسم الذكاء الاصطناعي",
+   "kind": "Department",
+   "parent": "F08",
+   "sortOrder": 4,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F09-D01",
+   "nameAr": "قسم تكنولوجيا الكهرباء",
+   "kind": "Department",
+   "parent": "F09",
+   "sortOrder": 1,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F09-D02",
+   "nameAr": "قسم تكنولوجيا التبريد والتكييف",
+   "kind": "Department",
+   "parent": "F09",
+   "sortOrder": 2,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F09-D03",
+   "nameAr": "قسم تكنولوجيا السيارات والجرارات",
+   "kind": "Department",
+   "parent": "F09",
+   "sortOrder": 3,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F09-D04",
+   "nameAr": "قسم تكنولوجيا الإنتاج",
+   "kind": "Department",
+   "parent": "F09",
+   "sortOrder": 4,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F09-D05",
+   "nameAr": "قسم تكنولوجيا الإلكترونيات",
+   "kind": "Department",
+   "parent": "F09",
+   "sortOrder": 5,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F09-D06",
+   "nameAr": "قسم العلوم الأساسية",
+   "kind": "Department",
+   "parent": "F09",
+   "sortOrder": 6,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F10-D01",
+   "nameAr": "قسم الفوتوغرافيا والسينما والتليفزيون",
+   "kind": "Department",
+   "parent": "F10",
+   "sortOrder": 1,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F10-D02",
+   "nameAr": "قسم الطباعة والنشر والتغليف",
+   "kind": "Department",
+   "parent": "F10",
+   "sortOrder": 2,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F10-D03",
+   "nameAr": "قسم الإعلان",
+   "kind": "Department",
+   "parent": "F10",
+   "sortOrder": 3,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F10-D04",
+   "nameAr": "قسم التصميم الداخلي والأثاث",
+   "kind": "Department",
+   "parent": "F10",
+   "sortOrder": 4,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F10-D05",
+   "nameAr": "قسم التصميم الصناعي",
+   "kind": "Department",
+   "parent": "F10",
+   "sortOrder": 5,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F10-D06",
+   "nameAr": "قسم تصميم الأثاث والإنشاءات المعدنية",
+   "kind": "Department",
+   "parent": "F10",
+   "sortOrder": 6,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F10-D07",
+   "nameAr": "قسم المنتجات المعدنية والحلي",
+   "kind": "Department",
+   "parent": "F10",
+   "sortOrder": 7,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F10-D08",
+   "nameAr": "قسم الخزف",
+   "kind": "Department",
+   "parent": "F10",
+   "sortOrder": 8,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F10-D09",
+   "nameAr": "قسم الزجاج",
+   "kind": "Department",
+   "parent": "F10",
+   "sortOrder": 9,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F10-D10",
+   "nameAr": "قسم الزخرفة",
+   "kind": "Department",
+   "parent": "F10",
+   "sortOrder": 10,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F10-D11",
+   "nameAr": "قسم النحت والتشكيل المعماري",
+   "kind": "Department",
+   "parent": "F10",
+   "sortOrder": 11,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F10-D12",
+   "nameAr": "قسم الغزل والنسيج",
+   "kind": "Department",
+   "parent": "F10",
+   "sortOrder": 12,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F10-D13",
+   "nameAr": "قسم طباعة المنسوجات والصباغة والتجهيز",
+   "kind": "Department",
+   "parent": "F10",
+   "sortOrder": 13,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F10-D14",
+   "nameAr": "قسم الملابس الجاهزة",
+   "kind": "Department",
+   "parent": "F10",
+   "sortOrder": 14,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F11-D01",
+   "nameAr": "قسم العمارة",
+   "kind": "Department",
+   "parent": "F11",
+   "sortOrder": 1,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F11-D02",
+   "nameAr": "قسم النحت",
+   "kind": "Department",
+   "parent": "F11",
+   "sortOrder": 2,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F11-D03",
+   "nameAr": "قسم الجرافيك",
+   "kind": "Department",
+   "parent": "F11",
+   "sortOrder": 3,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F11-D04",
+   "nameAr": "قسم التصوير",
+   "kind": "Department",
+   "parent": "F11",
+   "sortOrder": 4,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F11-D05",
+   "nameAr": "قسم الديكور",
+   "kind": "Department",
+   "parent": "F11",
+   "sortOrder": 5,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F11-D06",
+   "nameAr": "قسم تاريخ الفن",
+   "kind": "Department",
+   "parent": "F11",
+   "sortOrder": 6,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F12-D01",
+   "nameAr": "قسم الأشغال الفنية والتراث الشعبي",
+   "kind": "Department",
+   "parent": "F12",
+   "sortOrder": 1,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F12-D02",
+   "nameAr": "قسم علوم التربية الفنية",
+   "kind": "Department",
+   "parent": "F12",
+   "sortOrder": 2,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F12-D03",
+   "nameAr": "قسم النقد والتذوق الفني",
+   "kind": "Department",
+   "parent": "F12",
+   "sortOrder": 3,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F12-D04",
+   "nameAr": "قسم التعبير المجسم",
+   "kind": "Department",
+   "parent": "F12",
+   "sortOrder": 4,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F12-D05",
+   "nameAr": "قسم التصميمات البصرية والرقمية",
+   "kind": "Department",
+   "parent": "F12",
+   "sortOrder": 5,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F12-D06",
+   "nameAr": "قسم الرسم والتصوير",
+   "kind": "Department",
+   "parent": "F12",
+   "sortOrder": 6,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F13-D01",
+   "nameAr": "قسم النظريات والتأليف",
+   "kind": "Department",
+   "parent": "F13",
+   "sortOrder": 1,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F13-D02",
+   "nameAr": "قسم الموسيقى العربية",
+   "kind": "Department",
+   "parent": "F13",
+   "sortOrder": 2,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F13-D03",
+   "nameAr": "قسم البيانو والمصاحبة",
+   "kind": "Department",
+   "parent": "F13",
+   "sortOrder": 3,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F13-D04",
+   "nameAr": "قسم الأداء",
+   "kind": "Department",
+   "parent": "F13",
+   "sortOrder": 4,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F13-D05",
+   "nameAr": "قسم العلوم الموسيقية التربوية",
+   "kind": "Department",
+   "parent": "F13",
+   "sortOrder": 5,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F14-D01",
+   "nameAr": "قسم أصول التربية",
+   "kind": "Department",
+   "parent": "F14",
+   "sortOrder": 1,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F14-D02",
+   "nameAr": "قسم التربية المقارنة والإدارة التربوية",
+   "kind": "Department",
+   "parent": "F14",
+   "sortOrder": 2,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F14-D03",
+   "nameAr": "قسم التربية الخاصة",
+   "kind": "Department",
+   "parent": "F14",
+   "sortOrder": 3,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F14-D04",
+   "nameAr": "قسم تكنولوجيا التعليم",
+   "kind": "Department",
+   "parent": "F14",
+   "sortOrder": 4,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F14-D05",
+   "nameAr": "قسم المناهج وطرق التدريس",
+   "kind": "Department",
+   "parent": "F14",
+   "sortOrder": 5,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F14-D06",
+   "nameAr": "قسم التعليم الصناعي",
+   "kind": "Department",
+   "parent": "F14",
+   "sortOrder": 6,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F14-D07",
+   "nameAr": "قسم علم النفس التربوي",
+   "kind": "Department",
+   "parent": "F14",
+   "sortOrder": 7,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F14-D08",
+   "nameAr": "قسم الصحة النفسية",
+   "kind": "Department",
+   "parent": "F14",
+   "sortOrder": 8,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F14-D09",
+   "nameAr": "قسم الطفولة المبكرة",
+   "kind": "Department",
+   "parent": "F14",
+   "sortOrder": 9,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F15-D01",
+   "nameAr": "قسم الآثار والحضارة",
+   "kind": "Department",
+   "parent": "F15",
+   "sortOrder": 1,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F15-D02",
+   "nameAr": "قسم الفلسفة",
+   "kind": "Department",
+   "parent": "F15",
+   "sortOrder": 2,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F15-D03",
+   "nameAr": "قسم الإعلام",
+   "kind": "Department",
+   "parent": "F15",
+   "sortOrder": 3,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F15-D04",
+   "nameAr": "قسم اللغات الشرقية",
+   "kind": "Department",
+   "parent": "F15",
+   "sortOrder": 4,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F15-D05",
+   "nameAr": "قسم اللغة الإسبانية وآدابها",
+   "kind": "Department",
+   "parent": "F15",
+   "sortOrder": 5,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F15-D06",
+   "nameAr": "قسم علم النفس",
+   "kind": "Department",
+   "parent": "F15",
+   "sortOrder": 6,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F15-D07",
+   "nameAr": "قسم اللغة الفرنسية وآدابها",
+   "kind": "Department",
+   "parent": "F15",
+   "sortOrder": 7,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F15-D08",
+   "nameAr": "قسم اللغة الإيطالية وآدابها",
+   "kind": "Department",
+   "parent": "F15",
+   "sortOrder": 8,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F15-D09",
+   "nameAr": "قسم اللغة الإنجليزية وآدابها",
+   "kind": "Department",
+   "parent": "F15",
+   "sortOrder": 9,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F15-D10",
+   "nameAr": "قسم اللغة الألمانية وآدابها",
+   "kind": "Department",
+   "parent": "F15",
+   "sortOrder": 10,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F15-D11",
+   "nameAr": "قسم اللغة العبرية وآدابها",
+   "kind": "Department",
+   "parent": "F15",
+   "sortOrder": 11,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F15-D12",
+   "nameAr": "قسم علم المعلومات",
+   "kind": "Department",
+   "parent": "F15",
+   "sortOrder": 12,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F15-D13",
+   "nameAr": "قسم اللغة الصينية وآدابها",
+   "kind": "Department",
+   "parent": "F15",
+   "sortOrder": 13,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F15-D14",
+   "nameAr": "قسم علم الاجتماع",
+   "kind": "Department",
+   "parent": "F15",
+   "sortOrder": 14,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F15-D15",
+   "nameAr": "قسم علوم المسرح",
+   "kind": "Department",
+   "parent": "F15",
+   "sortOrder": 15,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F15-D16",
+   "nameAr": "قسم التاريخ",
+   "kind": "Department",
+   "parent": "F15",
+   "sortOrder": 16,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F15-D17",
+   "nameAr": "قسم اللغة العربية",
+   "kind": "Department",
+   "parent": "F15",
+   "sortOrder": 17,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F15-D18",
+   "nameAr": "قسم الجغرافيا ونظم المعلومات الجغرافية",
+   "kind": "Department",
+   "parent": "F15",
+   "sortOrder": 18,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F16-D01",
+   "nameAr": "قسم الشريعة الإسلامية",
+   "kind": "Department",
+   "parent": "F16",
+   "sortOrder": 1,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F16-D02",
+   "nameAr": "قسم قانون العمل والتشريعات الاجتماعية",
+   "kind": "Department",
+   "parent": "F16",
+   "sortOrder": 2,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F16-D03",
+   "nameAr": "قسم القانون التجاري",
+   "kind": "Department",
+   "parent": "F16",
+   "sortOrder": 3,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F16-D04",
+   "nameAr": "قسم القانون الجنائي",
+   "kind": "Department",
+   "parent": "F16",
+   "sortOrder": 4,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F16-D05",
+   "nameAr": "قسم الاقتصاد",
+   "kind": "Department",
+   "parent": "F16",
+   "sortOrder": 5,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F16-D06",
+   "nameAr": "قسم فلسفة القانون وتاريخه",
+   "kind": "Department",
+   "parent": "F16",
+   "sortOrder": 6,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F16-D07",
+   "nameAr": "قسم القانون الدولي العام",
+   "kind": "Department",
+   "parent": "F16",
+   "sortOrder": 7,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F16-D08",
+   "nameAr": "قسم القانون المدني",
+   "kind": "Department",
+   "parent": "F16",
+   "sortOrder": 8,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F16-D09",
+   "nameAr": "قسم القانون الدولي الخاص",
+   "kind": "Department",
+   "parent": "F16",
+   "sortOrder": 9,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F16-D10",
+   "nameAr": "قسم قانون المرافعات",
+   "kind": "Department",
+   "parent": "F16",
+   "sortOrder": 10,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F16-D11",
+   "nameAr": "قسم القانون العام",
+   "kind": "Department",
+   "parent": "F16",
+   "sortOrder": 11,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F17-D01",
+   "nameAr": "قسم المحاسبة",
+   "kind": "Department",
+   "parent": "F17",
+   "sortOrder": 1,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F17-D02",
+   "nameAr": "قسم إدارة الأعمال",
+   "kind": "Department",
+   "parent": "F17",
+   "sortOrder": 2,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F17-D03",
+   "nameAr": "قسم العلوم السياسية",
+   "kind": "Department",
+   "parent": "F17",
+   "sortOrder": 3,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F17-D04",
+   "nameAr": "قسم الاقتصاد والتجارة الخارجية",
+   "kind": "Department",
+   "parent": "F17",
+   "sortOrder": 4,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F17-D05",
+   "nameAr": "قسم الرياضة والتأمين والإحصاء",
+   "kind": "Department",
+   "parent": "F17",
+   "sortOrder": 5,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F17-D06",
+   "nameAr": "قسم نظم المعلومات",
+   "kind": "Department",
+   "parent": "F17",
+   "sortOrder": 6,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F18-D01",
+   "nameAr": "قسم التغذية وعلوم الأطعمة",
+   "kind": "Department",
+   "parent": "F18",
+   "sortOrder": 1,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F18-D02",
+   "nameAr": "قسم الاقتصاد المنزلي التربوي",
+   "kind": "Department",
+   "parent": "F18",
+   "sortOrder": 2,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F18-D03",
+   "nameAr": "قسم الصناعات الجلدية",
+   "kind": "Department",
+   "parent": "F18",
+   "sortOrder": 3,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F18-D04",
+   "nameAr": "قسم إدارة مؤسسات الأسرة والطفولة",
+   "kind": "Department",
+   "parent": "F18",
+   "sortOrder": 4,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F18-D05",
+   "nameAr": "قسم الملابس والنسيج",
+   "kind": "Department",
+   "parent": "F18",
+   "sortOrder": 5,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F19-D01",
+   "nameAr": "قسم العمل مع الأفراد والأسر",
+   "kind": "Department",
+   "parent": "F19",
+   "sortOrder": 1,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F19-D02",
+   "nameAr": "قسم مجالات الخدمة الاجتماعية",
+   "kind": "Department",
+   "parent": "F19",
+   "sortOrder": 2,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F19-D03",
+   "nameAr": "قسم التخطيط الاجتماعي",
+   "kind": "Department",
+   "parent": "F19",
+   "sortOrder": 3,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F19-D04",
+   "nameAr": "قسم العمل مع الجماعات",
+   "kind": "Department",
+   "parent": "F19",
+   "sortOrder": 4,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F19-D05",
+   "nameAr": "قسم العمل مع المنظمات والمجتمعات",
+   "kind": "Department",
+   "parent": "F19",
+   "sortOrder": 5,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F20-D01",
+   "nameAr": "قسم الدراسات السياحية",
+   "kind": "Department",
+   "parent": "F20",
+   "sortOrder": 1,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F20-D02",
+   "nameAr": "قسم إدارة الفنادق",
+   "kind": "Department",
+   "parent": "F20",
+   "sortOrder": 2,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F20-D03",
+   "nameAr": "قسم الإرشاد السياحي",
+   "kind": "Department",
+   "parent": "F20",
+   "sortOrder": 3,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F21-D01",
+   "nameAr": "قسم الإدارة الرياضية",
+   "kind": "Department",
+   "parent": "F21",
+   "sortOrder": 1,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F21-D02",
+   "nameAr": "قسم الترويح الرياضي",
+   "kind": "Department",
+   "parent": "F21",
+   "sortOrder": 2,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F21-D03",
+   "nameAr": "قسم المناهج وطرق التدريس",
+   "kind": "Department",
+   "parent": "F21",
+   "sortOrder": 3,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F21-D04",
+   "nameAr": "قسم علوم الحركة الرياضية",
+   "kind": "Department",
+   "parent": "F21",
+   "sortOrder": 4,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F21-D05",
+   "nameAr": "قسم علوم الصحة الرياضية",
+   "kind": "Department",
+   "parent": "F21",
+   "sortOrder": 5,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F21-D06",
+   "nameAr": "قسم علم النفس الرياضي",
+   "kind": "Department",
+   "parent": "F21",
+   "sortOrder": 6,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F21-D07",
+   "nameAr": "قسم تدريب الرياضات الأساسية",
+   "kind": "Department",
+   "parent": "F21",
+   "sortOrder": 7,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F21-D08",
+   "nameAr": "قسم تدريب الرياضات الفردية",
+   "kind": "Department",
+   "parent": "F21",
+   "sortOrder": 8,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F21-D09",
+   "nameAr": "قسم تدريب الرياضات الجماعية",
+   "kind": "Department",
+   "parent": "F21",
+   "sortOrder": 9,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F21-D10",
+   "nameAr": "قسم رياضة كبار السن",
+   "kind": "Department",
+   "parent": "F21",
+   "sortOrder": 10,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F21-D11",
+   "nameAr": "قسم التربية الرياضية المعدلة",
+   "kind": "Department",
+   "parent": "F21",
+   "sortOrder": 11,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F22-D01",
+   "nameAr": "قسم نظريات وتطبيقات التمرينات والجمباز",
+   "kind": "Department",
+   "parent": "F22",
+   "sortOrder": 1,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F22-D02",
+   "nameAr": "قسم نظريات وتطبيقات التعبير الحركي والإيقاع الحركي",
+   "kind": "Department",
+   "parent": "F22",
+   "sortOrder": 2,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F22-D03",
+   "nameAr": "قسم نظريات وتطبيقات ألعاب القوى",
+   "kind": "Department",
+   "parent": "F22",
+   "sortOrder": 3,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F22-D04",
+   "nameAr": "قسم نظريات وتطبيقات الرياضات الجماعية وألعاب المضرب",
+   "kind": "Department",
+   "parent": "F22",
+   "sortOrder": 4,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F22-D05",
+   "nameAr": "قسم نظريات وتطبيقات الرياضات المائية",
+   "kind": "Department",
+   "parent": "F22",
+   "sortOrder": 5,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F22-D06",
+   "nameAr": "قسم نظريات وتطبيقات المنازلات والرياضات الفردية",
+   "kind": "Department",
+   "parent": "F22",
+   "sortOrder": 6,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F22-D07",
+   "nameAr": "قسم علوم الإدارة الرياضية والترويح",
+   "kind": "Department",
+   "parent": "F22",
+   "sortOrder": 7,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F22-D08",
+   "nameAr": "قسم المناهج وطرق تدريس التربية البدنية",
+   "kind": "Department",
+   "parent": "F22",
+   "sortOrder": 8,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F22-D09",
+   "nameAr": "قسم علوم الصحة الرياضية",
+   "kind": "Department",
+   "parent": "F22",
+   "sortOrder": 9,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F22-D10",
+   "nameAr": "قسم العلوم التربوية والنفسية والاجتماعية الرياضية",
+   "kind": "Department",
+   "parent": "F22",
+   "sortOrder": 10,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F24-D01",
+   "nameAr": "قسم الملكية الصناعية",
+   "kind": "Department",
+   "parent": "F24",
+   "sortOrder": 1,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "F24-D02",
+   "nameAr": "قسم الملكية الأدبية والفنية",
+   "kind": "Department",
+   "parent": "F24",
+   "sortOrder": 2,
+   "viewsWholeUniversity": false
+  },
+  {
+   "code": "SPU",
+   "nameAr": "وحدة التخطيط الاستراتيجي",
+   "kind": "Administration",
+   "parent": "L01",
+   "viewsWholeUniversity": true,
+   "sortOrder": 50
+  },
+  {
+   "code": "ICT",
+   "nameAr": "مركز الاتصالات وتكنولوجيا المعلومات",
+   "kind": "Center",
+   "parent": "L01",
+   "viewsWholeUniversity": true,
+   "sortOrder": 51
+  }
+ ]
+}

@@ -15,7 +15,8 @@ public sealed record YearTargetDto(Guid Id, int Year, decimal? Value, string? Te
 public sealed record IndicatorNode(
     string Code, string NameAr, string? Definition, string? Numerator, string? Denominator, string Unit, Direction Direction, CollectionLevel Level, Aggregation Aggregation,
     DefinitionStatus Status, bool HasApproved, bool Suspended, int? PlanStartYear, int? PlanEndYear, string? PlanNote,
-    decimal? Baseline, IReadOnlyList<YearTargetDto> Targets, string? EachCollege, uint Version);
+    decimal? Baseline, IReadOnlyList<YearTargetDto> Targets, string? EachCollege, uint Version,
+    string? NameEn, string? Formula, Accumulation Accumulation, IReadOnlyList<int> Perspectives, int? SdgPrimary, int? SdgSecondary, int? SdgInduced);
 
 public sealed record InitiativeNode(
     Guid Id, string Code, string NameAr, string? Description, string? ExpectedOutcome, Guid? OwnerUnitId, string? OwnerUnitName,
@@ -77,7 +78,8 @@ public sealed class StrategyService(IAppDb db, IClock clock, IAccessService acce
                 return new IndicatorNode(i.Code, v.NameAr, v.Definition, v.Numerator, v.Denominator, v.Unit, v.Direction, v.Level, v.Aggregation, v.Status, i.Effective is not null, i.Suspended,
                     i.PlanStartYear, i.PlanEndYear, i.PlanNote, mine.FirstOrDefault(t => t.Kind == TargetKind.Baseline)?.Value,
                     mine.Where(t => t.Kind == TargetKind.Target).OrderBy(t => t.Year).Select(t => new YearTargetDto(t.Id, t.Year, t.Value, t.Text, t.Status, t.Version)).ToList(),
-                    each is null ? null : each.Value is { } ev ? DistributionRules.Fmt(ev) : each.Text, i.Version);
+                    each is null ? null : each.Value is { } ev ? DistributionRules.Fmt(ev) : each.Text, i.Version,
+                    v.NameEn, v.Formula, v.Accumulation, i.Perspectives, i.SdgPrimary, i.SdgSecondary, i.SdgInduced);
             }).ToList());
 
         var targetsEdit = UnitScope.For(me, Features.Targets, Cap.Edit).All;

@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { Alert, App, Button, Tag, Timeline, Tooltip } from "antd";
-import { CheckOutlined, EditOutlined, FileTextOutlined, HistoryOutlined, PartitionOutlined, PrinterOutlined, RollbackOutlined, SendOutlined, WarningOutlined } from "@ant-design/icons";
+import { CheckOutlined, EditOutlined, FileTextOutlined, HistoryOutlined, PartitionOutlined, PrinterOutlined, RollbackOutlined, SendOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../../api/client";
-import type { ConflictList, IndicatorDetail, OrgUnit, Version } from "../../api/tier1";
+import type { IndicatorDetail, OrgUnit, Version } from "../../api/tier1";
 import { howCalculated } from "../../shared/calc";
 import { DecisionModal } from "../../shared/DecisionModal";
 import { formatDate } from "../../shared/format";
 import { L } from "../../shared/i18n";
-import { aggregation, conflictSeverity, conflictStatus, definitionStatus, direction, frequency, level } from "../../shared/labels";
+import { aggregation, definitionStatus, direction, frequency, level } from "../../shared/labels";
+import { StdCode, usePillarMap } from "../../shared/pillars";
 import { PageHeader, Panel } from "../../shared/ui";
 import { QueryState } from "../../shared/QueryState";
 import { DefinitionDrawer } from "./DefinitionDrawer";
@@ -31,6 +32,7 @@ export default function IndicatorPage() {
   const units = useQuery({ queryKey: ["units"], queryFn: () => api.get<OrgUnit[]>("/api/org/units") });
   const university = units.data?.find((u) => u.kind === "University");
   const d = detail.data;
+  const pillarMap = usePillarMap();
 
   const refresh = async (updated?: IndicatorDetail) => {
     if (updated) qc.setQueryData(["indicator", code], updated);
@@ -49,12 +51,19 @@ export default function IndicatorPage() {
         <>
           <PageHeader
             back={{ to: `/indicators?standard=${d!.standardCode}`, label: `${d!.standardCode} — ${d!.standardName}` }}
+            kicker={<>{L("قاموس المؤشرات", "Indicator dictionary")} · <StdCode code={d!.standardCode} map={pillarMap.map} /></>}
             title={<span className="t1-code-title"><code>{d!.code}</code>{d!.current.nameAr}</span>}
             subtitle={<>
               <Tag color={definitionStatus[d!.current.status].color}>{definitionStatus[d!.current.status].text}</Tag>
               {L("الإصدار", "Version")} {d!.current.number}
               {d!.suspended && <Tag color="error" className="ms">{L("موقوف", "Suspended")}</Tag>}
             </>}
+            stats={[
+              { label: L("وحدة القياس", "Unit"), value: d!.current.unit },
+              { label: L("الاتجاه", "Direction"), value: direction[d!.current.direction] },
+              { label: L("بنود تعريف ناقصة", "Missing items"), value: d!.current.missing.length, tone: d!.current.missing.length > 0 ? "warn" : "ok" },
+              { label: L("نوع المؤشر", "Type"), value: d!.current.accumulation === "Cumulative" ? L("تراكمي", "Cumulative") : L("لحظي", "Snapshot") },
+            ]}
             extra={
               <div className="t1-sticky-actions no-print">
                 {d!.actions.canEdit && <Button icon={<EditOutlined />} onClick={() => setEditing(true)}>{d!.actions.editCreatesVersion ? L("تعديل (إصدار جديد)", "Edit (new version)") : L("تعديل التعريف", "Edit definition")}</Button>}
@@ -74,7 +83,7 @@ export default function IndicatorPage() {
 
           <TargetsPanel code={code} universityId={university?.id} />
           <DistributionPanel code={code} />
-          <ConflictsOf code={code} codes={d!.conflictCodes} />
+          <FrameworkPanel d={d!} />
 
           <Panel title={L("سجل الإصدارات", "Version history")} icon={<HistoryOutlined aria-hidden />}>
             <Timeline items={d!.history.map((h) => ({
@@ -142,6 +151,10 @@ function DefinitionView({ v }: { v: Version }) {
   return (
     <dl className="t1-kv">
       {row(L("التعريف", "Definition"), v.definition, "التعريف")}
+      {row(L("معادلة التقييم", "Evaluation formula"), v.formula)}
+      {row(L("نوع المؤشر حسب طريقة الحساب", "Type"), v.accumulation === "Cumulative"
+        ? L("تراكمي: تدخل القيمة المتراكمة حتى تاريخه، وقيمة السنة آخر ربع فيها.", "Cumulative: the year value is its last quarter.")
+        : L("غير تراكمي (لحظي): تدخل القيمة عند تاريخ القياس، وقيمة السنة متوسط أرباعها.", "Snapshot: the year value is the average of its quarters."))}
       {v.alternateName && row(L("الاسم في ملف Tier 1", "Name in the Tier 1 file"), v.alternateName)}
       {row(L("وحدة القياس", "Unit"), missing.has("وحدة القياس") ? null : v.unit, "وحدة القياس")}
       {row(L("الاتجاه المطلوب", "Direction"), v.direction === "Undefined" ? null : direction[v.direction], "الاتجاه المطلوب")}
@@ -162,25 +175,27 @@ function DefinitionView({ v }: { v: Version }) {
   );
 }
 
-/** التعارضات التي تذكر هذا المؤشر أو معياره، بحالتها وخطورتها؛ النقر يفتحها في سجل التعارضات. */
-function ConflictsOf({ code, codes }: { code: string; codes: string[] }) {
-  const list = useQuery({ queryKey: ["conflicts", "scope", code], queryFn: () => api.get<ConflictList>(`/api/kpi/conflicts?scope=${code}`), enabled: codes.length > 0 });
-  if (codes.length === 0) return null;
+/** ربط المؤشر في الإطار الشامل: مناظير بطاقة أداء القطاع العام وأهداف التنمية المستدامة وأسباب الربط، وشرح المستهدف. */
+function FrameworkPanel({ d }: { d: IndicatorDetail }) {
+  const f = d.framework;
+  const sdg = (n: number | null, role: string) => n && <Tag key={role} color="blue">{role}: {L(`الهدف ${n}`, `SDG ${n}`)} — {SDG_NAMES[n - 1]}</Tag>;
   return (
-    <Panel title={L(`التعارضات المرتبطة (${codes.length})`, `Related conflicts (${codes.length})`)} icon={<WarningOutlined aria-hidden />} query={list}>
-      {() => (
-        <ul className="lcp-list">
-          {list.data!.items.map((c) => (
-            <li key={c.code} className="lcp-list-item">
-              <Link to={`/conflicts?open=${c.code}`}><code>{c.code}</code></Link>{" "}
-              <Tag color={conflictSeverity[c.severity].color}>{conflictSeverity[c.severity].text}</Tag>
-              <Tag color={conflictStatus[c.status].color}>{conflictStatus[c.status].text}</Tag>
-              <div>{c.description}</div>
-              {c.decision && <div className="t1-help">{L("القرار:", "Decision:")} {c.decision} ({c.minutesRef})</div>}
-            </li>
-          ))}
-        </ul>
-      )}
+    <Panel title={L("الربط بالإطار الشامل لتقييم أداء الجامعات", "Links in the performance framework")} icon={<PartitionOutlined aria-hidden />}>
+      <dl className="t1-kv">
+        <dt>{L("مناظير بطاقة أداء القطاع العام", "Public Sector Scorecard")}</dt>
+        <dd>{f.perspectives.length === 0 ? "—" : f.perspectives.map((p) => <Tag key={p} color="geekblue">{p}. {PSS_NAMES[p - 1]}</Tag>)}</dd>
+        {f.pssRationale && <><dt>{L("سبب الربط بالمناظير", "Why these perspectives")}</dt><dd>{f.pssRationale}</dd></>}
+        <dt>{L("أهداف التنمية المستدامة", "SDGs")}</dt>
+        <dd>{[sdg(f.sdgPrimary, L("أساسي", "Primary")), sdg(f.sdgSecondary, L("ثانوي", "Secondary")), sdg(f.sdgInduced, L("أثر نهائي", "Induced"))]}</dd>
+        {f.sdgRationale && <><dt>{L("سبب الربط بالأهداف", "Why these goals")}</dt><dd>{f.sdgRationale}</dd></>}
+        {f.planNote && <><dt>{L("ملاحظة على المستهدف", "Target note")}</dt><dd>{f.planNote}</dd></>}
+      </dl>
     </Panel>
   );
 }
+
+const PSS_NAMES = ["المنظور الاستراتيجي", "مستخدمو الخدمة وأصحاب المصلحة", "المالي", "تقديم الخدمة والتميز التشغيلي", "الابتكار والتعلم", "القيادة", "الأفراد والشراكات والموارد"];
+const SDG_NAMES = ["القضاء على الفقر", "القضاء على الجوع", "الصحة الجيدة والرفاهية", "التعليم الجيد", "المساواة بين الجنسين", "المياه النظيفة والنظافة الصحية",
+  "طاقة نظيفة وبأسعار معقولة", "العمل اللائق ونمو الاقتصاد", "الصناعة والابتكار والهياكل الأساسية", "الحد من أوجه عدم المساواة", "مدن ومجتمعات محلية مستدامة",
+  "الاستهلاك والإنتاج المسؤولان", "العمل المناخي", "الحياة تحت الماء", "الحياة في البر", "السلام والعدل والمؤسسات القوية", "عقد الشراكات لتحقيق الأهداف"];
+

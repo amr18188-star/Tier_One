@@ -1,5 +1,6 @@
+import type { ReactNode } from "react";
 import { Input, Progress, Segmented, Select, Tag } from "antd";
-import { CheckCircleOutlined, ClockCircleOutlined, InboxOutlined, RollbackOutlined } from "@ant-design/icons";
+import { CheckCircleOutlined, ClockCircleOutlined, EditOutlined, InboxOutlined, RollbackOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, query } from "../../api/client";
@@ -7,10 +8,24 @@ import type { Cycle, FormRow, SubmissionStatus } from "../../api/collection";
 import { formatDate } from "../../shared/format";
 import { L } from "../../shared/i18n";
 import { dueText, submissionStatus, unitKind } from "../../shared/labels";
-import { DataTable, EmptyNote, FilterMeta, oneOf, PageHeader, Panel, StatTile } from "../../shared/ui";
+import { DataTable, EmptyNote, FilterMeta, oneOf, PageHeader, Panel } from "../../shared/ui";
 
 const VIEWS = ["mine", "all", "NotStarted", "InProgress", "InReview", "Returned", "Approved"] as const;
 type View = (typeof VIEWS)[number];
+
+const PIPE: { status: SubmissionStatus; tone: string; icon: ReactNode }[] = [
+  { status: "NotStarted", tone: "idle", icon: <InboxOutlined aria-hidden /> },
+  { status: "InProgress", tone: "work", icon: <EditOutlined aria-hidden /> },
+  { status: "Returned", tone: "bad", icon: <RollbackOutlined aria-hidden /> },
+  { status: "InReview", tone: "review", icon: <ClockCircleOutlined aria-hidden /> },
+  { status: "Approved", tone: "ok", icon: <CheckCircleOutlined aria-hidden /> },
+];
+
+/** نسبة المؤشرات المدخلة من المطلوب في كل نماذج الدورة. */
+function entryPct(rows: FormRow[]) {
+  const req = rows.reduce((n, r) => n + r.required, 0);
+  return req === 0 ? 0 : Math.round((100 * rows.reduce((n, r) => n + r.completed, 0)) / req);
+}
 
 /**
  * النماذج: يفتح على «مطلوب مني» (ما ينتظر إدخالي أو مراجعتي الآن)، والأقدم موعدًا أولًا.
@@ -50,6 +65,12 @@ export default function FormsPage() {
       <PageHeader title={L("نماذج الجهات", "Unit forms")}
         subtitle={L("كل جهة تدخل قيم مؤشراتها في نموذج واحد، ثم يمر على المراجعين حتى اعتماد الجودة المركزية.",
           "Each unit enters its values in one form, which then passes through reviewers up to central quality approval.")}
+        stats={all.data ? [
+          { label: L("مطلوب مني الآن", "Waiting for me"), value: count((r) => r.awaitingMe), tone: count((r) => r.awaitingMe) > 0 ? "warn" : undefined },
+          { label: L("متأخر عن الموعد", "Overdue"), value: count((r) => r.overdue), tone: count((r) => r.overdue) > 0 ? "bad" : undefined },
+          { label: L("معتمد نهائيًا", "Approved"), value: <span className="ltr">{count((r) => r.status === "Approved")}/{all.data.length}</span>, tone: "ok" },
+          { label: L("اكتمال الإدخال", "Entry complete"), value: <span className="ltr">{entryPct(all.data)}%</span> },
+        ] : undefined}
         extra={live.length > 1 && (
           <Select value={cycleId} onChange={(v) => set("cycle", v)} style={{ minWidth: 260 }} aria-label={L("الدورة", "Cycle")}
             options={live.map((c) => ({ value: c.id, label: `${c.name}${c.status === "Closed" ? L(" (مغلقة)", " (closed)") : ""}` }))} />
@@ -59,15 +80,22 @@ export default function FormsPage() {
         <Panel><EmptyNote>{L("لا توجد دورة مفتوحة الآن. تفتح الدورات من صفحة «دورات جمع البيانات».", "No open cycle right now.")}</EmptyNote></Panel>
       ) : (
         <>
-          <div className="lcp-stats">
-            <StatTile icon={<InboxOutlined />} label={L("مطلوب مني الآن", "Waiting for me")} value={count((r) => r.awaitingMe)} loading={all.isLoading}
-              to={`/forms${query({ cycle: cycleId, view: "mine" })}`} />
-            <StatTile icon={<RollbackOutlined />} tone="rose" label={L("معاد للتصحيح", "Returned")} value={count((r) => r.status === "Returned")} loading={all.isLoading}
-              to={`/forms${query({ cycle: cycleId, view: "Returned" })}`} />
-            <StatTile icon={<ClockCircleOutlined />} tone="gold" label={L("متأخر عن الموعد", "Overdue")} value={count((r) => r.overdue)} loading={all.isLoading} />
-            <StatTile icon={<CheckCircleOutlined />} tone="green" label={L("معتمد نهائيًا", "Approved")} value={`${count((r) => r.status === "Approved")}/${all.data?.length ?? 0}`}
-              loading={all.isLoading} to={`/forms${query({ cycle: cycleId, view: "Approved" })}`} />
-          </div>
+          {/* مسار النماذج في الدورة: كم نموذجًا في كل مرحلة، والنقر يعرضها. */}
+          <nav className="f-pipe" aria-label={L("النماذج بحسب مرحلتها", "Forms by stage")}>
+            {PIPE.map((p, k) => {
+              const n = count((r) => r.status === p.status);
+              const total = all.data?.length || 1;
+              return (
+                <button key={p.status} type="button" className={`f-pipe-step tone-${p.tone}${view === p.status ? " on" : ""}`} aria-pressed={view === p.status}
+                  onClick={() => set("view", view === p.status ? undefined : p.status)}>
+                  <span className="f-pipe-n ltr">{all.isLoading ? "…" : n}</span>
+                  <span className="f-pipe-label">{p.icon}{submissionStatus[p.status].text}</span>
+                  <span className="f-pipe-bar"><i style={{ width: `${(100 * n) / total}%` }} /></span>
+                  {k < PIPE.length - 1 && <span className="f-pipe-arrow" aria-hidden />}
+                </button>
+              );
+            })}
+          </nav>
 
           <Panel>
             <div className="lcp-filters">

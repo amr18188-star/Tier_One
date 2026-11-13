@@ -50,6 +50,8 @@ public interface IAppDb
 
     DbSet<OrgUnitChange> OrgUnitChanges { get; }
 
+    DbSet<UnitIndicator> UnitIndicators { get; }
+
     DbSet<StructureUnit> StructureUnits { get; }
 
     DbSet<StructurePosition> StructurePositions { get; }
@@ -85,6 +87,8 @@ public interface IAppDb
     DbSet<Domain.Collection.SubmissionEvent> SubmissionEvents { get; }
 
     DbSet<Domain.Collection.StoredDocument> Documents { get; }
+
+    DbSet<Domain.Collection.UniversityValue> UniversityValues { get; }
 
     DatabaseFacade Database { get; }
 
@@ -159,4 +163,7 @@ public interface IFileStore
     Task SaveAsync(string key, Stream content, CancellationToken ct);
 
     Stream OpenRead(string key);
+
+    /// <summary>يحذف الملف نهائيًا. عند إعادة ضبط البيانات فقط؛ في الاستخدام العادي تبطل الأدلة ولا تحذف.</summary>
+    Task DeleteAsync(string key, CancellationToken ct);
 }

@@ -1,53 +1,67 @@
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
-import { ClusterOutlined } from "@ant-design/icons";
+import { ArrowLeftOutlined, ArrowRightOutlined, CheckCircleOutlined, ClusterOutlined, WarningOutlined } from "@ant-design/icons";
 import { api } from "../../api/client";
 import type { CollegeCompleteness } from "../../api/tier1";
-import { ProgressToTarget } from "../../shared/charts";
-import { L } from "../../shared/i18n";
+import { L, useLang } from "../../shared/i18n";
 import { usePermissions } from "../../shared/session";
-import { DataTable, EmptyNote, PageHeader, Panel } from "../../shared/ui";
+import { EmptyNote, PageHeader, Panel } from "../../shared/ui";
 
-/** هياكل Tier 1 بالكليات في نطاق المستخدم، الأقل اكتمالًا أولًا، مع أول نقص في كل كلية. */
+/**
+ * هياكل Tier 1 بالكليات في نطاق المستخدم: بطاقة لكل كلية بحلقة اكتمال هيكلها وأول نقص فيه، الأقل اكتمالًا أولًا،
+ * والنقر يفتح رسمها التنظيمي.
+ */
 export default function StructurePage() {
-  const navigate = useNavigate();
   const perms = usePermissions();
+  const Go = useLang() === "ar" ? ArrowLeftOutlined : ArrowRightOutlined;
   const list = useQuery({ queryKey: ["structure", "completeness"], queryFn: () => api.get<CollegeCompleteness[]>("/api/structure/completeness") });
-  const avg = list.data && list.data.length > 0 ? Math.round(list.data.reduce((s, c) => s + c.percent, 0) / list.data.length) : null;
+  const data = list.data ?? [];
+  const avg = data.length > 0 ? Math.round(data.reduce((s, c) => s + c.percent, 0) / data.length) : null;
+  const complete = data.filter((c) => c.percent >= 100).length;
+  const issues = data.reduce((n, c) => n + c.issueCount, 0);
 
   return (
     <>
       <PageHeader title={L("هياكل Tier 1 بالكليات", "College Tier 1 structures")}
-        subtitle={avg !== null
-          ? L(`متوسط الاكتمال ${avg}%. افتح الكلية لترى رسمها التنظيمي وتستكمل المناصب الشاغرة.`, `Average completeness ${avg}%. Open a college to see its chart and fill vacancies.`)
-          : L("الرسم التنظيمي لكل كلية بأعضائه وشركائه الصناعيين.", "Each college's chart with its members and industry partners.")} />
+        subtitle={L("لكل كلية رسم تنظيمي لفريق Tier 1 بأعضائه وشركائه الصناعيين. افتح الكلية لترى رسمها وتستكمل المناصب الشاغرة.",
+          "Each college's Tier 1 chart with its members and industry partners. Open a college to fill vacancies.")}
+        stats={list.data ? [
+          { label: L("كليات ومعاهد", "Colleges"), value: data.length },
+          { label: L("متوسط الاكتمال", "Average"), value: <span className="ltr">{avg ?? 0}%</span>, tone: (avg ?? 0) >= 90 ? "ok" : "warn" },
+          { label: L("هياكل مكتملة", "Complete"), value: complete, tone: "ok" },
+          { label: L("نواقص مفتوحة", "Open gaps"), value: issues, tone: issues > 0 ? "bad" : undefined },
+        ] : undefined} />
       <Panel query={list}>
-        {() => list.data!.length === 0 ? (
+        {() => data.length === 0 ? (
           <EmptyNote action={perms.can("org.units", "A") && <Link to="/units">{L("إضافة الكليات", "Add colleges")}</Link>}>
             {L("لا توجد كليات في نطاقك بعد.", "No colleges in your scope yet.")}
           </EmptyNote>
         ) : (
-          <DataTable<CollegeCompleteness>
-            rowKey={(c) => c.collegeId}
-            data={list.data!}
-            onRowClick={(c) => navigate(`/structure/${c.collegeId}`)}
-            columns={[
-              { title: L("الكلية أو المعهد", "College"), dataIndex: "nameAr", render: (n: string) => <b><ClusterOutlined aria-hidden /> {n}</b> },
-              {
-                title: L("اكتمال الهيكل", "Completeness"), dataIndex: "percent", width: 240,
-                render: (p: number) => <ProgressToTarget value={p} max={100} label={<><span /><b className="ltr">{p}%</b></>} />,
-              },
-              { title: L("أول نقص", "First gap"), dataIndex: "firstIssue", render: (t: string | null, c) => t ? <>{t}{c.issueCount > 1 && <span className="muted"> {L(`(+${c.issueCount - 1})`, `(+${c.issueCount - 1})`)}</span>}</> : <span className="muted">{L("مكتمل", "Complete")}</span> },
-            ]}
-            renderCard={(c) => (
-              <>
-                <b>{c.nameAr}</b>
-                <ProgressToTarget value={c.percent} max={100} label={<><small>{L("الاكتمال", "Complete")}</small><b className="ltr">{c.percent}%</b></>} />
-                {c.firstIssue && <small className="muted">{c.firstIssue}</small>}
-              </>
-            )}
-          />
+          <div className="st-grid">
+            {[...data].sort((a, b) => a.percent - b.percent).map((c) => {
+              const R = 30, C = 2 * Math.PI * R;
+              const tone = c.percent >= 90 ? "ok" : c.percent >= 70 ? "near" : "bad";
+              return (
+                <Link key={c.collegeId} to={`/structure/${c.collegeId}`} className={`st-card tone-${tone}`}>
+                  <span className="st-ring" aria-hidden>
+                    <svg viewBox="0 0 76 76" width="76" height="76">
+                      <circle cx="38" cy="38" r={R} className="st-ring-track" />
+                      <circle cx="38" cy="38" r={R} className="st-ring-fill" strokeDasharray={`${((C * c.percent) / 100).toFixed(1)} ${C.toFixed(1)}`} transform="rotate(-90 38 38)" />
+                      <text x="38" y="43" textAnchor="middle">{c.percent}%</text>
+                    </svg>
+                  </span>
+                  <span className="st-text">
+                    <small><ClusterOutlined aria-hidden /> <code className="ltr">{c.code}</code></small>
+                    <b>{c.nameAr}</b>
+                    {c.firstIssue ? (
+                      <span className="st-issue"><WarningOutlined aria-hidden /> {c.firstIssue}{c.issueCount > 1 && <em> {L(`و${c.issueCount - 1} نقص آخر`, `+${c.issueCount - 1} more`)}</em>}</span>
+                    ) : <span className="st-ok"><CheckCircleOutlined aria-hidden /> {L("الهيكل مكتمل", "Structure complete")}</span>}
+                  </span>
+                  <span className="st-go">{L("الرسم التنظيمي", "Org chart")} <Go aria-hidden /></span>
+                </Link>
+              );
+            })}
+          </div>
         )}
       </Panel>
     </>

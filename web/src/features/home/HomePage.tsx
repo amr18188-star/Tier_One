@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Progress, Tag } from "antd";
 import {
-  BarChartOutlined, CheckCircleOutlined, ClockCircleOutlined, ClusterOutlined, FileDoneOutlined, FormOutlined, UnorderedListOutlined, WarningOutlined,
+  BarChartOutlined, CheckCircleOutlined, ClockCircleOutlined, ClusterOutlined, FileDoneOutlined, FormOutlined, TrophyOutlined, UnorderedListOutlined,
 } from "@ant-design/icons";
 import { api } from "../../api/client";
 import type { FormRow, Results } from "../../api/collection";
@@ -11,7 +11,39 @@ import { ProgressToTarget, SegmentBar } from "../../shared/charts";
 import { formatDate } from "../../shared/format";
 import { L } from "../../shared/i18n";
 import { dueText, submissionStatus } from "../../shared/labels";
+import { StdCode, tint, usePillarMap } from "../../shared/pillars";
 import { usePermissions } from "../../shared/session";
+import { PlanGlance } from "../strategy/PlanGlance";
+import type { Scorecard } from "../../api/scorecard";
+
+/** الدرجة الكلية والفئة ودرجة كل ركيزة، بربط إلى بطاقة الأداء. */
+function ScoreGlance() {
+  const card = useQuery({ queryKey: ["scorecard"], queryFn: () => api.get<Scorecard>("/api/scorecard") });
+  const c = card.data;
+  return (
+    <Panel title={L("بطاقة أداء الجامعة وفئتها", "University scorecard")} icon={<TrophyOutlined aria-hidden />} query={card}
+      extra={<Link to="/scorecard">{L("حاسبة التصنيف والتفاصيل", "Details")}</Link>}>
+      {() => (
+        <div className="t1-score">
+          <div className="t1-score-main">
+            <b className="ltr">{c!.overall.score}</b>
+            <span>{L(`الفئة ${c!.overall.tier.finalTier}: ${c!.tiers.find((t) => t.tier === c!.overall.tier.finalTier)?.nameAr ?? ""}`, `Tier ${c!.overall.tier.finalTier}`)}</span>
+            <small>{c!.lastReported ? L(`حتى ${c!.lastReported.label}`, `Up to ${c!.lastReported.label}`) : L("لم تعتمد قيم أي ربع بعد", "No approved quarter yet")}</small>
+          </div>
+          <ul className="t1-score-pillars">
+            {c!.pillars.map((p, index) => (
+              <li key={p.id} style={tint(index)}>
+                <span>{p.name}</span>
+                <span className="t1-score-bar"><i style={{ width: `${Math.min(100, p.score)}%` }} /></span>
+                <b className="ltr">{p.score}</b>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </Panel>
+  );
+}
 import { EmptyNote, firstName, greeting, Hero, Panel, StatTile } from "../../shared/ui";
 
 /**
@@ -22,12 +54,13 @@ import { EmptyNote, firstName, greeting, Hero, Panel, StatTile } from "../../sha
 export default function HomePage() {
   const perms = usePermissions();
   const home = useQuery({ queryKey: ["home"], queryFn: () => api.get<Home>("/api/home") });
-  const planning = perms.can("kpi.dictionary", "E") || perms.can("kpi.dictionary", "approve") || perms.can("kpi.conflicts", "E") || perms.can("kpi.conflicts", "decide");
+  const planning = perms.can("kpi.dictionary", "E") || perms.can("kpi.dictionary", "approve");
   const seesForms = perms.can("dc.forms", "V");
   const seesResults = perms.can("dc.results", "V");
   const mine = useQuery({ queryKey: ["forms", "mine"], queryFn: () => api.get<FormRow[]>("/api/forms?awaitingMe=true"), enabled: seesForms });
   const results = useQuery({ queryKey: ["results", undefined, undefined], queryFn: () => api.get<Results | null>("/api/results"), enabled: seesResults });
   const d = home.data;
+  const pillarMap = usePillarMap();
   const approved = d?.definitionStatus.find((s) => s.key === "Approved")?.count ?? 0;
   const total = d?.definitionStatus.reduce((s, x) => s + x.count, 0) ?? 0;
   const forms = [...(mine.data ?? [])].sort((a, b) => Number(b.status === "Returned") - Number(a.status === "Returned") || a.dueOn.localeCompare(b.dueOn));
@@ -38,7 +71,7 @@ export default function HomePage() {
     ? L(forms.length === 1 ? `لديك نموذج واحد ينتظرك، موعده ${dueText(forms[0].dueOn)}.`
       : `لديك ${forms.length === 2 ? "نموذجان ينتظرانك" : `${forms.length} نماذج تنتظرك`}، أقربها موعدًا ${dueText(forms[0].dueOn)}.`, `${forms.length} forms are waiting for you.`)
     : planning && d
-      ? L(`اعتُمد ${approved} من ${total} مؤشرًا، وبقي ${d.openConflicts} تعارضًا مفتوحًا أمام اللجنة العليا.`, `${approved} of ${total} indicators approved.`)
+      ? L(`${total} مؤشرًا في الإطار الشامل لتقييم أداء الجامعات، اعتُمد منها ${approved}.`, `${approved} of ${total} indicators approved.`)
       : r
         ? L(`${r.cycle.name}: اعتمد ${r.formsApproved} من ${r.formsTotal} نموذجًا حتى الآن.`, `${r.cycle.name}: ${r.formsApproved} of ${r.formsTotal} forms approved.`)
         : L("لا شيء ينتظرك الآن.", "Nothing is waiting for you right now.");
@@ -105,14 +138,16 @@ export default function HomePage() {
         </Panel>
       )}
 
+      {perms.scopeOf("dc.results", "V") === "A" && <ScoreGlance />}
+
+      <PlanGlance />
+
       {planning && (
         <>
           <div className="lcp-stats">
             <StatTile icon={<UnorderedListOutlined />} label={L("مؤشرات معتمدة", "Approved indicators")} value={`${approved} / ${total}`} to="/indicators?status=Approved" loading={home.isLoading} />
             <StatTile icon={<FileDoneOutlined />} tone="navy" label={L("تنتظر الاعتماد", "Awaiting approval")}
               value={d?.definitionStatus.find((s) => s.key === "UnderReview")?.count ?? 0} to="/indicators?status=UnderReview" loading={home.isLoading} />
-            <StatTile icon={<WarningOutlined />} tone="rose" label={L("تعارضات مفتوحة", "Open conflicts")} value={d?.openConflicts ?? 0}
-              hint={d ? L(`${d.resolvedConflicts} محسوم`, `${d.resolvedConflicts} resolved`) : undefined} to="/conflicts" loading={home.isLoading} />
             {d?.structureAveragePercent !== null && d?.structureAveragePercent !== undefined && (
               <StatTile icon={<ClusterOutlined />} tone="gold" label={L("اكتمال هياكل الكليات", "College structures complete")} value={`${d.structureAveragePercent}%`}
                 hint={L(`${d.collegeCount} كلية ومعهد`, `${d.collegeCount} colleges`)} to="/structure" loading={home.isLoading} />
@@ -129,23 +164,15 @@ export default function HomePage() {
                 ]} />
               )}
             </Panel>
-            <Panel title={L("التعارضات المفتوحة حسب الخطورة", "Open conflicts by severity")} query={home}>
-              {() => (
-                <SegmentBar label={L("التعارضات", "Conflicts")} segments={d!.conflictSeverity.map((s) => ({
-                  key: s.key, label: s.labelAr, count: s.count, color: s.key === "High" ? "#b42318" : s.key === "Medium" ? "#c99a2e" : "#aab6c6",
-                }))} />
-              )}
-            </Panel>
           </div>
 
           {d && d.standards.length > 0 && (
             <Panel title={L("اعتماد المؤشرات بحسب المعيار", "Approval by standard")} icon={<UnorderedListOutlined aria-hidden />}>
               {d.standards.map((s) => (
                 <Link key={s.code} to={`/indicators?standard=${s.code}`} className="t1-std">
-                  <code>{s.code}</code>
+                  <StdCode code={s.code} map={pillarMap.map} />
                   <span>
                     {s.nameAr}
-                    {s.openConflicts > 0 && <small> · {L(`${s.openConflicts} تعارض مفتوح`, `${s.openConflicts} open conflicts`)}</small>}
                   </span>
                   <ProgressToTarget value={s.approved} max={s.indicators}
                     label={<><small>{L("معتمد", "Approved")}</small><small className="ltr">{s.approved}/{s.indicators}</small></>} />

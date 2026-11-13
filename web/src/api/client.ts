@@ -32,7 +32,7 @@ export interface ApiClient {
   put: <T>(path: string, body?: unknown) => Promise<T>;
   del: <T>(path: string) => Promise<T>;
   /** رفع ملف واحد (multipart) برأس CSRF؛ الخادم يتحقق من النوع والحجم. */
-  upload: <T>(path: string, file: File) => Promise<T>;
+  upload: <T>(path: string, file: File, fields?: Record<string, string>) => Promise<T>;
   /** رمز CSRF جديد بعد الدخول أو الخروج، لأنه مرتبط بالهوية. */
   refreshCsrf: () => Promise<void>;
 }
@@ -101,11 +101,12 @@ export function createApiClient({ csrfUrl }: { csrfUrl: string }): ApiClient {
     return finish<T>(r, retry, () => request<T>(method, path, body, false));
   }
 
-  async function upload<T>(path: string, file: File, retry = true): Promise<T> {
+  async function upload<T>(path: string, file: File, fields?: Record<string, string>, retry = true): Promise<T> {
     const body = new FormData();
     body.append("file", file, file.name);
+    for (const [k, v] of Object.entries(fields ?? {})) body.append(k, v);
     const r = await send(path, { method: "POST", headers: { "Accept-Language": getLang(), "X-XSRF-TOKEN": await csrf() }, body });
-    return finish<T>(r, retry, () => upload<T>(path, file, false));
+    return finish<T>(r, retry, () => upload<T>(path, file, fields, false));
   }
 
   return {
@@ -113,7 +114,7 @@ export function createApiClient({ csrfUrl }: { csrfUrl: string }): ApiClient {
     post: <T>(path: string, body: unknown = {}) => request<T>("POST", path, body),
     put: <T>(path: string, body: unknown = {}) => request<T>("PUT", path, body),
     del: <T>(path: string) => request<T>("DELETE", path),
-    upload: <T>(path: string, file: File) => upload<T>(path, file),
+    upload: <T>(path: string, file: File, fields?: Record<string, string>) => upload<T>(path, file, fields),
     refreshCsrf,
   };
 }

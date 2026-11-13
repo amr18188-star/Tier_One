@@ -6,6 +6,7 @@ import type { InitiativeNode, InitiativeStatus, OrgUnit, PillarNode, StandardNod
 import { errorText } from "../../shared/format";
 import { L, useLang } from "../../shared/i18n";
 import { initiativeStatus, options } from "../../shared/labels";
+import { stdLabel } from "../../shared/pillars";
 
 /** بعد أي تعديل في الخطة: الشجرة والقاموس وقوائم المعايير كلها من جديد. */
 export function useRefreshPlan() {
@@ -124,7 +125,7 @@ export function InitiativeDrawer({ initiative, standardId, tree, onClose }: { in
   });
   // مؤشرات معيار المبادرة أولًا، ثم بقية المؤشرات لمن تسهم مبادرته في معيار آخر.
   const indicatorOptions = [...standards].sort((a, b) => Number(b.id === chosen) - Number(a.id === chosen))
-    .map((s) => ({ label: `${s.code} — ${s.nameAr}`, options: s.indicators.map((i) => ({ value: i.code, label: `${i.code} ${i.nameAr}` })) }))
+    .map((s) => ({ label: `${stdLabel(s.code)} — ${s.nameAr}`, options: s.indicators.map((i) => ({ value: i.code, label: `${i.code} ${i.nameAr}` })) }))
     .filter((g) => g.options.length > 0);
   const years = tree.years.map((y) => ({ value: y, label: String(y) }));
   return (
@@ -132,7 +133,7 @@ export function InitiativeDrawer({ initiative, standardId, tree, onClose }: { in
       saving={save.isPending} error={save.error} onSave={() => form.submit()} onClose={onClose}>
       <Form form={form} layout="vertical" onFinish={(f) => save.mutate(f)} requiredMark="optional">
         <Form.Item name="standardId" label={L("المعيار", "Standard")} rules={[{ required: true }]}>
-          <Select showSearch optionFilterProp="label" options={standards.map((s) => ({ value: s.id, label: `${s.code} — ${s.nameAr}` }))} />
+          <Select showSearch optionFilterProp="label" options={standards.map((s) => ({ value: s.id, label: `${stdLabel(s.code)} — ${s.nameAr}` }))} />
         </Form.Item>
         <Form.Item name="nameAr" label={L("اسم المبادرة", "Initiative name")} rules={[{ required: true, message: L("اكتب اسم المبادرة", "Enter the name") }]}>
           <Input maxLength={300} autoFocus />

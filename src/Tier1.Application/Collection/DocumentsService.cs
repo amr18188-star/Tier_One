@@ -50,6 +50,8 @@ public sealed record UploadedFile(string FileName, long Length, Stream Content, 
 
 public sealed record OpenedFile(Stream Content, string ContentType, string FileName);
 
+public sealed record PlanDocDto(DocDto Document, string? UploadedBy);
+
 /// <summary>
 /// المستندات: أدلة قيم المؤشرات (في نموذج الجهة)، ومستندات هيكل الكلية (الهيكل المعتمد وقرارات التشكيل).
 /// لا حذف نهائيًا: الإبطال بسبب يبقي المستند في السجل، والتنزيل بصلاحية الاطلاع على مالكه.
@@ -99,12 +101,51 @@ public sealed class DocumentsService(IAppDb db, IClock clock, ICurrentUser curre
         return FormsService.ToDoc(doc);
     }
 
+    /// <summary>وثيقة الخطة الاستراتيجية بإصداراتها، الأحدث أولًا؛ يطلع عليها كل من يرى الخطة.</summary>
+    public async Task<IReadOnlyList<PlanDocDto>> PlanDocsAsync(CancellationToken ct)
+    {
+        var me = await access.RequireAsync(Features.Strategy, Cap.View, ct);
+        var docs = await db.Documents.AsNoTracking().Where(d => d.OwnerType == StoredDocument.PlanOwner)
+            .OrderByDescending(d => d.UploadedAt).ToListAsync(ct);
+        // الإصدارات المبطلة لمن يدير الوثيقة فقط؛ غيره يرى الساري.
+        var manager = me.Has(Features.Strategy, Cap.Delete);
+        var users = docs.Select(d => d.UploadedBy).Distinct().ToList();
+        var names = await db.Users.AsNoTracking().Where(u => users.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.FullNameAr, ct);
+        return docs.Where(d => manager || d.VoidedAt is null)
+            .Select(d => new PlanDocDto(FormsService.ToDoc(d), names.GetValueOrDefault(d.UploadedBy))).ToList();
+    }
+
+    /// <summary>رفع إصدار من وثيقة الخطة (PDF فقط، لأنها تعرض في الصفحة). الإصدار الأحدث هو المعروض.</summary>
+    public async Task<DocDto> UploadPlanAsync(UploadedFile file, CancellationToken ct)
+    {
+        await access.RequireAsync(Features.Strategy, Cap.Add, ct);
+        if (!string.Equals(Path.GetExtension(file.FileName), ".pdf", StringComparison.OrdinalIgnoreCase))
+            throw new DomainException("pdf_only", "وثيقة الخطة تعرض في المنصة، فترفع بصيغة PDF.", "The plan document must be a PDF.", 400);
+        var root = await db.OrgUnits.AsNoTracking().FirstAsync(u => u.Kind == OrgUnitKind.University, ct);
+        var doc = await StoreAsync(StoredDocument.PlanOwner, root.Id, file, ct, PlanMaxBytes);
+        audit.Record(AuditEvents.Audit("kpi", Features.Strategy, "kpi.plan_document_uploaded", "رفع وثيقة الخطة الاستراتيجية", "Uploaded the strategic plan document") with
+        {
+            Target = new AuditTarget("document", doc.Id.ToString(), doc.FileName),
+        });
+        await db.SaveChangesAsync(ct);
+        return FormsService.ToDoc(doc);
+    }
+
+    /// <summary>وثيقة الخطة قد تكون أكبر من المستندات المعتادة.</summary>
+    public const long PlanMaxBytes = 60L * 1024 * 1024;
+
     public async Task<OpenedFile> OpenAsync(Guid id, CancellationToken ct)
     {
         var doc = await db.Documents.AsNoTracking().FirstOrDefaultAsync(d => d.Id == id, ct) ?? throw DomainException.NotFound();
         var unitCode = await AuthorizeAsync(doc, Cap.View, ct);
-        await audit.RecordNowAsync(AuditEvents.Access("dc", doc.OwnerType == StoredDocument.ValueOwner ? Features.Forms : Features.Structure,
-            "dc.document_downloaded", "تنزيل مستند", "Downloaded a document") with
+        await audit.RecordNowAsync(AuditEvents.Access("dc", doc.OwnerType switch
+            {
+                StoredDocument.ValueOwner => Features.Forms,
+                StoredDocument.PlanOwner => Features.Strategy,
+                _ => Features.Structure,
+            },
+            doc.OwnerType == StoredDocument.PlanOwner ? "kpi.plan_document_viewed" : "dc.document_downloaded",
+            doc.OwnerType == StoredDocument.PlanOwner ? "اطلاع على وثيقة الخطة" : "تنزيل مستند", "Opened a document") with
         {
             Target = new AuditTarget("document", doc.Id.ToString(), doc.FileName, unitCode),
         }, ct);
@@ -117,6 +158,12 @@ public sealed class DocumentsService(IAppDb db, IClock clock, ICurrentUser curre
         var doc = await db.Documents.FirstOrDefaultAsync(d => d.Id == id, ct) ?? throw DomainException.NotFound();
         if (doc.VoidedAt is not null) throw new DomainException("already_voided", "المستند مبطل بالفعل.", "Already voided.");
         var unitCode = await AuthorizeAsync(doc, doc.OwnerType == StoredDocument.ValueOwner ? Cap.Edit : Cap.Delete, ct);
+        if (doc.OwnerType == StoredDocument.PlanOwner)
+            audit.Record(AuditEvents.Audit("kpi", Features.Strategy, "kpi.plan_document_voided", "إبطال إصدار من وثيقة الخطة", "Voided a plan document") with
+            {
+                Target = new AuditTarget("document", doc.Id.ToString(), doc.FileName),
+                Reason = why,
+            });
         if (doc.OwnerType == StoredDocument.ValueOwner)
         {
             var sub = await (from v in db.SubmittedValues join s in db.Submissions on v.SubmissionId equals s.Id where v.Id == doc.OwnerId select s).AsNoTracking().FirstAsync(ct);
@@ -124,11 +171,12 @@ public sealed class DocumentsService(IAppDb db, IClock clock, ICurrentUser curre
         }
         doc.VoidedAt = clock.UtcNow;
         doc.VoidReason = why;
-        audit.Record(AuditEvents.Audit("dc", Features.Forms, "dc.document_voided", "إبطال مستند", "Voided a document") with
-        {
-            Target = new AuditTarget("document", doc.Id.ToString(), doc.FileName, unitCode),
-            Reason = why,
-        });
+        if (doc.OwnerType != StoredDocument.PlanOwner)
+            audit.Record(AuditEvents.Audit("dc", Features.Forms, "dc.document_voided", "إبطال مستند", "Voided a document") with
+            {
+                Target = new AuditTarget("document", doc.Id.ToString(), doc.FileName, unitCode),
+                Reason = why,
+            });
         await db.SaveChangesAsync(ct);
         return FormsService.ToDoc(doc);
     }
@@ -147,17 +195,27 @@ public sealed class DocumentsService(IAppDb db, IClock clock, ICurrentUser curre
             UnitScope.For(me, Features.Forms, cap).Require(unit);
             return unit.Code;
         }
+        if (doc.OwnerType == StoredDocument.PlanOwner)
+        {
+            // وثيقة الجامعة كلها: الاطلاع لكل من يرى الخطة بلا نطاق جهة، والمبطل لا يفتحه إلا من يديرها.
+            var me = await access.RequireAsync(Features.Strategy, cap, ct);
+            if (doc.VoidedAt is not null && !me.Has(Features.Strategy, Cap.Delete)) throw DomainException.NotFound();
+            return ReferenceCode;
+        }
         var college = await db.OrgUnits.AsNoTracking().FirstAsync(u => u.Id == doc.OwnerId, ct);
         var access2 = await access.RequireAsync(Features.Structure, cap, ct);
         UnitScope.For(access2, Features.Structure, cap).Require(college);
         return college.Code;
     }
 
-    private async Task<StoredDocument> StoreAsync(string ownerType, Guid ownerId, UploadedFile file, CancellationToken ct)
+    private const string ReferenceCode = "CU";
+
+    private async Task<StoredDocument> StoreAsync(string ownerType, Guid ownerId, UploadedFile file, CancellationToken ct, long? maxBytes = null)
     {
+        var max = maxBytes ?? files.MaxBytes;
         if (file.Length <= 0) throw new DomainException("empty_file", "الملف فارغ.", "The file is empty.", 400);
-        if (file.Length > files.MaxBytes)
-            throw new DomainException("file_too_large", $"الملف أكبر من {files.MaxBytes / 1024 / 1024} ميجابايت.", "The file is too large.", 413);
+        if (file.Length > max)
+            throw new DomainException("file_too_large", $"الملف أكبر من {max / 1024 / 1024} ميجابايت.", "The file is too large.", 413);
         using var buffer = new MemoryStream();
         await file.Content.CopyToAsync(buffer, ct);
         var bytes = buffer.ToArray();

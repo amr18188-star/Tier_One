@@ -12,9 +12,9 @@ namespace Tier1.Application.Collection;
 
 public sealed record CycleDto(
     Guid Id, string Name, string PeriodLabel, int TargetYear, DateOnly OpensOn, DateOnly DueOn, CycleStatus Status, bool Trial,
-    int Indicators, int Forms, IReadOnlyDictionary<string, int> FormsByStatus, int Overdue, uint Version);
+    int Indicators, int Forms, IReadOnlyDictionary<string, int> FormsByStatus, int Overdue, uint Version, int? Quarter);
 
-public sealed record SaveCycleRequest(string Name, string PeriodLabel, int TargetYear, DateOnly OpensOn, DateOnly DueOn, bool Trial, uint? Version);
+public sealed record SaveCycleRequest(string Name, string? PeriodLabel, int TargetYear, DateOnly OpensOn, DateOnly DueOn, bool Trial, uint? Version, int? Quarter = null);
 
 public sealed record OpenCyclePreview(int Indicators, int Forms, int Departments, int Colleges, int Central, IReadOnlyList<string> Skipped);
 
@@ -35,7 +35,14 @@ public sealed class CyclesService(IAppDb db, IClock clock, ICurrentUser current,
         // مدخلو البيانات لا يرون الدورة قيد الإعداد.
         if (!me.Has(Feature, Cap.Edit)) cycles = cycles.Where(c => c.Status != CycleStatus.Draft).ToList();
         var ids = cycles.Select(c => c.Id).ToList();
-        var forms = await db.Submissions.AsNoTracking().Where(s => ids.Contains(s.CycleId)).Select(s => new { s.CycleId, s.Status, s.DueOn }).ToListAsync(ct);
+        var forms = await db.Submissions.AsNoTracking().Where(s => ids.Contains(s.CycleId)).Select(s => new { s.CycleId, s.UnitId, s.Status, s.DueOn }).ToListAsync(ct);
+        // أعداد النماذج لمستخدم الكلية أو الإدارة من نماذج جهته وحدها، لا الجامعة كلها.
+        var scope = me.Has(Features.Forms, Cap.View) ? UnitScope.For(me, Features.Forms, Cap.View) : UnitScope.For(me, Feature, Cap.View);
+        if (!scope.All)
+        {
+            var visible = (await db.OrgUnits.AsNoTracking().Select(u => new { u.Id, u.Path }).ToListAsync(ct)).Where(u => scope.Covers(u.Path)).Select(u => u.Id).ToHashSet();
+            forms = forms.Where(f => visible.Contains(f.UnitId)).ToList();
+        }
         var indicators = await db.CycleIndicators.AsNoTracking().Where(i => ids.Contains(i.CycleId)).GroupBy(i => i.CycleId).Select(g => new { g.Key, Count = g.Count() }).ToListAsync(ct);
         var today = CairoTime.DateOf(clock.UtcNow);
         return cycles.Select(c =>
@@ -45,7 +52,7 @@ public sealed class CyclesService(IAppDb db, IClock clock, ICurrentUser current,
                 indicators.FirstOrDefault(i => i.Key == c.Id)?.Count ?? 0, mine.Count,
                 mine.GroupBy(f => f.Status.ToString()).ToDictionary(g => g.Key, g => g.Count()),
                 c.Status == CycleStatus.Open ? mine.Count(f => f.Status != SubmissionStatus.Approved && f.DueOn < today) : 0,
-                c.Version);
+                c.Version, c.Quarter);
         }).ToList();
     }
 
@@ -54,6 +61,7 @@ public sealed class CyclesService(IAppDb db, IClock clock, ICurrentUser current,
         await access.RequireAsync(Feature, Cap.Add, ct);
         var cycle = new CollectionCycle { CreatedBy = current.UserId, CreatedAt = clock.UtcNow };
         Apply(cycle, req);
+        await EnsureQuarterFreeAsync(cycle, ct);
         db.Cycles.Add(cycle);
         audit.Record(AuditEvents.Audit("dc", Feature, "dc.cycle_created", "إنشاء دورة جمع بيانات", "Created a collection cycle") with
         {
@@ -69,10 +77,11 @@ public sealed class CyclesService(IAppDb db, IClock clock, ICurrentUser current,
         var cycle = await db.Cycles.FirstOrDefaultAsync(c => c.Id == id, ct) ?? throw DomainException.NotFound();
         Concurrency.Expect(db, cycle, req.Version);
         if (cycle.Status == CycleStatus.Closed) throw new DomainException("cycle_closed", "الدورة مغلقة.", "The cycle is closed.");
-        if (cycle.Status == CycleStatus.Open && (req.TargetYear != cycle.TargetYear || req.Trial != cycle.Trial))
+        if (cycle.Status == CycleStatus.Open && (req.TargetYear != cycle.TargetYear || req.Trial != cycle.Trial || req.Quarter != cycle.Quarter))
             throw new DomainException("cycle_open", "بعد الفتح يعدل الاسم والمواعيد فقط.", "After opening only the name and dates can change.");
         var oldDue = cycle.DueOn;
         Apply(cycle, req);
+        await EnsureQuarterFreeAsync(cycle, ct);
         if (cycle.Status == CycleStatus.Open && oldDue != cycle.DueOn)
         {
             // تمديد الدورة يمدد موعد النماذج التي لم تمدد لها مهلة خاصة.
@@ -148,6 +157,7 @@ public sealed class CyclesService(IAppDb db, IClock clock, ICurrentUser current,
         var indicators = await db.Indicators.AsNoTracking().Include(i => i.Versions).Where(i => !i.Suspended).OrderBy(i => i.SortOrder).ToListAsync(ct);
         var units = await db.OrgUnits.AsNoTracking().Where(u => u.Active).ToListAsync(ct);
         var root = units.First(u => u.Kind == OrgUnitKind.University);
+        var map = new Organization.AssignmentMap(units, await db.UnitIndicators.AsNoTracking().ToListAsync(ct));
         var skipped = new List<string>();
         var picked = new List<CycleIndicator>();
         foreach (var i in indicators)
@@ -161,27 +171,50 @@ public sealed class CyclesService(IAppDb db, IClock clock, ICurrentUser current,
             // جهة الإدخال المركزية: لمؤشر الجامعة كلها، وللعدد المميز الذي يدخل عدد الجامعة فيه بعد إزالة التكرار لأنه لا يجمع من الكليات.
             var distinct = v.Aggregation == Aggregation.DistinctCount;
             var owner = v.OwnerUnitId is { } o ? units.FirstOrDefault(u => u.Id == o) : null;
-            Guid? central = v.Level == CollectionLevel.University ? owner?.Id ?? root.Id
+            // مؤشر الجامعة كلها: الجهة المكلفة به، ثم الجهة المالكة في التعريف، ثم نموذج الجامعة.
+            Guid? central = v.Level == CollectionLevel.University ? map.ResponsibleFor(i.Id)?.Id ?? owner?.Id ?? root.Id
                 : distinct ? (owner is { IsCollegeLevel: false, Kind: not OrgUnitKind.Department } ? owner.Id : root.Id)
                 : null;
+            var collegeEntry = distinct && v.Level == CollectionLevel.Department;
+            // الكليات والأقسام المكلفة به؛ فارغ إن كلفت به كل جهات مستواه.
+            List<Guid>? unitIds = null;
+            if (v.Level != CollectionLevel.University)
+            {
+                var reference = new Organization.IndicatorRef(i.Id, v.Level, distinct);
+                var eligible = units.Where(u => v.Level == CollectionLevel.Department ? u.Kind == OrgUnitKind.Department || (collegeEntry && u.IsCollegeLevel) : u.IsCollegeLevel).ToList();
+                var entering = eligible.Where(u => map.Enters(u, reference)).Select(u => u.Id).ToList();
+                if (entering.Count < eligible.Count) unitIds = entering;
+            }
             picked.Add(new CycleIndicator
             {
                 CycleId = cycle.Id, IndicatorId = i.Id, VersionId = v.Id, Code = i.Code, Level = v.Level, CentralUnitId = central,
-                CollegeEntry = distinct && v.Level == CollectionLevel.Department,
+                CollegeEntry = collegeEntry, UnitIds = unitIds,
             });
         }
-        var needed = new List<OrgUnit>();
-        if (picked.Any(p => p.Level == CollectionLevel.Department)) needed.AddRange(units.Where(u => u.Kind == OrgUnitKind.Department));
-        if (picked.Any(p => p.Level == CollectionLevel.College || p.CollegeEntry)) needed.AddRange(units.Where(u => u.IsCollegeLevel));
+        // نموذج لكل جهة تدخل مؤشرًا واحدًا على الأقل.
+        var needed = units.Where(u => u.Kind != OrgUnitKind.University && picked.Any(p => FormsService.Applies(p, u))).ToList();
         foreach (var c in picked.Where(p => p.CentralUnitId is not null).Select(p => p.CentralUnitId!.Value).Distinct())
             if (needed.All(u => u.Id != c)) needed.Add(units.First(u => u.Id == c));
         return new Plan(picked, needed, skipped);
     }
 
+    /// <summary>دورة رسمية واحدة لكل ربع: قيمة الربع في بطاقة الأداء من دورته وحدها. البروفة لا تحسب فلا تمنع.</summary>
+    private async Task EnsureQuarterFreeAsync(CollectionCycle c, CancellationToken ct)
+    {
+        if (c.Quarter is not { } q || c.Trial) return;
+        if (await db.Cycles.AnyAsync(x => x.Id != c.Id && !x.Trial && x.TargetYear == c.TargetYear && x.Quarter == q, ct))
+            throw new DomainException("quarter_taken", $"توجد دورة رسمية لـ{Scorecard.PlanCalendar.Label(c.TargetYear, q)} بالفعل.", "A cycle for this quarter already exists.");
+    }
+
     private static void Apply(CollectionCycle c, SaveCycleRequest req)
     {
         c.Name = string.IsNullOrWhiteSpace(req.Name) ? throw new DomainException("name_required", "اكتب اسم الدورة.", "Enter the cycle name.", 400) : req.Name.Trim();
-        c.PeriodLabel = string.IsNullOrWhiteSpace(req.PeriodLabel) ? throw new DomainException("period_required", "اكتب الفترة التي تقيسها الدورة.", "Enter the period.", 400) : req.PeriodLabel.Trim();
+        if (req.Quarter is { } q && (q is < 1 or > 4 || req.TargetYear is < Scorecard.PlanCalendar.FirstYear or > Scorecard.PlanCalendar.LastYear))
+            throw new DomainException("invalid_quarter", "الدورة الربعية لسنة من 2027 إلى 2031 وربع من 1 إلى 4.", "Quarterly cycles: year 2027-2031, quarter 1-4.", 400);
+        c.Quarter = req.Quarter;
+        c.PeriodLabel = !string.IsNullOrWhiteSpace(req.PeriodLabel) ? req.PeriodLabel.Trim()
+            : req.Quarter is { } quarter ? Scorecard.PlanCalendar.Label(req.TargetYear, quarter)
+            : throw new DomainException("period_required", "اكتب الفترة التي تقيسها الدورة.", "Enter the period.", 400);
         if (req.TargetYear is < 2026 or > 2031) throw new DomainException("invalid_year", "سنة المستهدف من 2026 إلى 2031.", "Target year 2026-2031.", 400);
         if (req.DueOn < req.OpensOn) throw new DomainException("dates", "الموعد النهائي بعد تاريخ الفتح.", "The deadline is after the opening date.", 400);
         c.TargetYear = req.TargetYear;

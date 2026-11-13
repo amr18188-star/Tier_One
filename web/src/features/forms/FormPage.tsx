@@ -12,7 +12,8 @@ import type { Form, FormItem, FormSection } from "../../api/collection";
 import { DecisionModal } from "../../shared/DecisionModal";
 import { errorText, formatDate, formatDateTime } from "../../shared/format";
 import { L } from "../../shared/i18n";
-import { submissionStatus, unitKind } from "../../shared/labels";
+import { dueText, submissionStatus, unitKind } from "../../shared/labels";
+import { PillarBand, stdLabel, tint, usePillarMap } from "../../shared/pillars";
 import { usePermissions } from "../../shared/session";
 import { PageHeader, Panel, Stepper } from "../../shared/ui";
 import { ImportModal } from "./ImportModal";
@@ -67,6 +68,15 @@ export default function FormPage() {
     }
     return list;
   }, [f]);
+  // لون الركيزة: بترتيبها في الخطة إن أتيحت الخطة للمستخدم، وإلا برقم رمزها (P1 الأولى).
+  const pillarMap = usePillarMap();
+  const pillarIndex = (code: string | null) => {
+    if (!code) return -1;
+    const known = pillarMap.pillars.find((p) => p.code === code);
+    if (known) return known.index;
+    const n = Number(code.replace(/\D/g, ""));
+    return Number.isFinite(n) && n > 0 ? n - 1 : -1;
+  };
   const flaggedCount = Object.values(marks).filter((m) => m.checked).length;
   const visible = (i: FormItem) =>
     filter === "all" ? true
@@ -98,6 +108,12 @@ export default function FormPage() {
       <PageHeader back={{ to: "/forms", label: L("النماذج", "Forms") }}
         title={<>{f.unitName} <Tag color={submissionStatus[f.status].color}>{submissionStatus[f.status].text}</Tag>{f.trial && <Tag color="purple">{L("بروفة", "Rehearsal")}</Tag>}</>}
         subtitle={<>{unitKind[f.unitKind]} · {f.cycleName} · {L("الفترة", "Period")} <b className="ltr">{f.periodLabel}</b> · {L("الموعد النهائي", "Due")} <b className="ltr">{formatDate(f.dueOn)}</b>{f.overdue && <Tag color="error" className="ms">{L("متأخر", "Overdue")}</Tag>}</>}
+        stats={[
+          { label: L("أدخلت", "Entered"), value: <span className="ltr">{f.completed}/{f.required}</span>, tone: f.completed === f.required ? "ok" : undefined },
+          { label: L("ناقص", "Missing"), value: missing.length, tone: missing.length > 0 ? "warn" : "ok" },
+          { label: L("يمنع الإرسال", "Blocking"), value: f.blocking.length, tone: f.blocking.length > 0 ? "bad" : "ok" },
+          { label: L("الموعد", "Due"), value: f.status === "Approved" ? "—" : dueText(f.dueOn), tone: f.overdue ? "bad" : undefined },
+        ]}
         extra={
           <Space wrap>
             <Button icon={<DownloadOutlined />} href={`/api/forms/${f.id}/template.xlsx`}>{L("تنزيل Excel", "Download Excel")}</Button>
@@ -139,16 +155,22 @@ export default function FormPage() {
               { value: "flagged", label: L("ملاحظات المراجعة", "Review notes") },
             ]} />
         </div>
-        {pillars.map((p) => (
-          <nav key={p.code ?? "-"} className="f-std-nav" aria-label={p.name ?? L("المعايير", "Standards")}>
-            {p.name && <span className="f-pillar-label">{p.code} {p.name}</span>}
-            {p.sections.map((s) => (
-              <a key={s.standardCode} href={`#s-${s.standardCode}`} className={s.items.every((i) => i.value) ? "done" : undefined} title={s.standardName}>
-                {s.standardCode} <span className="ltr">{s.items.filter((i) => i.value).length}/{s.items.length}</span>
-              </a>
-            ))}
-          </nav>
-        ))}
+        <div className="f-navs">
+          {pillars.map((p) => (
+            <nav key={p.code ?? "-"} className="f-std-nav" style={tint(pillarIndex(p.code))} aria-label={p.name ?? L("المعايير", "Standards")}>
+              {p.name && <span className="f-pillar-label"><code className="ltr">{p.code}</code> {p.name}</span>}
+              {p.sections.map((s) => {
+                const done = s.items.filter((i) => i.value).length;
+                return (
+                  <a key={s.standardCode} href={`#s-${s.standardCode}`} className={done === s.items.length ? "done" : undefined} title={s.standardName}>
+                    <span>{stdLabel(s.standardCode)} <span className="ltr">{done}/{s.items.length}</span></span>
+                    <i style={{ width: `${(100 * done) / Math.max(1, s.items.length)}%` }} aria-hidden />
+                  </a>
+                );
+              })}
+            </nav>
+          ))}
+        </div>
       </Panel>
 
       {/* الإدخال مصنفًا: الركيزة، ثم معاييرها، وفي كل معيار مؤشراته. */}
@@ -156,10 +178,16 @@ export default function FormPage() {
         const shown = p.sections.map((s) => ({ s, rows: s.items.filter(visible) })).filter((x) => x.rows.length > 0);
         if (shown.length === 0) return null;
         return (
-          <div key={p.code ?? "-"}>
-            {p.name && <h2 className="t1-pillar-head"><code className="ltr">{p.code}</code>{p.name}</h2>}
+          <div key={p.code ?? "-"} className="f-pillar" style={tint(pillarIndex(p.code))}>
+            {p.name && (
+              <PillarBand info={{ index: pillarIndex(p.code), id: p.code ?? "", code: p.code ?? "", name: p.name }}>
+                <span className="ltr">{p.sections.reduce((n, s) => n + s.items.filter((i) => i.value).length, 0)}/{p.sections.reduce((n, s) => n + s.items.length, 0)}</span> {L("مدخل", "entered")}
+              </PillarBand>
+            )}
             {shown.map(({ s, rows }) => (
-              <Panel key={s.standardCode} id={`s-${s.standardCode}`} title={<><code className="ltr">{s.standardCode}</code> {s.standardName}</>}>
+              <Panel key={s.standardCode} id={`s-${s.standardCode}`} className="f-std"
+                title={<><code className="pill-code ltr">{stdLabel(s.standardCode)}</code> {s.standardName}</>}
+                extra={<span className="f-std-count ltr">{s.items.filter((i) => i.value).length}/{s.items.length}</span>}>
                 {rows.map((i) => (
                   <ValueRow key={`${i.indicatorId}:${i.value?.version ?? 0}:${i.evidence.length}`} formId={f.id} item={i} editable={editable} reviewing={reviewing}
                     mark={marks[i.indicatorId]} onMark={(m) => setMarks((x) => ({ ...x, [i.indicatorId]: m }))} onSaved={onSaved} />

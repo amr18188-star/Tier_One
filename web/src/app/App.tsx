@@ -34,12 +34,14 @@ const LoginPage = load(() => import("../features/auth/LoginPage").then((m) => ({
 const Shell = load(() => import("./Shell").then((m) => ({ default: m.Shell })));
 const HomePage = load(() => import("../features/home/HomePage"));
 const StrategyPage = load(() => import("../features/strategy/StrategyPage"));
+const PlanDocumentPage = load(() => import("../features/strategy/PlanDocumentPage"));
 const IndicatorsPage = load(() => import("../features/indicators/IndicatorsPage"));
 const IndicatorPage = load(() => import("../features/indicators/IndicatorPage"));
-const ConflictsPage = load(() => import("../features/conflicts/ConflictsPage"));
-const AgendaPage = load(() => import("../features/conflicts/AgendaPage"));
+const ScorecardPage = load(() => import("../features/scorecard/ScorecardPage"));
 const StructurePage = load(() => import("../features/structure/StructurePage"));
 const CollegeStructurePage = load(() => import("../features/structure/CollegeStructurePage"));
+const ReviewPage = load(() => import("../features/review/ReviewPage"));
+const ProgressPage = load(() => import("../features/progress/ProgressPage"));
 const CyclesPage = load(() => import("../features/cycles/CyclesPage"));
 const FormsPage = load(() => import("../features/forms/FormsPage"));
 const FormPage = load(() => import("../features/forms/FormPage"));
@@ -58,7 +60,7 @@ const queryClient = new QueryClient({
 // ردود الخادم بلغة الطلب: تغيير اللغة يجعل كل ما في الذاكرة قديمًا فيعاد طلبه.
 onLangChange(() => void queryClient.invalidateQueries());
 
-/** ألوان هوية الجامعة: الكحلي لهيكل الواجهة، والتركوازي للإجراءات. */
+/** ألوان هوية الجامعة: الكحلي لهيكل الواجهة ورؤوس الجداول، والتركوازي للإجراءات. */
 const theme = {
   token: {
     colorPrimary: "#0A8C93",
@@ -74,7 +76,7 @@ const theme = {
   },
   components: {
     Table: {
-      headerBg: "#0A8C93",
+      headerBg: "#16294A",
       headerColor: "#FFFFFF",
       headerSortActiveBg: "#087D83",
       headerSortHoverBg: "#087D83",
@@ -134,13 +136,16 @@ function Gate() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/strategy" element={<Guard need={["kpi.strategy:V"]}><StrategyPage /></Guard>} />
+            <Route path="/strategy/document" element={<Guard need={["kpi.strategy:V"]}><PlanDocumentPage /></Guard>} />
             <Route path="/indicators" element={<Guard need={["kpi.dictionary:V"]}><IndicatorsPage /></Guard>} />
             <Route path="/indicators/:code" element={<Guard need={["kpi.dictionary:V"]}><IndicatorPage /></Guard>} />
-            <Route path="/conflicts" element={<Guard need={["kpi.conflicts:V"]}><ConflictsPage /></Guard>} />
-            <Route path="/conflicts/agenda" element={<Guard need={["kpi.conflicts:V"]}><AgendaPage /></Guard>} />
+            {/* سجل التعارضات أخفي بعد اعتماد الإطار الشامل نهائيًا؛ روابطه القديمة تعود إلى الرئيسية. */}
+            <Route path="/scorecard" element={<Guard need={["dc.results:V"]}><ScorecardPage /></Guard>} />
             <Route path="/structure" element={<Guard need={["org.structure:V"]}><StructurePage /></Guard>} />
             <Route path="/structure/:id" element={<Guard need={["org.structure:V"]}><CollegeStructurePage /></Guard>} />
-            <Route path="/cycles" element={<Guard need={["dc.cycles:E"]}><CyclesPage /></Guard>} />
+            <Route path="/review" element={<Guard need={["dc.university:V"]}><ReviewPage /></Guard>} />
+            <Route path="/progress" element={<Guard need={["dc.results:V"]}><ProgressPage /></Guard>} />
+            <Route path="/cycles"element={<Guard need={["dc.cycles:E"]}><CyclesPage /></Guard>} />
             <Route path="/forms" element={<Guard need={["dc.forms:V"]}><FormsPage /></Guard>} />
             <Route path="/forms/:id" element={<Guard need={["dc.forms:V"]}><FormPage /></Guard>} />
             <Route path="/results" element={<Guard need={["dc.results:V"]}><ResultsPage /></Guard>} />

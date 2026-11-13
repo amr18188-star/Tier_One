@@ -22,6 +22,7 @@ export default function UsersPage() {
     <>
       <PageHeader title={L("الحسابات والأدوار", "Accounts and roles")}
         subtitle={L("لا أحد يدير حسابه أو أدواره بنفسه، والأدوار المحجوزة يسندها المدير الأعلى وحده.", "Nobody manages their own account or roles, and reserved roles are assigned by a super administrator only.")}
+        stats={users.data && !search ? [{ label: L("حسابات", "Accounts"), value: users.data.length }] : undefined}
         extra={perms.can("adm.users", "A") && <Button type="primary" size="large" icon={<PlusOutlined aria-hidden />} onClick={() => setCreating(true)}>{L("حساب موظف جديد", "New staff account")}</Button>} />
       <div className="lcp-filters">
         <Input.Search allowClear placeholder={L("ابحث بالاسم أو البريد", "Search by name or email")} onSearch={setSearch} />

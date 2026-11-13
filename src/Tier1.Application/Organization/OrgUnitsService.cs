@@ -10,11 +10,13 @@ using Tier1.Domain.Organization;
 
 namespace Tier1.Application.Organization;
 
-public sealed record OrgUnitDto(Guid Id, string Code, string NameAr, string? NameEn, OrgUnitKind Kind, Guid? ParentId, string Path, bool Active, int SortOrder, DateOnly? EstablishedOn, DateOnly? ClosedOn, uint Version);
+/// <param name="IndicatorCount">ما تدخله الجهة (أو أقسامها للكلية) من المؤشرات بحسب تكليفها.</param>
+public sealed record OrgUnitDto(Guid Id, string Code, string NameAr, string? NameEn, OrgUnitKind Kind, Guid? ParentId, string Path, bool Active, int SortOrder, DateOnly? EstablishedOn, DateOnly? ClosedOn, uint Version,
+    bool ViewsWholeUniversity = false, bool CustomIndicators = false, int? IndicatorCount = null);
 
-public sealed record CreateOrgUnitRequest(string Code, string NameAr, string? NameEn, OrgUnitKind Kind, Guid? ParentId, DateOnly? EstablishedOn, int SortOrder);
+public sealed record CreateOrgUnitRequest(string Code, string NameAr, string? NameEn, OrgUnitKind Kind, Guid? ParentId, DateOnly? EstablishedOn, int SortOrder, bool ViewsWholeUniversity = false);
 
-public sealed record UpdateOrgUnitRequest(string NameAr, string? NameEn, int SortOrder, DateOnly? EffectiveOn, string? Reason, uint? Version);
+public sealed record UpdateOrgUnitRequest(string NameAr, string? NameEn, int SortOrder, DateOnly? EffectiveOn, string? Reason, uint? Version, bool? ViewsWholeUniversity = null);
 
 public sealed record CloseOrgUnitRequest(DateOnly ClosedOn, string? Reason, Guid? MergedIntoId);
 
@@ -41,7 +43,9 @@ public static partial class OrgRules
             OrgUnitKind.University => parent is null,
             OrgUnitKind.College or OrgUnitKind.Institute => parent?.Kind == OrgUnitKind.University,
             OrgUnitKind.Department => parent is { IsCollegeLevel: true },
-            OrgUnitKind.Center or OrgUnitKind.Administration => parent is { Kind: OrgUnitKind.University or OrgUnitKind.College or OrgUnitKind.Institute },
+            OrgUnitKind.Sector => parent?.Kind == OrgUnitKind.University,
+            OrgUnitKind.Center or OrgUnitKind.Administration =>
+                parent is { Kind: OrgUnitKind.University or OrgUnitKind.College or OrgUnitKind.Institute or OrgUnitKind.Sector or OrgUnitKind.Administration },
             _ => false,
         };
         if (!ok)
@@ -50,7 +54,8 @@ public static partial class OrgRules
                 OrgUnitKind.University => "الجامعة جذر الهيكل ولا تتبع جهة.",
                 OrgUnitKind.College or OrgUnitKind.Institute => "الكلية أو المعهد يتبع الجامعة.",
                 OrgUnitKind.Department => "القسم العلمي يتبع كلية أو معهدًا.",
-                _ => "المركز أو الإدارة يتبع الجامعة أو كلية.",
+                OrgUnitKind.Sector => "القطاع يتبع الجامعة.",
+                _ => "المركز أو الإدارة يتبع الجامعة أو قطاعًا أو إدارة أو كلية.",
             }, "The parent unit is not valid for this kind.", 400);
         if (parent is { Active: false })
             throw new DomainException("parent_inactive", "الجهة الأم معطلة.", "The parent unit is inactive.", 400);
@@ -58,16 +63,21 @@ public static partial class OrgRules
 }
 
 /// <summary>الجهات: الإنشاء وتعديل الاسم بتاريخ سريان، والإغلاق أو الدمج بدل الحذف، وتاريخ كل جهة.</summary>
-public sealed class OrgUnitsService(IAppDb db, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit)
+public sealed class OrgUnitsService(IAppDb db, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, UnitIndicatorsService assignments)
 {
     private const string Feature = Features.Units;
 
-    public async Task<IReadOnlyList<OrgUnitDto>> ListAsync(bool includeInactive, CancellationToken ct) =>
-        await db.OrgUnits.AsNoTracking()
+    public async Task<IReadOnlyList<OrgUnitDto>> ListAsync(bool includeInactive, CancellationToken ct)
+    {
+        // مستخدم الكلية أو الإدارة يرى جهته وما تحتها فقط، لا بقية الجامعة.
+        var scope = UnitScope.For(await access.RequireAsync(Feature, Cap.View, ct), Feature, Cap.View);
+        var units = (await db.OrgUnits.AsNoTracking()
             .Where(u => includeInactive || u.Active)
-            .OrderBy(u => u.Path.Length).ThenBy(u => u.SortOrder).ThenBy(u => u.NameAr)
-            .Select(u => new OrgUnitDto(u.Id, u.Code, u.NameAr, u.NameEn, u.Kind, u.ParentId, u.Path, u.Active, u.SortOrder, u.EstablishedOn, u.ClosedOn, u.Version))
-            .ToListAsync(ct);
+            .OrderBy(u => u.Path.Length).ThenBy(u => u.SortOrder).ThenBy(u => u.Code)
+            .ToListAsync(ct)).Where(scope.Covers).ToList();
+        var counts = await assignments.CountsAsync(units, ct);
+        return units.Select(u => ToDto(u) with { IndicatorCount = counts.GetValueOrDefault(u.Id) }).ToList();
+    }
 
     public async Task<OrgUnitDto> CreateAsync(CreateOrgUnitRequest req, CancellationToken ct)
     {
@@ -92,6 +102,11 @@ public sealed class OrgUnitsService(IAppDb db, IClock clock, ICurrentUser curren
             EstablishedOn = req.EstablishedOn,
             CreatedAt = now,
         };
+        if (req.ViewsWholeUniversity)
+        {
+            await RequireWideViewRightAsync(ct);
+            unit.ViewsWholeUniversity = true;
+        }
         db.OrgUnits.Add(unit);
         AddChange(unit.Id, OrgUnitChangeKind.Created, req.EstablishedOn ?? CairoTime.DateOf(now), null, name, null, now);
         audit.Record(AuditEvents.Audit("org", Feature, "org.unit_created", "إنشاء جهة", "Created a unit") with
@@ -99,6 +114,7 @@ public sealed class OrgUnitsService(IAppDb db, IClock clock, ICurrentUser curren
             Target = new AuditTarget("org_unit", unit.Id.ToString(), code),
         });
         await db.SaveChangesAsync(ct);
+        if (unit.ViewsWholeUniversity) await access.BumpVersionAsync(ct);
         return ToDto(unit);
     }
 
@@ -118,6 +134,14 @@ public sealed class OrgUnitsService(IAppDb db, IClock clock, ICurrentUser curren
         unit.NameAr = name;
         unit.NameEn = Require.Optional(req.NameEn, 200);
         unit.SortOrder = req.SortOrder;
+        var wideChanged = req.ViewsWholeUniversity is { } wide && wide != unit.ViewsWholeUniversity;
+        if (wideChanged)
+        {
+            // يوسع اطلاع كل من نطاقه هذه الجهة إلى الجامعة كلها، فهو قرار صلاحيات لا تعديل بيانات.
+            await RequireWideViewRightAsync(ct);
+            changes.Add("viewsWholeUniversity", unit.ViewsWholeUniversity, req.ViewsWholeUniversity!.Value);
+            unit.ViewsWholeUniversity = req.ViewsWholeUniversity.Value;
+        }
         if (!changes.IsEmpty)
             audit.Record(AuditEvents.Audit("org", Feature, "org.unit_updated", "تعديل بيانات جهة", "Updated a unit") with
             {
@@ -126,7 +150,17 @@ public sealed class OrgUnitsService(IAppDb db, IClock clock, ICurrentUser curren
                 Reason = req.Reason,
             });
         await db.SaveChangesAsync(ct);
+        if (wideChanged) await access.BumpVersionAsync(ct);
         return ToDto(unit);
+    }
+
+    /// <summary>جعل جهة «تطلع على الجامعة كاملة» يوسع صلاحيات أشخاص، فيلزمه من يدير الصلاحيات.</summary>
+    private async Task RequireWideViewRightAsync(CancellationToken ct)
+    {
+        var me = await access.CurrentAsync(ct);
+        if (!me.IsSuperAdmin && !me.Has(Features.Grants, Cap.Edit))
+            throw new DomainException("grants_required", "توسيع اطلاع جهة إلى الجامعة كاملة يحتاج صلاحية إدارة الصلاحيات.",
+                "Widening a unit's view to the whole university needs the right to manage grants.", 403);
     }
 
     /// <summary>الإغلاق أو الدمج بدل الحذف: الجهة تبقى بسجلاتها، ولا تقبل جهة لها فروع نشطة.</summary>
@@ -163,10 +197,14 @@ public sealed class OrgUnitsService(IAppDb db, IClock clock, ICurrentUser curren
         return ToDto(unit);
     }
 
-    public async Task<IReadOnlyList<OrgUnitChangeDto>> HistoryAsync(Guid id, CancellationToken ct) =>
-        await db.OrgUnitChanges.AsNoTracking().Where(c => c.UnitId == id).OrderBy(c => c.EffectiveOn).ThenBy(c => c.At)
+    public async Task<IReadOnlyList<OrgUnitChangeDto>> HistoryAsync(Guid id, CancellationToken ct)
+    {
+        var scope = UnitScope.For(await access.RequireAsync(Feature, Cap.View, ct), Feature, Cap.View);
+        scope.Require(await db.OrgUnits.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id, ct) ?? throw DomainException.NotFound());
+        return await db.OrgUnitChanges.AsNoTracking().Where(c => c.UnitId == id).OrderBy(c => c.EffectiveOn).ThenBy(c => c.At)
             .Select(c => new OrgUnitChangeDto(c.Kind, c.EffectiveOn, c.OldValue, c.NewValue, c.Reason, c.At))
             .ToListAsync(ct);
+    }
 
     private void AddChange(Guid unitId, OrgUnitChangeKind kind, DateOnly effectiveOn, string? oldValue, string? newValue, string? reason, DateTimeOffset now) =>
         db.OrgUnitChanges.Add(new OrgUnitChange
@@ -186,5 +224,5 @@ public sealed class OrgUnitsService(IAppDb db, IClock clock, ICurrentUser curren
             ? throw new DomainException("text_too_long", "الاسم أطول من 200 حرف.", "The name is too long.", 400) : name.Trim();
 
     private static OrgUnitDto ToDto(OrgUnit u) =>
-        new(u.Id, u.Code, u.NameAr, u.NameEn, u.Kind, u.ParentId, u.Path, u.Active, u.SortOrder, u.EstablishedOn, u.ClosedOn, u.Version);
+        new(u.Id, u.Code, u.NameAr, u.NameEn, u.Kind, u.ParentId, u.Path, u.Active, u.SortOrder, u.EstablishedOn, u.ClosedOn, u.Version, u.ViewsWholeUniversity, u.CustomIndicators);
 }

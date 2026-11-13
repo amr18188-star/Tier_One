@@ -39,6 +39,11 @@ public static class Tier1Endpoints
             .RequirePermission(Features.Units, Cap.Delete);
         g.MapGet("/{id:guid}/history", async (Guid id, OrgUnitsService svc, CancellationToken ct) => Results.Ok(await svc.HistoryAsync(id, ct)))
             .RequirePermission(Features.Units, Cap.View);
+        // المؤشرات التي تكلف بها الجهة فتظهر في نموذجها.
+        g.MapGet("/{id:guid}/indicators", async (Guid id, UnitIndicatorsService svc, CancellationToken ct) => Results.Ok(await svc.GetAsync(id, ct)))
+            .RequirePermission(Features.Units, Cap.View);
+        g.MapPut("/{id:guid}/indicators", async (Guid id, SaveUnitIndicatorsRequest req, UnitIndicatorsService svc, CancellationToken ct) => Results.Ok(await svc.SaveAsync(id, req, ct)))
+            .RequirePermission(Features.Units, Cap.Edit);
     }
 
     private static void MapStructure(RouteGroupBuilder g)

@@ -22,12 +22,15 @@ public sealed record VersionDto(
     Frequency Frequency, CollectionLevel Level, Aggregation Aggregation, string? AggregationNote, string? DataSource,
     Guid? OwnerUnitId, string? OwnerUnitName, string? EvidenceRequired, string? SourcePages, string? ChangeReason,
     DateTimeOffset? SubmittedAt, DateTimeOffset? ApprovedAt, string? DecisionRef, string? ReturnNote,
-    IReadOnlyList<string> Missing, uint Version);
+    IReadOnlyList<string> Missing, uint Version, string? Formula, Accumulation Accumulation);
 
 public sealed record IndicatorDetailDto(
     string Code, Guid StandardId, string StandardCode, string StandardName, bool Suspended,
     VersionDto Current, VersionDto? Effective, IReadOnlyList<VersionSummaryDto> History,
-    IReadOnlyList<string> ConflictCodes, IndicatorActions Actions);
+    IReadOnlyList<string> ConflictCodes, IndicatorActions Actions, FrameworkLinks Framework);
+
+/// <summary>ربط المؤشر في الإطار الشامل: مناظير بطاقة أداء القطاع العام وأهداف التنمية المستدامة وأسباب الربط، وشرح خطة مستهدفه.</summary>
+public sealed record FrameworkLinks(IReadOnlyList<int> Perspectives, int? SdgPrimary, int? SdgSecondary, int? SdgInduced, string? PssRationale, string? SdgRationale, string? PlanNote);
 
 public sealed record VersionSummaryDto(int Number, DefinitionStatus Status, string? ChangeReason, DateTimeOffset CreatedAt, DateTimeOffset? ApprovedAt, string? DecisionRef);
 
@@ -37,7 +40,8 @@ public sealed record IndicatorActions(bool CanEdit, bool CanSubmit, bool CanAppr
 public sealed record SaveDefinitionRequest(
     string NameAr, string? NameEn, string? Definition, string? Purpose, string? Exclusions, string? Numerator, string? Denominator,
     string Unit, Direction Direction, Frequency Frequency, CollectionLevel Level, Aggregation Aggregation, string? AggregationNote,
-    string? DataSource, Guid? OwnerUnitId, string? EvidenceRequired, string? ChangeReason, uint? Version);
+    string? DataSource, Guid? OwnerUnitId, string? EvidenceRequired, string? ChangeReason, uint? Version,
+    string? Formula = null, Accumulation? Accumulation = null);
 
 public sealed record CreateIndicatorRequest(string StandardCode, string NameAr, string? Unit, CollectionLevel? Level, string? Reason);
 
@@ -125,7 +129,8 @@ public sealed class DictionaryService(IAppDb db, IClock clock, ICurrentUser curr
             indicator.Code, standard.Id, standard.Code, standard.NameAr, indicator.Suspended,
             ToDto(current, owners), indicator.Effective is { } eff && eff.Id != current.Id ? ToDto(eff, owners) : null,
             indicator.Versions.OrderByDescending(v => v.Number).Select(v => new VersionSummaryDto(v.Number, v.Status, v.ChangeReason, v.CreatedAt, v.ApprovedAt, v.DecisionRef)).ToList(),
-            conflictCodes, actions);
+            conflictCodes, actions,
+            new FrameworkLinks(indicator.Perspectives, indicator.SdgPrimary, indicator.SdgSecondary, indicator.SdgInduced, indicator.PssRationale, indicator.SdgRationale, indicator.PlanNote));
     }
 
     /// <summary>
@@ -142,11 +147,14 @@ public sealed class DictionaryService(IAppDb db, IClock clock, ICurrentUser curr
         var siblingIds = siblings.Select(x => x.Id).ToList();
         if (await db.IndicatorVersions.AnyAsync(v => siblingIds.Contains(v.IndicatorId) && v.NameAr == name, ct))
             throw new DomainException("duplicate_name", "يوجد مؤشر بالاسم نفسه في هذا المعيار.", "An indicator with this name exists in the standard.");
-        var next = siblings.Select(x => int.TryParse(x.Code.Split('-').LastOrDefault(), out var n) ? n : 0).DefaultIfEmpty(0).Max() + 1;
+        // أكواد الإطار الشامل «المعيار.الرقم» (10.09)، والقديمة «المعيار-الرقم» (S10-12).
+        var framework = standard.Code.All(char.IsDigit);
+        var next = siblings.Select(x => int.TryParse(x.Code.Split('-', '.').LastOrDefault(), out var n) ? n : 0).DefaultIfEmpty(0).Max() + 1;
         var now = clock.UtcNow;
         var indicator = new Indicator
         {
-            Code = $"{standard.Code}-{next:00}", StandardId = standard.Id, SortOrder = siblings.Select(x => x.SortOrder).DefaultIfEmpty(0).Max() + 1, CreatedAt = now,
+            Code = framework ? $"{standard.Code}.{next:00}" : $"{standard.Code}-{next:00}",
+            StandardId = standard.Id, SortOrder = siblings.Select(x => x.SortOrder).DefaultIfEmpty(0).Max() + 1, CreatedAt = now,
         };
         var version = new IndicatorVersion
         {
@@ -197,6 +205,8 @@ public sealed class DictionaryService(IAppDb db, IClock clock, ICurrentUser curr
         v.DataSource = Require.Optional(req.DataSource, 500);
         v.OwnerUnitId = req.OwnerUnitId;
         v.EvidenceRequired = Require.Optional(req.EvidenceRequired, 1000);
+        v.Formula = Require.Optional(req.Formula, 2000);
+        if (req.Accumulation is { } acc) v.Accumulation = acc;
         v.EditedBy = current.UserId;
         v.EditedAt = now;
         if (createsVersion) db.IndicatorVersions.Add(v);
@@ -334,5 +344,5 @@ public sealed class DictionaryService(IAppDb db, IClock clock, ICurrentUser curr
         new(v.Id, v.Number, v.Status, v.NameAr, v.NameEn, v.AlternateName, v.Definition, v.Purpose, v.Exclusions, v.Numerator, v.Denominator,
             v.Unit, v.Direction, v.Frequency, v.Level, v.Aggregation, v.AggregationNote, v.DataSource, v.OwnerUnitId,
             v.OwnerUnitId is { } o ? owners.GetValueOrDefault(o) : null, v.EvidenceRequired, v.SourcePages, v.ChangeReason,
-            v.SubmittedAt, v.ApprovedAt, v.DecisionRef, v.ReturnNote, IndicatorRules.MissingForApproval(v), v.Version);
+            v.SubmittedAt, v.ApprovedAt, v.DecisionRef, v.ReturnNote, IndicatorRules.MissingForApproval(v), v.Version, v.Formula, v.Accumulation);
 }

@@ -357,7 +357,14 @@ a.lcp-list-item:hover { background: var(--teal-50); color: var(--ink); }
 .ant-segmented { max-width: 100%; overflow-x: auto; scrollbar-width: thin; }
 .ant-segmented-group { flex-wrap: nowrap; }
 /* الترحيب بلا زخرفة: لون واحد هادئ، والعناية بالنص. */
-.lcp-hero { background: linear-gradient(120deg, #183059 0%, #14406b 100%); padding: 22px 26px; border-radius: var(--r); }
+/* هوية الشريط العلوي نفسها في الرئيسية والخطة: كحلي بتوهج تركوازي وذهبي خفيف. */
+.lcp-hero {
+  padding: 24px 28px; border-radius: 20px; box-shadow: 0 12px 34px rgba(16, 36, 70, 0.18);
+  background:
+    radial-gradient(60% 90% at 0% 0%, rgba(10, 140, 147, 0.38), transparent 60%),
+    radial-gradient(50% 80% at 100% 100%, rgba(201, 151, 63, 0.18), transparent 60%),
+    linear-gradient(125deg, #142a50 0%, #183a66 55%, #12406a 100%);
+}
 .lcp-hero-decor { display: none; }
 /* حالات الصفحة (لا صلاحية، غير موجود، فارغ) داخل لوحة لا على الخلفية. */
 .lcp-state { background: #fff; border: 1px solid var(--hair); border-radius: var(--r); padding: 32px 16px; }

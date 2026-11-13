@@ -58,7 +58,7 @@ export const frequency: Record<Frequency, string> = { Monthly: "شهري", Quart
 export const targetKind: Record<TargetKind, string> = { Baseline: "خط الأساس", Target: "مستهدف", EachCollege: "مستهدف موحد لكل كلية" };
 
 export const unitKind: Record<OrgUnitKind, string> = {
-  University: "الجامعة", College: "كلية", Institute: "معهد", Department: "قسم علمي", Center: "مركز", Administration: "إدارة",
+  University: "الجامعة", College: "كلية", Institute: "معهد", Department: "قسم علمي", Center: "مركز", Administration: "إدارة", Sector: "قطاع",
 };
 
 /** خيارات قائمة منسدلة من قاموس نصوص. */

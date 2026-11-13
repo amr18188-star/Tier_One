@@ -72,7 +72,12 @@ public sealed record AssignedRole(string RoleCode, bool RoleLocked, IReadOnlyLis
 /// </summary>
 public static class EffectiveAccessCalculator
 {
-    public static EffectiveAccess Compute(Guid userId, IEnumerable<AssignedRole> roles, IEnumerable<UserOverride> overrides, DateTimeOffset now)
+    /// <param name="wholeUniversityUnits">
+    /// رموز الجهات التي «تطلع على الجامعة كاملة» (وحدة التخطيط الاستراتيجي مثلًا): من نطاقه إحداها يصير عرضه وطباعته على الجامعة كلها،
+    /// ويبقى الإدخال والتعديل والحذف في نطاقه كما هو.
+    /// </param>
+    public static EffectiveAccess Compute(Guid userId, IEnumerable<AssignedRole> roles, IEnumerable<UserOverride> overrides, DateTimeOffset now,
+        IReadOnlyCollection<string>? wholeUniversityUnits = null)
     {
         var active = roles.Where(r => r.Assignment.IsActiveAt(now)).ToList();
         var codes = active.Select(r => r.RoleCode).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
@@ -82,6 +87,15 @@ public static class EffectiveAccessCalculator
         foreach (var role in active)
             foreach (var grant in role.Grants)
                 Apply(features, grant.Feature, grant.Caps, grant.Scope, grant.Specials, role.Assignment.ScopeValues);
+
+        if (wholeUniversityUnits is { Count: > 0 })
+            foreach (var fa in features.Values)
+                foreach (var c in (Cap[])[Cap.View, Cap.Print])
+                    if (fa.Caps.TryGetValue(c, out var s) && s == AccessScope.Unit && fa.CapScopeValues.TryGetValue(c, out var values) && values.Overlaps(wholeUniversityUnits))
+                    {
+                        fa.Caps[c] = AccessScope.All;
+                        fa.CapScopeValues.Remove(c);
+                    }
 
         // استثناء فردي لا يمس المدير الأعلى: يديره المدير الأعلى الآخر من المصفوفة باعتماد ثنائي، لا بمنع فردي.
         var activeOverrides = superAdmin ? [] : overrides.Where(o => o.IsActiveAt(now)).ToList();

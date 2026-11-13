@@ -21,6 +21,7 @@ public static class CollectionEndpoints
         MapForms(api.MapGroup("/forms"));
         MapDocuments(api);
         MapResults(api.MapGroup("/results"));
+        MapScorecard(api);
     }
 
     private static void MapCycles(RouteGroupBuilder g)
@@ -110,16 +111,38 @@ public static class CollectionEndpoints
             })
             .RequirePermission(Features.Structure, Cap.Add);
 
-        // التنزيل والإبطال بصلاحية مالك المستند (نموذج الجهة أو هيكل الكلية)، تفحصها الخدمة.
+        // وثيقة الخطة الاستراتيجية: يطلع عليها كل من يرى الخطة، ويرفع إصداراتها من يضيف إلى الخطة.
+        api.MapGet("/strategy/documents", async (DocumentsService svc, CancellationToken ct) => Results.Ok(await svc.PlanDocsAsync(ct)))
+            .RequirePermission(Features.Strategy, Cap.View);
+        api.MapPost("/strategy/documents", async (HttpRequest request, DocumentsService svc, CancellationToken ct) =>
+            {
+                var (file, description) = await UploadAsync(request, DocumentsService.PlanMaxBytes, ct);
+                await using var stream = file.OpenReadStream();
+                return Results.Ok(await svc.UploadPlanAsync(new UploadedFile(file.FileName, file.Length, stream, description), ct));
+            })
+            .RequirePermission(Features.Strategy, Cap.Add);
+        // العرض داخل صفحة الخطة: الإطار مسموح من المنظومة نفسها فقط لهذا الرد.
+        api.MapGet("/strategy/documents/{id:guid}/view", async (Guid id, HttpContext http, DocumentsService svc, CancellationToken ct) =>
+            {
+                var file = await svc.OpenAsync(id, ct);
+                if (file.ContentType != "application/pdf") return Results.NotFound();
+                http.Response.Headers["X-Frame-Options"] = "SAMEORIGIN";
+                http.Response.Headers["Content-Security-Policy"] = "frame-ancestors 'self'";
+                http.Response.Headers.ContentDisposition = "inline";
+                return Results.Stream(file.Content, file.ContentType);
+            })
+            .RequirePermission(Features.Strategy, Cap.View);
+
+        // التنزيل والإبطال بصلاحية مالك المستند (نموذج الجهة أو هيكل الكلية أو الخطة)، تفحصها الخدمة.
         api.MapGet("/documents/{id:guid}", async (Guid id, bool? inline, DocumentsService svc, CancellationToken ct) =>
             {
                 var file = await svc.OpenAsync(id, ct);
                 var show = inline == true && file.ContentType is "application/pdf" or "image/png" or "image/jpeg";
                 return show ? Results.Stream(file.Content, file.ContentType) : Results.File(file.Content, file.ContentType, file.FileName);
             })
-            .RequireAnyPermission($"{Features.Forms}:V", $"{Features.Structure}:V");
+            .RequireAnyPermission($"{Features.Forms}:V", $"{Features.Structure}:V", $"{Features.Strategy}:V");
         api.MapPost("/documents/{id:guid}/void", async (Guid id, NoteRequest req, DocumentsService svc, CancellationToken ct) => Results.Ok(await svc.VoidAsync(id, req.Note, ct)))
-            .RequireAnyPermission($"{Features.Forms}:E", $"{Features.Structure}:D");
+            .RequireAnyPermission($"{Features.Forms}:E", $"{Features.Structure}:D", $"{Features.Strategy}:D");
     }
 
     private static void MapResults(RouteGroupBuilder g)
@@ -154,5 +177,33 @@ public static class CollectionEndpoints
         var file = form.Files.Count == 1 ? form.Files[0] : throw new DomainException("file_required", "أرفق ملفًا واحدًا.", "Attach exactly one file.", 400);
         if (file.Length > maxBytes) throw new DomainException("file_too_large", $"الملف أكبر من {maxBytes / 1024 / 1024} ميجابايت.", $"The file is larger than {maxBytes / 1024 / 1024} MB.", 413);
         return file;
+    }
+
+    /// <summary>بطاقة أداء الجامعة وفئتها، وتقويم الأرباع، وملف KPI.xlsx معبأ بقيم الأرباع لبوابة المجلس.</summary>
+    private static void MapScorecard(RouteGroupBuilder api)
+    {
+        api.MapGet("/scorecard", async (Tier1.Application.Scorecard.ScorecardService svc, CancellationToken ct) => Results.Ok(await svc.GetAsync(ct)))
+            .RequirePermission(Features.Results, Cap.View);
+        api.MapGet("/scorecard/kpi.xlsx", async (Tier1.Application.Scorecard.ScorecardService svc, IKpiWorkbook workbook, CancellationToken ct) =>
+            {
+                var (rows, label) = await svc.ExportValuesAsync(ct);
+                return Results.File(workbook.Fill(rows), Xlsx, $"KPI-{label}.xlsx");
+            })
+            .RequirePermission(Features.Results, Cap.View);
+        // مراجعة مسئول ملف Tier 1 ونقل القيم إلى مؤشرات الجامعة.
+        api.MapGet("/review", async (Guid? cycleId, Tier1.Application.Scorecard.ReviewService svc, CancellationToken ct) => Results.Ok(await svc.GetAsync(cycleId, ct)))
+            .RequirePermission(Features.University, Cap.View);
+        api.MapPost("/review/transfer", async (Tier1.Application.Scorecard.TransferRequest req, Tier1.Application.Scorecard.ReviewService svc, CancellationToken ct) =>
+                Results.Ok(await svc.TransferAsync(req, ct)))
+            .RequirePermission(Features.University, Cap.Edit);
+        api.MapPost("/review/transfer-all", async (Tier1.Application.Scorecard.TransferAllRequest req, Tier1.Application.Scorecard.ReviewService svc, CancellationToken ct) =>
+                Results.Ok(new { transferred = await svc.TransferAllAsync(req, ct) }))
+            .RequirePermission(Features.University, Cap.Edit);
+        // تقدم الكلية مقابل مستهدف الجامعة، في نطاق المستخدم.
+        api.MapGet("/progress", async (Guid? unitId, Tier1.Application.Scorecard.ProgressService svc, CancellationToken ct) => Results.Ok(await svc.GetAsync(unitId, ct)))
+            .RequirePermission(Features.Results, Cap.View);
+        // تقويم الأرباع يلزم من ينشئ الدورات ومن يطالع النتائج والنماذج.
+        api.MapGet("/plan/calendar", async (Tier1.Application.Scorecard.ScorecardService svc, CancellationToken ct) => Results.Ok(await svc.CalendarAsync(ct)))
+            .RequireAnyPermission($"{Features.Cycles}:V", $"{Features.Forms}:V", $"{Features.Results}:V");
     }
 }

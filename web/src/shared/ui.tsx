@@ -1,23 +1,60 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button, Empty, Grid, Select, Skeleton, Table } from "antd";
 import type { ColumnsType, TableProps } from "antd/es/table";
-import { ArrowLeftOutlined, ArrowRightOutlined, CheckOutlined, LeftOutlined, RightOutlined } from "@ant-design/icons";
-import { Link } from "react-router-dom";
+import {
+  ApartmentOutlined, ArrowLeftOutlined, ArrowRightOutlined, AuditOutlined, BarChartOutlined, BranchesOutlined, CalendarOutlined, CheckOutlined, ClusterOutlined, FileDoneOutlined, FormOutlined,
+  LeftOutlined, RightOutlined, RiseOutlined, SafetyCertificateOutlined, SettingOutlined, TeamOutlined, UnorderedListOutlined, WarningOutlined,
+} from "@ant-design/icons";
+import { Link, useLocation } from "react-router-dom";
 import { L, useLang } from "./i18n";
 import { QueryState, type QueryLike } from "./QueryState";
 import "./ui.css";
 
-/** عنوان الصفحة: رابط رجوع اختياري، والعنوان ووصفه، والإجراء الرئيسي في الطرف الآخر. */
-export function PageHeader({ title, subtitle, extra, back }: { title: ReactNode; subtitle?: ReactNode; extra?: ReactNode; back?: { to: string; label: string } }) {
+/** القسم الذي تتبعه الصفحة (كما في القائمة الجانبية) وأيقونته، من مسارها. */
+const SECTIONS: { prefix: string; ar: string; en: string; icon: ReactNode }[] = [
+  { prefix: "/forms", ar: "جمع البيانات والنتائج", en: "Data and results", icon: <FormOutlined /> },
+  { prefix: "/results", ar: "جمع البيانات والنتائج", en: "Data and results", icon: <BarChartOutlined /> },
+  { prefix: "/review", ar: "جمع البيانات والنتائج", en: "Data and results", icon: <FileDoneOutlined /> },
+  { prefix: "/progress", ar: "جمع البيانات والنتائج", en: "Data and results", icon: <RiseOutlined /> },
+  { prefix: "/cycles", ar: "جمع البيانات والنتائج", en: "Data and results", icon: <CalendarOutlined /> },
+  { prefix: "/indicators", ar: "الخطة والمؤشرات", en: "Plan and indicators", icon: <UnorderedListOutlined /> },
+  { prefix: "/conflicts", ar: "الخطة والمؤشرات", en: "Plan and indicators", icon: <WarningOutlined /> },
+  { prefix: "/structure", ar: "الجهات والهياكل", en: "Units and structures", icon: <ClusterOutlined /> },
+  { prefix: "/units", ar: "الجهات والهياكل", en: "Units and structures", icon: <ApartmentOutlined /> },
+  { prefix: "/matrix", ar: "الإدارة", en: "Administration", icon: <SafetyCertificateOutlined /> },
+  { prefix: "/changes", ar: "الإدارة", en: "Administration", icon: <BranchesOutlined /> },
+  { prefix: "/users", ar: "الإدارة", en: "Administration", icon: <TeamOutlined /> },
+  { prefix: "/logs", ar: "الإدارة", en: "Administration", icon: <AuditOutlined /> },
+  { prefix: "/settings", ar: "الإدارة", en: "Administration", icon: <SettingOutlined /> },
+];
+
+export interface HeadStat { label: string; value: ReactNode; tone?: "ok" | "warn" | "bad" }
+
+/**
+ * عنوان الصفحة شريطًا داكنًا بهوية المنظومة (مثل الخطة الاستراتيجية): القسم وأيقونته من المسار، والعنوان ووصفه،
+ * وأرقام الصفحة الأهم (stats) إن وجدت، والإجراء الرئيسي في الطرف الآخر، ورابط رجوع اختياري.
+ */
+export function PageHeader({ title, subtitle, extra, back, stats, kicker }: {
+  title: ReactNode; subtitle?: ReactNode; extra?: ReactNode; back?: { to: string; label: string }; stats?: HeadStat[]; kicker?: ReactNode;
+}) {
   const lang = useLang();
+  const { pathname } = useLocation();
   const Back = lang === "ar" ? ArrowRightOutlined : ArrowLeftOutlined;
+  const section = SECTIONS.find((s) => pathname.startsWith(s.prefix));
   return (
     <header className="lcp-head">
-      <div>
+      {section && <span className="lcp-head-mark" aria-hidden>{section.icon}</span>}
+      <div className="lcp-head-main">
         {back && <Link to={back.to} className="lcp-back"><Back aria-hidden /> {back.label}</Link>}
+        {(kicker ?? section) && <small className="lcp-head-kicker">{kicker ?? L(section!.ar, section!.en)}</small>}
         <h1>{title}</h1>
         {subtitle && <p>{subtitle}</p>}
       </div>
+      {stats && stats.length > 0 && (
+        <dl className="lcp-head-stats">
+          {stats.map((s) => <div key={s.label} className={s.tone ? `tone-${s.tone}` : undefined}><dt>{s.label}</dt><dd>{s.value}</dd></div>)}
+        </dl>
+      )}
       {extra && <div className="lcp-head-extra">{extra}</div>}
     </header>
   );

@@ -1,0 +1,44 @@
+/* ===== الجهات وتكليفها بالمؤشرات ===== */
+.un-count { font-size: 12.5px; font-weight: 400; margin-inline-start: 8px; }
+.un-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
+.un-search { width: 240px; }
+.un-bulk { display: inline-flex; gap: 6px; margin-inline-start: auto; }
+.un-std { border: 1px solid var(--hair); border-radius: 10px; margin-bottom: 10px; overflow: hidden; background: #fff; }
+.un-std > header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 7px 12px; background: var(--sunk); font-size: 13px; color: var(--navy); }
+.un-std > header .muted { font-size: 12px; }
+.un-std-count { margin-inline-start: auto; font-size: 12px; color: var(--muted); font-family: var(--font-display); }
+.un-row { display: grid; grid-template-columns: auto 44px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 6px 12px; border-top: 1px solid var(--hair); font-size: 13px; cursor: pointer; line-height: 1.6; }
+.un-row.on { background: #f3f8f7; }
+.un-row.taken { cursor: default; color: var(--muted); }
+.un-row .ant-tag { margin: 0; font-size: 11px; }
+.un-code { font-size: 12px; color: var(--navy); direction: ltr; }
+.un-taken { grid-column: 3 / -1; font-size: 12px; color: var(--muted); }
+.un-tools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+.un-tools .ant-input-affix-wrapper { width: 280px; max-width: 100%; }
+.un-ind { font-size: 12.5px; white-space: nowrap; }
+.un-ind b { font-family: var(--font-display); color: var(--navy); }
+/* ألوان شجرة الجهات: لون لكل نوع من الجذر إلى الفروع، شريط بجانب الاسم وعلامة النوع ودليل أعلى الجدول. */
+.un-k-University { --uk: #1f3a5f; --uk-bg: #e9eef5; }
+.un-k-Sector { --uk: #6b4fa0; --uk-bg: #f3effa; }
+.un-k-Administration { --uk: #2f8f83; --uk-bg: #ffffff; }
+.un-k-Center { --uk: #c27a1a; --uk-bg: #ffffff; }
+.un-k-College, .un-k-Institute { --uk: #2f6db5; --uk-bg: #eef4fb; }
+.un-k-Institute { --uk: #3f8fbf; }
+.un-k-Department { --uk: #8a97a6; --uk-bg: #ffffff; }
+.un-tree .ant-table-tbody > tr > td { background: var(--uk-bg); }
+.un-tree .ant-table-tbody > tr > td:first-child { box-shadow: inset -4px 0 0 var(--uk); }
+.un-tree .ant-table-tbody > tr.un-k-University > td:first-child,
+.un-tree .ant-table-tbody > tr.un-k-Sector > td:first-child,
+.un-tree .ant-table-tbody > tr.un-k-College > td:first-child,
+.un-tree .ant-table-tbody > tr.un-k-Institute > td:first-child { font-weight: 600; color: var(--uk); }
+.un-tree .ant-table-tbody > tr.un-k-University > td:first-child { font-size: 15px; }
+.un-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--uk); white-space: nowrap; }
+.un-chip i { width: 10px; height: 10px; border-radius: 3px; background: var(--uk); flex: none; }
+.un-legend { display: inline-flex; flex-wrap: wrap; gap: 6px 14px; margin-inline-start: auto; }
+.un-legend .un-chip { padding: 2px 8px; border-radius: 99px; background: var(--uk-bg); border: 1px solid color-mix(in srgb, var(--uk) 30%, transparent); }
+
+@media (max-width: 600px) {
+  .un-row { grid-template-columns: auto 40px minmax(0, 1fr); }
+  .un-row .ant-tag { grid-column: 3; justify-self: start; }
+  .un-bulk { margin-inline-start: 0; }
+}

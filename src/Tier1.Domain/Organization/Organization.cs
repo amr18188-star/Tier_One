@@ -8,6 +8,9 @@ public enum OrgUnitKind
     Department = 4,
     Center = 5,
     Administration = 6,
+
+    /// <summary>قطاع (نائب رئيس الجامعة أو أمينها): تتبعه إدارات عامة ومراكز.</summary>
+    Sector = 7,
 }
 
 /// <summary>
@@ -43,6 +46,18 @@ public sealed class OrgUnit
     /// <summary>عند الدمج: الجهة التي انتقل إليها عمل هذه الجهة.</summary>
     public Guid? MergedIntoId { get; set; }
 
+    /// <summary>
+    /// جهة دورها في Tier 1 على الجامعة كلها (وحدة التخطيط الاستراتيجي، مركز تكنولوجيا المعلومات):
+    /// من نطاقه هذه الجهة يطلع (عرضًا وطباعة) على الجامعة كاملة، ويبقى الإدخال والتعديل في نماذج جهته وحدها.
+    /// </summary>
+    public bool ViewsWholeUniversity { get; set; }
+
+    /// <summary>
+    /// مؤشرات الجهة محددة بقائمة (<see cref="UnitIndicator"/>) بدل الافتراضي: كل مؤشرات مستواها للكليات والأقسام، ولا شيء للجهات المركزية.
+    /// القسم غير المخصص يتبع قائمة كليته إن خصصت.
+    /// </summary>
+    public bool CustomIndicators { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public uint Version { get; set; }
@@ -50,7 +65,18 @@ public sealed class OrgUnit
     /// <summary>الكليات والمعاهد هي مستوى توزيع المستهدفات وهيكل Tier 1.</summary>
     public bool IsCollegeLevel => Kind is OrgUnitKind.College or OrgUnitKind.Institute;
 
+    /// <summary>جهة مركزية: لا كلية ولا قسم ولا الجامعة نفسها.</summary>
+    public bool IsCentral => Kind is OrgUnitKind.Sector or OrgUnitKind.Administration or OrgUnitKind.Center;
+
     public static string PathOf(string? parentPath, string code) => (string.IsNullOrEmpty(parentPath) ? "/" : parentPath) + code + "/";
+}
+
+/// <summary>تكليف جهة بمؤشر تدخل بياناته (حين تكون مؤشرات الجهة مخصصة).</summary>
+public sealed class UnitIndicator
+{
+    public Guid UnitId { get; set; }
+
+    public Guid IndicatorId { get; set; }
 }
 
 public enum OrgUnitChangeKind

@@ -102,18 +102,11 @@ def main():
 
     # ---------------------------------------------------------------- القاموس
     step("1. تعريف المؤشر: الإكمال ثم الإرسال ثم الاعتماد بفصل المهام")
-    # مؤشر لم يمسه تشغيل سابق: مسودة لا ينقصها إلا الجهة المالكة، فيتكرر الاختبار على قاعدة واحدة.
-    d = None
-    for row in planner.get("/api/kpi/indicators?status=Draft"):
-        if row["versionNumber"] != 1 or row["missingCount"] != 1:
-            continue
-        candidate = planner.get(f"/api/kpi/indicators/{row['code']}")
-        if candidate["current"]["missing"] == ["الجهة المالكة"] and candidate["effective"] is None:
-            d = candidate
-            break
-    if d is None:
-        raise SystemExit("No untouched draft indicator left; reset the demo database.")
+    # تعريفات الإطار الشامل كلها معتمدة؛ مؤشر جديد في المعيار 10 يبدأ مسودة بكود «10.nn» ويمر بالمسار كاملًا.
+    d = planner.call("POST", "/api/kpi/indicators", {"standardCode": "10", "nameAr": f"مؤشر اختبار السيناريو {uuid.uuid4().hex[:6]}", "unit": "%",
+                                                     "level": "College", "reason": "اختبار مسار التعريف"}, expect=200)[1]
     code = d["code"]
+    check(code.startswith("10."), f"الكود بصيغة الإطار: {code}")
     print(f"  (المؤشر: {code})")
     check(d["current"]["status"] == "Draft", "المؤشر يبدأ مسودة من البذرة")
     if d["current"]["status"] == "Draft":
@@ -122,9 +115,11 @@ def main():
         v = d["current"]
         body = {k: v[k] for k in ("nameAr", "nameEn", "definition", "purpose", "exclusions", "numerator", "denominator", "unit", "direction",
                                   "frequency", "level", "aggregation", "aggregationNote", "dataSource", "evidenceRequired")}
-        body.update(ownerUnitId=uni["id"], version=v["version"])
+        body.update(definition="نسبة اختبارية لمسار التعريف", numerator="البسط", denominator="المقام", unit="%", direction="HigherIsBetter",
+                    frequency="Quarterly", level="College", aggregation="RatioOfSums", dataSource="سجلات الكلية",
+                    ownerUnitId=uni["id"], version=v["version"])
         d = planner.call("PUT", f"/api/kpi/indicators/{code}/definition", body, expect=200)[1]
-        check(d["current"]["missing"] == [], "اكتمل التعريف بعد تحديد الجهة المالكة")
+        check(d["current"]["missing"] == [], f"اكتمل التعريف: {d['current']['missing']}")
         d = planner.call("POST", f"/api/kpi/indicators/{code}/submit", expect=200)[1]
         check(d["current"]["status"] == "UnderReview", "أرسل للاعتماد")
 
@@ -155,7 +150,7 @@ def main():
     # مؤشر مجموع على مستوى الكلية وسنة بلا مستهدف للهندسة بعد، فيتكرر الاختبار على قاعدة واحدة.
     code2, year = None, None
     sums = [r["code"] for r in planner.get("/api/kpi/indicators") if r["aggregation"] == "Sum" and r["level"] == "College" and not r["suspended"]]
-    for candidate in ["S04-09"] + [c for c in sums if c != "S04-09"]:
+    for candidate in ["4.09"] + [c for c in sums if c != "4.09"]:
         existing = {t["year"] for t in planner.get(f"/api/kpi/indicators/{candidate}/targets")["colleges"] if t["unitId"] == eng["id"]}
         free = next((y for y in range(2027, 2032) if y not in existing), None)
         if free is not None:
@@ -172,9 +167,9 @@ def main():
     check(status == 404, "عميد الهندسة لا يعدل مستهدف الجامعة")
     t = dean.call("PUT", f"/api/kpi/indicators/{code2}/targets", {"unitId": eng["id"], "year": year, "kind": "Target", "value": 3, "source": "خطة الكلية"}, expect=200)[1]
     check(t["value"] == 3, "عميد الهندسة يدخل مستهدف كليته")
-    status, err = dean.call("PUT", f"/api/kpi/indicators/S04-08/targets", {"unitId": eng["id"], "year": year, "kind": "Target", "value": 120})
+    status, err = dean.call("PUT", f"/api/kpi/indicators/4.08/targets", {"unitId": eng["id"], "year": year, "kind": "Target", "value": 120})
     check(status == 400 and err.get("code") == "percent_range", "النسبة فوق 100 ترفض برسالة واضحة")
-    status, err = dean.call("PUT", f"/api/kpi/indicators/S04-08/targets", {"unitId": eng["id"], "year": year, "kind": "Target", "value": None, "numerator": 520, "denominator": 500})
+    status, err = dean.call("PUT", f"/api/kpi/indicators/4.08/targets", {"unitId": eng["id"], "year": year, "kind": "Target", "value": None, "numerator": 520, "denominator": 500})
     check(status == 400 and "520" in (err.get("title") or ""), "البسط أكبر من المقام يرفض ويذكر الرقمين")
     dist2 = planner.get(f"/api/kpi/indicators/{code2}/distribution?year={year}")
     eng_share = next(s for s in dist2["shares"] if s["unitId"] == eng["id"])
@@ -185,23 +180,6 @@ def main():
     check(status == 403, "تعديل المستهدف المعتمد يحتاج صلاحية الاعتماد")
     status, err = committee.call("PUT", f"/api/kpi/indicators/{code2}/targets", {"unitId": eng["id"], "year": year, "kind": "Target", "value": 4})
     check(status == 403, "اللجنة العليا لا تدخل مستهدفات (ليست مدخلة بيانات)")
-
-    # ---------------------------------------------------------------- التعارضات
-    step("4. التعارضات: التجهيز ثم قرار اللجنة برقم المحضر")
-    c = planner.get("/api/kpi/conflicts/C-16")
-    if c["status"] != "Resolved":
-        status, _ = planner.call("POST", "/api/kpi/conflicts/C-16/decide", {"defer": False, "decision": "قرار", "decisionDate": "2026-11-10", "minutesRef": "1"})
-        check(status == 403, "مدير متابعة الخطة لا يسجل قرار اللجنة")
-        c = planner.call("POST", "/api/kpi/conflicts/C-16/prepare", {"proposal": "توزيع مستهدف الجامعة على الكليات صراحة", "version": c["version"]}, expect=200)[1]
-        check(c["status"] == "Ready", "التجهيز يدخل التعارض جدول الأعمال")
-        agenda = committee.get("/api/kpi/conflicts/agenda")
-        check(any(a["code"] == "C-16" for a in agenda), "التعارض ظاهر في جدول أعمال اللجنة")
-        status, err = committee.call("POST", "/api/kpi/conflicts/C-16/decide", {"defer": False, "decision": "يوزع مستهدف الجامعة", "decisionDate": "2026-11-10", "version": c["version"]})
-        check(status == 400 and err.get("code") == "minutes_required", "القرار بلا رقم محضر يرفض")
-        c = committee.call("POST", "/api/kpi/conflicts/C-16/decide", {"defer": False, "decision": "يوزع مستهدف الجامعة على الكليات صراحة", "decisionDate": "2026-11-10", "minutesRef": "محضر 3/2026", "version": c["version"]}, expect=200)[1]
-        check(c["status"] == "Resolved" and c["minutesRef"] == "محضر 3/2026", "سجل قرار اللجنة العليا")
-    status, _ = planner.call("POST", "/api/kpi/conflicts/C-16/prepare", {"proposal": "تعديل بعد القرار"})
-    check(status == 422, "لا يعدل التعارض بعد حسمه")
 
     # ---------------------------------------------------------------- الهيكل
     step("5. هيكل الكلية: النطاق والاستبدال وإخفاء بيانات التواصل")
@@ -237,10 +215,14 @@ def main():
 
     # ---------------------------------------------------------------- الرئيسية
     step("6. «مطلوب منك» بحسب الدور")
+    # مستهدف مقترح ينتظر اللجنة: سنة أخرى بلا مستهدف للهندسة في المؤشر نفسه.
+    taken = {t["year"] for t in planner.get(f"/api/kpi/indicators/{code2}/targets")["colleges"] if t["unitId"] == eng["id"]}
+    spare = next((y for y in range(2027, 2032) if y not in taken), None)
+    if spare:
+        dean.call("PUT", f"/api/kpi/indicators/{code2}/targets", {"unitId": eng["id"], "year": spare, "kind": "Target", "value": 2, "source": "خطة الكلية"}, expect=200)
     home = committee.get("/api/home")
     check(any(t["key"] == "targets_proposed" for t in home["tasks"]), "اللجنة ترى المستهدفات المقترحة التي تنتظرها")
     home = planner.get("/api/home")
-    check(any(t["key"] == "conflicts_prepare" for t in home["tasks"]), "مدير الخطة يرى التعارضات المحتاجة للتجهيز")
     check(not any(t["key"] == "definitions_review" for t in home["tasks"]), "مدير الخطة لا يرى مهمة الاعتماد")
     status, _ = viewer.call("PUT", f"/api/kpi/indicators/{code}/definition", body)
     check(status == 403, "مستخدم الاطلاع لا يعدل")

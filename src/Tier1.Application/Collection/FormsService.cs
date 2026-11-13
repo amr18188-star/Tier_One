@@ -281,12 +281,15 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
         public required EffectiveAccess Me { get; init; }
     }
 
+    /// <summary>هل يدخل المؤشر في نموذج الجهة؟ بمستواه، وبالجهات المكلفة به عند فتح الدورة، أو لأنها جهة إدخاله المركزية.</summary>
     public static bool Applies(CycleIndicator ci, OrgUnit unit) => unit.Kind switch
     {
-        OrgUnitKind.Department => ci.Level == CollectionLevel.Department,
-        OrgUnitKind.College or OrgUnitKind.Institute => ci.Level == CollectionLevel.College || ci.CollegeEntry || ci.CentralUnitId == unit.Id,
+        OrgUnitKind.Department => ci.Level == CollectionLevel.Department && Tasked(ci, unit),
+        OrgUnitKind.College or OrgUnitKind.Institute => ((ci.Level == CollectionLevel.College || ci.CollegeEntry) && Tasked(ci, unit)) || ci.CentralUnitId == unit.Id,
         _ => ci.CentralUnitId == unit.Id,
     };
+
+    private static bool Tasked(CycleIndicator ci, OrgUnit unit) => ci.UnitIds is null || ci.UnitIds.Contains(unit.Id);
 
     /// <summary>ما يدخل في هذا النموذج تحديدًا حين لا يكون رقم الجهة وحدها: العدد بعد إزالة التكرار للكلية أو للجامعة كلها.</summary>
     public static string? EntryNote(CycleIndicator ci, IndicatorVersion v, OrgUnit unit)

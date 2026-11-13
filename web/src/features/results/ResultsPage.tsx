@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { Alert, Button, Drawer, Input, Segmented, Select, Space, Tag, Tooltip } from "antd";
-import { CheckCircleOutlined, ClockCircleOutlined, DownloadOutlined, FileDoneOutlined, PrinterOutlined, QuestionCircleOutlined, WarningOutlined } from "@ant-design/icons";
+import { DownloadOutlined, PrinterOutlined, QuestionCircleOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { api, query } from "../../api/client";
-import type { Cycle, HeatCell, IndicatorResult, IndicatorResults, Performance, Results } from "../../api/collection";
+import type { Cycle, HeatCell, IndicatorResult, IndicatorResults, Performance, Results, StandardResult } from "../../api/collection";
+import { PillarBand, StdCode, usePillarMap, type PillarInfo } from "../../shared/pillars";
 import { HBarChart, ProgressToTarget, SegmentBar } from "../../shared/charts";
 import { L } from "../../shared/i18n";
 import { num, performance as perfText, withUnit } from "../../shared/labels";
-import { DataTable, EmptyNote, FilterMeta, oneOf, PageHeader, Panel, StatTile } from "../../shared/ui";
+import { DataTable, EmptyNote, FilterMeta, oneOf, PageHeader, Panel } from "../../shared/ui";
 import { ReportView } from "./ReportView";
 
 const PERF: Performance[] = ["Achieved", "Near", "Behind", "NoData", "NoTarget", "Incomplete", "NotStarted"];
@@ -27,6 +28,7 @@ export default function ResultsPage() {
   const q = params.get("q") ?? "";
   const [open, setOpen] = useState<IndicatorResult | null>(null);
   const [printing, setPrinting] = useState(false);
+  const pillarMap = usePillarMap();
 
   const set = (key: string, value: string | undefined) => {
     const next = new URLSearchParams(params);
@@ -60,6 +62,13 @@ export default function ResultsPage() {
     <>
       <PageHeader title={L("النتائج والمقارنات", "Results and comparisons")}
         subtitle={r && <>{r.cycle.name} · {L("مقارنة بمستهدف", "Against the target of")} <b className="ltr">{r.cycle.targetYear}</b>{r.cycle.trial && <Tag color="purple" className="ms">{L("بروفة", "Rehearsal")}</Tag>}</>}
+        stats={r ? [
+          { label: L("محقق", "Achieved"), value: count("Achieved"), tone: "ok" },
+          { label: L("قريب من المستهدف", "Near"), value: count("Near"), tone: "warn" },
+          { label: L("متأخر", "Behind"), value: count("Behind"), tone: "bad" },
+          { label: L("بلا بيانات معتمدة", "No approved data"), value: count("NoData") },
+          { label: L("النماذج المعتمدة", "Approved forms"), value: <span className="ltr">{r.formsApproved}/{r.formsTotal}</span> },
+        ] : undefined}
         extra={r && (
           <Space wrap>
             <Button icon={<PrinterOutlined />} onClick={() => setPrinting(true)}>{L("تقرير للطباعة", "Printable report")}</Button>
@@ -69,21 +78,18 @@ export default function ResultsPage() {
 
       <div className="r-pickers">
         {live.length > 0 && (
-          <Select value={r?.cycle.id ?? cycleParam} onChange={(v) => set("cycle", v)} style={{ minWidth: 260 }} aria-label={L("الدورة", "Cycle")}
-            options={live.map((c) => ({ value: c.id, label: c.name }))} />
+          <label className="r-picker"><span>{L("دورة القياس", "Cycle")}</span>
+            <Select value={r?.cycle.id ?? cycleParam} onChange={(v) => set("cycle", v)} style={{ minWidth: 260 }} aria-label={L("الدورة", "Cycle")}
+              options={live.map((c) => ({ value: c.id, label: c.name }))} />
+          </label>
         )}
         {r && r.units.length > 1 && (
-          <Select value={r.unit.id} onChange={(v) => set("unit", v)} style={{ minWidth: 240 }} showSearch optionFilterProp="label" aria-label={L("الجهة", "Unit")}
-            options={r.units.map((u) => ({ value: u.id, label: u.kind === "University" ? L("الجامعة كلها", "Whole university") : u.name }))} />
+          <label className="r-picker"><span>{L("الجهة المعروضة", "Unit")}</span>
+            <Select value={r.unit.id} onChange={(v) => set("unit", v)} style={{ minWidth: 240 }} showSearch optionFilterProp="label" aria-label={L("الجهة", "Unit")}
+              options={r.units.map((u) => ({ value: u.id, label: u.kind === "University" ? L("الجامعة كلها", "Whole university") : u.name }))} />
+          </label>
         )}
-      </div>
-
-      <div className="lcp-stats">
-        <StatTile icon={<CheckCircleOutlined />} tone="green" label={L("محقق", "Achieved")} value={count("Achieved")} loading={res.isLoading} to={`/results${query({ cycle: cycleParam, unit: unitParam, perf: "Achieved" })}`} />
-        <StatTile icon={<ClockCircleOutlined />} tone="gold" label={L("قريب من المستهدف", "Near target")} value={count("Near")} loading={res.isLoading} to={`/results${query({ cycle: cycleParam, unit: unitParam, perf: "Near" })}`} />
-        <StatTile icon={<WarningOutlined />} tone="rose" label={L("متأخر", "Behind")} value={count("Behind")} loading={res.isLoading} to={`/results${query({ cycle: cycleParam, unit: unitParam, perf: "Behind" })}`} />
-        <StatTile icon={<FileDoneOutlined />} tone="navy" label={L("النماذج المعتمدة", "Approved forms")} value={r ? `${r.formsApproved}/${r.formsTotal}` : "…"} loading={res.isLoading}
-          hint={L(`${count("NoData")} مؤشر بلا بيانات معتمدة`, `${count("NoData")} without approved data`)} />
+        {r && <OverallRing r={r} />}
       </div>
 
       {r && r.formsApproved === 0 && (
@@ -96,10 +102,17 @@ export default function ResultsPage() {
 
       <Panel title={L(`الأداء بحسب المعيار — ${who ?? ""}`, "By standard")} query={res}
         extra={<span className="r-legend">{(["Achieved", "Near", "Behind", "NoData"] as const).map((p) => <span key={p}><i style={{ background: PERF_COLORS[p] }} />{p === "NoData" ? L("بلا بيانات", "No data") : perfText[p].text}</span>)}</span>}>
-        {() => r!.standards.map((s) => (
+        {() => groupByPillar(r!.standards, pillarMap.map).map((g) => (
+          <div key={g.key} className="r-pgroup">
+            {pillarMap.pillars.length > 0 && (
+              <PillarBand info={g.info}>
+                <span className="ltr">{g.standards.reduce((n, s) => n + s.achieved, 0)}/{g.standards.reduce((n, s) => n + s.indicators, 0)}</span> {L("محقق", "achieved")}
+              </PillarBand>
+            )}
+            {g.standards.map((s) => (
           <button type="button" key={s.code} className="r-std" style={{ width: "100%", background: "none", border: 0, textAlign: "start", cursor: "pointer", font: "inherit", color: "inherit" }}
             onClick={() => set("std", std === s.code ? undefined : s.code)} aria-pressed={std === s.code}>
-            <code className="ltr">{s.code}</code>
+            <StdCode code={s.code} map={pillarMap.map} />
             <span>{s.name}{std === s.code && <Tag color="cyan" className="ms">{L("مرشح", "Filtered")}</Tag>}<br />
               <small className="muted">{L(`${s.achieved} محقق · ${s.near} قريب · ${s.behind} متأخر · ${s.noData + s.noTarget} بلا بيانات من ${s.indicators}`, `${s.achieved} achieved of ${s.indicators}`)}</small></span>
             <SegmentBar compact label={s.name} segments={[
@@ -109,12 +122,14 @@ export default function ResultsPage() {
               { key: "d", label: L("بلا بيانات", "No data"), count: s.noData + s.noTarget, color: PERF_COLORS.NoData },
             ]} />
           </button>
+            ))}
+          </div>
         ))}
       </Panel>
 
       {r && r.heatUnits.length > 1 && (
         <Panel title={L("خريطة الكليات × المعايير", "Colleges × standards")} extra={<Tooltip title={L("نسبة مؤشرات المعيار المحققة في الكلية مقابل مستهدفها. الرمادي: لا بيانات معتمدة.", "Share achieved per standard.")}><QuestionCircleOutlined /></Tooltip>}>
-          <Heatmap r={r} onPick={(unitId) => set("unit", unitId)} />
+          <Heatmap r={r} map={pillarMap.map} onPick={(unitId) => set("unit", unitId)} />
         </Panel>
       )}
 
@@ -139,7 +154,7 @@ export default function ResultsPage() {
           onRowClick={setOpen}
           pageSizes={[20, 50, 100]}
           columns={[
-            { title: L("الرمز", "Code"), dataIndex: "code", width: 90, render: (c: string) => <code className="ltr">{c}</code> },
+            { title: L("الرمز", "Code"), dataIndex: "code", width: 96, render: (c: string, i) => <StdCode code={c} standard={i.standardCode} map={pillarMap.map} /> },
             { title: L("المؤشر", "Indicator"), dataIndex: "name", ellipsis: true },
             { title: L("الفعلي", "Actual"), key: "a", width: 110, render: (_, i) => <b className="ltr">{withUnit(i.actual, i.unit)}</b> },
             {
@@ -165,7 +180,7 @@ export default function ResultsPage() {
           ]}
           renderCard={(i) => (
             <>
-              <div className="dt-card-row"><code className="ltr">{i.code}</code><span><i className={`perf-dot perf-${perfText[i.performance].tone}`} />{perfText[i.performance].text}</span></div>
+              <div className="dt-card-row"><StdCode code={i.code} standard={i.standardCode} map={pillarMap.map} /><span><i className={`perf-dot perf-${perfText[i.performance].tone}`} />{perfText[i.performance].text}</span></div>
               <b>{i.name}</b>
               <small>{i.summary}</small>
             </>
@@ -177,6 +192,36 @@ export default function ResultsPage() {
       {open && r && <IndicatorDrawer cycleId={r.cycle.id} unitId={r.unit.id} university={r.unit.kind === "University"} item={open} onClose={() => setOpen(null)} />}
       {printing && r && <ReportView r={r} onClose={() => setPrinting(false)} />}
     </>
+  );
+}
+
+/** المعايير مجمعة تحت ركائزها بترتيب الخطة؛ المعيار بلا ركيزة (أو بلا صلاحية على الخطة) في مجموعة أخيرة. */
+function groupByPillar(standards: StandardResult[], map: Map<string, PillarInfo>) {
+  const groups = new Map<string, { key: string; info: PillarInfo | undefined; order: number; standards: StandardResult[] }>();
+  for (const s of standards) {
+    const info = map.get(s.code);
+    const key = info ? info.id : "none";
+    if (!groups.has(key)) groups.set(key, { key, info, order: info ? info.index : 999, standards: [] });
+    groups.get(key)!.standards.push(s);
+  }
+  return [...groups.values()].sort((a, b) => a.order - b.order);
+}
+
+/** نسبة المؤشرات المحققة مما حكم عليه، في حلقة: صورة الأداء الكلي للجهة في سطر. */
+function OverallRing({ r }: { r: Results }) {
+  const a = r.indicators.filter((i) => i.performance === "Achieved").length;
+  const judged = r.indicators.filter((i) => ["Achieved", "Near", "Behind"].includes(i.performance)).length;
+  const pct = judged === 0 ? 0 : a / judged;
+  const R = 22, C = 2 * Math.PI * R;
+  return (
+    <div className="r-ring" title={L("نسبة المؤشرات المحققة من المؤشرات التي حكم عليها", "Share achieved of judged indicators")}>
+      <svg viewBox="0 0 56 56" width="56" height="56" aria-hidden>
+        <circle cx="28" cy="28" r={R} fill="none" stroke="#e6ecf2" strokeWidth="6" />
+        <circle cx="28" cy="28" r={R} fill="none" stroke="#2e9e63" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${(C * pct).toFixed(1)} ${C.toFixed(1)}`} transform="rotate(-90 28 28)" />
+        <text x="28" y="32" textAnchor="middle" fontSize="12" fontWeight="700" fill="#16294a">{Math.round(pct * 100)}%</text>
+      </svg>
+      <span><b>{L("نسبة التحقق", "Achieved share")}</b><small>{L(`${a} محقق من ${judged} حكم عليه`, `${a} of ${judged} judged`)}</small></span>
+    </div>
   );
 }
 
@@ -221,14 +266,14 @@ function heatClass(c: HeatCell | undefined) {
   return share >= 0.75 ? "h4" : share >= 0.5 ? "h3" : share >= 0.25 ? "h2" : "h1";
 }
 
-function Heatmap({ r, onPick }: { r: Results; onPick: (unitId: string) => void }) {
+function Heatmap({ r, onPick, map }: { r: Results; onPick: (unitId: string) => void; map: Map<string, PillarInfo> }) {
   const standards = [...new Set(r.heat.map((h) => h.standardCode))];
   const cell = (u: string, s: string) => r.heat.find((h) => h.unitId === u && h.standardCode === s);
   return (
     <div className="r-heat">
       <table>
         <thead>
-          <tr><th className="unit">{L("الكلية", "College")}</th>{standards.map((s) => <th key={s} className="ltr">{s}</th>)}</tr>
+          <tr><th className="unit">{L("الكلية", "College")}</th>{standards.map((s) => <th key={s}><StdCode code={s} map={map} /></th>)}</tr>
         </thead>
         <tbody>
           {r.heatUnits.map((u) => (

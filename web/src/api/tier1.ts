@@ -1,6 +1,6 @@
 // أنواع ردود مسارات Tier 1 كما يرسلها الخادم (التعدادات بأسمائها).
 
-export type OrgUnitKind = "University" | "College" | "Institute" | "Department" | "Center" | "Administration";
+export type OrgUnitKind = "University" | "College" | "Institute" | "Department" | "Center" | "Administration" | "Sector";
 export type DefinitionStatus = "Draft" | "UnderReview" | "Approved" | "Superseded";
 export type Direction = "Undefined" | "HigherIsBetter" | "LowerIsBetter" | "Range";
 export type Aggregation = "Undefined" | "Sum" | "RatioOfSums" | "DistinctCount" | "WeightedAverage" | "Central" | "StatusOnly";
@@ -12,6 +12,8 @@ export type ConflictSeverity = "Low" | "Medium" | "High";
 export type ConflictStatus = "Open" | "Ready" | "Resolved" | "Deferred";
 export type DistributionStatus = "Covers" | "Short" | "Incomplete" | "NotComparable" | "NoUniversityTarget";
 export type InitiativeStatus = "Planned" | "InProgress" | "Completed" | "Stopped";
+/** نوع المؤشر: لحظي (قيمة السنة متوسط أرباعها) أو تراكمي (آخر ربع). */
+export type Accumulation = "Snapshot" | "Cumulative";
 
 // ----- شجرة الخطة -----
 export interface YearTarget { id: string; year: number; value: number | null; text: string | null; status: TargetStatus; version: number }
@@ -20,6 +22,8 @@ export interface IndicatorNode {
   unit: string; direction: Direction; level: CollectionLevel; aggregation: Aggregation;
   status: DefinitionStatus; hasApproved: boolean; suspended: boolean; planStartYear: number | null; planEndYear: number | null; planNote: string | null;
   baseline: number | null; targets: YearTarget[]; eachCollege: string | null; version: number;
+  nameEn: string | null; formula: string | null; accumulation: Accumulation; perspectives: number[];
+  sdgPrimary: number | null; sdgSecondary: number | null; sdgInduced: number | null;
 }
 export interface InitiativeNode {
   id: string; code: string; nameAr: string; description: string | null; expectedOutcome: string | null; ownerUnitId: string | null; ownerUnitName: string | null;
@@ -41,6 +45,20 @@ export interface StrategyTree {
 export interface OrgUnit {
   id: string; code: string; nameAr: string; nameEn: string | null; kind: OrgUnitKind; parentId: string | null; path: string;
   active: boolean; sortOrder: number; establishedOn: string | null; closedOn: string | null; version: number;
+  /** يطلع من يعمل فيها على الجامعة كاملة (عرضًا وطباعة). */
+  viewsWholeUniversity: boolean;
+  /** مؤشراتها محددة بقائمة بدل الافتراضي لمستواها. */
+  customIndicators: boolean;
+  /** ما تدخله (أو أقسامها للكلية) من المؤشرات بحسب تكليفها. */
+  indicatorCount: number | null;
+}
+
+// ----- تكليف الجهات بالمؤشرات -----
+export interface UnitIndicatorItem { id: string; code: string; nameAr: string; level: CollectionLevel; aggregation: string; selected: boolean; takenBy: string | null }
+export interface UnitIndicatorStandard { code: string; nameAr: string; pillarCode: string; pillarName: string; indicators: UnitIndicatorItem[] }
+export interface UnitIndicators {
+  unitId: string; unitName: string; kind: OrgUnitKind; custom: boolean; followsUnit: string | null; canEdit: boolean; openCycles: number;
+  standards: UnitIndicatorStandard[];
 }
 
 export interface OrgUnitChange { kind: string; effectiveOn: string; oldValue: string | null; newValue: string | null; reason: string | null; at: string }
@@ -72,6 +90,7 @@ export interface Version {
   frequency: Frequency; level: CollectionLevel; aggregation: Aggregation; aggregationNote: string | null; dataSource: string | null;
   ownerUnitId: string | null; ownerUnitName: string | null; evidenceRequired: string | null; sourcePages: string | null; changeReason: string | null;
   submittedAt: string | null; approvedAt: string | null; decisionRef: string | null; returnNote: string | null; missing: string[]; version: number;
+  formula: string | null; accumulation: Accumulation;
 }
 
 export interface VersionSummary { number: number; status: DefinitionStatus; changeReason: string | null; createdAt: string; approvedAt: string | null; decisionRef: string | null }
@@ -80,6 +99,10 @@ export interface IndicatorDetail {
   code: string; standardId: string; standardCode: string; standardName: string; suspended: boolean;
   current: Version; effective: Version | null; history: VersionSummary[]; conflictCodes: string[];
   actions: { canEdit: boolean; canSubmit: boolean; canApprove: boolean; canSuspend: boolean; editCreatesVersion: boolean };
+  framework: {
+    perspectives: number[]; sdgPrimary: number | null; sdgSecondary: number | null; sdgInduced: number | null;
+    pssRationale: string | null; sdgRationale: string | null; planNote: string | null;
+  };
 }
 
 export interface Target {

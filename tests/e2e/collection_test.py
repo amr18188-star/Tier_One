@@ -326,11 +326,11 @@ def main():
     # ---------------------------------------------------------------- مؤشر جديد
     step("7. إضافة مؤشر جديد إلى القاموس برمز تلقائي")
     name = f"مؤشر تجريبي {uuid.uuid4().hex[:5]}"
-    status, _ = viewer.call("POST", "/api/kpi/indicators", {"standardCode": "S10", "nameAr": name, "unit": "%", "level": "College", "reason": None})
+    status, _ = viewer.call("POST", "/api/kpi/indicators", {"standardCode": "10", "nameAr": name, "unit": "%", "level": "College", "reason": None})
     check(status == 403, "مستخدم الاطلاع لا يضيف مؤشرًا")
-    created = planner.call("POST", "/api/kpi/indicators", {"standardCode": "S10", "nameAr": name, "unit": "%", "level": "College", "reason": "اختبار"}, expect=200)[1]
-    check(created["code"].startswith("S10-") and created["current"]["status"] == "Draft", f"أنشئ {created['code']} مسودة")
-    status, err = planner.call("POST", "/api/kpi/indicators", {"standardCode": "S10", "nameAr": name, "unit": "%", "level": "College", "reason": None})
+    created = planner.call("POST", "/api/kpi/indicators", {"standardCode": "10", "nameAr": name, "unit": "%", "level": "College", "reason": "اختبار"}, expect=200)[1]
+    check(created["code"].startswith("10.") and created["current"]["status"] == "Draft", f"أنشئ {created['code']} مسودة")
+    status, err = planner.call("POST", "/api/kpi/indicators", {"standardCode": "10", "nameAr": name, "unit": "%", "level": "College", "reason": None})
     check(status == 422 and err.get("code") == "duplicate_name", "لا يتكرر الاسم في المعيار نفسه")
 
     # ---------------------------------------------------------------- الإغلاق والبريد

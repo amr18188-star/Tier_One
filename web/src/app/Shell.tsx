@@ -1,8 +1,8 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { AutoComplete, Button, Drawer, Dropdown, Input } from "antd";
 import {
-  ApartmentOutlined, AuditOutlined, BarChartOutlined, BranchesOutlined, CalendarOutlined, ClusterOutlined, FormOutlined, GlobalOutlined, HomeOutlined, LogoutOutlined, MenuOutlined,
-  PartitionOutlined, SafetyCertificateOutlined, SearchOutlined, SettingOutlined, TeamOutlined, UnorderedListOutlined, WarningOutlined,
+  ApartmentOutlined, AuditOutlined, BarChartOutlined, BranchesOutlined, CalendarOutlined, ClusterOutlined, FileDoneOutlined, FilePdfOutlined, FormOutlined, GlobalOutlined, HomeOutlined, LogoutOutlined, MenuOutlined,
+  PartitionOutlined, RiseOutlined, SafetyCertificateOutlined, SearchOutlined, SettingOutlined, TeamOutlined, TrophyOutlined, UnorderedListOutlined,
 } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { Link, NavLink, useNavigate } from "react-router-dom";
@@ -16,6 +16,7 @@ import { initials } from "../shared/ui";
 import mark from "../assets/brand/tier1-mark.svg";
 import "../shared/ui.css";
 import "../shared/tier1.css";
+import "../shared/theme.css";
 
 interface NavItem { to: string; icon: ReactNode; label: string; end?: boolean; badge?: number; badgeText?: string; tab?: boolean }
 interface NavGroup { key: string; title?: string; items: (NavItem | false)[] }
@@ -56,15 +57,19 @@ export function Shell({ children }: { children: ReactNode }) {
           to: "/forms", icon: <FormOutlined aria-hidden />, label: L("نماذج الجهات", "Unit forms"), tab: true,
           badge: awaiting, badgeText: L(`${awaiting} نموذج ينتظرك`, `${awaiting} forms waiting for you`),
         },
-        perms.can("dc.results", "V") && { to: "/results", icon: <BarChartOutlined aria-hidden />, label: L("النتائج والمقارنات", "Results"), tab: true },
+        // بطاقة الجامعة كاملة لمن نطاقه الجامعة؛ مستخدم الكلية أو الإدارة يرى تقدم جهته.
+        perms.scopeOf("dc.results", "V") === "A" && { to: "/scorecard", icon: <TrophyOutlined aria-hidden />, label: L("بطاقة الأداء والتصنيف", "Scorecard and tier"), tab: true },
+        perms.can("dc.university", "V") && { to: "/review", icon: <FileDoneOutlined aria-hidden />, label: L("مراجعة مؤشرات الكليات", "Review college indicators"), tab: true },
+        perms.can("dc.results", "V") && { to: "/progress", icon: <RiseOutlined aria-hidden />, label: L("تقدم الكلية", "College progress") },
+        perms.can("dc.results", "V") && { to: "/results", icon: <BarChartOutlined aria-hidden />, label: L("النتائج والمقارنات", "Results") },
         perms.can("dc.cycles", "E") && { to: "/cycles", icon: <CalendarOutlined aria-hidden />, label: L("دورات جمع البيانات", "Collection cycles") },
       ],
     },
     {
       key: "plan", title: L("الخطة والمؤشرات", "Plan and indicators"), items: [
-        perms.can("kpi.strategy", "V") && { to: "/strategy", icon: <PartitionOutlined aria-hidden />, label: L("الخطة الاستراتيجية", "Strategic plan") },
+        perms.can("kpi.strategy", "V") && { to: "/strategy", icon: <PartitionOutlined aria-hidden />, label: L("الخطة الاستراتيجية", "Strategic plan"), end: true },
+        perms.can("kpi.strategy", "V") && { to: "/strategy/document", icon: <FilePdfOutlined aria-hidden />, label: L("وثيقة الخطة الاستراتيجية", "Strategic plan document") },
         perms.can("kpi.dictionary", "V") && { to: "/indicators", icon: <UnorderedListOutlined aria-hidden />, label: L("قاموس المؤشرات", "Indicators"), tab: true },
-        perms.can("kpi.conflicts", "V") && { to: "/conflicts", icon: <WarningOutlined aria-hidden />, label: L("سجل التعارضات", "Conflicts"), tab: true },
       ],
     },
     {

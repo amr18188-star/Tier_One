@@ -78,6 +78,19 @@ public enum Aggregation
     StatusOnly = 6,
 }
 
+/// <summary>
+/// نوع المؤشر بحسب طريقة الحساب في الإطار الشامل: قيمة السنة للمؤشر التراكمي آخر ربع أدخل فيها (إجمالي حتى تاريخه)،
+/// وللمؤشر اللحظي متوسط أرباعها.
+/// </summary>
+public enum Accumulation
+{
+    /// <summary>غير تراكمي (لحظي): القيمة عند تاريخ القياس.</summary>
+    Snapshot = 1,
+
+    /// <summary>تراكمي: إجمالي القيمة المتراكمة حتى الآن.</summary>
+    Cumulative = 2,
+}
+
 public enum CollectionLevel
 {
     Department = 1,
@@ -135,6 +148,27 @@ public sealed class Indicator
     /// <summary>شرح المستهدف ومراحله: لماذا هذه القيم وكيف يتدرج الوصول إليها.</summary>
     public string? PlanNote { get; set; }
 
+    /// <summary>
+    /// مناظير بطاقة أداء القطاع العام (PSS) التي يخدمها المؤشر، من 1 إلى 7: الاستراتيجي، ومستخدمو الخدمة وأصحاب المصلحة، والمالي،
+    /// وتقديم الخدمة والتميز التشغيلي، والابتكار والتعلم، والقيادة، والأفراد والشراكات والموارد.
+    /// </summary>
+    public List<int> Perspectives { get; set; } = [];
+
+    /// <summary>هدف التنمية المستدامة الأساسي (1–17).</summary>
+    public int? SdgPrimary { get; set; }
+
+    /// <summary>الهدف الثانوي.</summary>
+    public int? SdgSecondary { get; set; }
+
+    /// <summary>هدف الأثر النهائي (المستحث).</summary>
+    public int? SdgInduced { get; set; }
+
+    /// <summary>لماذا ربط المؤشر بهذه المناظير.</summary>
+    public string? PssRationale { get; set; }
+
+    /// <summary>لماذا ربط المؤشر بهذه الأهداف.</summary>
+    public string? SdgRationale { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 
     public uint Version { get; set; }
@@ -177,6 +211,11 @@ public sealed class IndicatorVersion
     public string? Numerator { get; set; }
 
     public string? Denominator { get; set; }
+
+    /// <summary>معادلة التقييم كما كتبت في الإطار (متى تقاس وكيف تحسب).</summary>
+    public string? Formula { get; set; }
+
+    public Accumulation Accumulation { get; set; } = Accumulation.Snapshot;
 
     public string Unit { get; set; } = "%";
 

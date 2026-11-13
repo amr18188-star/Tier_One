@@ -203,6 +203,9 @@ public static class Features
     public const string Cycles = "dc.cycles";
     public const string Forms = "dc.forms";
     public const string Results = "dc.results";
+
+    /// <summary>القيم الرسمية للجامعة: مراجعة مؤشرات الكليات ونقل القيمة إلى مؤشر الجامعة (مسئول ملف Tier 1).</summary>
+    public const string University = "dc.university";
 }
 
 public static class Specials

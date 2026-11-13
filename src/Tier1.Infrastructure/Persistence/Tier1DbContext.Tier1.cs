@@ -12,6 +12,8 @@ public sealed partial class Tier1DbContext
 
     public DbSet<OrgUnitChange> OrgUnitChanges => Set<OrgUnitChange>();
 
+    public DbSet<UnitIndicator> UnitIndicators => Set<UnitIndicator>();
+
     public DbSet<StructureUnit> StructureUnits => Set<StructureUnit>();
 
     public DbSet<StructurePosition> StructurePositions => Set<StructurePosition>();
@@ -68,6 +70,15 @@ public sealed partial class Tier1DbContext
             e.Property(x => x.NewValue).HasMaxLength(400);
             e.Property(x => x.Reason).HasMaxLength(500);
             e.HasOne<OrgUnit>().WithMany().HasForeignKey(x => x.UnitId).OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<UnitIndicator>(e =>
+        {
+            e.ToTable("unit_indicators", "org");
+            e.HasKey(x => new { x.UnitId, x.IndicatorId });
+            e.HasIndex(x => x.IndicatorId);
+            e.HasOne<OrgUnit>().WithMany().HasForeignKey(x => x.UnitId).OnDelete(DeleteBehavior.Cascade);
+            // إعادة ضبط الإطار تحذف المؤشرات فيسقط تكليفها معها.
+            e.HasOne<Indicator>().WithMany().HasForeignKey(x => x.IndicatorId).OnDelete(DeleteBehavior.Cascade);
         });
 
         b.Entity<StructureUnit>(e =>
