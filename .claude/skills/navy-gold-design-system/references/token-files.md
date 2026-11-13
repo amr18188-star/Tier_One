@@ -6,7 +6,7 @@ disagrees with the CSS, the CSS wins: re-read the file.
 
 ## Contents
 
-1. File map · 2. How scoping works · 3. Primitives · 4. Theme-level tokens · 5. Section tokens ·
+1. File map · 2. How scoping works · 2a. Corners · 3. Primitives · 4. Theme-level tokens · 5. Section tokens ·
 6. Utilities · 7. shadcn variable mapping · 8. `tokens.ts` and antd · 9. Scrollbar tokens
 
 ## 1. File map
@@ -15,12 +15,14 @@ disagrees with the CSS, the CSS wins: re-read the file.
 |---|---|---|---|
 | `web/src/styles/design-system/primitives.css` | Raw palettes as `--color-<family>-<step>` | `:root` (the only global file) | `index.css` |
 | `web/src/styles/design-system/themes/navy-gold.css` | `--ds-*` + shadcn variables for the landing look | `[data-theme="navy-gold"]` | `index.css` |
-| `web/src/styles/design-system/themes/app-soft.css` | Same names, the old `/app` palette, 14px radius | `[data-theme="app-soft"]` | `index.css` |
-| `web/src/styles/design-system/index.css` | Plain-CSS entry: primitives, then each theme (order matters) | — | a feature's Tailwind entry, or any CSS that wants `var(--ds-*)` |
-| `web/src/styles/design-system/tailwind-theme.css` | `@theme inline reference`: `--color-ds-*`, primitives, `--radius-ds`, `--font-ds`, `--shadow-ds-*` | emits nothing on `:root` | a feature's Tailwind entry, after `index.css` |
+| `web/src/styles/design-system/themes/app-soft.css` | Same names, the old `/app` palette | `[data-theme="app-soft"]` | `index.css` |
+| `web/src/styles/design-system/corners.css` | Corner scale `--ds-radius-xs … xl`, `-pill`, `-round`, aliases `--ds-radius`, shadcn `--radius` (section 2a) | `:root` + `[data-corners]` | `index.css` (last) |
+| `web/src/styles/design-system/config.ts` | `CORNERS = "square" \| "rounded"`: the one corner switch | — | `theme.ts`, `antd-theme.ts` |
+| `web/src/styles/design-system/index.css` | Plain-CSS entry: primitives, then each theme, then `corners.css` (order matters) | — | a feature's Tailwind entry, or any CSS that wants `var(--ds-*)` |
+| `web/src/styles/design-system/tailwind-theme.css` | `@theme inline reference`: `--color-ds-*`, primitives, `--radius-ds*`, `--font-ds`, `--shadow-ds-*` | emits nothing on `:root` | a feature's Tailwind entry, after `index.css` |
 | `web/src/styles/design-system/tokens.ts` | The same values as typed TS constants (real colours for antd) | — | `antd-theme.ts`, `tokens.test.ts`, `LandingPage.tsx` (type) |
-| `web/src/styles/design-system/antd-theme.ts` | `antdTheme(name, base, { tone })`: tokens → antd `ThemeConfig` (section 8) | — | `web/src/app/App.tsx` |
-| `web/src/styles/design-system/theme.ts` | `ACTIVE_THEME` → `<html data-theme>`, `useDsTheme()`, `setDsTheme()`; imports `index.css` | `<html>` | `web/src/app/App.tsx` |
+| `web/src/styles/design-system/antd-theme.ts` | `antdTheme(name, base, { tone, corners })`: tokens → antd `ThemeConfig` (section 8) | — | `web/src/app/App.tsx` |
+| `web/src/styles/design-system/theme.ts` | `ACTIVE_THEME` → `<html data-theme>`, `CORNERS` → `<html data-corners>`, `useDsTheme()`, `setDsTheme()`, `useDsCorners()`, `setDsCorners()`; imports `index.css` | `<html>` | `web/src/app/App.tsx` |
 | `web/src/styles/design-system/tokens.test.ts` | Parses the CSS; fails if `tokens.ts` differs or an AA pair fails | — | vitest |
 | `web/src/styles/design-system/scrollbar.css` | Scrollbar tokens and drawing (section 9) | `:root`, `[data-theme]` scopes, element selectors | `web/src/main.tsx`, once, after `app.css` |
 | `web/src/styles/design-system/README.md` | Short usage and the add-a-theme steps | — | — |
@@ -39,8 +41,8 @@ again through its own Tailwind entry (see SKILL.md); the values are the same.
 - `data-section="dark"` on any descendant re-scopes the section tokens (backgrounds, surfaces, text, lines, accent,
   tiles, buttons, shadcn core) for that subtree. `data-section="light"` flips back inside a dark block. Put
   `data-section="dark"` on the theme root itself for an all-dark page.
-- Theme-level tokens (font, radius, chrome, textures, charts, shadows, focus, selection, shadcn `--radius`, `--chart-*`,
-  `--sidebar-*`) are the same in both scopes.
+- Theme-level tokens (font, chrome, textures, charts, shadows, focus, selection, shadcn `--chart-*`,
+  `--sidebar-*`) are the same in both scopes. Radius is not a theme token: see §2a (corners).
 - The Tailwind mapping is `inline`: `bg-ds-surface` compiles to `background-color: var(--ds-surface)`, so the value
   resolves on the element itself and follows the nearest scope at any depth. A dark card in a light section is just
   `<div data-section="dark" className="bg-ds-surface">`.
@@ -49,6 +51,29 @@ again through its own Tailwind entry (see SKILL.md); the values are the same.
   the later file (app-soft) would win on some properties only.
 - A token missing from a theme is unset there: its utility paints nothing (transparent background, inherited text).
   Every theme must define every name.
+
+## 2a. Corners
+
+Corners are their own axis, set on `<html data-corners>` from `CORNERS` in `config.ts` (default `"square"`). Theme
+files declare no radius, so every theme works with either style. CSS-only override: `:root[data-corners="rounded"]`.
+No attribute = square.
+
+| Token | Utility | square | rounded | Use |
+|---|---|---|---|---|
+| `--ds-radius-xs` | `rounded-ds-xs` | 0 | 4px | bars, swatches, small codes, active-link bars |
+| `--ds-radius-sm` | `rounded-ds-sm` | 0 | 6px | code pills, focus rings, inner boxes |
+| `--ds-radius-md` | `rounded-ds-md` | 0 | 8px | buttons, inputs, icon tiles, list rows |
+| `--ds-radius-lg` | `rounded-ds-lg` | 0 | 12px | cards, panels, tables, modals |
+| `--ds-radius-xl` | `rounded-ds-xl` | 0 | 16px | page bands, hero, large panels |
+| `--ds-radius-pill` | `rounded-ds-pill` | 0 | 999px | chips, count badges, progress bars, status dots, scrollbar thumb |
+| `--ds-radius-round` | `rounded-ds-round` | 50% | 50% | real circles only |
+| `--ds-radius` | `rounded-ds` | = md | = md | alias |
+| `--radius` (shadcn) | `rounded-lg` in shadcn parts | = lg | = lg | alias |
+| `--r` (legacy app CSS) | — | = xl | = xl | alias in `shared/ui.css`, `shared/theme.css` |
+
+The px values are mirrored in `tokens.ts` (`corners`) for antd; `tokens.test.ts` checks both ways and checks that no
+theme file declares a radius. A subtree with its own `data-corners` re-resolves the tokens, `rounded-ds*` and the
+scrollbar; antd and `--r` follow `<html>`.
 
 ## 3. Primitives
 
@@ -85,7 +110,6 @@ Same in light and dark scopes.
 |---|---|---|---|
 | `--ds-font` | Cairo, Geist Variable, Segoe UI, sans-serif | same | `font-ds` on the page root |
 | `--ds-font-heading` | same as `--ds-font` | same | `font-ds-heading` (lets a theme split heading type) |
-| `--ds-radius` | `0px` | `0.875rem` (14px) | `rounded-ds` |
 | `--ds-chrome` | navy-950 | soft-navy-950 | header and footer (`bg-ds-chrome/95` + blur in the header) |
 | `--ds-grid-hero` | navy-600 | soft-navy-800 | colour of the hero grid lines |
 | `--ds-grid-dark` | steel-400 | soft-neutral-500 | colour of the dark-section grid lines |
@@ -243,8 +267,9 @@ the alphas multiply.
 `soft-gold-700/600/500/300/100/50`. The `soft-neutral`, `soft-success`, `soft-danger` and `soft-info` primitives have no
 utilities (CSS variables only).
 
-**Shape, type, elevation:** `rounded-ds` and every radius form (`rounded-s-ds`, `rounded-e-ds`, `rounded-t-ds`,
-`rounded-ss-ds` …), `font-ds`, `font-ds-heading`, `shadow-ds-sm`, `shadow-ds-md`.
+**Shape, type, elevation:** `rounded-ds-xs|sm|md|lg|xl|pill|round`, `rounded-ds` (= md) and every side or corner form
+(`rounded-s-ds-lg`, `rounded-t-ds-md`, `rounded-ss-ds` …), `font-ds`, `font-ds-heading`, `shadow-ds-sm`, `shadow-ds-md`.
+Radius values: §2a.
 
 **Composite tokens** (no utility; use in `style`): `var(--ds-texture-hero)`, `var(--ds-texture-dark)`, `var(--ds-hero-vignette)`.
 
@@ -256,8 +281,9 @@ layout, typography sizes and breakpoints are Tailwind defaults and fine to use.
 
 shadcn components (`web/src/components/ui/`) read these variables. The theme files set them per theme and scope, so
 shadcn inside `data-theme` follows it. `web/src/styles/shadcn.css` holds the defaults on `:root` (the teal app palette),
-the `@theme inline` map (`--color-primary: var(--primary)`, `--color-muted: var(--ui-muted)` …) and the radius scale
-(`--radius-sm … 4xl` = `calc(var(--radius) * n)`), so `--radius: 0px` squares every shadcn part.
+the `@theme inline` map (`--color-primary: var(--primary)`, `--color-muted: var(--ui-muted)` …) and the radius steps
+(`--radius-xs … xl` = `var(--ds-radius-xs … xl)`, `--radius-lg` = `--radius`, 2xl–4xl = xl × 1.25 / 1.5 / 1.75), so
+`CORNERS = "square"` squares every shadcn part, never with a negative value. `--radius` itself comes from `corners.css`.
 
 | shadcn variable | navy-gold light | navy-gold dark | app-soft light | app-soft dark |
 |---|---|---|---|---|
@@ -282,7 +308,6 @@ the `@theme inline` map (`--color-primary: var(--primary)`, `--color-muted: var(
 
 | shadcn variable (theme level) | navy-gold | app-soft |
 |---|---|---|
-| `--radius` | `0px` | `0.875rem` |
 | `--chart-1` | navy-800 | soft-navy-500 |
 | `--chart-2` | gold-400 | soft-gold-600 |
 | `--chart-3` | steel-400 | soft-success-700 |
@@ -310,7 +335,9 @@ Notes:
 
 `web/src/styles/design-system/tokens.ts` exports:
 - `palette`: every primitive as a plain colour string (ash in 8-bit hex).
-- `themes`: per theme `fontFamily`, `radius` (px number), `chrome`, `gridHero`, `gridDark`, `chart` (`series`, `actual`,
+- `corners`: per corner style (`square`, `rounded`) the px steps `xs`, `sm`, `md`, `lg`, `xl`, `pill` (= corners.css);
+  `CornerStyle`, `isCornerStyle()`.
+- `themes`: per theme `fontFamily`, `chrome`, `gridHero`, `gridDark`, `chart` (`series`, `actual`,
   `target`, `area`, `current`, `bg`, `grid`, `axis`, `up`, `down`), `shadow`, `focus`, `selection`,
   `sidebar` (the `--ds-sidebar-*` tokens), `sections.light` / `sections.dark` (every section token, camelCase, buttons as
   `btnPrimary` / `btnGhost`, plus `focusRing`, `link`, `linkHover` and `destructive` from `--destructive`).
@@ -342,12 +369,13 @@ const theme = useMemo(() => antdTheme(dsTheme, antdBase), [dsTheme]);
 | `colorText`, `colorTextHeading`, `colorTextSecondary` | `fg`, `heading`, `label` |
 | `colorBorder`, `colorBorderSecondary` | `border` |
 | `colorBgLayout`, `colorBgContainer`, `colorBgElevated`, `colorBgSpotlight` | `bgCool`, `surface`, `surface`, `sections.dark.bg` |
-| `borderRadiusLG` / `borderRadius` / `SM` / `XS` / `Outer` | `antdRadii(radius)`: r, r − 2, r − 4, r − 6, r − 4 (≥ 0) |
+| `borderRadius` / `borderRadiusLG` / `SM` / `XS` / `Outer` | `antdRadii(corners[style])`: md, lg, sm, xs, xs (square: all 0) |
+| Progress `lineBorderRadius`, Table `stickyScrollBarBorderRadius` | `pill` |
 | Button default (colour, bg, border, hover and active) | `btnGhost.fg`, `surface`, `btnGhost.border`, `btnGhost.hoverFg` / `hoverBg` / `hoverBorder` |
 | Input, InputNumber, DatePicker: `hoverBorderColor`, `activeBorderColor`, `activeShadow` | `accentStrong`, `focusRing`, `0 0 0 2px` + `focus` |
 | Select: same borders, `activeOutlineColor`, `optionSelectedBg` / `Color`, `optionActiveBg` | `focus`, `tile` / `heading`, `surfaceHover` |
 | Table: `headerBg`, `headerColor`, sort / filter bg, `headerSplitColor` | `sections.dark`: `bg`, `heading`, `surface` / `surfaceHover`, `border` |
-| Table: `rowHoverBg`, `bodySortBg`, `borderColor`, `headerBorderRadius` | `surfaceHover`, `bgCool`, `border`, 0 |
+| Table: `rowHoverBg`, `bodySortBg`, `borderColor`, `headerBorderRadius` | `surfaceHover`, `bgCool`, `border`, corner `lg` |
 | Tag `defaultBg`, `defaultColor` | `bgCool`, `fg` |
 | Modal `contentBg`, `headerBg`, `titleColor`; Drawer `colorBgElevated` | `surface`, `surface`, `heading`; `surface` |
 | Tabs `itemColor`, hover / selected / active, `inkBarColor` | `label`, `heading`, `icon` (≥ 3:1) |
@@ -366,7 +394,7 @@ const theme = useMemo(() => antdTheme(dsTheme, antdBase), [dsTheme]);
 **Legacy variables.** The `:root` blocks of `web/src/styles/app.css` and `web/src/shared/ui.css` alias the brand
 variables to light-section tokens (old hex as `var()` fallback): `--navy` → `--ds-heading`, `--navy-2` → `--ds-chrome`,
 `--teal` → `--ds-btn-primary-bg`, `--teal-ink` → `--ds-link`, `--bg` → `--ds-bg-cool`, `--surface` → `--ds-surface`,
-`--sunk` → `--ds-track`, `--ink` → `--ds-fg`, `--muted` → `--ds-label`, `--line` → `--ds-border`, `--r` → `--ds-radius`,
+`--sunk` → `--ds-track`, `--ink` → `--ds-fg`, `--muted` → `--ds-label`, `--line` → `--ds-border`, `--r` → `--ds-radius-xl` (also in `shared/theme.css`),
 `--teal-50` → `--ds-tile`, `--teal-100` → `--ds-accent`, `--navy-50` → `--ds-track`, `--gold` → `--ds-accent`,
 `--gold-50` → `--ds-bg-warm`, `--gold-ink` → `--ds-eyebrow-aa`, `--row-alt` → `--ds-bg-cool`, `--hair` → `--ds-border`.
 Inside `.lcp-side` and `.lcp-drawer .ant-drawer-body`: `--teal` → `--ds-sidebar-indicator`, `--teal-100` →
@@ -412,7 +440,7 @@ Shape tokens (on `:root`, inherited, so a subtree can override them on its own s
 | `--scrollbar-size` | `12px` | hit area (width of a vertical bar, height of a horizontal one) |
 | `--scrollbar-gap` | `3px` | transparent ring around the thumb (visible thumb = size - 2 x gap) |
 | `--scrollbar-gap-hover` | `2px` | ring under the pointer / while dragged |
-| `--scrollbar-radius` | `999px` | pill |
+| `--scrollbar-radius` | `var(--ds-radius-pill)` | follows the corner style: square thumb when square, pill when rounded |
 | `--scrollbar-min-thumb` | `40px` | shortest thumb |
 | `--scrollbar-track` | `transparent` | track fill (transparent everywhere) |
 

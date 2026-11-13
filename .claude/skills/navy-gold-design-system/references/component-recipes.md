@@ -73,7 +73,7 @@ badge, callouts · 10. Chart colours · 11. shadcn inside a theme · 12. Don't
 [data-feature] :where(a, button, [role="button"], [tabindex]):focus-visible {
   outline: auto 1px var(--ds-focus);
   outline-offset: 0;
-  border-radius: 0;
+  border-radius: var(--ds-radius-sm); /* the ring's corner follows CORNERS, like the app's focus ring */
 }
 
 /* Utilities, scoped: every one compiles to `[data-feature] .class` (0,2,0). Unlayered on purpose. */
@@ -171,8 +171,8 @@ Switching the attribute re-themes the whole subtree; the children keep their cla
 <section className="bg-ds-bg-warm px-5 py-24 sm:px-10 lg:py-28">…</section>
 
 {/* a dark card inside a light section, and a light panel back inside it */}
-<div data-section="dark" className="rounded-ds border border-ds-border bg-ds-bg p-7 text-ds-fg sm:p-8">
-  <div data-section="light" className="rounded-ds bg-ds-surface p-6 text-ds-fg">…</div>
+<div data-section="dark" className="rounded-ds-lg border border-ds-border bg-ds-bg p-7 text-ds-fg sm:p-8">
+  <div data-section="light" className="rounded-ds-md bg-ds-surface p-6 text-ds-fg">…</div>
 </div>
 
 <footer data-section="dark" className="border-t border-ds-line-soft/10 bg-ds-chrome px-5 py-6 sm:px-10">
@@ -218,7 +218,7 @@ two parts: `<span className="block">…</span><span className="block text-ds-hig
 Hairline grid: the parent paints the 1px lines, the children paint the surface.
 
 ```tsx
-<div className="grid gap-px overflow-hidden rounded-ds border border-ds-border bg-ds-border md:grid-cols-2 lg:grid-cols-3">
+<div className="grid gap-px overflow-hidden rounded-ds-lg border border-ds-border bg-ds-border md:grid-cols-2 lg:grid-cols-3">
   {items.map((item, i) => (
     <article
       key={item.id}
@@ -242,7 +242,7 @@ Hairline grid: the parent paints the 1px lines, the children paint the surface.
 Feature row (light), bordered with a gold hover:
 
 ```tsx
-<article className="group flex gap-5 rounded-ds border border-ds-border p-5 transition-colors hover:border-ds-accent hover:bg-ds-surface-hover-soft sm:p-6">
+<article className="group flex gap-5 rounded-ds-lg border border-ds-border p-5 transition-colors hover:border-ds-accent hover:bg-ds-surface-hover-soft sm:p-6">
   <IconTile icon={FileCheck} />
   <div className="min-w-0 flex-1">
     <div className="flex flex-wrap items-center gap-2">
@@ -255,13 +255,13 @@ Feature row (light), bordered with a gold hover:
 </article>
 ```
 
-Raised card on light (the only place a shadow belongs): `rounded-ds border border-ds-accent/50 bg-ds-surface shadow-ds-sm
+Raised card on light (the only place a shadow belongs): `rounded-ds-lg border border-ds-accent/50 bg-ds-surface shadow-ds-sm
 transition-all hover:border-ds-accent-strong hover:shadow-ds-md`. No shadows in dark sections.
 
 ## 7. Stat number
 
 ```tsx
-<div className="grid gap-px overflow-hidden rounded-ds border border-ds-border bg-ds-border sm:grid-cols-2 lg:grid-cols-4">
+<div className="grid gap-px overflow-hidden rounded-ds-lg border border-ds-border bg-ds-border sm:grid-cols-2 lg:grid-cols-4">
   {stats.map((s) => (
     <div key={s.label} className="group flex flex-col items-center bg-ds-surface px-6 py-10 text-center transition-colors hover:bg-ds-surface-hover">
       <IconTile icon={s.icon} className="mb-5" />
@@ -286,14 +286,14 @@ import { cn } from "@/lib/utils";
 const focus = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ds-focus";
 
 export const btnPrimary = cn(
-  "group inline-flex items-center gap-4 rounded-ds border px-8 py-4 text-sm font-bold transition-all",
+  "group inline-flex items-center gap-4 rounded-ds-md border px-8 py-4 text-sm font-bold transition-all",
   "border-ds-btn-primary-border bg-ds-btn-primary-bg text-ds-btn-primary-fg",
   "hover:border-ds-btn-primary-hover-border hover:bg-ds-btn-primary-hover-bg hover:text-ds-btn-primary-hover-fg",
   focus,
 );
 
 export const btnGhost = cn(
-  "group inline-flex items-center gap-3 rounded-ds border px-6 py-3 text-sm font-semibold transition-all",
+  "group inline-flex items-center gap-3 rounded-ds-md border px-6 py-3 text-sm font-semibold transition-all",
   "border-ds-btn-ghost-border bg-ds-btn-ghost-bg text-ds-btn-ghost-fg",
   "hover:border-ds-btn-ghost-hover-border hover:bg-ds-btn-ghost-hover-bg hover:text-ds-btn-ghost-hover-fg",
   focus,
@@ -326,7 +326,7 @@ export function IconTile({ icon: Icon, solid = false, className }: { icon: Lucid
   return (
     <span
       className={cn(
-        "flex size-12 shrink-0 items-center justify-center rounded-ds transition-colors",
+        "flex size-12 shrink-0 items-center justify-center rounded-ds-md transition-colors",
         solid
           ? "bg-ds-tile-solid text-ds-tile-solid-fg"
           : "border border-ds-accent-border bg-ds-tile text-ds-icon group-hover:bg-ds-tile-active group-hover:text-ds-tile-active-fg",
@@ -338,9 +338,9 @@ export function IconTile({ icon: Icon, solid = false, className }: { icon: Lucid
   );
 }
 
-{/* badge with a square live dot (dark hero) */}
-<div className="inline-flex items-center gap-3 rounded-ds border border-ds-line-soft/15 bg-ds-surface/90 px-5 py-3">
-  <span aria-hidden className="size-2 bg-ds-live" />
+{/* badge with a live dot (dark hero): square when CORNERS is square, round when rounded */}
+<div className="inline-flex items-center gap-3 rounded-ds-pill border border-ds-line-soft/15 bg-ds-surface/90 px-5 py-3">
+  <span aria-hidden className="size-2 rounded-ds-pill bg-ds-live" />
   <span className="text-xs font-medium tracking-wide text-ds-body-strong sm:text-sm">{text}</span>
 </div>
 
@@ -348,7 +348,7 @@ export function IconTile({ icon: Icon, solid = false, className }: { icon: Lucid
 <p className="border-s-2 border-ds-accent bg-ds-callout px-4 py-3 text-xs leading-6 text-ds-body">{note}</p>
 
 {/* key panel (light) */}
-<div className="rounded-ds border-s-4 border-ds-accent-strong bg-ds-surface p-6 sm:p-8">…</div>
+<div className="rounded-ds-lg border-s-4 border-ds-accent-strong bg-ds-surface p-6 sm:p-8">…</div>
 
 {/* rule note (dark) */}
 <div className="flex items-start gap-3 border-s-2 border-ds-accent ps-4">
@@ -357,7 +357,9 @@ export function IconTile({ icon: Icon, solid = false, className }: { icon: Lucid
 </div>
 ```
 
-Status dots, legend swatches and tiles stay square in navy-gold; `rounded-ds` lets other themes round them.
+Status dots (`rounded-ds-pill`), legend swatches (`rounded-ds-xs`) and tiles (`rounded-ds-md`) are square while
+`CORNERS` is square and round off when it is rounded. Use `rounded-ds-round` only for something that must be a circle in
+both styles (it would break the square look).
 
 ## 10. Chart colours
 
@@ -391,12 +393,12 @@ export function TrendChart({ actual, target, area, points }: TrendChartProps) {
 }
 ```
 
-Bars (8px, square track): 
+Bars (8px; square track while `CORNERS` is square, pill when rounded):
 
 ```tsx
-<div className="h-2 bg-ds-track">
+<div className="h-2 rounded-ds-pill bg-ds-track">
   <div
-    className="h-full transition-[width] duration-700"
+    className="h-full rounded-ds-pill transition-[width] duration-700"
     style={{ width: `${value}%`, backgroundColor: highlight ? "var(--ds-chart-2)" : "var(--ds-chart-1)" }}
   />
 </div>
@@ -432,7 +434,7 @@ import { DirectionProvider } from "@/components/ui/direction";
 
 <DirectionProvider dir="rtl">
   <div data-feature="" data-theme="navy-gold">
-    <Card>{/* square, paper, navy text: --radius 0, --card, --card-foreground from the theme */}
+    <Card>{/* paper, navy text: --card, --card-foreground from the theme; corners from --radius (corners.css) */}
       <CardHeader><CardTitle>{L("ملخص", "Summary")}</CardTitle></CardHeader>
       <CardContent>
         <Button>{L("حفظ", "Save")}</Button>{/* navy; gold inside data-section="dark" */}
@@ -466,7 +468,8 @@ import { DirectionProvider } from "@/components/ui/direction";
 | Raw colours: `bg-[#…]`, `style={{ color: "#…" }}`, `rgb(…)`, hex in SVG attributes | a `ds-*` utility or `var(--ds-…)` | hard-coded colours ignore `data-theme` / `data-section` |
 | Tailwind palette colours on themed UI: `text-slate-500`, `bg-white`, `border-gray-200` | `text-ds-body`, `bg-ds-surface`, `border-ds-border` | Tailwind's scale is fixed |
 | Primitives in components: `bg-navy-900`, `var(--color-gold-400)` | the semantic role; add a role if none fits | primitives are fixed paint for theme files |
-| `rounded-lg`, `rounded-xl`, `rounded-full`, `rounded-md` on DS elements | `rounded-ds` | fixed radii ignore the theme (only chart marks are round) |
+| `rounded-lg`, `rounded-xl`, `rounded-full`, `rounded-md`, `border-radius: 10px` on DS elements | `rounded-ds-md` / `-lg` / `-pill` …, `var(--ds-radius-<step>)` | fixed radii ignore the CORNERS switch (only real circles use `rounded-ds-round`) |
+| `rounded-ds-*` on a hairline grid without `overflow-hidden` | add `overflow-hidden`, or leave it square | the filled cells poke past the rounded corner |
 | `shadow-sm`, `shadow-md`, shadows in dark sections | `shadow-ds-sm` / `shadow-ds-md`, light scope only | Tailwind's shadows are the grey defaults |
 | `dark ? "text-white" : "text-navy-900"` ternaries | one class + `data-section` | the scope picks the value |
 | Global preflight, or `@import "tailwindcss"` anywhere | the entry in §1 (theme + scoped utilities, `source(none)`) | preflight resets every element; antd pages change |
