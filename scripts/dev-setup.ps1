@@ -27,16 +27,19 @@ if (-not (Test-Path $envFile)) {
 }
 $vars = @{}
 Get-Content $envFile | ForEach-Object { if ($_ -match '^([^=]+)=(.*)$') { $vars[$Matches[1]] = $Matches[2] } }
+$pgPort = if ($vars.T1_POSTGRES_PORT -match '^\d+$') { [int]$vars.T1_POSTGRES_PORT } else { 5440 }
+# سلسلة السجلات تبدأ من جديد مع كل قاعدة tier1 فارغة: غير T1_MONGO_DB إلى اسم جديد بعد تفريغ القاعدة.
+$mongoDb = if ($vars.T1_MONGO_DB -match '^[A-Za-z0-9_]+$') { $vars.T1_MONGO_DB } else { 'tier1_logs' }
 
 $dev = Join-Path $root 'src/Tier1.Api/appsettings.Development.json'
 $settings = [ordered]@{
     ConnectionStrings = [ordered]@{
-        Tier1 = "Host=127.0.0.1;Port=5440;Database=tier1;Username=tier1_dev;Password=$($vars.POSTGRES_PASSWORD)"
+        Tier1 = "Host=127.0.0.1;Port=$pgPort;Database=tier1;Username=tier1_dev;Password=$($vars.POSTGRES_PASSWORD)"
         # MongoDB المحلي بلا مصادقة في التطوير؛ الإنتاج بحسابين منفصلين للإضافة والإدارة.
-        Mongo = "mongodb://127.0.0.1:27017/tier1_logs"
+        Mongo = "mongodb://127.0.0.1:27017/$mongoDb"
         MongoAdmin = "mongodb://127.0.0.1:27017/"
     }
-    MongoLogs = [ordered]@{ SetupOnStartup = $true; ChainKey = $vars.T1_CHAIN_KEY; CheckpointDirectory = (Join-Path $root 'data/checkpoints') }
+    MongoLogs = [ordered]@{ Database = $mongoDb; SetupOnStartup = $true; ChainKey = $vars.T1_CHAIN_KEY; CheckpointDirectory = (Join-Path $root 'data/checkpoints') }
     Seed = @{ Demo = $true; DemoPassword = $vars.T1_DEMO_PASSWORD }
     DataProtection = @{ KeysPath = (Join-Path $root 'data/keys') }
     Files = @{ Root = (Join-Path $root 'data/files') }
@@ -52,5 +55,9 @@ $settings | ConvertTo-Json -Depth 5 | Set-Content -Path $dev -Encoding utf8
 Write-Host "Wrote $dev"
 
 Write-Host ""
-Write-Host "Next: powershell -ExecutionPolicy Bypass -File scripts\dev-db.ps1   (private PostgreSQL on 127.0.0.1:5440)"
+if ($pgPort -eq 5440) {
+    Write-Host "Next: powershell -ExecutionPolicy Bypass -File scripts\dev-db.ps1   (private PostgreSQL on 127.0.0.1:5440)"
+} else {
+    Write-Host "Using existing PostgreSQL on 127.0.0.1:$pgPort; scripts\dev-db.ps1 is not needed."
+}
 Write-Host "Demo accounts: *@tier1.local with the password T1_DEMO_PASSWORD from .env"

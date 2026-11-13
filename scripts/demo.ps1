@@ -1,4 +1,4 @@
-﻿# النسخة التجريبية للعرض والتجربة: قاعدة منفصلة tier1_demo وسجلات ومجلد بيانات خاصة بها،
+# النسخة التجريبية للعرض والتجربة: قاعدة منفصلة tier1_demo وسجلات ومجلد بيانات خاصة بها،
 # فلا تختلط ببيانات اختبارات التطوير (قاعدة tier1 على المنفذ 5150).
 # الاستخدام:
 #   powershell -ExecutionPolicy Bypass -File scripts\demo.ps1            تشغيل النسخة التجريبية على http://localhost:5160
@@ -9,15 +9,27 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $demoData = Join-Path $root 'data\demo'
 
+<<<<<<< HEAD
 & powershell -ExecutionPolicy Bypass -File (Join-Path $root 'scripts\dev-db.ps1')
 if ($LASTEXITCODE -ne 0) { throw "Could not start the development PostgreSQL." }
 
 $vars = @{}
 Get-Content (Join-Path $root '.env') | ForEach-Object { if ($_ -match '^([^=]+)=(.*)$') { $vars[$Matches[1]] = $Matches[2] } }
+=======
+$vars = @{}
+Get-Content (Join-Path $root '.env') | ForEach-Object { if ($_ -match '^([^=]+)=(.*)$') { $vars[$Matches[1]] = $Matches[2] } }
+# المنفذ نفسه الذي يستخدمه dev-setup.ps1: T1_POSTGRES_PORT في .env، وإلا القاعدة الخاصة على 5440.
+$pgPort = if ($vars.T1_POSTGRES_PORT -match '^\d+$') { [int]$vars.T1_POSTGRES_PORT } else { 5440 }
+if ($pgPort -eq 5440) {
+    & powershell -ExecutionPolicy Bypass -File (Join-Path $root 'scripts\dev-db.ps1')
+    if ($LASTEXITCODE -ne 0) { throw "Could not start the development PostgreSQL." }
+}
+>>>>>>> b37aed0bbdb0f3da34e297227373ec53737dd898
 $bin = (Get-ChildItem 'C:\Program Files\PostgreSQL\*\bin\psql.exe' | Sort-Object FullName -Descending | Select-Object -First 1).DirectoryName
 
 $env:PGPASSWORD = $vars.POSTGRES_PASSWORD
 try {
+<<<<<<< HEAD
     if ($Reset) {
         & "$bin\dropdb.exe" -U tier1_dev -h 127.0.0.1 -p 5440 --if-exists --force tier1_demo
         if (Test-Path $demoData) { Remove-Item -Recurse -Force $demoData }
@@ -25,6 +37,21 @@ try {
     }
     $exists = & "$bin\psql.exe" -U tier1_dev -h 127.0.0.1 -p 5440 -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = 'tier1_demo'"
     if ($exists -ne '1') { & "$bin\createdb.exe" -U tier1_dev -h 127.0.0.1 -p 5440 tier1_demo; Write-Host "Created database tier1_demo" }
+=======
+    $exists = & "$bin\psql.exe" -U tier1_dev -h 127.0.0.1 -p $pgPort -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname = 'tier1_demo'"
+    $canCreate = (& "$bin\psql.exe" -U tier1_dev -h 127.0.0.1 -p $pgPort -d postgres -tAc "SELECT rolcreatedb FROM pg_roles WHERE rolname = current_user") -eq 't'
+    if (($Reset -or $exists -ne '1') -and -not $canCreate) {
+        # لا يحذف القاعدة ما دام الحساب لا يستطيع إعادة إنشائها.
+        throw "tier1_dev cannot create databases on 127.0.0.1:$pgPort. Create tier1_demo owned by tier1_dev from pgAdmin (or grant CREATEDB), then run this again."
+    }
+    if ($Reset) {
+        & "$bin\dropdb.exe" -U tier1_dev -h 127.0.0.1 -p $pgPort --if-exists --force tier1_demo
+        if (Test-Path $demoData) { Remove-Item -Recurse -Force $demoData }
+        Write-Host "Removed the demo database and its files."
+        $exists = ''
+    }
+    if ($exists -ne '1') { & "$bin\createdb.exe" -U tier1_dev -h 127.0.0.1 -p $pgPort tier1_demo; Write-Host "Created database tier1_demo" }
+>>>>>>> b37aed0bbdb0f3da34e297227373ec53737dd898
 } finally {
     Remove-Item Env:PGPASSWORD
 }
@@ -37,7 +64,11 @@ $mongoDb = (Get-Content $mongoFile -TotalCount 1).Trim()
 
 $env:ASPNETCORE_ENVIRONMENT = 'Development'
 $env:ASPNETCORE_URLS = "http://localhost:$Port"
+<<<<<<< HEAD
 $env:ConnectionStrings__Tier1 = "Host=127.0.0.1;Port=5440;Database=tier1_demo;Username=tier1_dev;Password=$($vars.POSTGRES_PASSWORD)"
+=======
+$env:ConnectionStrings__Tier1 = "Host=127.0.0.1;Port=$pgPort;Database=tier1_demo;Username=tier1_dev;Password=$($vars.POSTGRES_PASSWORD)"
+>>>>>>> b37aed0bbdb0f3da34e297227373ec53737dd898
 $env:ConnectionStrings__Mongo = "mongodb://127.0.0.1:27017/$mongoDb"
 $env:MongoLogs__Database = $mongoDb
 $env:MongoLogs__CheckpointDirectory = Join-Path $demoData 'checkpoints'
@@ -46,8 +77,11 @@ $env:Files__Root = Join-Path $demoData 'files'
 $env:Email__PickupDirectory = Join-Path $demoData 'mail'
 $env:App__PublicUrl = "http://localhost:$Port"
 # الكوكيز لا تفصل بالمنفذ؛ أسماء خاصة حتى لا تتداخل جلسة النسخة التجريبية مع خادم التطوير في المتصفح نفسه.
+<<<<<<< HEAD
 # النسخة التجريبية على هيكل الجامعة الرسمي (Seed/university-structure.json) بدل الكليات التجريبية.
 $env:Seed__Structure = 'true'
+=======
+>>>>>>> b37aed0bbdb0f3da34e297227373ec53737dd898
 $env:Cookies__Session = 't1demo_session'
 $env:Cookies__Antiforgery = 't1demo_af'
 

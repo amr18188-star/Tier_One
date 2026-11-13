@@ -65,13 +65,6 @@ public sealed class Seeder(Tier1DbContext db, IPasswordHasher hasher, ISecretPro
         ("rep.acc@" + DemoDomain, "ممثل Tier 1 بقسم المحاسبة", "Accounting representative", "DREP", ["COM-ACC"]),
         ("rep.bus@" + DemoDomain, "ممثل Tier 1 بقسم إدارة الأعمال", "Business administration representative", "DREP", ["COM-BUS"]),
         ("entry.central@" + DemoDomain, "مدخل بيانات الجهات المركزية", "Central units data entry", "DE", ["QAC", "STU", "DIG", "INTL"]),
-        // مؤشرات الإطار التي تقاس على مستوى الجامعة كلها (المالية والحوكمة والتحول الرقمي...) تدخل في نموذج الجامعة نفسها.
-        ("tier1@" + DemoDomain, "مسئول ملف Tier 1", "Tier 1 file officer", "T1O", []),
-        ("entry.uni@" + DemoDomain, "مدخل بيانات الجامعة (المؤشرات المركزية)", "University-level data entry", "DE", ["CU"]),
-        // على الهيكل الرسمي: وحدة التخطيط الاستراتيجي (QAC ← SPU) ومركز الاتصالات وتكنولوجيا المعلومات (DIG ← ICT)، يطلعان على الجامعة كاملة.
-        // الوحدة تعد الخطة الاستراتيجية، فحسابها بدور مدير متابعة الخطة (يرفع وثيقة الخطة ويدير شجرتها).
-        ("spu@" + DemoDomain, "مسئول وحدة التخطيط الاستراتيجي", "Strategic planning unit", "PM", ["QAC"]),
-        ("ict@" + DemoDomain, "مسئول مركز الاتصالات وتكنولوجيا المعلومات", "ICT centre", "DE", ["DIG"]),
     ];
 
     public async Task SeedAsync(CancellationToken ct)

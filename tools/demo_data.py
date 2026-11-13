@@ -103,16 +103,10 @@ def complete_definition(d: dict, units: dict) -> dict:
         else:
             body["aggregation"] = "WeightedAverage"
         body["aggregationNote"] = None
-    if body["aggregation"] == "WeightedAverage" and not (body["denominator"] or "").strip():
-        body["denominator"] = "عدد الحالات التي حسب عليها المتوسط"
     if not (body["dataSource"] or "").strip():
         body["dataSource"] = "سجلات الجهة المالكة للمؤشر"
     if body["ownerUnitId"] is None:
-        # العدد المميز يملكه جهة مركزية تدخل عدد الجامعة بعد إزالة التكرار.
-        if body["level"] == "University" or body["aggregation"] == "DistinctCount":
-            code = "INTL" if d["standardCode"] in ("S05", "S06") else CENTRAL_BY_STANDARD.get(d["standardCode"], "QAC")
-        else:
-            code = "CU"
+        code = CENTRAL_BY_STANDARD.get(d["standardCode"], "QAC") if body["level"] == "University" else "CU"
         body["ownerUnitId"] = units[code]["id"]
     body["version"] = v["version"]
     return body
@@ -203,91 +197,6 @@ def conflicts():
                            expect=200)
             decided += 1
     say(f"  حسم {decided} تعارضًا، و{prepared - decided} في جدول أعمال اللجنة، و{len(items) - prepared} مفتوح")
-
-
-# ---------------------------------------------------------------------------------------------------- الخطة
-PILLAR_TEXT = {
-    "P1": "تعليم عالي الجودة يخرج طلابًا قادرين على المنافسة في سوق العمل، في بيئة جامعية متكاملة تدعم تفوقهم ونشاطهم.",
-    "P2": "بحث علمي منشور دوليًا ومرتبط بالصناعة، يتحول إلى براءات وشركات ناشئة ودخل للجامعة.",
-    "P3": "حضور دولي وأثر في المجتمع: شراكات وبرامج مزدوجة وطلاب وافدون، وخدمات استشارية للمجتمع والصناعة.",
-    "P4": "حوكمة رشيدة وأعضاء هيئة تدريس متميزون، بتطوير مهني مستمر وأعباء تدريس متوازنة.",
-    "P5": "اعتماد البرامج والمؤسسة، وتقدم مستمر في التصنيفات الدولية بنضج مؤسسي قابل للقياس.",
-    "P6": "استدامة مالية وكفاءة في استخدام الموارد والمرافق والطاقة.",
-}
-
-INITIATIVES = {
-    "S01": [("برنامج الإرشاد الأكاديمي الشامل", "تعيين مرشد لكل طالب ومتابعة دورية للمتعثرين بمنصة إلكترونية.", "S01-05"),
-            ("مسارات التخصصات ذات الأولوية", "فتح مسارات STEM والذكاء الاصطناعي والاستدامة وتوجيه القبول إليها.", "S01-07")],
-    "S02": [("مكتب التوظيف وشبكة الخريجين", "ربط الخريجين بأصحاب العمل ومتابعة توظيفهم سنويًا.", "S02-04")],
-    "S03": [("تطوير البرامج البينية", "إطلاق برامج بينية بالشراكة بين كليتين أو أكثر.", "S03-01;S03-02"),
-            ("برامج دولية بالشراكة", "برامج بدرجات مزدوجة مع جامعات دولية.", "S03-07;S03-09")],
-    "S04": [("صندوق دعم النشر الدولي", "حوافز للنشر في المجلات المصنفة ودعم رسوم النشر.", "S04-02"),
-            ("حاضنة الشركات الناشئة", "احتضان مشروعات الطلاب والباحثين حتى تأسيس شركات.", "S04-11")],
-    "S05": [("شراكات مع جامعات أفضل 500", "اتفاقيات تبادل وبرامج مشتركة مع جامعات مصنفة.", "S05-02;S05-05")],
-    "S06": [("استقطاب الطلاب الوافدين", "حملات تسويق دولية ومنح للطلاب المتميزين.", "")],
-    "S07": [("أكاديمية التطوير المهني", "برامج تطوير معتمدة لأعضاء هيئة التدريس بساعات سنوية.", "S07-05"),
-            ("إعادة توزيع الأعباء التدريسية", "الوصول بساعات التدريس الأسبوعية إلى المعدل المستهدف.", "S07-03")],
-    "S08": [("خطة اعتماد البرامج", "تأهيل البرامج للاعتماد المحلي ثم الدولي.", "S08-02")],
-    "S09": [("التقدم في التصنيفات الدولية", "فريق لمتابعة بيانات التصنيفات وتحسين مؤشراتها.", "S09-01")],
-    "S10": [("تنويع مصادر الدخل البحثي", "عقود بحثية وخدمات معملية مع القطاع الصناعي.", "S10-03")],
-    "S11": [("ترشيد استهلاك الطاقة", "إحلال الإضاءة والتكييف الموفرين وعدادات ذكية للمباني.", "S11-02")],
-    "S12": [("التحول الرقمي للخدمات", "رقمنة الخدمات الطلابية والإدارية على منصة موحدة.", "S12-07;S12-08")],
-}
-
-PLAN_NOTES = {
-    "short": "مستهدف قصير المدى: يتحقق خلال سنتين ثم يحافظ عليه حتى نهاية الخطة.",
-    "medium": "مستهدف متوسط المدى: يتدرج حتى سنة التحقق ثم يستمر.",
-    "late": "يبدأ قياس المستهدف بعد اكتمال تجهيز البنية اللازمة، ويتحقق في نهاية الخطة.",
-}
-
-
-def plan(units: dict, tg: dict):
-    """شروح الركائز والمعايير، ومبادرات لكل معيار، وخطة مستهدف بمدد مختلفة (قصير، متوسط، يبدأ متأخرًا)."""
-    planner = user("planner")
-    tree = planner.get("/api/strategy/tree")
-    for p in tree["pillars"]:
-        if p["code"] in PILLAR_TEXT:
-            planner.call("PUT", f"/api/strategy/pillars/{p['id']}",
-                         {"nameAr": p["nameAr"], "nameEn": p["nameEn"], "description": PILLAR_TEXT[p["code"]], "sortOrder": p["sortOrder"], "version": p["version"]},
-                         expect=200)
-    standards = [s for p in tree["pillars"] for s in p["standards"]] + tree["unassigned"]
-    owners = ["QAC", "STU", "DIG", "INTL", "ENG", "CS", "COM"]
-    initiatives = plans = 0
-    for s in standards:
-        planner.call("PUT", f"/api/strategy/standards/{s['id']}",
-                     {"pillarId": s["pillarId"], "nameAr": s["nameAr"], "nameEn": s["nameEn"], "sortOrder": s["sortOrder"], "version": s["version"],
-                      "description": f"يقيس هذا المعيار {s['nameAr']}، بمؤشرات تجمع من الكليات أو تقاس مركزيًا، ومبادرات تنفذها الجامعة لتحقيق مستهدفاته."},
-                     expect=200)
-        known = {i["code"] for i in s["indicators"]}
-        for n, (name, text, codes) in enumerate(INITIATIVES.get(s["code"], [])):
-            r = rnd("initiative", s["code"], n)
-            start = r.choice([2027, 2027, 2028])
-            planner.call("POST", "/api/strategy/initiatives", {
-                "standardId": s["id"], "nameAr": name, "description": text, "expectedOutcome": f"تحسن مؤشرات {s['code']} المرتبطة وفق خطة المستهدفات.",
-                "ownerUnitId": units[r.choice(owners)]["id"], "startYear": start, "endYear": r.choice([2029, 2030, 2031]),
-                "status": "InProgress" if start == 2027 else "Planned", "indicatorCodes": [c for c in codes.split(";") if c in known], "version": None,
-            }, expect=200)
-            initiatives += 1
-        for i in s["indicators"]:
-            if i["status"] != "Approved":
-                continue
-            kind = rnd("plan", i["code"]).choices(["full", "short", "medium", "late"], weights=[55, 18, 15, 12])[0]
-            start, end = {"full": (None, None), "short": (None, 2028), "medium": (None, 2029), "late": (2029, 2031)}[kind]
-            # مستهدفات سنوية متدرجة لمن ليس له إلا خط الأساس ومستهدف 2031 في ملف Tier 1.
-            values = []
-            have = {t["year"]: t["value"] for t in i["targets"] if t["value"] is not None}
-            if i["baseline"] is not None and 2031 in have and len(have) == 1 and kind != "late":
-                b, e = float(i["baseline"]), float(have[2031])
-                for y in range(2027, 2031):
-                    v = b + (e - b) * (y - 2026) / 5
-                    values.append({"year": y, "value": round(v) if i["unit"].strip() in INTEGER_UNITS else round(v, 2)})
-                if i["code"] in tg:
-                    tg[i["code"]]["uni"] = next(v["value"] for v in values if v["year"] == TARGET_YEAR)
-            planner.call("PUT", f"/api/kpi/indicators/{i['code']}/plan",
-                         {"startYear": start, "endYear": end, "note": PLAN_NOTES.get(kind), "values": values, "reason": None, "decisionRef": None, "version": i["version"]},
-                         expect=204)
-            plans += 1
-    say(f"  شروح {len(tree['pillars'])} ركائز و{len(standards)} معيارًا، و{initiatives} مبادرة، وخطة مستهدف لـ{plans} مؤشرًا")
 
 
 # ---------------------------------------------------------------------------------------------------- الهيكل
@@ -475,6 +384,7 @@ def main():
     dictionary(units)
     say("2. المستهدفات")
     tg = targets(units)
+<<<<<<< HEAD
     say("3. الخطة: الشروح والمبادرات ومدد المستهدفات")
     plan(units, tg)
     say("4. التعارضات")
@@ -482,6 +392,13 @@ def main():
     say("5. هياكل Tier 1 بالكليات")
     structures(units)
     say("6. دورات جمع البيانات")
+=======
+    say("3. التعارضات")
+    conflicts()
+    say("4. هياكل Tier 1 بالكليات")
+    structures(units)
+    say("5. دورات جمع البيانات")
+>>>>>>> b37aed0bbdb0f3da34e297227373ec53737dd898
     values = Values(units, tg)
     for spec in CYCLES[:-1]:
         run_cycle(spec, units, by_id, values, None)
