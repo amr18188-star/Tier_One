@@ -17,12 +17,14 @@ function vendorChunk(id: string): string | undefined {
 }
 
 // الواجهة تبنى إلى wwwroot في الخادم؛ في التطوير يمرر Vite طلبات /api إلى الخادم المحلي.
+// داخل Docker (docker-compose.dev.yml) يحدد VITE_API_TARGET عنوان خدمة الخادم، وVITE_USE_POLLING فحص الملفات الدوري للمجلد المركب.
 export default defineConfig({
   plugins: [react()],
   server: {
     port: 5188,
     strictPort: true,
-    proxy: { "/api": { target: "http://127.0.0.1:5150", changeOrigin: false } },
+    watch: process.env.VITE_USE_POLLING ? { usePolling: true } : undefined,
+    proxy: { "/api": { target: process.env.VITE_API_TARGET ?? "http://127.0.0.1:5150", changeOrigin: false } },
   },
   build: {
     outDir: "../src/Tier1.Api/wwwroot",

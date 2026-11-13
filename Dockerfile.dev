@@ -1,0 +1,19 @@
+# syntax=docker/dockerfile:1
+# حاوية التطوير: المستودع مركب في /work/repo (docker-compose.dev.yml) و`dotnet watch` يعيد البناء والتشغيل عند كل حفظ،
+# فلا تبنى الصورة من جديد لتغيير في الشيفرة. تبنى فقط عند تغيير هذا الملف.
+# (صورة الإنتاج في deploy/Dockerfile.)
+FROM mcr.microsoft.com/dotnet/sdk:10.0
+# بيانات المناطق الزمنية: المواعيد بتوقيت القاهرة.
+RUN apt-get update && apt-get install -y --no-install-recommends tzdata && rm -rf /var/lib/apt/lists/*
+ENV ASPNETCORE_ENVIRONMENT=Development \
+    DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+    DOTNET_NOLOGO=1 \
+    # مخرجات bin/obj خارج المستودع (في volume)، فلا تختلط ببناء ويندوز المحلي ولا تترك ملفات root على لينكس.
+    ArtifactsPath=/work/out \
+    DefaultItemExcludes="bin/**;obj/**" \
+    # أحداث الملفات لا تعبر مجلدًا مركبًا في Docker Desktop (ويندوز/ماك)؛ الفحص الدوري يعمل في كل مكان.
+    DOTNET_USE_POLLING_FILE_WATCHER=1
+WORKDIR /work/repo
+EXPOSE 5150
+# --no-hot-reload: إعادة بناء وتشغيل عند كل حفظ؛ التحميل الساخن يوقف المراقب أحيانًا عند تعديل استعلامات EF.
+CMD ["dotnet", "watch", "run", "--project", "src/Tier1.Api", "--non-interactive", "--no-launch-profile", "--no-hot-reload"]

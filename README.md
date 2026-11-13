@@ -19,6 +19,30 @@
 | `docs/user-guide.md` | دليل المستخدم لكل دور |
 | `reference/` و`tools/` | القاموس المستخرج من ملفي الخطة وأدوات توليده |
 
+## التشغيل للتطوير بـ Docker
+
+يحتاج Docker Desktop فقط (و.NET SDK للخيار 2). القاعدتان والخادم والواجهة كلها حاويات، والمستودع مركب فيها: `dotnet watch` يعيد بناء الخادم عند كل حفظ، وVite يحدث الواجهة فورًا، فلا بناء للصور لتغيير شيفرة.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\dev-setup.ps1        # مرة واحدة: .env وappsettings.Development.json
+docker compose -p tier1-dev -f docker-compose.dev.yml up              # أول مرة بضع دقائق (الصور والحزم)
+```
+
+| | الخيار 1: الخادم داخل Docker | الخيار 2: الخادم على جهازك |
+|---|---|---|
+| الأمر | `docker compose -p tier1-dev -f docker-compose.dev.yml up` | `docker compose -p tier1-dev up -d` ثم `dotnet run --project src\Tier1.Api` |
+| الخادم | http://localhost:5150 | http://localhost:5150 |
+| الواجهة (Vite) | http://localhost:5188 | `cd web; npm run dev` ثم http://localhost:5188 |
+
+- القاعدتان على عنوان الجهاز: PostgreSQL `5440` وMongoDB `27031` (غيرهما في `.env` بـ `POSTGRES_PORT` و`MONGO_PORT` إن كانا مشغولين). الحسابات التجريبية كما في القسم التالي.
+- في الخيار 2 يشير `appsettings.Development.json` إلى MongoDB على `27017`؛ مرر عنوان الحاوية: `$env:ConnectionStrings__Mongo="mongodb://127.0.0.1:27031/tier1_logs"; $env:ConnectionStrings__MongoAdmin="mongodb://127.0.0.1:27031/"`.
+- القاعدتان والبيانات مشتركة بين الخيارين (المشروع `tier1-dev`). لا تشغل الخيارين معًا (المنفذ 5150).
+- الرسائل تكتب ملفات `.eml` في `data\mail` على جهازك.
+- الخادم في الحاوية يستمع على كل عناوينها (`ASPNETCORE_HTTP_PORTS`)، لأن حاجز التطوير في `StartupGuards` يمنع غير loopback في `ASPNETCORE_URLS`؛ والمنفذان منشوران على `127.0.0.1` فلا ينكشفان على الشبكة.
+- تُبنى الصورة من جديد (`up --build`) فقط عند تغيير `Dockerfile.dev`. لمخرجات بناء قديمة: `down` ثم `docker volume rm tier1-dev_tier1_api_out`.
+- الإيقاف: `docker compose -p tier1-dev -f docker-compose.dev.yml down` (البيانات تبقى)، ومع `-v` تحذف كل البيانات.
+- هذا للتطوير فقط؛ الإنتاج في `deploy/` (راجع `docs/deployment.md`).
+
 ## التشغيل للتطوير (بلا Docker)
 
 يتطلب .NET SDK 10 وNode 24 وPython 3، وPostgreSQL 18 وMongoDB مثبتين على الجهاز.

@@ -1,0 +1,68 @@
+# الخيار 1: الخادم والواجهة داخل Docker بجوار القاعدتين.
+#
+#   docker compose -p tier1-dev -f docker-compose.dev.yml up
+#
+# `include` يضم docker-compose.yml، فالقاعدتان وبياناتهما مشتركتان مع الخيار 2 (الخادم بـ dotnet run).
+# المستودع مركب؛ `dotnet watch` يلتقط كل ملف يحفظ، وVite يحدث الواجهة فورًا، فلا بناء للصورة لتغيير شيفرة.
+# يتطلب scripts\dev-setup.ps1 مرة واحدة (يولد .env وappsettings.Development.json بالأسرار والإعدادات).
+include:
+  - docker-compose.yml
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    image: tier1-api:dev
+    container_name: tier1-dev-api
+    ports:
+      - "127.0.0.1:5150:5150"   # على الجهاز فقط: التطوير يفتح الحسابات التجريبية وإيقاف التحقق بخطوتين
+    environment:
+      # ASPNETCORE_HTTP_PORTS لا ASPNETCORE_URLS: StartupGuards يمنع في التطوير أي عنوان غير loopback في URLS،
+      # والحاوية تحتاج الاستماع على كل عناوينها لتصلها من المضيف (المنفذ منشور على 127.0.0.1 أعلاه فلا ينكشف على الشبكة).
+      ASPNETCORE_HTTP_PORTS: "5150"
+      # داخل شبكة Compose تذكر الخدمات بأسمائها ومنافذها الداخلية، وهذه المتغيرات تغلب appsettings.Development.json (عناوين الجهاز).
+      ConnectionStrings__Tier1: Host=postgres;Port=5432;Database=tier1;Username=tier1_dev;Password=${POSTGRES_PASSWORD:?شغل scripts\dev-setup.ps1 أولًا}
+      ConnectionStrings__Mongo: mongodb://mongo:27017/tier1_logs
+      ConnectionStrings__MongoAdmin: mongodb://mongo:27017/
+      # مسارات ويندوز في appsettings.Development.json لا تصلح داخل الحاوية.
+      DataProtection__KeysPath: /data/keys
+      Files__Root: /data/files
+      MongoLogs__CheckpointDirectory: /data/checkpoints
+      Email__PickupDirectory: /work/repo/data/mail     # تظهر رسائل .eml على جهازك في data\mail
+      # على لينكس يمكن: DOTNET_USE_POLLING_FILE_WATCHER: "0"
+    volumes:
+      - .:/work/repo                              # الشيفرة الحية
+      - tier1_api_out:/work/out                   # bin وobj لكل المشاريع
+      - tier1_api_nuget:/root/.nuget/packages     # حزم NuGet تبقى بين التشغيلات
+      - tier1_api_data:/data                      # مفاتيح حماية البيانات والملفات ونقاط التثبيت
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+    stdin_open: true
+    tty: true
+
+  # خادم Vite للواجهة مع إعادة تحميل فورية، ويمرر /api إلى الخادم أعلاه.
+  web:
+    image: node:24-bookworm-slim
+    container_name: tier1-dev-web
+    working_dir: /work/repo/web
+    command: sh -c "npm install --no-audit --no-fund && npx vite --host 0.0.0.0"
+    ports:
+      - "127.0.0.1:5188:5188"
+    environment:
+      VITE_API_TARGET: http://api:5150
+      VITE_USE_POLLING: "1"
+    volumes:
+      - .:/work/repo
+      - tier1_web_node_modules:/work/repo/web/node_modules   # حزم لينكس، بمعزل عن node_modules على ويندوز
+    depends_on:
+      - api
+
+volumes:
+  tier1_api_out:
+  tier1_api_nuget:
+  tier1_api_data:
+  tier1_web_node_modules:

@@ -1,0 +1,47 @@
+# البنية التحتية للتطوير: PostgreSQL وMongoDB فقط (الإنتاج في deploy/docker-compose.yml).
+#
+#   الخيار 1 (الخادم داخل Docker):   docker compose -p tier1-dev -f docker-compose.dev.yml up
+#   الخيار 2 (الخادم على جهازك):     docker compose -p tier1-dev up -d      ثم     dotnet run --project src/Tier1.Api
+#
+# كلمة مرور PostgreSQL من .env (يولده scripts\dev-setup.ps1)، وهي نفسها في appsettings.Development.json.
+# المنافذ على عنوان الجهاز فقط. غيّرها في .env (POSTGRES_PORT وMONGO_PORT) إن كانت مشغولة.
+name: tier1-dev
+
+services:
+  postgres:
+    image: postgres:18
+    container_name: tier1-dev-postgres
+    environment:
+      POSTGRES_DB: tier1
+      POSTGRES_USER: tier1_dev
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?شغل scripts\dev-setup.ps1 أولًا ليولد .env}
+      TZ: Africa/Cairo
+      PGTZ: Africa/Cairo
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5440}:5432"
+    volumes:
+      - tier1_pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tier1_dev -d tier1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # سجلات التدقيق المتسلسلة. بلا مصادقة في التطوير (الإنتاج بحسابين منفصلين في deploy/mongo-init).
+  mongo:
+    image: mongo:8
+    container_name: tier1-dev-mongo
+    ports:
+      - "127.0.0.1:${MONGO_PORT:-27031}:27017"
+    volumes:
+      - tier1_mongodata:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  tier1_pgdata:
+  tier1_mongodata:
