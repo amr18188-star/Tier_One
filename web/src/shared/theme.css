@@ -77,6 +77,13 @@
 /* ----- شرائط الاختيار ----- */
 .lcp-seg { border: 1px solid var(--hair); border-radius: var(--ds-radius-xl); }
 .lcp-seg .ant-segmented-item-selected { background: var(--navy); color: #fff; box-shadow: 0 4px 12px rgba(22, 41, 74, 0.22); }
+/* الاختيار فوري بلا انزلاق: بعد كل تغيير يرسم antd التحديد على «thumb» ينزلق من الخيار السابق دورة حركة واحدة
+   (قصرت مدتها في styles/design-system/antd-theme.ts). يخفى أثناءها، ويأخذ الخيار المختار (input:checked) مظهر التحديد في الحال،
+   ويتبدل لون النصين (القديم والجديد) دون تلاش. */
+.ant-segmented .ant-segmented-thumb { visibility: hidden; }
+.ant-segmented .ant-segmented-group > .ant-segmented-thumb ~ .ant-segmented-item { transition: none; }
+.ant-segmented .ant-segmented-group > .ant-segmented-thumb ~ .ant-segmented-item:has(> .ant-segmented-item-input:checked) { background-color: var(--ds-btn-primary-bg); color: var(--ds-btn-primary-fg); }
+.lcp-seg .ant-segmented-group > .ant-segmented-thumb ~ .ant-segmented-item:has(> .ant-segmented-item-input:checked) { background-color: var(--navy); color: #fff; }
 .lcp-tabs > .ant-tabs-nav .ant-tabs-tab-active .ant-tabs-tab-btn { color: var(--navy); font-weight: 600; }
 .lcp-tabs > .ant-tabs-nav .ant-tabs-ink-bar { background: var(--navy); height: 3px; border-radius: var(--ds-radius-xs); }
 

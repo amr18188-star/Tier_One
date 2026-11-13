@@ -19,7 +19,7 @@
 
 .pg-btn, .pg-step {
   appearance: none; margin: 0; border: 0; background: transparent; font: inherit; cursor: pointer;
-  display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; border-radius: var(--ds-radius-sm, 10px);
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 36px; border-radius: var(--ds-radius-md);
   color: var(--navy); font-variant-numeric: tabular-nums; white-space: nowrap;
   transition: background-color 0.15s, color 0.15s;
 }
@@ -32,7 +32,7 @@
   background: var(--teal-ink); color: var(--surface); font-weight: 700; cursor: default;
 }
 .pg-step:disabled { color: var(--muted); opacity: 0.45; cursor: not-allowed; }
-.pg-btn:focus-visible, .pg-step:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; border-radius: var(--ds-radius-sm, 10px); }
+.pg-btn:focus-visible, .pg-step:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; border-radius: var(--ds-radius-md); }
 .pg-gap {
   min-width: 36px; height: 36px; align-items: center; justify-content: center; color: var(--muted); user-select: none;
 }

@@ -91,6 +91,11 @@ export function antdTheme(name: ThemeName, base: ThemeConfig = {}, { tone = "lig
       itemHoverColor: s.heading,
       itemSelectedBg: s.btnPrimary.bg,
       itemSelectedColor: s.btnPrimary.fg,
+      // Selection is instant, no thumb glide. After a change antd draws the selection on a "thumb" that slides from
+      // the previous option for one motion cycle; this shortens the cycle to a frame or two, and shared/theme.css hides
+      // the thumb meanwhile. Not "0s": the cycle ends on transitionend, which a 0s transition never fires (the thumb
+      // would stay and no option would show as selected).
+      motionDurationSlow: "0.01s",
     },
     // antd's own default is a 100px pill; bars follow the corner style like the app's CSS bars.
     Progress: { lineBorderRadius: c.pill },
