@@ -6,6 +6,7 @@
  * Values are resolved to plain colour strings:
  * - ash-* are Tailwind v4 slate in OKLCH in the CSS; here they are their 8-bit hex.
  * - CSS color-mix(in oklab|srgb, X n%, transparent) is written as rgba(X, n/100) (the same colour).
+ * - Gradient tokens (`gradient`, `hatch`) are the CSS value with every var() resolved, layers joined by ", ".
  * Keep both in sync when a value changes: tokens.test.ts parses the CSS and fails on any difference.
  */
 export const palette = {
@@ -93,6 +94,10 @@ export interface SectionTokens {
 /** --ds-sidebar-*: the dark chrome of the signed-in shell (theme level, not per section). */
 export interface SidebarTokens {
   bg: string;
+  /** Top stop of --ds-gradient-sidebar (the bottom stop is `bg`). */
+  bgTop: string;
+  /** Top-corner light of --ds-gradient-sidebar. */
+  glow: string;
   fg: string;
   fgActive: string;
   muted: string;
@@ -112,6 +117,35 @@ export interface BandTokens {
   to: string;
   glow: string;
   glowAccent: string;
+}
+
+/**
+ * --ds-gradient-*: full background values (theme level). Every gradient of the app CSS reads one of these, so one token
+ * re-colours all its rules. Built by `gradients()` below with the same recipe as themes/*.css.
+ */
+export interface GradientTokens {
+  /** Page band (.lcp-head via --band), Home hero (.lcp-hero), plan hero (.sp-hero): band colours. */
+  hero: string;
+  /** Sidebar and mobile drawer (.lcp-side, .lcp-drawer), verify-page header: sidebar colours. */
+  sidebar: string;
+  /** Sign-in brand panel (.auth-side): band colours ending in `shade`. */
+  auth: string;
+  /** Initials circle (.lcp-avatar). */
+  avatar: string;
+  /** Progress fill (.lcp-prog-bar i). */
+  progress: string;
+  /** Next-step note (.lcp-next). */
+  callout: string;
+  /** Light panel behind a chart (.sp-chart). */
+  surfaceSubtle: string;
+}
+
+/** --ds-hatch-*: striped fills, repeating-linear-gradient 135° with 6px stripes. */
+export interface HatchTokens {
+  /** Not-started cells of the plan timeline (.sp-road-cell.off). */
+  light: string;
+  /** Elapsed-time bar of a cycle (.cy-bar.time i). */
+  muted: string;
 }
 
 export interface ThemeTokens {
@@ -136,12 +170,63 @@ export interface ThemeTokens {
   selection: { bg: string; fg: string };
   sidebar: SidebarTokens;
   band: BandTokens;
+  /** --ds-shade: the dark ink that pillar colours (--pc) deepen toward in their gradients. */
+  shade: string;
+  gradient: GradientTokens;
+  hatch: HatchTokens;
   sections: Record<SectionTone, SectionTokens>;
 }
 
 const p = palette;
 const cairo = '"Cairo", "Geist Variable", "Segoe UI", sans-serif';
 const shadow = { sm: "0 8px 24px rgba(25, 53, 90, 0.08)", md: "0 16px 40px rgba(25, 53, 90, 0.14)" } as const;
+
+/** The gradient recipes of themes/*.css, filled with one theme's colours (each pair is from → to). */
+function gradients(band: BandTokens, sidebar: SidebarTokens, shade: string, c: Record<"avatar" | "progress" | "callout" | "surfaceSubtle", readonly [string, string]>): GradientTokens {
+  return {
+    hero: `radial-gradient(60% 90% at 0% 0%, ${band.glow}, transparent 60%), radial-gradient(50% 80% at 100% 100%, ${band.glowAccent}, transparent 60%), linear-gradient(125deg, ${band.from} 0%, ${band.via} 55%, ${band.to} 100%)`,
+    sidebar: `radial-gradient(120% 45% at 100% 0%, ${sidebar.glow}, transparent 60%), linear-gradient(180deg, ${sidebar.bgTop} 0%, ${sidebar.bg} 100%)`,
+    auth: `radial-gradient(120% 80% at 85% 10%, ${band.glow}, transparent 55%), radial-gradient(90% 70% at 10% 100%, ${band.glowAccent}, transparent 60%), linear-gradient(160deg, ${band.via} 0%, ${band.from} 55%, ${shade} 100%)`,
+    avatar: `linear-gradient(135deg, ${c.avatar[0]}, ${c.avatar[1]})`,
+    progress: `linear-gradient(90deg, ${c.progress[0]}, ${c.progress[1]})`,
+    callout: `linear-gradient(90deg, ${c.callout[0]}, ${c.callout[1]})`,
+    surfaceSubtle: `linear-gradient(180deg, ${c.surfaceSubtle[0]}, ${c.surfaceSubtle[1]})`,
+  };
+}
+const hatch = (a: string, b: string) => `repeating-linear-gradient(135deg, ${a} 0 6px, ${b} 6px 12px)`;
+
+const ngSidebar: SidebarTokens = {
+  bg: p.navy[950],
+  bgTop: p.navy[900],
+  glow: "rgba(214, 180, 106, 0.08)",
+  fg: p.mist[300],
+  fgActive: p.paper,
+  muted: p.steel[400],
+  hoverBg: p.navy[800],
+  activeBg: p.navy[700],
+  indicator: p.gold[400],
+  border: p.navy[500],
+  focus: p.gold[400],
+  badgeBg: p.gold[400],
+  badgeFg: p.navy[900],
+};
+const ngBand: BandTokens = { from: p.navy[900], via: p.navy[800], to: p.navy[700], glow: "rgba(214, 180, 106, 0.14)", glowAccent: "rgba(214, 180, 106, 0.18)" };
+const softSidebar: SidebarTokens = {
+  bg: p.soft.navy[950],
+  bgTop: p.soft.navy[900],
+  glow: "rgba(201, 162, 39, 0.08)",
+  fg: p.soft.neutral[200],
+  fgActive: p.paper,
+  muted: p.soft.neutral[400],
+  hoverBg: p.soft.navy[800],
+  activeBg: p.soft.navy[700],
+  indicator: p.soft.gold[500],
+  border: "rgba(255, 255, 255, 0.14)",
+  focus: p.soft.gold[300],
+  badgeBg: p.soft.gold[500],
+  badgeFg: p.soft.navy[950],
+};
+const softBand: BandTokens = { from: p.soft.navy[900], via: p.soft.navy[800], to: p.soft.navy[700], glow: "rgba(53, 103, 176, 0.38)", glowAccent: "rgba(201, 162, 39, 0.18)" };
 
 export const themes = {
   "navy-gold": {
@@ -164,20 +249,16 @@ export const themes = {
     shadow,
     focus: "rgba(201, 162, 39, 0.5)",
     selection: { bg: p.soft.gold[500], fg: p.soft.navy[950] },
-    sidebar: {
-      bg: p.navy[950],
-      fg: p.mist[300],
-      fgActive: p.paper,
-      muted: p.steel[400],
-      hoverBg: p.navy[800],
-      activeBg: p.navy[700],
-      indicator: p.gold[400],
-      border: p.navy[500],
-      focus: p.gold[400],
-      badgeBg: p.gold[400],
-      badgeFg: p.navy[900],
-    },
-    band: { from: p.navy[900], via: p.navy[800], to: p.navy[700], glow: "rgba(120, 144, 172, 0.3)", glowAccent: "rgba(214, 180, 106, 0.18)" },
+    sidebar: ngSidebar,
+    band: ngBand,
+    shade: p.navy[950],
+    gradient: gradients(ngBand, ngSidebar, p.navy[950], {
+      avatar: [p.navy[700], p.navy[900]],
+      progress: [p.navy[900], p.navy[700]],
+      callout: [p.sand[50], p.ivory[50]],
+      surfaceSubtle: [p.cloud, p.paper],
+    }),
+    hatch: { light: hatch(p.ash[100], p.paper), muted: hatch(p.steel[400], p.mist[300]) },
     sections: {
       light: {
         bg: p.paper,
@@ -281,20 +362,16 @@ export const themes = {
     shadow,
     focus: "rgba(201, 162, 39, 0.5)",
     selection: { bg: p.soft.gold[500], fg: p.soft.navy[950] },
-    sidebar: {
-      bg: p.soft.navy[950],
-      fg: p.soft.neutral[200],
-      fgActive: p.paper,
-      muted: p.soft.neutral[400],
-      hoverBg: p.soft.navy[800],
-      activeBg: p.soft.navy[700],
-      indicator: p.soft.gold[500],
-      border: "rgba(255, 255, 255, 0.14)",
-      focus: p.soft.gold[300],
-      badgeBg: p.soft.gold[500],
-      badgeFg: p.soft.navy[950],
-    },
-    band: { from: p.soft.navy[900], via: p.soft.navy[800], to: p.soft.navy[700], glow: "rgba(53, 103, 176, 0.38)", glowAccent: "rgba(201, 162, 39, 0.18)" },
+    sidebar: softSidebar,
+    band: softBand,
+    shade: p.soft.navy[950],
+    gradient: gradients(softBand, softSidebar, p.soft.navy[950], {
+      avatar: [p.soft.navy[700], p.soft.navy[950]],
+      progress: [p.soft.navy[800], p.soft.navy[500]],
+      callout: [p.soft.gold[50], p.paper],
+      surfaceSubtle: [p.soft.neutral[25], p.paper],
+    }),
+    hatch: { light: hatch(p.soft.neutral[75], p.paper), muted: hatch(p.soft.neutral[500], p.soft.neutral[300]) },
     sections: {
       light: {
         bg: p.paper,

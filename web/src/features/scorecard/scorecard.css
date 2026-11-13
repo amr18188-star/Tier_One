@@ -36,7 +36,7 @@
   display: grid; grid-template-columns: 40px minmax(0, 1fr) 130px 120px; align-items: center; gap: 12px; padding: 10px 12px;
   border-radius: var(--ds-radius-lg); border: 1px solid var(--hair); border-inline-start: 5px solid var(--tc); background: #fff;
 }
-.sc-ladder li.here { background: color-mix(in srgb, var(--tc) 9%, #fff); border-color: var(--tc); box-shadow: 0 0 0 2px color-mix(in srgb, var(--tc) 25%, transparent); }
+.sc-ladder li.here { background: color-mix(in srgb, var(--tc) 9%, var(--ds-surface)); border-color: var(--tc); box-shadow: 0 0 0 2px color-mix(in srgb, var(--tc) 25%, transparent); }
 .sc-ladder-n { display: grid; place-items: center; width: 36px; height: 36px; border-radius: var(--ds-radius-round); background: var(--tc); color: #fff; font-family: var(--font-display); font-weight: 700; font-size: 17px; }
 .sc-ladder-name { display: grid; min-width: 0; }
 .sc-ladder-name b { font-size: 14px; color: var(--navy); }

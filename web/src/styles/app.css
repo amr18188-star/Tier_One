@@ -49,9 +49,7 @@ code { font-family: var(--font-mono); font-size: 0.86em; direction: ltr; unicode
 .auth-side {
   position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: space-between; gap: 28px;
   padding: 40px clamp(28px, 5vw, 72px) 24px; color: #fff;
-  background: radial-gradient(120% 80% at 85% 10%, rgba(10, 140, 147, 0.32), transparent 55%),
-    radial-gradient(90% 70% at 10% 100%, rgba(210, 158, 76, 0.14), transparent 60%),
-    linear-gradient(160deg, #183059 0%, #102445 55%, #0b1b36 100%);
+  background: var(--ds-gradient-auth);
 }
 .auth-decor { position: absolute; inset-inline-start: -90px; bottom: -110px; width: 560px; max-width: 80%; fill: none; stroke: rgba(255, 255, 255, 0.07); stroke-width: 14; pointer-events: none; }
 .auth-side-inner { position: relative; display: grid; gap: 28px; max-width: 520px; width: 100%; margin-inline: auto; align-content: center; flex: 1; }
@@ -167,7 +165,7 @@ code { font-family: var(--font-mono); font-size: 0.86em; direction: ltr; unicode
 .matrix .col-scope { width: 130px; }
 .matrix .col-scope .ant-select { width: 120px; }
 .matrix td.na { color: #b5bdc8; text-align: center; }
-.matrix td.col-cap.on { background: rgba(10, 140, 147, 0.07); }
+.matrix td.col-cap.on { background: color-mix(in srgb, var(--teal) 7%, transparent); }
 .col-toggle, .col-head { display: inline-grid; gap: 0; justify-items: center; background: none; border: 0; cursor: pointer; color: inherit; font: inherit; padding: 2px 6px; border-radius: var(--ds-radius-sm); }
 .col-head { cursor: default; }
 .col-toggle:hover { background: rgba(255, 255, 255, 0.16); }
@@ -217,7 +215,7 @@ code { font-family: var(--font-mono); font-size: 0.86em; direction: ltr; unicode
 /* شريط صفحة التحقق العامة بشعار المركز وألوان القائمة الجانبية. */
 .verify-head {
   display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px clamp(16px, 4vw, 32px); color: #fff;
-  background: radial-gradient(120% 160% at 100% 0%, rgba(10, 140, 147, 0.3), transparent 60%), linear-gradient(120deg, #183059 0%, #0f2242 100%);
+  background: var(--ds-gradient-sidebar);
 }
 .verify-brand { display: flex; align-items: center; gap: 12px; color: #fff; min-width: 0; }
 .verify-brand:hover { color: #fff; }

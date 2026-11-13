@@ -7,10 +7,7 @@
 /* ----- الشريط العلوي ----- */
 .sp-hero {
   position: relative; overflow: hidden; color: #fff; border-radius: var(--ds-radius-xl); padding: 26px 28px 22px;
-  background:
-    radial-gradient(60% 90% at 0% 0%, rgba(10, 140, 147, 0.38), transparent 60%),
-    radial-gradient(50% 80% at 100% 100%, rgba(201, 151, 63, 0.18), transparent 60%),
-    linear-gradient(125deg, #142a50 0%, #183a66 55%, #12406a 100%);
+  background: var(--ds-gradient-hero);
   box-shadow: 0 12px 34px rgba(16, 36, 70, 0.22);
 }
 .sp-hero::after {
@@ -85,7 +82,7 @@
 .sp-legend-item b { color: var(--ink); }
 .sp-statebar { display: flex; gap: 2px; height: 8px; border-radius: var(--ds-radius-pill); overflow: hidden; background: var(--sunk); }
 .sp-statebar span { min-width: 4px; }
-.sp-statebar .d-gap { background: repeating-linear-gradient(135deg, var(--g-gap) 0 3px, #f6d9bd 3px 6px); }
+.sp-statebar .d-gap { background: repeating-linear-gradient(135deg, var(--g-gap) 0 3px, color-mix(in srgb, var(--g-gap) 30%, var(--ds-surface)) 3px 6px); }
 
 /* ----- خريطة الخطة ----- */
 .sp-map-wrap { display: grid; gap: 14px; min-width: 0; }
@@ -94,7 +91,7 @@
 .sp-pillar { display: flex; flex-direction: column; background: #fff; border-radius: var(--ds-radius-xl); overflow: hidden; border: 1px solid var(--hair); box-shadow: var(--shadow); min-width: 0; }
 .sp-pillar > header {
   position: relative; overflow: hidden; color: #fff; padding: 18px 18px 14px;
-  background: linear-gradient(140deg, var(--pc) 0%, color-mix(in srgb, var(--pc) 72%, #0b1b33) 100%);
+  background: linear-gradient(140deg, var(--pc) 0%, color-mix(in srgb, var(--pc) 72%, var(--ds-shade)) 100%);
 }
 .sp-pillar > header::after { content: ""; position: absolute; inset-inline-start: -40px; bottom: -70px; width: 170px; height: 170px; border-radius: var(--ds-radius-round); background: rgba(255, 255, 255, 0.07); }
 .sp-pillar-head { position: relative; z-index: 1; display: flex; align-items: center; gap: 14px; width: 100%; padding: 0; border: 0; background: none; color: inherit; text-align: start; font: inherit; cursor: pointer; }
@@ -110,7 +107,7 @@ div.sp-pillar-head { cursor: default; }
 .sp-pillar-stats dd { margin: 0; font-family: var(--font-display); font-size: 18px; font-weight: 700; line-height: 1.4; }
 .sp-pillar-stats dt { font-size: 11.5px; color: rgba(255, 255, 255, 0.8); }
 .sp-pillar-body { flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 14px 16px 14px; }
-.sp-pillar.loose > header { background: linear-gradient(140deg, #5b6576, #3d4553); }
+.sp-pillar.loose > header { background: linear-gradient(140deg, var(--pc), color-mix(in srgb, var(--pc) 60%, var(--ds-shade))); }
 
 .sp-stds { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .sp-stds button, .sp-scard {
@@ -153,7 +150,7 @@ div.sp-pillar-head { cursor: default; }
 .sp-road-ico { color: var(--pc); flex: none; }
 .sp-road-cell { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 4px; padding: 6px 4px; border-inline-start: 1px dashed var(--hair); }
 .sp-road-cell.base { color: #8a94a3; background: #fafbfc; }
-.sp-road-cell.off { color: #b0b9c6; background: repeating-linear-gradient(135deg, #f3f5f8 0 6px, #fff 6px 12px); }
+.sp-road-cell.off { color: #b0b9c6; background: var(--ds-hatch-light); }
 .sp-road-cell.after { color: #9aa4b2; font-style: italic; }
 .sp-road-cell.goal { font-weight: 700; color: var(--pc); }
 .sp-road-cell.goal .anticon { font-size: 12px; }
@@ -165,7 +162,7 @@ div.sp-pillar-head { cursor: default; }
 }
 .sp-road-initbar small { opacity: 0.85; }
 .st-Planned .sp-road-initbar { background: var(--pt); color: var(--pc); box-shadow: inset 0 0 0 1.5px var(--pc); }
-.st-Completed .sp-road-initbar { background: linear-gradient(90deg, var(--pc), color-mix(in srgb, var(--pc) 70%, #000)); }
+.st-Completed .sp-road-initbar { background: linear-gradient(90deg, var(--pc), color-mix(in srgb, var(--pc) 70%, var(--ds-shade))); }
 .st-Stopped .sp-road-initbar { background: #9aa5b4; }
 .sp-road-note { margin: 12px 0 0; }
 .sp-road-note .anticon { color: var(--teal); }
@@ -201,7 +198,7 @@ div.sp-pillar-head { cursor: default; }
 
 /* رأس التفاصيل بلون الركيزة */
 .sp-dhead {
-  position: relative; background: linear-gradient(180deg, var(--pt) 0, #fff 150px); border: 1px solid var(--hair); border-top: 5px solid var(--pc);
+  position: relative; background: linear-gradient(180deg, var(--pt) 0, var(--ds-surface) 150px); border: 1px solid var(--hair); border-top: 5px solid var(--pc);
   border-radius: var(--r); box-shadow: var(--shadow); padding: 18px 22px 20px; min-width: 0;
 }
 .sp-dhead-root { --pc: var(--navy); --pt: var(--navy-50); }
@@ -286,7 +283,7 @@ div.sp-pillar-head { cursor: default; }
   width: 100%; display: grid; grid-template-columns: 12px minmax(0, 1fr) 92px 112px minmax(130px, 170px); align-items: center; gap: 14px; text-align: start;
   font: inherit; color: var(--ink); cursor: pointer; background: #fff; border: 1px solid var(--hair); border-radius: var(--ds-radius-lg); padding: 10px 14px; transition: border-color 0.15s, background 0.15s;
 }
-.sp-irow:hover, .sp-irow:focus-visible { border-color: var(--pc); background: color-mix(in srgb, var(--pt) 45%, #fff); }
+.sp-irow:hover, .sp-irow:focus-visible { border-color: var(--pc); background: color-mix(in srgb, var(--pt) 45%, var(--ds-surface)); }
 .sp-irow-name { display: grid; min-width: 0; }
 .sp-irow-name code { color: var(--pc); font-size: 11.5px; font-weight: 700; }
 .sp-irow-name b { font-size: 14px; font-weight: 600; line-height: 1.6; }
@@ -315,7 +312,7 @@ div.sp-pillar-head { cursor: default; }
 .sp-judge .anticon { color: var(--gold); }
 
 /* مسار المستهدف */
-.sp-chart { margin: 0 0 18px; background: linear-gradient(180deg, #fbfcfd, #fff); border: 1px solid var(--hair); border-radius: var(--ds-radius-xl); padding: 12px 12px 10px; }
+.sp-chart { margin: 0 0 18px; background: var(--ds-gradient-surface-subtle); border: 1px solid var(--hair); border-radius: var(--ds-radius-xl); padding: 12px 12px 10px; }
 .sp-chart svg { display: block; width: 100%; height: auto; max-height: 300px; overflow: visible; }
 .sp-chart text { font-family: var(--font-body); }
 .sp-chart-off rect { fill: #f1f3f7; }

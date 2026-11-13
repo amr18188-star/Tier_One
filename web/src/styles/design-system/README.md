@@ -70,7 +70,8 @@ the tokens again for their utilities. Corners are a second, independent axis: `C
    - Shape: `rounded-ds-xs` … `rounded-ds-xl`, `rounded-ds-pill`, `rounded-ds-round` (circles only), `rounded-ds` (= md);
      every side and corner form works (`rounded-s-ds-lg`, `rounded-t-ds-md` …). They follow `data-corners` (see "Corners").
    - Type and elevation: `font-ds`, `font-ds-heading`, `shadow-ds-sm`, `shadow-ds-md`.
-   - Composite tokens for inline styles: `var(--ds-texture-hero)`, `var(--ds-texture-dark)`, `var(--ds-hero-vignette)`.
+   - Composite tokens for inline styles: `var(--ds-texture-hero)`, `var(--ds-texture-dark)`, `var(--ds-hero-vignette)`,
+     and the gradients `var(--ds-gradient-*)` / `var(--ds-hatch-*)` (see "Gradients"; Tailwind: `bg-[image:var(--ds-gradient-hero)]`).
 5. shadcn components inside a themed subtree follow it (`--background`, `--primary`, `--ui-muted`, `--chart-*`, `--sidebar-*` are mapped per theme and per section; `--radius` comes from `corners.css`). Portalled content (dialogs, popovers, tooltips) renders outside the subtree: give its content element the same `data-theme`, or set it on `<html>`.
 
 Rules: use `--ds-*` tokens in components, not primitives or hex. Do not nest two different `data-theme` values. `app.css` owns `--muted`; the shadcn muted surface is `--ui-muted`.
@@ -146,16 +147,57 @@ The app does not use antd Menu or Layout (the shell is custom), so they have no 
 | `--teal`, `--teal-100`, `--gold` inside `.lcp-side` / `.lcp-drawer .ant-drawer-body` | `--ds-sidebar-indicator`, `-focus`, `-badge-bg` | gold-400 |
 
 Unchanged on purpose: status colours (`--warn*`, `--ok*`, `--crit*`), fonts, `--shadow*`, `--space-*`, `--side-w`.
-`shared/theme.css`: `--band` is built from the `--ds-band-*` tokens; inside the band (`data-section="dark"`) the kicker
+`shared/theme.css`: `--band` is `var(--ds-gradient-hero)`; inside the band (`data-section="dark"`) the kicker
 and `code` use `--ds-eyebrow`, links `--ds-link`, and the primary-button glow `--ds-btn-primary-bg` at 45%; the open-cycle
-card glow is `--teal` at 10%. Other colours written directly in rules (not through a variable) do not follow the
-theme (for example the home hero background in `shared/ui.css`). Radii in the app CSS all use the corner scale.
+card glow is `--teal` at 10%. Every gradient in the app CSS reads a gradient token (see "Gradients"). Colours written
+directly in non-gradient rules (some text and shadow colours) do not follow the theme. Radii in the app CSS all use the corner scale.
 
 **Sidebar tokens** (theme level; the signed-in shell's navy sidebar): `--ds-sidebar-bg`, `-fg`, `-fg-active`, `-muted`,
-`-hover-bg`, `-active-bg`, `-indicator`, `-border`, `-focus`, `-badge-bg`, `-badge-fg` (utilities `bg-ds-sidebar-bg` …).
+`-hover-bg`, `-active-bg`, `-indicator`, `-border`, `-focus`, `-badge-bg`, `-badge-fg` (utilities `bg-ds-sidebar-bg` …),
+and for its gradient `-bg-top` (top stop; `-bg` is the bottom) and `-glow` (top-corner light).
 
 **Band tokens** (theme level; the page band's gradient): `--ds-band-from`, `-via`, `-to` (navy-gold: navy-900 → 800 → 700),
-`--ds-band-glow` (steel-400 @30%, top start), `--ds-band-glow-accent` (gold-400 @18%, bottom end).
+`--ds-band-glow` (gold-400 @14%, top start), `--ds-band-glow-accent` (gold-400 @18%, bottom end).
+
+## Gradients
+
+Every gradient in the app CSS reads one theme token, so changing the theme (or one token) re-colours all of them. The
+tokens are theme level, in `themes/<name>.css`, as full `background` values (recipe + colours). In `tokens.ts` they are
+`gradient`, `hatch` and `shade`, built by `gradients()` and `hatch()` with the same recipe.
+
+| Token | navy-gold | app-soft | Used by |
+|---|---|---|---|
+| `--ds-gradient-hero` | 125° band from → via → to (navy-900 → 800 → 700), glow top start gold-400 @14%, glow bottom end gold-400 @18% | soft-navy-900 → 800 → 700, soft-navy-500 @38%, soft-gold-500 @18% | page band `.lcp-head` (through `--band`), Home hero `.lcp-hero`, plan hero `.sp-hero` |
+| `--ds-gradient-sidebar` | 180° `--ds-sidebar-bg-top` navy-900 → `--ds-sidebar-bg` navy-950, `--ds-sidebar-glow` gold-400 @8% top right | soft-navy-900 → 950, soft-gold-500 @8% | `.lcp-side`, `.lcp-drawer .ant-drawer-body` (`shared/ui.css`, `app/nav.css`), `.verify-head` |
+| `--ds-gradient-auth` | 160° band via → from → `--ds-shade` (navy-800 → 900 → 950), band glows | soft-navy-800 → 900 → 950, band glows | sign-in brand panel `.auth-side` |
+| `--ds-gradient-avatar` | 135° navy-700 → navy-900 | soft-navy-700 → soft-navy-950 | `.lcp-avatar` |
+| `--ds-gradient-progress` | 90° navy-900 → navy-700 | soft-navy-800 → soft-navy-500 | `.lcp-prog-bar i` |
+| `--ds-gradient-callout` | 90° sand-50 → ivory-50 | soft-gold-50 → paper | `.lcp-next` |
+| `--ds-gradient-surface-subtle` | 180° cloud → paper | soft-neutral-25 → paper | `.sp-chart` |
+| `--ds-hatch-light` | 135° 6px stripes ash-100 / paper | soft-neutral-75 / paper | not-started timeline cells `.sp-road-cell.off` |
+| `--ds-hatch-muted` | 135° 6px stripes steel-400 / mist-300 | soft-neutral-500 / soft-neutral-300 | elapsed-time bar `.cy-bar.time i` |
+| `--ds-shade` (a colour) | navy-950 | soft-navy-950 | dark stop of the pillar gradients (below) |
+
+- **Pillar colours are data.** `--pc` / `--pt` are set on each element by `tint()` (`shared/pillars.tsx`). A token on
+  `[data-theme]` can't read them (a custom property resolves its `var()` where it is declared), so these rules keep their
+  recipe and take only the other stop from a token: `.sp-pillar > header` and `.pill-band`
+  `color-mix(in srgb, var(--pc) 72%, var(--ds-shade))`, `.sp-pillar.loose > header` 60%, `.st-Completed .sp-road-initbar` 70%,
+  `.sp-dhead` `var(--pt) → var(--ds-surface)`. The status hatch `.sp-statebar .d-gap` keeps `--g-gap` and mixes it with `--ds-surface`.
+- **Use** `background: var(--ds-gradient-hero)` in CSS, `style={{ background: "var(--ds-gradient-hero)" }}`, or
+  `bg-[image:var(--ds-gradient-hero)]`. Never write a colour (hex, `rgb()`, a primitive) in a gradient outside a theme file.
+- **New theme:** copy the gradient block of `app-soft.css`. Hero, sidebar and auth need no change (they read the band and
+  sidebar tokens); set `--ds-shade`, `--ds-sidebar-bg-top`, `--ds-sidebar-glow` and the primitives inside avatar, progress,
+  callout, surface-subtle and the two hatches. In `tokens.ts` pass the same colours to `gradients(band, sidebar, shade, { … })`
+  and `hatch(a, b)`. Keep `--ds-sidebar-bg-top` darker than `--ds-sidebar-hover-bg`, and the sidebar glow at about 8% or less
+  (the group titles must stay at 4.5:1 under it).
+- **Checks** (`tokens.test.ts`): every `var()` of a gradient token is resolved and compared with `tokens.ts` both ways; a
+  raw colour inside a gradient token fails; AA (4.5:1) for text on every stop, with the glows composited over the stop
+  under them: heading, kicker (`--ds-eyebrow`) and link on the hero, heading on the sign-in panel, link, active link and
+  group title on the sidebar, initials on the avatar, link and text on the callout, label on the chart panel; progress fill
+  3:1 on the track. Lowest navy-gold values: hero kicker 4.6:1 (gold-400 on navy-700 + accent glow), sidebar group title
+  4.7:1 (steel-400 under the glow).
+- **New gradient role:** add `--ds-gradient-<role>` to every theme, the field to `GradientTokens` and `gradients()` in
+  `tokens.ts`, and an AA case in `tokens.test.ts` if text sits on it.
 
 ## Corners (square | rounded)
 
@@ -241,7 +283,7 @@ the redesigned footer, and the analytics section (القيادة bar removed, ho
 1. Add any new raw colours to `primitives.css` as `--color-<family>-<step>`. Avoid names Tailwind already uses (`slate`, `white`, `mist` …).
 2. Copy `themes/app-soft.css` to `themes/<name>.css` and replace `app-soft` in its three selectors.
 3. Give every `--ds-*` and shadcn variable a value in the theme-level, light and dark blocks. Keep every name; a missing token falls back to nothing.
-   No radius: corners come from `corners.css` whatever the theme.
+   No radius: corners come from `corners.css` whatever the theme. Gradients: keep the recipes, change the colours ("Gradients").
 4. Import it in `index.css`, after the other themes and before `corners.css`.
 5. Add `<name>` to `ThemeName` and `themes` in `tokens.ts`, then run `npx vitest run src/styles/design-system`: it fails
    on any value that differs from the CSS and on any AA pair below 4.5:1 (text) or 3:1 (UI). antd needs nothing else:

@@ -75,7 +75,7 @@ export default function SettingsPage() {
               </>
             )}
             columns={[
-              { title: L("الإعداد", "Setting"), render: (_, s) => <div className="dt-service"><b>{L(s.ar, s.en)}</b><small className="muted ltr">{s.key}</small></div> },
+              { title: L("الإعداد", "Setting"), render: (_, s) => <div className="dt-service"><b>{L(s.ar, s.en)}</b></div> },
               { title: L("القيمة", "Value"), render: (_, s) => <>{value(s, s.value)}{String(s.value) !== String(s.defaultValue) && <Tag color="gold" className="ms">{L("معدّل", "Changed")}</Tag>}</> },
               { title: L("الافتراضي", "Default"), render: (_, s) => <span className="muted">{value(s, s.defaultValue)}</span> },
               { title: L("المدى", "Range"), render: (_, s) => s.min != null || s.max != null ? <span className="muted ltr">{s.min ?? "…"} – {s.max ?? "…"}</span> : "—" },

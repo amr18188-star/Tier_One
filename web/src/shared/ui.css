@@ -37,7 +37,7 @@
 /* ----- القائمة الجانبية ----- */
 .lcp-side, .lcp-drawer .ant-drawer-body {
   display: flex; flex-direction: column; gap: 18px; padding: 20px 14px; color: #fff;
-  background: radial-gradient(120% 45% at 100% 0%, rgba(10, 140, 147, 0.3), transparent 60%), linear-gradient(180deg, #183059 0%, #0f2242 100%);
+  background: var(--ds-gradient-sidebar);
 }
 .lcp-side { position: sticky; top: 0; height: 100vh; overflow-y: auto; }
 /* القائمة الطويلة تمرر داخل الشريط؛ لا ينضغط زر الطلب ولا الشعار لتتسع. */
@@ -52,7 +52,7 @@
   display: flex; align-items: center; justify-content: center; gap: 8px; height: 46px; border-radius: var(--ds-radius-lg);
   background: var(--teal); color: #fff; font-weight: 600; box-shadow: 0 8px 22px rgba(10, 140, 147, 0.35); transition: background 0.15s, transform 0.15s;
 }
-.lcp-cta:hover { background: #0b9aa2; color: #fff; transform: translateY(-1px); }
+.lcp-cta:hover { background: var(--teal-ink); color: #fff; transform: translateY(-1px); }
 .lcp-nav { display: grid; gap: 4px; }
 .lcp-nav a {
   position: relative; display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: var(--ds-radius-lg);
@@ -94,7 +94,7 @@
 .lcp-user-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13.5px; }
 .lcp-avatar {
   width: 34px; height: 34px; border-radius: var(--ds-radius-round); flex: none; display: grid; place-items: center;
-  background: linear-gradient(135deg, var(--teal), var(--navy)); color: #fff; font-weight: 700; font-size: 13px;
+  background: var(--ds-gradient-avatar); color: #fff; font-weight: 700; font-size: 13px;
 }
 .lcp-content { padding: 4px 28px 48px; }
 .lcp-page { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; min-width: 0; }
@@ -132,7 +132,7 @@
 /* ----- الترحيب ----- */
 .lcp-hero {
   position: relative; overflow: hidden; border-radius: var(--ds-radius-xl); padding: 28px 30px; color: #fff;
-  background: radial-gradient(90% 140% at 0% 100%, rgba(201, 151, 63, 0.24), transparent 55%), linear-gradient(120deg, #183059 0%, #14406b 55%, #0a8c93 125%);
+  background: var(--ds-gradient-hero);
 }
 .lcp-hero small { color: #b9e4e6; font-size: 13.5px; }
 .lcp-hero h1 { font-family: var(--font-display); font-size: clamp(22px, 2.6vw, 30px); margin: 4px 0 6px; line-height: 1.5; color: #fff; }
@@ -234,7 +234,7 @@ a.lcp-list-item:hover { background: var(--teal-50); color: var(--ink); }
 .lcp-prog { display: grid; gap: 3px; min-width: 110px; }
 .lcp-prog small { color: var(--muted); font-size: 11.5px; }
 .lcp-prog-bar { height: 6px; border-radius: var(--ds-radius-xs); background: #e6ecf2; overflow: hidden; }
-.lcp-prog-bar i { display: block; height: 100%; border-radius: var(--ds-radius-xs); background: linear-gradient(90deg, var(--teal), #13b3bb); }
+.lcp-prog-bar i { display: block; height: 100%; border-radius: var(--ds-radius-xs); background: var(--ds-gradient-progress); }
 .lcp-prog-bar i.full { background: #2e9e64; }
 .lcp-filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .lcp-filters .ant-input-affix-wrapper { max-width: 320px; }
@@ -264,7 +264,7 @@ a.lcp-list-item:hover { background: var(--teal-50); color: var(--ink); }
 .lcp-step small { color: var(--muted); font-size: 12px; }
 .lcp-next {
   display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: var(--ds-radius-xl);
-  background: linear-gradient(90deg, var(--teal-50), #f5fbfb); border: 1px solid var(--teal-100);
+  background: var(--ds-gradient-callout); border: 1px solid var(--teal-100);
 }
 .lcp-next > .anticon { color: var(--teal); font-size: 20px; margin-top: 3px; }
 .lcp-next b { display: block; color: var(--teal-ink); margin-bottom: 2px; }
@@ -359,13 +359,10 @@ a.lcp-list-item:hover { background: var(--teal-50); color: var(--ink); }
 .ant-segmented { max-width: 100%; overflow-x: auto; scrollbar-width: thin; }
 .ant-segmented-group { flex-wrap: nowrap; }
 /* الترحيب بلا زخرفة: لون واحد هادئ، والعناية بالنص. */
-/* هوية الشريط العلوي نفسها في الرئيسية والخطة: كحلي بتوهج تركوازي وذهبي خفيف. */
+/* هوية الشريط العلوي نفسها في الرئيسية والخطة: التدرج من رمز السمة --ds-gradient-hero (كحلي بتوهج ذهبي خفيف في navy-gold). */
 .lcp-hero {
   padding: 24px 28px; border-radius: var(--ds-radius-xl); box-shadow: 0 12px 34px rgba(16, 36, 70, 0.18);
-  background:
-    radial-gradient(60% 90% at 0% 0%, rgba(10, 140, 147, 0.38), transparent 60%),
-    radial-gradient(50% 80% at 100% 100%, rgba(201, 151, 63, 0.18), transparent 60%),
-    linear-gradient(125deg, #142a50 0%, #183a66 55%, #12406a 100%);
+  background: var(--ds-gradient-hero);
 }
 .lcp-hero-decor { display: none; }
 /* حالات الصفحة (لا صلاحية، غير موجود، فارغ) داخل لوحة لا على الخلفية. */

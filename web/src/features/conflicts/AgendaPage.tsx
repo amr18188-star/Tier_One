@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { api } from "../../api/client";
 import type { Conflict } from "../../api/tier1";
+import { uiLocale } from "../../shared/format";
 import { L } from "../../shared/i18n";
 import { conflictSeverity, conflictStatus } from "../../shared/labels";
 import { EmptyNote, PageHeader, Panel } from "../../shared/ui";
@@ -14,7 +15,7 @@ import { EmptyNote, PageHeader, Panel } from "../../shared/ui";
  */
 export default function AgendaPage() {
   const agenda = useQuery({ queryKey: ["conflicts", "agenda"], queryFn: () => api.get<Conflict[]>("/api/kpi/conflicts/agenda") });
-  const today = new Intl.DateTimeFormat("ar-EG", { dateStyle: "long", timeZone: "Africa/Cairo" }).format(new Date());
+  const today = new Intl.DateTimeFormat(uiLocale(), { dateStyle: "long", timeZone: "Africa/Cairo" }).format(new Date());
 
   return (
     <>

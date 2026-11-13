@@ -14,6 +14,8 @@
  *   Opacity modifiers work: bg-ds-accent/10 → color-mix(in oklab, var(--ds-accent) 10%, transparent).
  * "reference": Tailwind emits no theme variables for these keys on :root. The values live in
  *   primitives.css and themes/*.css only, so nothing here can override app.css or shadcn.css.
+ * Gradients (--ds-gradient-*, --ds-hatch-*) have no Tailwind namespace: use bg-[image:var(--ds-gradient-hero)]
+ *   or background: var(--ds-gradient-hero) in CSS.
  */
 @theme inline reference {
   /* Tailwind 4.3 ships a "mist" scale too; clear it so mist-100 / mist-300 are the doc's only steps. */
@@ -114,6 +116,9 @@
   --color-ds-sidebar-focus: var(--ds-sidebar-focus);
   --color-ds-sidebar-badge-bg: var(--ds-sidebar-badge-bg);
   --color-ds-sidebar-badge-fg: var(--ds-sidebar-badge-fg);
+  --color-ds-sidebar-bg-top: var(--ds-sidebar-bg-top);
+  --color-ds-sidebar-glow: var(--ds-sidebar-glow);
+  --color-ds-shade: var(--ds-shade);
   --color-ds-band-from: var(--ds-band-from);
   --color-ds-band-via: var(--ds-band-via);
   --color-ds-band-to: var(--ds-band-to);

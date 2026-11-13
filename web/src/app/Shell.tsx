@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type ReactElement, type ReactNode } from "react";
+import { cloneElement, useCallback, useEffect, useId, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactElement, type ReactNode } from "react";
 import { AutoComplete, Button, Drawer, Dropdown, Input, Tooltip } from "antd";
 import {
-  ApartmentOutlined, AuditOutlined, BarChartOutlined, BranchesOutlined, CalendarOutlined, ClusterOutlined, DoubleLeftOutlined, DoubleRightOutlined, DownOutlined, FileDoneOutlined, FilePdfOutlined, FormOutlined, GlobalOutlined, HomeOutlined, LogoutOutlined, MenuOutlined,
+  AimOutlined, ApartmentOutlined, AuditOutlined, BankOutlined, BarChartOutlined, BranchesOutlined, CalendarOutlined, ClusterOutlined, ControlOutlined, DatabaseOutlined, DoubleLeftOutlined, DoubleRightOutlined, DownOutlined, FileDoneOutlined, FilePdfOutlined, FormOutlined, GlobalOutlined, HomeOutlined, LogoutOutlined, MenuOutlined,
   PartitionOutlined, RiseOutlined, SafetyCertificateOutlined, SearchOutlined, SettingOutlined, TeamOutlined, TrophyOutlined, UnorderedListOutlined,
 } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
@@ -21,8 +21,9 @@ import "../shared/theme.css";
 import "./nav.css";
 
 interface NavItem { to: string; icon: ReactNode; label: string; end?: boolean; badge?: number; badgeText?: string; tab?: boolean }
-interface NavGroup { key: string; title?: string; items: (NavItem | false)[] }
-interface VisibleGroup { key: string; title?: string; items: NavItem[] }
+// icon: أيقونة المجموعة في الشريط المطوي وحده (زر المجموعة)؛ لا تتكرر أيقونة رابط فيها. رؤوس الموسع نص فقط.
+interface NavGroup { key: string; title?: string; icon?: ReactNode; items: (NavItem | false)[] }
+interface VisibleGroup { key: string; title?: string; icon?: ReactNode; items: NavItem[] }
 
 // مجموعة واحدة مفتوحة في القائمة الجانبية (أكورديون)، ومفتاحها يحفظ في المتصفح؛ مجموعة الصفحة الحالية تتقدم عليه.
 const NAV_OPEN_KEY = "t1-nav-open";
@@ -72,11 +73,30 @@ type TipSide = "left" | "right";
 
 /**
  * تلميح الشريط المطوي بالمرور والتركيز، نحو المحتوى (antd لا يقلب يمين ويسار مع الاتجاه، والشريط يمين الشاشة في العربية).
+ * يغلق عند الضغط: فتح مجموعة يطوي غيرها فيتحرك الزر، ولا يبقى التلميح معلقًا في المكان القديم.
  * بلا عنوان يعرض العنصر وحده، فالقائمة الموسعة والدرج كما هما.
  */
-function RailTip({ title, side, children }: { title?: string; side: TipSide; children: ReactElement }) {
+function RailTip({ title, side, children }: {
+  title?: string;
+  side: TipSide;
+  children: ReactElement<{ onClick?: (event: ReactMouseEvent<HTMLElement>) => void }>;
+}) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!title) setOpen(false);
+  }, [title]);
   if (!title) return children;
-  return <Tooltip title={title} placement={side} trigger={["hover", "focus"]} mouseEnterDelay={0.15}>{children}</Tooltip>;
+  const child = cloneElement(children, {
+    onClick: (event: ReactMouseEvent<HTMLElement>) => {
+      setOpen(false);
+      children.props.onClick?.(event);
+    },
+  });
+  return (
+    <Tooltip title={title} placement={side} trigger={["hover", "focus"]} mouseEnterDelay={0.15} open={open} onOpenChange={setOpen}>
+      {child}
+    </Tooltip>
+  );
 }
 
 /**
@@ -121,7 +141,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const groups: NavGroup[] = [
     { key: "home", items: [{ to: "/", icon: <HomeOutlined aria-hidden />, label: L("الرئيسية", "Home"), end: true, tab: true }] },
     {
-      key: "data", title: L("جمع البيانات والنتائج", "Data and results"), items: [
+      key: "data", title: L("جمع البيانات والنتائج", "Data and results"), icon: <DatabaseOutlined aria-hidden />, items: [
         // بلا عداد في القائمة الجانبية (طلب المستخدم)؛ عدد النماذج المنتظرة يظهر في الرئيسية وصفحة النماذج.
         perms.can("dc.forms", "V") && { to: "/forms", icon: <FormOutlined aria-hidden />, label: L("نماذج الجهات", "Unit forms"), tab: true },
         // بطاقة الجامعة كاملة لمن نطاقه الجامعة؛ مستخدم الكلية أو الإدارة يرى تقدم جهته.
@@ -133,20 +153,20 @@ export function Shell({ children }: { children: ReactNode }) {
       ],
     },
     {
-      key: "plan", title: L("الخطة والمؤشرات", "Plan and indicators"), items: [
+      key: "plan", title: L("الخطة والمؤشرات", "Plan and indicators"), icon: <AimOutlined aria-hidden />, items: [
         perms.can("kpi.strategy", "V") && { to: "/strategy", icon: <PartitionOutlined aria-hidden />, label: L("الخطة الاستراتيجية", "Strategic plan"), end: true },
         perms.can("kpi.strategy", "V") && { to: "/strategy/document", icon: <FilePdfOutlined aria-hidden />, label: L("وثيقة الخطة الاستراتيجية", "Strategic plan document") },
         perms.can("kpi.dictionary", "V") && { to: "/indicators", icon: <UnorderedListOutlined aria-hidden />, label: L("قاموس المؤشرات", "Indicators"), tab: true },
       ],
     },
     {
-      key: "org", title: L("الجهات والهياكل", "Units and structures"), items: [
+      key: "org", title: L("الجهات والهياكل", "Units and structures"), icon: <BankOutlined aria-hidden />, items: [
         perms.can("org.structure", "V") && { to: "/structure", icon: <ClusterOutlined aria-hidden />, label: L("هياكل Tier 1 بالكليات", "College structures"), tab: true },
         perms.can("org.units", "V") && { to: "/units", icon: <ApartmentOutlined aria-hidden />, label: L("الجهات", "Units") },
       ],
     },
     {
-      key: "admin", title: L("الإدارة", "Administration"), items: [
+      key: "admin", title: L("الإدارة", "Administration"), icon: <ControlOutlined aria-hidden />, items: [
         canMatrix && { to: "/matrix", icon: <SafetyCertificateOutlined aria-hidden />, label: L("مصفوفة الصلاحيات", "Permission matrix") },
         canMatrix && {
           to: "/changes", icon: <BranchesOutlined aria-hidden />, label: L("طلبات التعديل", "Change requests"),
@@ -199,7 +219,7 @@ export function Shell({ children }: { children: ReactNode }) {
   // asRail للشريط الجانبي على الحاسوب وحده؛ الدرج يمرر false دائمًا.
   const sideBody = (asRail: boolean) => (
     <>
-      <SideNav groups={visible} open={openGroup} onToggle={toggleGroup} onNavigate={() => setDrawer(false)} rail={asRail} />
+      <SideNav groups={visible} open={openGroup} active={activeGroup} onToggle={toggleGroup} onNavigate={() => setDrawer(false)} rail={asRail} />
       <div className="lcp-side-foot">
         <RailTip title={asRail ? langText : undefined} side={tipSide}>
           <button type="button" onClick={toggleLang} aria-label={asRail ? langText : undefined}>
@@ -285,12 +305,13 @@ export function Shell({ children }: { children: ReactNode }) {
 /**
  * روابط القائمة الجانبية. كل مجموعة بعنوان لوحة تطوى: الرأس زر يفتحها ويطويها، ويعرض وهي مطوية مجموع شارات روابطها.
  * تعرض القائمة مرتين (الشريط الجانبي ودرج الجوال)، فمعرفات الرؤوس واللوحات من useId لكل نسخة، والحالة المفتوحة مشتركة من Shell.
- * rail (الشريط المطوي، الحاسوب وحده): كل الروابط ظاهرة بلا رؤوس، وخط رفيع بين المجموعات، واسم كل رابط في تلميح؛
- * الحالة المفتوحة لا تمس، فالتوسيع يعيد الأكورديون كما كان.
+ * rail (الشريط المطوي، الحاسوب وحده): الأكورديون نفسه والحالة المفتوحة نفسها، لكن الرأس زر بأيقونة المجموعة واسمها في تلميح،
+ * والروابط أيقونات تحته. active مفتاح مجموعة الصفحة الحالية: شريط ذهبي على زرها ولو كانت مطوية.
  */
-function SideNav({ groups, open, onToggle, onNavigate, rail }: {
+function SideNav({ groups, open, active, onToggle, onNavigate, rail }: {
   groups: VisibleGroup[];
   open: string | null;
+  active?: string;
   onToggle: (key: string) => void;
   onNavigate: () => void;
   rail: boolean;
@@ -314,7 +335,6 @@ function SideNav({ groups, open, onToggle, onNavigate, rail }: {
             </NavLink>
           </RailTip>
         ));
-        if (rail) return <div key={g.key} className="lcp-nav-sec lcp-nav-rail-sec" role="group" aria-label={g.title}>{links}</div>;
         if (!g.title) return <div key={g.key} className="lcp-nav-sec" role="group">{links}</div>;
 
         const isOpen = open === g.key;
@@ -323,18 +343,33 @@ function SideNav({ groups, open, onToggle, onNavigate, rail }: {
         const badged = g.items.filter((n) => !!n.badge);
         const total = badged.reduce((sum, n) => sum + (n.badge ?? 0), 0);
         const sep = L("، ", ", ");
-        return (
-          <div key={g.key} className="lcp-nav-sec lcp-nav-panel" data-open={isOpen ? "true" : "false"}>
-            <button type="button" id={headId} className="lcp-nav-group lcp-nav-head" aria-expanded={isOpen} aria-controls={panelId} onClick={() => onToggle(g.key)}>
-              <span className="lcp-nav-title">{g.title}</span>
-              {!isOpen && total > 0 && (
-                <>
-                  <span className="lcp-badge" aria-hidden>{total}</span>
-                  <span className="sr-only">{sep}{badged.map((n) => n.badgeText).filter(Boolean).join(sep)}</span>
-                </>
-              )}
-              <DownOutlined className="lcp-nav-chev" aria-hidden />
+        const badgeTexts = badged.map((n) => n.badgeText).filter(Boolean).join(sep);
+        // الشريط المطوي: الاسم عنوان المجموعة، والعدد (والمجموعة مطوية) نقطة على الأيقونة ووصف لقارئ الشاشة ورقم في التلميح.
+        const badgeId = `${headId}-badges`;
+        const head = rail ? (
+          <RailTip title={total > 0 ? `${g.title} · ${total}` : g.title} side={tipSide}>
+            <button type="button" id={headId} className="lcp-nav-cat" aria-expanded={isOpen} aria-controls={panelId} aria-label={g.title}
+              aria-describedby={!isOpen && total > 0 ? badgeId : undefined} onClick={() => onToggle(g.key)}>
+              {g.icon}
+              {!isOpen && total > 0 && <><span className="lcp-rail-dot" aria-hidden /><span id={badgeId} className="sr-only">{badgeTexts}</span></>}
             </button>
+          </RailTip>
+        ) : (
+          <button type="button" id={headId} className="lcp-nav-group lcp-nav-head" aria-expanded={isOpen} aria-controls={panelId} onClick={() => onToggle(g.key)}>
+            <span className="lcp-nav-title">{g.title}</span>
+            {!isOpen && total > 0 && (
+              <>
+                <span className="lcp-badge" aria-hidden>{total}</span>
+                <span className="sr-only">{sep}{badgeTexts}</span>
+              </>
+            )}
+            <DownOutlined className="lcp-nav-chev" aria-hidden />
+          </button>
+        );
+        return (
+          <div key={g.key} className="lcp-nav-sec lcp-nav-panel" data-open={isOpen ? "true" : "false"}
+            data-active={rail ? (active === g.key ? "true" : "false") : undefined}>
+            {head}
             <div id={panelId} className="lcp-nav-body" role="group" aria-labelledby={headId}>
               <div className="lcp-nav-inner">{links}</div>
             </div>

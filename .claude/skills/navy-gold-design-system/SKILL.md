@@ -1,6 +1,6 @@
 ---
 name: navy-gold-design-system
-description: "Navy & Gold design system and multi-theme CSS tokens for the Tier1 university performance app (Context/Tier1/web: React, antd, Tailwind v4, shadcn/ui). Use it for any visual or styling work in Tier1, in Arabic or English: colours, a theme or a second style system, design tokens, data-theme switching, a landing or hero section, dark and light sections, RTL pages, Tailwind or shadcn styling, cards, buttons, stat tiles, chart colours, 'make it look like the landing page', or an antd theme from the tokens. Arabic cues: ألوان، ثيم، هوية بصرية، ستايل، تصميم الصفحة، صفحة هبوط، هيرو، الوضع الداكن. Also for square vs rounded corners (one CORNERS switch, --ds-radius-* scale, rounded-ds-*; زوايا مربعة أو مستديرة). Gives the rules (data-theme + data-section + --ds-* tokens, never raw hex, rounded-ds-* radius steps, hairlines, logical RTL utilities), the Tailwind entry without global preflight that keeps antd pages unchanged, shadcn inside a themed subtree, recipes, and how to add a theme. Use it even for 'style this page' or 'change the colours' on a Tier1 screen."
+description: "Navy & Gold design system and multi-theme CSS tokens for the Tier1 university performance app (Context/Tier1/web: React, antd, Tailwind v4, shadcn/ui). Use it for any visual or styling work in Tier1, in Arabic or English: colours, a theme or a second style system, design tokens, data-theme switching, a landing or hero section, dark and light sections, RTL pages, Tailwind or shadcn styling, cards, buttons, stat tiles, chart colours, 'make it look like the landing page', or an antd theme from the tokens. Arabic cues: ألوان، ثيم، هوية بصرية، ستايل، تصميم الصفحة، صفحة هبوط، هيرو، الوضع الداكن. Also for square vs rounded corners (one CORNERS switch, --ds-radius-* scale, rounded-ds-*; زوايا مربعة أو مستديرة) and for gradients (hero, band, sidebar, hatches: --ds-gradient-* tokens per theme; تدرج الألوان). Gives the rules (data-theme + data-section + --ds-* tokens, never raw hex, rounded-ds-* radius steps, hairlines, logical RTL utilities), the Tailwind entry without global preflight that keeps antd pages unchanged, shadcn inside a themed subtree, recipes, and how to add a theme. Use it even for 'style this page' or 'change the colours' on a Tier1 screen."
 ---
 
 # Navy & Gold design system (Tier1)
@@ -170,11 +170,36 @@ MutationObserver in `useDsTheme()`).
   app CSS is a scale token (map: `corners-map.md` in the session notes). Status colours (`--warn*`, `--ok*`, `--crit*`) are fixed. Inside the sidebar
   (`.lcp-side`, drawer body) `--teal`, `--teal-100`, `--gold` map to `--ds-sidebar-*`.
 - **Sidebar tokens** (theme level): `--ds-sidebar-bg`, `-fg`, `-fg-active`, `-muted`, `-hover-bg`, `-active-bg`,
-  `-indicator`, `-border`, `-focus`, `-badge-bg`, `-badge-fg`.
-- **Band tokens** (theme level): `--ds-band-from`, `-via`, `-to`, `-glow`, `-glow-accent`. `shared/theme.css` builds
-  `--band` (the navy page header strip) from them.
-- Colours written directly in legacy rules (gradients with teal glow …) don't follow the theme; convert them to tokens
-  when you touch those rules. New radii: a scale token, never px.
+  `-indicator`, `-border`, `-focus`, `-badge-bg`, `-badge-fg`, and `-bg-top` / `-glow` for its gradient.
+- **Band tokens** (theme level): `--ds-band-from`, `-via`, `-to`, `-glow`, `-glow-accent` (navy-gold glows: gold-400 @14%
+  and @18%). They feed `--ds-gradient-hero`; `shared/theme.css` `--band` is that token.
+- **Gradients come from tokens only** (section "Gradients"). Text or shadow colours still written as hex in legacy rules
+  don't follow the theme; convert them to tokens when you touch those rules. New radii: a scale token, never px.
+
+## Gradients
+
+Every gradient in the app CSS reads a theme-level token (full `background` value), so the theme or one token re-colours
+all of them. Values per theme: `references/token-files.md` §4a and the design-system README "Gradients".
+
+| Token | Role (rules) |
+|---|---|
+| `--ds-gradient-hero` | page band `.lcp-head` (`--band`), Home hero `.lcp-hero`, plan hero `.sp-hero`; from `--ds-band-*` |
+| `--ds-gradient-sidebar` | sidebar and mobile drawer (`.lcp-side`, `.lcp-drawer .ant-drawer-body`), `.verify-head`; from `--ds-sidebar-bg-top` → `-bg` + `-glow` |
+| `--ds-gradient-auth` | sign-in brand panel `.auth-side`; band via → from → `--ds-shade`, band glows |
+| `--ds-gradient-avatar`, `-progress`, `-callout`, `-surface-subtle` | `.lcp-avatar`, `.lcp-prog-bar i`, `.lcp-next`, `.sp-chart` |
+| `--ds-hatch-light`, `--ds-hatch-muted` | stripes: not-started timeline cells, elapsed-time bar |
+| `--ds-shade` (colour) | dark stop that pillar colours deepen toward |
+
+- **Use:** `background: var(--ds-gradient-hero)`, `style={{ background: "var(--ds-gradient-hero)" }}`, or
+  `bg-[image:var(--ds-gradient-hero)]`. Never a hex, `rgb()` or primitive in a gradient outside a theme file.
+- **Pillar colours are data** (`--pc` / `--pt`, set per element by `tint()`). A token on `[data-theme]` resolves its `var()`
+  there, so it can't read them: these rules keep the recipe and take only the other stop from a token,
+  `color-mix(in srgb, var(--pc) 72%, var(--ds-shade))` or `var(--pt) → var(--ds-surface)`. Status hatches keep `--g-*`.
+- **New theme:** copy the gradient block of `app-soft.css` (hero, sidebar, auth need no change); set `--ds-shade`,
+  `--ds-sidebar-bg-top` (darker than the hover bg), `--ds-sidebar-glow` (≤ 8%, group titles stay 4.5:1) and the colours of
+  avatar, progress, callout, surface-subtle and the hatches. In `tokens.ts` pass the same colours to `gradients()` and
+  `hatch()`. `tokens.test.ts` resolves every `var()`, rejects a raw colour in a gradient token, and checks AA for text on
+  every stop with the glows composited.
 - **Navy block inside an antd page.** Put `data-section="dark"` on the block, so `var(--ds-*)` in its CSS gives the dark
   values, and wrap its antd actions in `DarkBlock` (`shared/ui.tsx`): a nested `ConfigProvider` with
   `antdDarkBlockTheme(useDsTheme())`, which sets Button colours only (gold primary, navy text, gold links). `PageHeader`
@@ -234,7 +259,8 @@ takes the tone as a prop; don't recolour the artwork with CSS filters. More in `
 2. Copy `themes/app-soft.css` to `themes/<name>.css` and replace `app-soft` in its three selectors (theme level, light
    scope, dark scope).
 3. Give every `--ds-*` and shadcn variable a value in all three blocks. Keep every name: a missing token is unset, so its
-   utility paints nothing. No radius: corners come from `corners.css` for every theme.
+   utility paints nothing. No radius: corners come from `corners.css` for every theme. Gradients: keep the recipes,
+   change only the colours (section "Gradients").
 4. Import the file in `index.css`, after the other themes and before `corners.css`.
 5. Add `<name>` to `ThemeName` and to `themes` in `tokens.ts` (the `satisfies` check lists missing fields), then run
    `npx vitest run src/styles/design-system` in `web/` (fails on any CSS ≠ TS value and on the AA pairs). antd follows
@@ -249,7 +275,8 @@ to `tailwind-theme.css`, and the field to `tokens.ts`.
 
 ## Before you finish
 
-- Search your changed files for raw colours: `rg -n "#[0-9a-fA-F]{3,8}\b|\[#|rgba?\(" web/src/features/<feature>`.
+- Search your changed files for raw colours: `rg -n "#[0-9a-fA-F]{3,8}\b|\[#|rgba?\(" web/src/features/<feature>`;
+  every `gradient(` must read `var(--ds-gradient-*)`, `var(--ds-hatch-*)` or only `var()` stops.
 - Flip `data-theme` between `navy-gold` and `app-soft`, `data-corners` between `square` and `rounded`, and the language
   between Arabic and English; all must hold, with no layout shift between the corner styles.
 - Check an antd page (indicators, strategy) still looks the same after your CSS loads (feature CSS must not restyle it).

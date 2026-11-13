@@ -64,7 +64,7 @@ html[dir="rtl"] .lcp-nav-panel[data-open="false"] .lcp-nav-chev { transform: rot
  * القواعد القديمة في shared/ui.css (لا يعدل هنا)؛ هذا الملف يحمّل بعده فيغلبها بالمحددات نفسها، وتتبدل الألوان حية مع <html data-theme>. */
 .lcp-side, .lcp-drawer .ant-drawer-body {
   color: var(--ds-sidebar-fg-active, #fff);
-  background: var(--ds-sidebar-bg, radial-gradient(120% 45% at 100% 0%, rgba(10, 140, 147, 0.3), transparent 60%), linear-gradient(180deg, #183059 0%, #0f2242 100%));
+  background: var(--ds-gradient-sidebar);
 }
 .lcp-brand, .lcp-brand:hover { color: var(--ds-sidebar-fg-active, #fff); }
 .lcp-brand { border-bottom-color: var(--ds-sidebar-border, rgba(255, 255, 255, 0.1)); }
@@ -108,17 +108,24 @@ html[dir="rtl"] .lcp-nav-panel[data-open="false"] .lcp-nav-chev { transform: rot
   .lcp > .lcp-side { overflow-x: hidden; }
   /* البنية نفسها (عمود ثابت ثم minmax) فتتدرج القيمة، والمحتوى هو العمود الثاني فيتسع معها. */
   .lcp.is-rail { grid-template-columns: 72px minmax(0, 1fr); }
-  /* محتوى 48px؛ وشريط التمرير أنحف (القائمة الكاملة أطول من الشاشة غالبًا) كي لا يضيق الرابط عن 40px. */
+  /*
+   * محتوى 48px. الارتفاع محسوب ليتسع بلا تمرير مع أكبر مجموعة مفتوحة (6 روابط) على شاشة 720px:
+   * 24 حشوة + 93 رأس + 20 فجوتان + 446 قائمة + 91 تذييل = 674px. على الأقصر يبقى التمرير، بشريط أنحف كي لا يضيق الزر عن 40px.
+   */
   .lcp.is-rail > .lcp-side {
-    padding-inline: 12px;
+    padding: 12px; gap: 10px;
     --scrollbar-size: 6px; --scrollbar-gap: 1px; --scrollbar-gap-hover: 1px;
   }
 
-  /* الرأس: الشعار في الوسط، والزر سطر وحده تحته. عرض الرأس 48px من البداية، فلا يقفز الشعار إلى منتصف الشريط العريض ثم يعود. */
+  /*
+   * الرأس (36 شعار + 6 + 40 زر + 10 + 1 خط = 93): الشعار في الوسط، والزر سطر وحده تحته.
+   * عرض الرأس 48px من البداية، فلا يقفز الشعار إلى منتصف الشريط العريض ثم يعود.
+   */
   .lcp.is-rail > .lcp-side .lcp-side-head {
-    flex-direction: column; align-items: center; align-self: flex-start; width: min(48px, 100%); padding-bottom: 12px;
+    flex-direction: column; align-items: center; align-self: flex-start; width: min(48px, 100%); gap: 6px; padding-bottom: 10px;
   }
-  .lcp.is-rail > .lcp-side .lcp-side-head > .lcp-brand { flex: none; align-self: stretch; justify-content: center; padding-inline: 0; }
+  .lcp.is-rail > .lcp-side .lcp-side-head > .lcp-brand { flex: none; align-self: stretch; justify-content: center; padding: 0; }
+  .lcp.is-rail > .lcp-side .lcp-brand img { height: 36px; }
 
   /* نصوص مخفية بصريًا تبقى اسمًا لقارئ الشاشة: نص الشعار فورًا، وأسماء الروابط والزرين بعد أن تتلاشى. */
   .lcp.is-rail > .lcp-side .lcp-brand-text,
@@ -132,24 +139,62 @@ html[dir="rtl"] .lcp-nav-panel[data-open="false"] .lcp-nav-chev { transform: rot
   }
   .lcp.is-railing:not(.is-rail) > .lcp-side .lcp-side-head > .lcp-brand { overflow: hidden; }
 
-  /* الروابط مسطحة، وخط رفيع بين المجموعات. */
-  .lcp.is-rail > .lcp-side .lcp-nav { gap: 6px; }
-  .lcp.is-rail > .lcp-side .lcp-nav-rail-sec + .lcp-nav-rail-sec {
-    padding-top: 6px; border-top: 1px solid var(--ds-sidebar-border, rgba(255, 255, 255, 0.12));
-  }
-  /* مربع الأيقونة في الشريط أصغر من رابط الموسع، فزاويته درجة أصغر (md بدل lg). */
-  .lcp.is-rail > .lcp-side .lcp-nav a { min-height: 40px; padding-inline: 15px; border-radius: var(--ds-radius-md); }
-  .lcp.is-rail:not(.is-railing) > .lcp-side .lcp-nav a { justify-content: center; padding-inline: 0; }
+  /*
+   * الأكورديون نفسه بأيقونات (Shell: SideNav rail): زر لكل مجموعة 48×40، وروابط المفتوحة تحته 42×36 بإزاحة 6px وخط رفيع على بدايتها.
+   * الطي والفتح (0fr ← 1fr) وإخفاء المطوية عن Tab وقارئ الشاشة من قواعد .lcp-nav-body و.lcp-nav-inner أعلاه.
+   * القائمة لسوبر أدمن والبيانات مفتوحة: 40 الرئيسية + 4×40 مجموعات + (4 + 6×36 + 5×2) روابط + 4×4 فجوات = 446.
+   */
+  .lcp.is-rail > .lcp-side .lcp-nav { gap: 4px; }
+  /* مربع الأيقونة في الشريط أصغر من رابط الموسع، فزاويته درجة أصغر (md بدل lg). أثناء تغير العرض تبقى الأيقونة مكانها من البداية. */
+  .lcp.is-rail > .lcp-side .lcp-nav a,
+  .lcp.is-rail > .lcp-side .lcp-nav-cat { min-height: 40px; padding-inline: 15px; border-radius: var(--ds-radius-md); }
+  .lcp.is-rail:not(.is-railing) > .lcp-side .lcp-nav a,
+  .lcp.is-rail:not(.is-railing) > .lcp-side .lcp-nav-cat { justify-content: center; padding-inline: 0; }
   /* شريط الرابط النشط على حافة الشريط (حشوته 12px)، داخل حدوده فلا يقص. */
   .lcp.is-rail > .lcp-side .lcp-nav a.active::before { inset-inline-start: -12px; }
-  /* العدد نقطة على زاوية الأيقونة العليا جهة المحتوى، بحلقة بلون الشريط. */
+
+  /* زر المجموعة. */
+  .lcp.is-rail > .lcp-side .lcp-nav-cat {
+    position: relative; display: flex; align-items: center; width: 100%; margin: 0; padding-block: 0;
+    border: 0; background: transparent; font: inherit; cursor: pointer;
+    color: var(--ds-sidebar-fg, #c9d4e5);
+  }
+  .lcp.is-rail > .lcp-side .lcp-nav-cat .anticon { font-size: 18px; }
+  .lcp.is-rail > .lcp-side .lcp-nav-cat:hover { background: var(--ds-sidebar-hover-bg, rgba(255, 255, 255, 0.06)); color: var(--ds-sidebar-fg-active, #fff); }
+  .lcp.is-rail > .lcp-side .lcp-nav-cat:focus-visible { outline-color: var(--ds-sidebar-focus, #7fd1d5); }
+  /* مفتوحة: خلفية خفيفة. فيها الصفحة الحالية (مفتوحة أو مطوية): الأيقونة بلون النشط وشريط ذهبي على حافة الشريط كالرابط النشط. */
+  .lcp.is-rail > .lcp-side .lcp-nav-panel[data-open="true"] > .lcp-nav-cat {
+    background: var(--ds-sidebar-hover-bg, rgba(255, 255, 255, 0.06)); color: var(--ds-sidebar-fg-active, #fff);
+  }
+  .lcp.is-rail > .lcp-side .lcp-nav-panel[data-active="true"] > .lcp-nav-cat { color: var(--ds-sidebar-fg-active, #fff); }
+  .lcp.is-rail > .lcp-side .lcp-nav-panel[data-active="true"] > .lcp-nav-cat::before {
+    content: ""; position: absolute; inset-inline-start: -12px; top: 10px; bottom: 10px; width: 4px;
+    border-start-end-radius: var(--ds-radius-xs); border-end-end-radius: var(--ds-radius-xs);
+    background: var(--ds-sidebar-indicator, var(--teal));
+  }
+
+  /*
+   * روابط المجموعة المفتوحة: القص على حافة الشريط (الهامش السالب 12 يلغي الحشوة)، فيظهر شريط النشط وحلقة التركيز؛
+   * 4px بين الزر وأول رابط، وخط رفيع في منتصف الإزاحة.
+   */
+  .lcp.is-rail > .lcp-side .lcp-nav-inner { margin: -6px -12px; padding-block: 6px; padding-inline: 18px 12px; }
+  .lcp.is-rail > .lcp-side .lcp-nav-inner > :first-child { margin-top: 4px; }
+  .lcp.is-rail > .lcp-side .lcp-nav-inner::before { inset-inline-start: 14px; top: 10px; bottom: 6px; }
+  .lcp.is-rail > .lcp-side .lcp-nav-inner > a { margin-inline-start: 0; min-height: 36px; padding-block: 7px; padding-inline: 13px; }
+  .lcp.is-rail > .lcp-side .lcp-nav-inner > a .anticon { font-size: 16px; }
+  .lcp.is-rail > .lcp-side .lcp-nav-inner > a.active::before { inset-inline-start: -18px; top: 8px; bottom: 8px; }
+
+  /* العدد نقطة على زاوية الأيقونة العليا جهة المحتوى، بحلقة بلون الشريط (الرابط، أو زر مجموعته وهي مطوية). */
   .lcp.is-rail > .lcp-side .lcp-rail-dot {
     position: absolute; top: 7px; inset-inline-start: 28px; width: 8px; height: 8px; border-radius: var(--ds-radius-round);
     background: var(--ds-sidebar-badge-bg, var(--gold)); box-shadow: 0 0 0 2px var(--ds-sidebar-bg, #0f2242); pointer-events: none;
   }
   .lcp.is-rail:not(.is-railing) > .lcp-side .lcp-rail-dot { inset-inline-start: calc(50% + 4px); }
+  .lcp.is-rail > .lcp-side .lcp-nav-inner .lcp-rail-dot { top: 6px; inset-inline-start: 24px; }
+  .lcp.is-rail:not(.is-railing) > .lcp-side .lcp-nav-inner .lcp-rail-dot { inset-inline-start: calc(50% + 3px); }
 
-  /* زرا اللغة والخروج: أيقونة في الوسط. */
+  /* زرا اللغة والخروج (8 + 1 خط + 40 + 2 + 40 = 91): أيقونة في الوسط. */
+  .lcp.is-rail > .lcp-side .lcp-side-foot { padding-top: 8px; }
   .lcp.is-rail > .lcp-side .lcp-side-foot button { min-height: 40px; padding-inline: 16px; }
   .lcp.is-rail:not(.is-railing) > .lcp-side .lcp-side-foot button { justify-content: center; padding-inline: 0; }
   .lcp.is-rail > .lcp-side .lcp-side-foot .anticon { font-size: 16px; }
@@ -158,7 +203,9 @@ html[dir="rtl"] .lcp-nav-panel[data-open="false"] .lcp-nav-chev { transform: rot
 /* الحركة: العرض والحشوة ~220ms، والنصوص تتلاشى عند الطي وتظهر عند التوسيع. بتقليل الحركة كل ذلك فوري (ولا .is-railing). */
 @media (width > 960px) and (prefers-reduced-motion: no-preference) {
   .lcp { transition: grid-template-columns 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
-  .lcp > .lcp-side { transition: padding 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .lcp > .lcp-side { transition: padding 220ms cubic-bezier(0.2, 0.8, 0.2, 1), gap 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .lcp > .lcp-side .lcp-brand img { transition: height 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .lcp.is-rail > .lcp-side .lcp-nav-cat { transition: background 0.15s, color 0.15s; }
   .lcp.is-rail.is-railing > .lcp-side :is(.lcp-nav-label, .lcp-side-foot-label) { animation: lcp-rail-fade-out 120ms ease-out both; }
   .lcp.is-railing:not(.is-rail) > .lcp-side :is(.lcp-brand-text, .lcp-nav-label, .lcp-nav-title, .lcp-nav .lcp-badge, .lcp-side-foot-label) {
     animation: lcp-rail-fade-in 200ms ease-in both;

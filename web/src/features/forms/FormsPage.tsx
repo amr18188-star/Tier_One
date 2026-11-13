@@ -7,7 +7,7 @@ import { api, query } from "../../api/client";
 import type { Cycle, FormRow, SubmissionStatus } from "../../api/collection";
 import { formatDate } from "../../shared/format";
 import { L } from "../../shared/i18n";
-import { dueText, submissionStatus, unitKind } from "../../shared/labels";
+import { dueText, submissionStatus } from "../../shared/labels";
 import { DataTable, EmptyNote, FilterMeta, oneOf, PageHeader, Panel } from "../../shared/ui";
 
 const VIEWS = ["mine", "all", "NotStarted", "InProgress", "InReview", "Returned", "Approved"] as const;
@@ -125,7 +125,7 @@ export default function FormsPage() {
               columns={[
                 {
                   title: L("الجهة", "Unit"), key: "unit", render: (_, r) => (
-                    <span><b>{r.unitName}</b>{r.parentName && <small className="muted"> · {r.parentName}</small>}<br /><small className="muted">{unitKind[r.unitKind]}</small></span>
+                    <span><b>{r.unitName}</b>{r.parentName && <small className="muted"> · {r.parentName}</small>}</span>
                   ),
                 },
                 { title: L("عند", "At"), dataIndex: "stepName", width: 170 },
@@ -154,7 +154,7 @@ export default function FormsPage() {
               renderCard={(r) => (
                 <>
                   <div className="dt-card-row"><b>{r.unitName}</b><Tag color={submissionStatus[r.status].color}>{submissionStatus[r.status].text}</Tag></div>
-                  <small className="muted">{r.parentName ?? unitKind[r.unitKind]} · {r.stepName}{r.status !== "Approved" && ` · ${dueText(r.dueOn)}`}</small>
+                  <small className="muted">{r.parentName && `${r.parentName} · `}{r.stepName}{r.status !== "Approved" && ` · ${dueText(r.dueOn)}`}</small>
                   <Progress percent={r.required ? Math.round((100 * r.completed) / r.required) : 0} size="small" format={() => <span className="ltr">{r.completed}/{r.required}</span>} />
                 </>
               )}

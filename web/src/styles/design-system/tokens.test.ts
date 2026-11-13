@@ -56,9 +56,18 @@ function rgbOf(color: string): number[] {
   throw new Error("not a solid colour: " + color);
 }
 
-/** Resolve a theme value to tokens.ts notation. */
-function resolve(value: string): string {
-  let v = value.replace(/var\((--color-[a-z0-9-]+)\)/g, (_, n: string) => {
+/** Resolve a theme value to tokens.ts notation. `scope`: the block whose var(--ds-*) references are substituted first. */
+function resolve(value: string, scope?: Record<string, string>): string {
+  let v = value;
+  for (let depth = 0; scope && /var\(--ds-/.test(v); depth++) {
+    if (depth > 5) throw new Error("var(--ds-*) nesting too deep: " + value);
+    v = v.replace(/var\((--ds-[a-z0-9-]+)\)/g, (_, n: string) => {
+      const s = scope[n];
+      if (s === undefined) throw new Error("unknown token " + n);
+      return s;
+    });
+  }
+  v = v.replace(/var\((--color-[a-z0-9-]+)\)/g, (_, n: string) => {
     const p = primitives[n];
     if (p === undefined) throw new Error("unknown primitive " + n);
     return p.startsWith("oklch") ? hex(rgbOf(p)) : p;
@@ -70,10 +79,16 @@ function resolve(value: string): string {
   return v;
 }
 
-/** Equal colours (hex within ±1 per channel, for the OKLCH primitives) or equal strings. */
+/** Equal colours (hex within ±1 per channel, for the OKLCH primitives) or equal strings; in a composite value (a gradient)
+ *  the text between the hex colours must match exactly and each hex within ±1. */
 function same(a: string, b: string): boolean {
   if (/^#[0-9a-f]{6}$/i.test(a) && /^#[0-9a-f]{6}$/i.test(b)) return rgbOf(a).every((x, i) => Math.abs(x - rgbOf(b)[i]) <= 1);
-  return a.replace(/\s+/g, " ").toLowerCase() === b.replace(/\s+/g, " ").toLowerCase();
+  const norm = (s: string) => s.replace(/\s+/g, " ").toLowerCase();
+  const hexRe = /#[0-9a-f]{6}/g;
+  const [x, y] = [norm(a), norm(b)];
+  if (x.split(hexRe).join("|") !== y.split(hexRe).join("|")) return false;
+  const [hx, hy] = [x.match(hexRe) ?? [], y.match(hexRe) ?? []];
+  return hx.length === hy.length && hx.every((h, i) => same(h, hy[i]));
 }
 
 const camel = (s: string) => s.replace(/-([a-z0-9])/g, (_, c: string) => c.toUpperCase());
@@ -128,17 +143,25 @@ describe.each(Object.keys(themes) as ThemeName[])("tokens.ts matches themes/%s.c
       ["--ds-focus", t.focus],
       ["--ds-selection-bg", t.selection.bg],
       ["--ds-selection-fg", t.selection.fg],
+      ["--ds-shade", t.shade],
     ];
     for (const [n, ts] of pairs) expect(same(resolve(theme[n]), ts), `${n}: ${resolve(theme[n])} vs ${ts}`).toBe(true);
   });
 
-  it.each(["sidebar", "band"] as const)("%s tokens, both ways", (group) => {
+  it.each(["sidebar", "band", "gradient", "hatch"] as const)("%s tokens, both ways", (group) => {
     const prefix = `--ds-${group}-`;
     const cssNames = Object.keys(theme).filter((n) => n.startsWith(prefix));
     expect(cssNames.map((n) => camel(n.slice(prefix.length))).sort()).toEqual(Object.keys(t[group]).sort());
     for (const n of cssNames) {
       const ts = (t[group] as Record<string, string>)[camel(n.slice(prefix.length))];
-      expect(same(resolve(theme[n]), ts), `${n}: ${resolve(theme[n])} vs ${ts}`).toBe(true);
+      const css = resolve(theme[n], theme);
+      expect(same(css, ts), `${n}: ${css} vs ${ts}`).toBe(true);
+    }
+  });
+
+  it("gradients use tokens only (no raw colour in a gradient value)", () => {
+    for (const n of Object.keys(theme).filter((x) => x.startsWith("--ds-gradient-") || x.startsWith("--ds-hatch-"))) {
+      expect(theme[n], n).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(|oklch\(/i);
     }
   });
 
@@ -202,6 +225,48 @@ describe.each(Object.keys(themes) as ThemeName[])("AA pairs in %s", (name) => {
   ];
   it.each(text)("%s ≥ 4.5:1", (_, fg, bg) => expect(contrast(fg, bg)).toBeGreaterThanOrEqual(4.5));
   it.each(ui)("%s ≥ 3:1", (_, fg, bg) => expect(contrast(fg, bg)).toBeGreaterThanOrEqual(3));
+});
+
+/** A translucent rgba() token composited over a solid hex background. */
+function over(rgba: string, base: string): string {
+  const m = rgba.match(/^rgba\((\d+), (\d+), (\d+), ([\d.]+)\)$/);
+  if (!m) throw new Error("not an rgba() token: " + rgba);
+  const a = Number(m[4]);
+  return hex(rgbOf(base).map((b, i) => Math.round(Number(m[i + 1]) * a + b * (1 - a))));
+}
+const stopsOf = (gradient: string) => gradient.match(/#[0-9a-f]{6}/gi) ?? [];
+
+describe.each(Object.keys(themes) as ThemeName[])("AA for text on the gradients of %s (every stop, glows composited)", (name) => {
+  const t = themes[name];
+  const { light: l, dark: d } = t.sections;
+  const b = t.band;
+  const sb = t.sidebar;
+  // A glow sits over the stop at its corner: band glow over `from` (top, where the kicker is), accent over `to` (bottom end);
+  // the sidebar glow over the top stop. The kicker and links sit at the top, never on the bottom-end accent.
+  const band = [b.from, b.via, b.to, over(b.glow, b.from)];
+  const bandAll = [...band, over(b.glowAccent, b.to)];
+  const auth = [b.via, b.from, t.shade, over(b.glow, b.via), over(b.glowAccent, t.shade)];
+  const side = [sb.bgTop, sb.bg, over(sb.glow, sb.bgTop)];
+  const cases: [string, string, string[]][] = [
+    ["hero / band: heading", d.heading, bandAll],
+    ["hero / band: kicker (--ds-eyebrow)", d.eyebrow, band],
+    ["hero / band: link (--ds-link)", d.link, band],
+    ["sign-in panel: heading", d.heading, auth],
+    ["sidebar: link", sb.fg, side],
+    ["sidebar: group title", sb.muted, side],
+    ["sidebar: active link", sb.fgActive, side],
+    ["avatar: initials", l.btnPrimary.fg, stopsOf(t.gradient.avatar)],
+    ["callout: title (--ds-link)", l.link, stopsOf(t.gradient.callout)],
+    ["callout: text", l.fg, stopsOf(t.gradient.callout)],
+    ["chart panel: label", l.label, stopsOf(t.gradient.surfaceSubtle)],
+  ];
+  it.each(cases)("%s ≥ 4.5:1", (_, fg, bgs) => {
+    expect(bgs.length).toBeGreaterThan(1);
+    for (const bg of bgs) expect(contrast(fg, bg), `${fg} on ${bg}`).toBeGreaterThanOrEqual(4.5);
+  });
+  it("progress fill ≥ 3:1 on the track", () => {
+    for (const s of stopsOf(t.gradient.progress)) expect(contrast(s, l.track), s).toBeGreaterThanOrEqual(3);
+  });
 });
 
 // ---------- corners (corners.css ⇄ `corners` in tokens.ts, config.ts) ----------

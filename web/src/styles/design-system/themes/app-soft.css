@@ -77,6 +77,8 @@
   --ds-sidebar-focus: var(--color-soft-gold-300);
   --ds-sidebar-badge-bg: var(--color-soft-gold-500);
   --ds-sidebar-badge-fg: var(--color-soft-navy-950);
+  --ds-sidebar-bg-top: var(--color-soft-navy-900);
+  --ds-sidebar-glow: color-mix(in srgb, var(--color-soft-gold-500) 8%, transparent);
 
   /* Page band (shared/theme.css --band) */
   --ds-band-from: var(--color-soft-navy-900);
@@ -84,6 +86,23 @@
   --ds-band-to: var(--color-soft-navy-700);
   --ds-band-glow: color-mix(in srgb, var(--color-soft-navy-500) 38%, transparent);
   --ds-band-glow-accent: color-mix(in srgb, var(--color-soft-gold-500) 18%, transparent);
+
+  /* Gradients (same names and recipes as navy-gold.css; README "Gradients") */
+  --ds-shade: var(--color-soft-navy-950);
+  --ds-gradient-hero: radial-gradient(60% 90% at 0% 0%, var(--ds-band-glow), transparent 60%),
+    radial-gradient(50% 80% at 100% 100%, var(--ds-band-glow-accent), transparent 60%),
+    linear-gradient(125deg, var(--ds-band-from) 0%, var(--ds-band-via) 55%, var(--ds-band-to) 100%);
+  --ds-gradient-sidebar: radial-gradient(120% 45% at 100% 0%, var(--ds-sidebar-glow), transparent 60%),
+    linear-gradient(180deg, var(--ds-sidebar-bg-top) 0%, var(--ds-sidebar-bg) 100%);
+  --ds-gradient-auth: radial-gradient(120% 80% at 85% 10%, var(--ds-band-glow), transparent 55%),
+    radial-gradient(90% 70% at 10% 100%, var(--ds-band-glow-accent), transparent 60%),
+    linear-gradient(160deg, var(--ds-band-via) 0%, var(--ds-band-from) 55%, var(--ds-shade) 100%);
+  --ds-gradient-avatar: linear-gradient(135deg, var(--color-soft-navy-700), var(--color-soft-navy-950));
+  --ds-gradient-progress: linear-gradient(90deg, var(--color-soft-navy-800), var(--color-soft-navy-500));
+  --ds-gradient-callout: linear-gradient(90deg, var(--color-soft-gold-50), var(--color-paper));
+  --ds-gradient-surface-subtle: linear-gradient(180deg, var(--color-soft-neutral-25), var(--color-paper));
+  --ds-hatch-light: repeating-linear-gradient(135deg, var(--color-soft-neutral-75) 0 6px, var(--color-paper) 6px 12px);
+  --ds-hatch-muted: repeating-linear-gradient(135deg, var(--color-soft-neutral-500) 0 6px, var(--color-soft-neutral-300) 6px 12px);
 }
 
 /* ---------- Light scope (default) ---------- */

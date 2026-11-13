@@ -4,9 +4,7 @@
 
 :root {
   --r: var(--ds-radius-xl); /* زاوية اللوحات من مقياس الزوايا (styles/design-system/corners.css): 0 مربعة، 16px مستديرة */
-  --band: radial-gradient(60% 90% at 0% 0%, var(--ds-band-glow, rgba(10, 140, 147, 0.38)), transparent 60%),
-    radial-gradient(50% 80% at 100% 100%, var(--ds-band-glow-accent, rgba(201, 151, 63, 0.18)), transparent 60%),
-    linear-gradient(125deg, var(--ds-band-from, #142a50) 0%, var(--ds-band-via, #183a66) 55%, var(--ds-band-to, #12406a) 100%);
+  --band: var(--ds-gradient-hero); /* تدرج الشريط من رمز السمة (styles/design-system/themes) */
   --g-ok: #2e9e63; --g-near: #d9a227; --g-bad: #c2412d; --g-plan: #8ea9c8; --g-gap: #d07a2a;
 }
 
@@ -71,7 +69,7 @@
 /* ----- الجداول ----- */
 .dt { border: 1px solid var(--hair); border-radius: var(--r); }
 .dt .ant-table-thead > tr > th { background: var(--navy) !important; padding-block: 13px !important; font-size: 13px; }
-.dt .ant-table-tbody > tr.dt-click:hover > td { background: #eef6f7 !important; }
+.dt .ant-table-tbody > tr.dt-click:hover > td { background: var(--ds-tile) !important; }
 .dt-card { border-inline-start-color: var(--navy); }
 
 /* ----- شرائط الاختيار ----- */
@@ -101,7 +99,7 @@
 /* ----- ألوان الركائز خارج شاشة الخطة ----- */
 .pill-code { display: inline-block; font-size: 12px; font-weight: 700; color: var(--pc, var(--teal-ink)); background: var(--pt, var(--teal-50)); border-radius: var(--ds-radius-sm); padding: 1px 7px; white-space: nowrap; }
 .pill-band { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: var(--ds-radius-lg); color: #fff;
-  background: linear-gradient(135deg, var(--pc) 0%, color-mix(in srgb, var(--pc) 72%, #0b1b33) 100%); }
+  background: linear-gradient(135deg, var(--pc) 0%, color-mix(in srgb, var(--pc) 72%, var(--ds-shade)) 100%); }
 .pill-band-num { font-family: var(--font-display); font-size: 22px; font-weight: 700; line-height: 1; opacity: 0.9; }
 .pill-band-name { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .pill-band-name small { font-size: 11.5px; color: rgba(255, 255, 255, 0.78); }
@@ -209,7 +207,7 @@
 .cy-clock b { color: var(--navy); }
 .cy-bar { height: 8px; border-radius: var(--ds-radius-pill); background: #fff; overflow: hidden; }
 .cy-bar i { display: block; height: 100%; border-radius: var(--ds-radius-pill); }
-.cy-bar.time i { background: repeating-linear-gradient(135deg, #8aa0bd 0 6px, #a9bad0 6px 12px); }
+.cy-bar.time i { background: var(--ds-hatch-muted); }
 .cy-bar.ahead i { background: var(--g-ok); }
 .cy-bar.behind i { background: var(--g-near); }
 @media (max-width: 760px) {

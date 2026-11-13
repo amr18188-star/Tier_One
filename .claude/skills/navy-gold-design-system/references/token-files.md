@@ -6,8 +6,8 @@ disagrees with the CSS, the CSS wins: re-read the file.
 
 ## Contents
 
-1. File map · 2. How scoping works · 2a. Corners · 3. Primitives · 4. Theme-level tokens · 5. Section tokens ·
-6. Utilities · 7. shadcn variable mapping · 8. `tokens.ts` and antd · 9. Scrollbar tokens
+1. File map · 2. How scoping works · 2a. Corners · 3. Primitives · 4. Theme-level tokens · 4a. Gradients ·
+5. Section tokens · 6. Utilities · 7. shadcn variable mapping · 8. `tokens.ts` and antd · 9. Scrollbar tokens
 
 ## 1. File map
 
@@ -150,15 +150,50 @@ App sidebar (the navy chrome of the signed-in shell; theme level, not per sectio
 | `--ds-sidebar-border` | navy-500 | paper @14% | dividers |
 | `--ds-sidebar-focus` | gold-400 | soft-gold-300 | keyboard focus outline (9.2:1) |
 | `--ds-sidebar-badge-bg` / `-fg` | gold-400 / navy-900 | soft-gold-500 / soft-navy-950 | count badges (8.8:1) |
+| `--ds-sidebar-bg-top` | navy-900 | soft-navy-900 | top stop of `--ds-gradient-sidebar` (bottom = `-bg`); keep it darker than `-hover-bg` |
+| `--ds-sidebar-glow` | gold-400 @8% | soft-gold-500 @8% | top-right light of `--ds-gradient-sidebar` (group titles 4.7:1 under it) |
 
-Page band (the navy header strip of antd pages; `shared/theme.css` builds `--band` from these). Theme level; `band` in
-`tokens.ts`. Text on the band is white or a dark-section token (the band has `data-section="dark"`).
+Page band (the navy header strip of antd pages, the Home hero and the plan hero, through `--ds-gradient-hero`). Theme
+level; `band` in `tokens.ts`. Text on the band is white or a dark-section token (the band has `data-section="dark"`).
 
 | Token | navy-gold | app-soft | Use |
 |---|---|---|---|
 | `--ds-band-from` / `-via` / `-to` | navy-900 / navy-800 / navy-700 | soft-navy-900 / 800 / 700 | 125° linear gradient stops |
-| `--ds-band-glow` | steel-400 @30% | soft-navy-500 @38% | radial light at the top start |
-| `--ds-band-glow-accent` | gold-400 @18% | soft-gold-500 @18% | radial warm light at the bottom end |
+| `--ds-band-glow` | gold-400 @14% | soft-navy-500 @38% | radial light at the top start (top left) |
+| `--ds-band-glow-accent` | gold-400 @18% | soft-gold-500 @18% | radial warm light at the bottom end (bottom right) |
+
+## 4a. Gradients
+
+Theme level. Every gradient in the app CSS reads one of these, as a full `background` value, so the theme or one token
+re-colours all its rules. `tokens.ts`: `gradient` (camelCase), `hatch`, `shade`, built by `gradients()` / `hatch()` with
+the same recipe; `tokens.test.ts` resolves every `var()` and compares both ways, rejects a raw colour inside a gradient
+token, and checks AA for text on every stop (glows composited over the stop under them).
+
+| Token | Recipe | navy-gold | app-soft | Used by |
+|---|---|---|---|---|
+| `--ds-gradient-hero` | radial 60% 90% at 0 0 `--ds-band-glow` → transparent 60%; radial 50% 80% at 100% 100% `-glow-accent`; linear 125° from 0%, via 55%, to 100% | navy-900 → 800 → 700, gold-400 @14% / @18% | soft-navy-900 → 800 → 700, soft-navy-500 @38%, soft-gold-500 @18% | `.lcp-head` (`--band`), `.lcp-hero`, `.sp-hero` |
+| `--ds-gradient-sidebar` | radial 120% 45% at 100% 0 `--ds-sidebar-glow` → transparent 60%; linear 180° `-bg-top` → `-bg` | navy-900 → 950, gold-400 @8% | soft-navy-900 → 950, soft-gold-500 @8% | `.lcp-side`, `.lcp-drawer .ant-drawer-body`, `.verify-head` |
+| `--ds-gradient-auth` | radial 120% 80% at 85% 10% band glow → 55%; radial 90% 70% at 10% 100% accent → 60%; linear 160° band via 0%, from 55%, `--ds-shade` 100% | navy-800 → 900 → 950 | soft-navy-800 → 900 → 950 | `.auth-side` (sign-in panel) |
+| `--ds-gradient-avatar` | linear 135° | navy-700 → navy-900 | soft-navy-700 → soft-navy-950 | `.lcp-avatar` |
+| `--ds-gradient-progress` | linear 90° | navy-900 → navy-700 | soft-navy-800 → soft-navy-500 | `.lcp-prog-bar i` |
+| `--ds-gradient-callout` | linear 90° | sand-50 → ivory-50 | soft-gold-50 → paper | `.lcp-next` |
+| `--ds-gradient-surface-subtle` | linear 180° | cloud → paper | soft-neutral-25 → paper | `.sp-chart` |
+| `--ds-hatch-light` | repeating-linear 135°, 6px stripes | ash-100 / paper | soft-neutral-75 / paper | `.sp-road-cell.off` |
+| `--ds-hatch-muted` | repeating-linear 135°, 6px stripes | steel-400 / mist-300 | soft-neutral-500 / soft-neutral-300 | `.cy-bar.time i` |
+| `--ds-shade` | a colour | navy-950 | soft-navy-950 | dark stop of pillar gradients and of the sign-in panel |
+
+Pillar colours (`--pc`, `--pt`) are set per element by `tint()` in `shared/pillars.tsx`. A token on `[data-theme]` resolves
+its `var()` there and can't read them, so pillar gradients keep their recipe in the rule and take the other stop from a
+token: `.sp-pillar > header`, `.pill-band` `color-mix(in srgb, var(--pc) 72%, var(--ds-shade))`; `.sp-pillar.loose > header`
+60%; `.st-Completed .sp-road-initbar` 70%; `.sp-dhead` `var(--pt) 0 → var(--ds-surface) 150px`; hover `.sp-irow`
+`color-mix(var(--pt) 45%, var(--ds-surface))`. Status hatch `.sp-statebar .d-gap`: `--g-gap` stripes with
+`color-mix(in srgb, var(--g-gap) 30%, var(--ds-surface))`.
+
+Contrast (navy-gold, lowest stop): hero heading 9.1:1, kicker gold-400 4.6:1, sign-in heading 11.8:1, sidebar link 7.6:1,
+group title 4.7:1, avatar initials 12.6:1, callout link 5.0:1, pillar head white 4.8:1 (pillar 1 itself).
+A new theme copies the block of `app-soft.css`; hero, sidebar and auth read the band and sidebar tokens and need no
+change. Use: `background: var(--ds-gradient-hero)`, `style={{ background: "var(--ds-gradient-hero)" }}`, or
+`bg-[image:var(--ds-gradient-hero)]` (no Tailwind namespace).
 
 ## 5. Section tokens
 
@@ -253,8 +288,8 @@ Available in a Tailwind entry that imports `tailwind-theme.css` (see SKILL.md fo
 `outline-`, `ring-`, `fill-`, `stroke-`, `decoration-`, `caret-`, `accent-`, `placeholder-`, `from-` / `via-` / `to-`,
 `shadow-` (shadow colour). Roles: every section token above, plus the theme-level `ds-chrome`, `ds-chart-1` … `ds-chart-4`,
 `ds-chart-actual`, `ds-chart-target`, `ds-chart-area`, `ds-chart-current`, `ds-chart-bg`, `ds-chart-grid`, `ds-chart-axis`,
-`ds-chart-up`, `ds-chart-down`, `ds-focus`, `ds-selection-bg`, `ds-selection-fg`, `ds-grid-hero`, `ds-grid-dark`, and the
-eleven `ds-sidebar-*` tokens.
+`ds-chart-up`, `ds-chart-down`, `ds-focus`, `ds-selection-bg`, `ds-selection-fg`, `ds-grid-hero`, `ds-grid-dark`, the
+thirteen `ds-sidebar-*` tokens (with `-bg-top` and `-glow`), the five `ds-band-*` tokens and `ds-shade`.
 
 **Opacity modifiers** work: `bg-ds-accent/10` → `color-mix(in oklab, var(--ds-accent) 10%, transparent)`;
 `border-ds-line-soft/15`, `bg-ds-surface/90`, `bg-ds-chrome/95`. Don't add a modifier to a token that already carries alpha
@@ -271,7 +306,8 @@ utilities (CSS variables only).
 (`rounded-s-ds-lg`, `rounded-t-ds-md`, `rounded-ss-ds` …), `font-ds`, `font-ds-heading`, `shadow-ds-sm`, `shadow-ds-md`.
 Radius values: §2a.
 
-**Composite tokens** (no utility; use in `style`): `var(--ds-texture-hero)`, `var(--ds-texture-dark)`, `var(--ds-hero-vignette)`.
+**Composite tokens** (no utility; use in `style`): `var(--ds-texture-hero)`, `var(--ds-texture-dark)`, `var(--ds-hero-vignette)`,
+and the gradients `var(--ds-gradient-*)` / `var(--ds-hatch-*)` (§4a; in Tailwind `bg-[image:var(--ds-gradient-hero)]`).
 
 **Tailwind's own scale still exists** in the entry (`tailwindcss/theme.css`): `slate-*`, `white`, `rounded-lg`, `shadow-sm`,
 `font-sans` … They do not follow the theme. Don't use them for themed colour, shape or elevation. Spacing, sizing,
@@ -339,10 +375,12 @@ Notes:
   `CornerStyle`, `isCornerStyle()`.
 - `themes`: per theme `fontFamily`, `chrome`, `gridHero`, `gridDark`, `chart` (`series`, `actual`,
   `target`, `area`, `current`, `bg`, `grid`, `axis`, `up`, `down`), `shadow`, `focus`, `selection`,
-  `sidebar` (the `--ds-sidebar-*` tokens), `sections.light` / `sections.dark` (every section token, camelCase, buttons as
-  `btnPrimary` / `btnGhost`, plus `focusRing`, `link`, `linkHover` and `destructive` from `--destructive`).
+  `sidebar` (the `--ds-sidebar-*` tokens), `band` (`--ds-band-*`), `shade` (`--ds-shade`), `gradient`
+  (`--ds-gradient-*`, the resolved CSS value) and `hatch` (`--ds-hatch-*`), `sections.light` / `sections.dark` (every
+  section token, camelCase, buttons as `btnPrimary` / `btnGhost`, plus `focusRing`, `link`, `linkHover` and `destructive`
+  from `--destructive`).
 - `themeNames`, `isThemeName()`, and the types `ThemeName`, `SectionTone`, `ThemeTokens`, `SectionTokens`,
-  `SidebarTokens`, `ButtonTokens`.
+  `SidebarTokens`, `BandTokens`, `GradientTokens`, `HatchTokens`, `ButtonTokens`.
 - `color-mix(…, X n%, transparent)` is written as `rgba(X, n/100)`. `tokens.test.ts` parses the CSS and fails on any
   difference in either direction (a CSS token without a field, a field without a CSS token, a different value); the
   `satisfies Record<ThemeName, ThemeTokens>` check makes TypeScript report a missing field.
@@ -399,7 +437,7 @@ variables to light-section tokens (old hex as `var()` fallback): `--navy` → `-
 `--gold-50` → `--ds-bg-warm`, `--gold-ink` → `--ds-eyebrow-aa`, `--row-alt` → `--ds-bg-cool`, `--hair` → `--ds-border`.
 Inside `.lcp-side` and `.lcp-drawer .ant-drawer-body`: `--teal` → `--ds-sidebar-indicator`, `--teal-100` →
 `--ds-sidebar-focus`, `--gold` → `--ds-sidebar-badge-bg`. Status (`--warn*`, `--ok*`, `--crit*`), fonts, shadows and
-spacing are fixed. `shared/theme.css`: `--band` comes from `--ds-band-*`; on the band the kicker and `code` use
+spacing are fixed. `shared/theme.css`: `--band` is `var(--ds-gradient-hero)` (§4a); on the band the kicker and `code` use
 `--ds-eyebrow`, links `--ds-link`, and the primary glow `--ds-btn-primary-bg` @45%. The open-cycle card glow is `--teal` @10%.
 
 Contrast check for a new theme (WCAG 2; take the hex values from `palette`; composite alpha colours over their background

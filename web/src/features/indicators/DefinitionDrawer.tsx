@@ -72,7 +72,7 @@ export function DefinitionDrawer({ detail, onClose }: { detail: IndicatorDetail;
           </Form.Item>
         )}
 
-        <h3 className="t1-form-sec">{L("١. ما المؤشر؟", "1. What is it?")}</h3>
+        <h3 className="t1-form-sec">{L("1. ما المؤشر؟", "1. What is it?")}</h3>
         <Form.Item name="nameAr" label={L("اسم المؤشر", "Name")} rules={[{ required: true, message: L("اكتب اسم المؤشر", "Enter the name") }]}>
           <Input maxLength={300} />
         </Form.Item>
@@ -89,7 +89,7 @@ export function DefinitionDrawer({ detail, onClose }: { detail: IndicatorDetail;
           <Input.TextArea rows={2} maxLength={1000} />
         </Form.Item>
 
-        <h3 className="t1-form-sec">{L("٢. كيف يقاس؟", "2. How is it measured?")}</h3>
+        <h3 className="t1-form-sec">{L("2. كيف يقاس؟", "2. How is it measured?")}</h3>
         <div className="lcp-grid-2">
           <Form.Item name="unit" label={L("وحدة القياس", "Unit")} rules={[{ required: true }]}>
             <Select showSearch options={UNITS.map((u) => ({ value: u, label: u }))} />
@@ -130,7 +130,7 @@ export function DefinitionDrawer({ detail, onClose }: { detail: IndicatorDetail;
         )}
         <Form.Item name="aggregationNote" label={L("ملاحظة على التجميع", "Aggregation note")}><Input maxLength={500} /></Form.Item>
 
-        <h3 className="t1-form-sec">{L("٣. المصدر والمسؤولية", "3. Source and ownership")}</h3>
+        <h3 className="t1-form-sec">{L("3. المصدر والمسؤولية", "3. Source and ownership")}</h3>
         <Form.Item name="dataSource" label={L("مصدر البيانات", "Data source")} rules={[{ required: true, message: L("المصدر مطلوب للاعتماد", "Required for approval") }]}
           extra={L("النظام أو التقرير أو السجل الذي تؤخذ منه القيمة.", "The system, report or register the value comes from.")}>
           <Input.TextArea rows={2} maxLength={500} />
