@@ -1,6 +1,6 @@
 /**
  * The runtime appearance store (theme.ts): localStorage "t1.appearance" → <html data-theme / data-corners> at import,
- * validation against the theme registry and the corner list, page pins (the landing), and blocked storage.
+ * validation against the theme registry and the corner list, optional page pins, and blocked storage.
  * Node environment: window, document and localStorage are small stand-ins, and theme.ts is re-imported per case.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -90,11 +90,10 @@ describe("appearance store", () => {
     expect(html.dataset).toEqual({ theme: "navy-gold", corners: CORNERS });
   });
 
-  it("a pin (the landing) shows its own look without touching the saved choice, and releasing restores it", async () => {
+  it("an optional pin shows its own look without touching the saved choice, and releasing restores it", async () => {
     const { api, data } = storage({ "t1.appearance": '{"theme":"app-soft","corners":"smooth"}' });
-    const { html, pinAppearance, setAppearance, getAppearance, BRAND_APPEARANCE } = await boot(api);
-    expect(BRAND_APPEARANCE).toEqual({ theme: "navy-gold", corners: "square" });
-    const release = pinAppearance(BRAND_APPEARANCE);
+    const { html, pinAppearance, setAppearance, getAppearance } = await boot(api);
+    const release = pinAppearance({ theme: "navy-gold", corners: "square" });
     expect(html.dataset).toEqual({ theme: "navy-gold", corners: "square" });
     // A change while pinned is saved but not shown until the pin goes (another tab, say).
     setAppearance({ corners: "rounded" });

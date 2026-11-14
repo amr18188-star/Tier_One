@@ -4,7 +4,7 @@
  *
  *   <AppearanceProvider base={antdBase}>…</AppearanceProvider>     App.tsx: wraps the app once
  *   const { theme, corners, setTheme, setCorners, reset } = useAppearance();   the Appearance panel
- *   usePinnedAppearance(BRAND_APPEARANCE)                           a page with its own fixed look (the landing)
+ *   usePinnedAppearance(look)                                      optional page-specific fixed look
  */
 import { createContext, useContext, useLayoutEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { ConfigProvider, type ThemeConfig } from "antd";
@@ -16,7 +16,7 @@ import {
 import type { CornerStyle, ThemeName } from "./tokens";
 
 export interface AppearanceValue extends Appearance {
-  /** What <html> shows now: the choice above, or a page pin (the landing). antd is built from this. */
+  /** What <html> shows now: the choice above, or an optional page pin. antd is built from this. */
   shown: Appearance;
   /** The choice equals ACTIVE_THEME + CORNERS. */
   isDefault: boolean;

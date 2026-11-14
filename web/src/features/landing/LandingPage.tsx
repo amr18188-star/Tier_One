@@ -1,4 +1,3 @@
-import type { ThemeName } from "../../styles/design-system/tokens";
 import { AnalyticsSection } from "./AnalyticsSection";
 import { CtaSection } from "./CtaSection";
 import { DataManagementSection } from "./DataManagementSection";
@@ -21,19 +20,14 @@ import "@fontsource/cairo/arabic-700.css";
 import "@fontsource/cairo/latin-700.css";
 import "./landing.css";
 
-interface LandingPageProps {
-  /** Design-system theme of the whole page (styles/design-system). Switching it re-colours every section. */
-  theme?: ThemeName;
-}
-
 /**
  * Public landing page for signed-out visitors at "/", ported from the old React app (Layout/Home.jsx).
  * The outer element scopes the page: Tailwind utilities, base reset and body styles in landing.css apply only
  * inside [data-landing], so nothing here leaks into the login screen or the antd pages.
  */
-export default function LandingPage({ theme = "navy-gold" }: LandingPageProps) {
+export default function LandingPage() {
   return (
-    <div data-landing="" data-ds-page="" data-theme={theme} dir="rtl" lang="ar">
+    <div data-landing="" data-ds-page="" dir="rtl" lang="ar">
       <div dir="rtl" className="min-h-screen w-full bg-ds-bg text-ds-fg">
         {/* No header bar (removed on request): the logo sits in the hero, the sign-in link is the hero CTA. */}
         <main>

@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Icon } from "./Icon";
 import { sectionLinks } from "./sections";
-// The official logo, white + gold for dark backgrounds; byte-identical to the old page's /images/Capital_University_Logo (1).png.
+// The official light logo for dark backgrounds.
 import logo from "../../assets/brand/capital-university-logo-dark.png";
 
 /** Small gold-ruled label above a footer column. */
@@ -22,8 +22,9 @@ export function LandingFooter() {
   const year = new Date().getFullYear();
 
   return (
-    <footer data-section="dark" className="relative z-10 border-t border-ds-line-soft/10 bg-ds-chrome px-5 text-ds-fg sm:px-10">
-      <div className="mx-auto max-w-7xl">
+    <footer data-section="dark" className="landing-footer relative z-10 overflow-hidden border-t border-ds-line-soft/10 px-5 text-ds-fg sm:px-10">
+      <div aria-hidden="true" className="landing-footer-orbit pointer-events-none absolute" />
+      <div className="relative mx-auto max-w-7xl">
         <div className="grid gap-12 py-14 md:grid-cols-12 md:gap-10 lg:py-16">
           {/* Brand */}
           <div className="md:col-span-12 lg:col-span-5">

@@ -182,7 +182,7 @@ function PopoverDialog({ open, onClose, openKey }: { open: boolean; onClose: (re
  * يفتح اللوحة: نافذة تحت الزر على الحاسوب والجهاز اللوحي، ولوحة سفلية (Drawer) على الجوال (أضيق من md):
  * حوار بعنوان، والتركيز داخله، وEscape يغلقه ويعود التركيز إلى الزر. بلا تعتيم، فيرى المستخدم التغيير خلفها.
  */
-function AppearanceButtonInner() {
+function AppearanceButtonInner({ tooltip }: { tooltip: boolean }) {
   const lang = useLang();
   const screens = Grid.useBreakpoint();
   const sheet = screens.md === false;
@@ -208,9 +208,8 @@ function AppearanceButtonInner() {
     if (refocus) button.current?.focus({ preventScroll: true });
   }
 
-  const trigger = (
-    <Tooltip title={label} trigger={["hover", "focus"]} mouseEnterDelay={0.15} open={tip && !open} onOpenChange={setTip}>
-      <Button
+  const triggerButton = (
+    <Button
         ref={button}
         type="text"
         className="lcp-lang lcp-look"
@@ -225,9 +224,13 @@ function AppearanceButtonInner() {
             close(true);
           }
         }}
-      />
-    </Tooltip>
+    />
   );
+  const trigger = tooltip ? (
+    <Tooltip title={label} trigger={["hover", "focus"]} mouseEnterDelay={0.15} open={tip && !open} onOpenChange={setTip}>
+      {triggerButton}
+    </Tooltip>
+  ) : triggerButton;
 
   if (sheet) {
     return (
@@ -285,10 +288,10 @@ class PanelBoundary extends Component<{ children: ReactNode }, { failed: boolean
   }
 }
 
-export function AppearanceButton() {
+export function AppearanceButton({ tooltip = true }: { tooltip?: boolean }) {
   return (
     <PanelBoundary>
-      <AppearanceButtonInner />
+      <AppearanceButtonInner tooltip={tooltip} />
     </PanelBoundary>
   );
 }

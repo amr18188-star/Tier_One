@@ -7,8 +7,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { onLangChange, useLang, type Lang } from "../shared/i18n";
 import { ErrorScreen, NoAccess } from "../shared/QueryState";
 import { SessionProvider, usePermissions, useSession } from "../shared/session";
-import { AppearanceProvider, PinnedAppearance } from "../styles/design-system/appearance";
-import { BRAND_APPEARANCE } from "../styles/design-system/theme";
+import { AppearanceProvider } from "../styles/design-system/appearance";
 
 /**
  * بعد نشر إصدار جديد تتغير أسماء ملفات الصفحات، فتفشل الصفحة المفتوحة قبله في تحميل صفحة لم تفتحها بعد.
@@ -111,13 +110,11 @@ function Guard({ need, children }: { need: string[]; children: ReactNode }) {
 /** صفحة التعريف العامة لزائر لم يسجل دخوله. */
 const LandingPage = load(() => import("../features/landing/LandingPage"));
 
-/** صفحة التعريف بهويتها الثابتة (كحلي وذهبي، زوايا حادة) أيًا كان اختيار المستخدم؛ يعود اختياره عند مغادرتها. */
+/** صفحة التعريف العامة تتبع المظهر المحفوظ مثل بقية التطبيق. */
 const landingRoute = (
-  <PinnedAppearance look={BRAND_APPEARANCE}>
-    <Suspense fallback={pageFallback}>
-      <LandingPage theme={BRAND_APPEARANCE.theme} />
-    </Suspense>
-  </PinnedAppearance>
+  <Suspense fallback={pageFallback}>
+    <LandingPage />
+  </Suspense>
 );
 
 function Gate() {

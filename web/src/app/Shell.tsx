@@ -261,7 +261,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <span className="lcp-top-space" />
           <Button type="text" className="lcp-lang" onClick={toggleLang}>{lang === "ar" ? "EN" : "ع"}</Button>
           {/* المظهر (لوحة الألوان والزوايا) بجانب اللغة والحساب. */}
-          <AppearanceButton />
+          <AppearanceButton tooltip={false} />
           <Dropdown trigger={["click"]} placement={lang === "ar" ? "bottomLeft" : "bottomRight"} menu={{
             items: [
               {

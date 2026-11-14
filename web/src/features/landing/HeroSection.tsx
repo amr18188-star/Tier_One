@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Icon } from "./Icon";
-// White + gold artwork for the navy hero (the footer uses the same file).
+import { AppearanceButton } from "../../app/AppearanceMenu";
+// Light artwork for the dark hero (the footer uses the same file).
 import logo from "../../assets/brand/capital-university-logo-dark.png";
 
 /** Two decorative signal lines (rising and falling) behind the hero text. */
@@ -86,7 +87,7 @@ export function HeroSection() {
   return (
     <section
       data-section="dark"
-      className="relative isolate flex h-screen items-center overflow-hidden bg-ds-bg px-5 pb-24 pt-24 text-ds-fg supports-[height:100svh]:h-svh sm:px-10 sm:pt-32 lg:pt-36 short:pb-12 short:pt-24 tiny:pb-6 tiny:pt-16"
+      className="landing-hero relative isolate flex h-screen items-center overflow-hidden px-5 pb-24 pt-24 text-ds-fg supports-[height:100svh]:h-svh sm:px-10 sm:pt-32 lg:pt-40 short:pb-12 short:pt-24 tiny:pb-6 tiny:pt-16"
     >
       {/* Grid */}
       <div
@@ -96,18 +97,27 @@ export function HeroSection() {
 
       <HeroChart />
 
+      <div aria-hidden="true" className="landing-hero-orbit pointer-events-none absolute" />
+
       {/* Overlay */}
       <div className="pointer-events-none absolute inset-0" style={{ background: "var(--ds-hero-vignette)" }} />
 
-      {/* Logo in the top start corner (right in RTL), on the content edge. It ends above the section's top padding
-          in every tier (80 < 96, 112 < 128, 128 < 144; short screens 80 < 96; tiny 56 < 64), so it never reaches the title. */}
+      {/* Brand and public appearance access share the hero's top edge. */}
       <div className="pointer-events-none absolute inset-x-0 top-6 z-10 px-5 sm:top-8 sm:px-10 short:top-6 tiny:top-4">
-        <div className="mx-auto max-w-7xl">
-          <img src={logo} alt="جامعة العاصمة" className="h-14 w-auto object-contain sm:h-20 lg:h-24 short:h-14 tiny:h-10" />
+        <div className="landing-hero-top mx-auto flex max-w-7xl items-start justify-between gap-4">
+          <img src={logo} alt="جامعة العاصمة" className="h-24 w-auto max-w-[60%] object-contain sm:h-32 lg:h-40 short:h-20 tiny:h-14" />
+          <div className="landing-hero-appearance pointer-events-auto">
+            <AppearanceButton tooltip={false} />
+          </div>
         </div>
       </div>
 
       <div className="relative z-10 mx-auto w-full max-w-7xl text-center">
+        <div aria-hidden="true" className="landing-hero-marker mx-auto mb-5 flex items-center justify-center gap-3 short:mb-3 tiny:mb-2">
+          <span className="h-px w-9 bg-ds-accent" />
+          <span className="h-2 w-2 rounded-ds-round bg-ds-accent" />
+          <span className="h-px w-9 bg-ds-accent" />
+        </div>
         {/* Title */}
         <h1 className="mx-auto max-w-5xl text-4xl font-bold leading-[1.5] tracking-tight sm:text-5xl md:text-6xl lg:text-7xl short:text-3xl short:sm:text-4xl short:md:text-5xl short:lg:text-6xl tiny:text-2xl tiny:md:text-3xl tiny:lg:text-4xl">
           <span className="block text-ds-heading">

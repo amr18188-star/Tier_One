@@ -1,0 +1,31 @@
+/* قاموس المؤشرات: ست ركائز في السطر حين تسمح مساحة المحتوى، ثم صفوف مكتملة على الأجهزة الأضيق. */
+.ix-pillars-layout { container-type: inline-size; min-width: 0; }
+.ix-pillars { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.ix-pillars button { min-width: 0; }
+.ix-name b, .ix-name small { overflow-wrap: anywhere; }
+
+@container (max-width: 919px) {
+  .ix-pillars { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@container (max-width: 619px) {
+  .ix-pillars { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container (max-width: 409px) {
+  .ix-pillars { grid-template-columns: minmax(0, 1fr); }
+}
+
+.ix-standards { display: grid; gap: var(--ds-space-sm); min-width: 0; margin-block-start: var(--ds-space-md); }
+.ix-standard { border: 1px solid var(--ds-border); border-radius: var(--ds-radius-lg); background: var(--ds-surface); overflow: hidden; }
+.ix-standard > .ds-acc-head { min-height: 52px; background: var(--pt); }
+.ix-standard > .ds-acc-head:hover { background: color-mix(in srgb, var(--pc) 14%, var(--ds-surface)); }
+.ix-standard > .ds-acc-head .ds-acc-title > b { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.ix-standard > .ds-acc-head .ds-acc-title > small { color: var(--ds-label); white-space: nowrap; }
+.ix-standard > .ds-acc-head .ds-acc-chev { color: var(--pc); }
+.ix-standard > .ds-acc-body > .ds-acc-inner { min-width: 0; }
+.ix-empty { margin: 0; padding: var(--ds-space-lg); text-align: center; color: var(--ds-body); }
+
+@media (max-width: 639px) {
+  .ix-standard > .ds-acc-head .ds-acc-title { flex-wrap: wrap; }
+  .ix-standard > .ds-acc-head .ds-acc-title > b { flex-basis: calc(100% - 64px); }
+  .ix-standard > .ds-acc-head .ds-acc-title > small { margin-inline-start: auto; }
+}

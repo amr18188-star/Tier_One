@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge, Button, Input, Segmented, Select, Switch, Tag, Tooltip } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
@@ -10,7 +10,9 @@ import { definitionStatus, num, withUnit } from "../../shared/labels";
 import { StdCode, stdLabel, tint, usePillarMap } from "../../shared/pillars";
 import { usePermissions } from "../../shared/session";
 import { DataTable, FilterMeta, oneOf, PageHeader, Panel } from "../../shared/ui";
+import { AccordionPanel } from "../../shared/AccordionPanel";
 import { NewIndicatorModal } from "./NewIndicatorModal";
+import "./indicators.css";
 
 const STATUSES: DefinitionStatus[] = ["Draft", "UnderReview", "Approved"];
 
@@ -24,6 +26,8 @@ export default function IndicatorsPage() {
   const withConflicts = params.get("conflicts") === "1";
   const canAdd = usePermissions().can("kpi.dictionary", "A");
   const [adding, setAdding] = useState(false);
+  const [openStandard, setOpenStandard] = useState<string | null>(standard ?? null);
+  useEffect(() => { if (standard) setOpenStandard(standard); }, [standard]);
 
   const set = (key: string, value: string | undefined) => {
     const next = new URLSearchParams(params);
@@ -44,6 +48,10 @@ export default function IndicatorsPage() {
   // الركيزة تصفية في الواجهة: الخادم يصفي بالمعيار، والركيزة مجموعة معاييرها.
   const list = (rows.data ?? []).filter((r) => !pillar || pillarMap.map.get(r.standardCode)?.id === pillar);
   const stdOptions = (standards.data ?? []).filter((s) => !pillar || pillarMap.map.get(s.code)?.id === pillar);
+  const groups = stdOptions.filter((s) => !standard || s.code === standard).map((s) => ({
+    standard: s,
+    indicators: list.filter((r) => r.standardCode === s.code),
+  })).filter((g) => (!status && !q && !withConflicts) || g.indicators.length > 0);
 
   return (
     <>
@@ -60,22 +68,24 @@ export default function IndicatorsPage() {
       {adding && standards.data && <NewIndicatorModal standards={standards.data} standard={standard} onClose={() => setAdding(false)} />}
 
       {pillarMap.pillars.length > 0 && standards.data && (
-        <nav className="ix-pillars" aria-label={L("التصفية بالركيزة", "Filter by pillar")}>
-          {pillarMap.pillars.map((p) => {
-            const stds = standards.data!.filter((s) => pillarMap.map.get(s.code)?.id === p.id);
-            const n = stds.reduce((k, s) => k + s.indicatorCount, 0);
-            const ok = stds.reduce((k, s) => k + s.approvedCount, 0);
-            const on = pillar === p.id;
-            return (
-              <button key={p.id} type="button" style={tint(p.index)} className={on ? "on" : ""} aria-pressed={on}
-                onClick={() => { const next = new URLSearchParams(params); if (on) next.delete("pillar"); else next.set("pillar", p.id); next.delete("standard"); setParams(next, { replace: true }); }}>
-                <span className="ix-num ltr">{String(p.index + 1).padStart(2, "0")}</span>
-                <span className="ix-name"><b>{p.name}</b><small>{L(`${stds.length} معيار · ${n} مؤشر · ${ok} معتمد`, `${stds.length} standards · ${n} indicators`)}</small></span>
-                <span className="ix-bar"><i style={{ width: `${n ? (100 * ok) / n : 0}%` }} /></span>
-              </button>
-            );
-          })}
-        </nav>
+        <div className="ix-pillars-layout">
+          <nav className="ix-pillars" aria-label={L("التصفية بالركيزة", "Filter by pillar")}>
+            {pillarMap.pillars.map((p) => {
+              const stds = standards.data!.filter((s) => pillarMap.map.get(s.code)?.id === p.id);
+              const n = stds.reduce((k, s) => k + s.indicatorCount, 0);
+              const ok = stds.reduce((k, s) => k + s.approvedCount, 0);
+              const on = pillar === p.id;
+              return (
+                <button key={p.id} type="button" style={tint(p.index)} className={on ? "on" : ""} aria-pressed={on}
+                  onClick={() => { const next = new URLSearchParams(params); if (on) next.delete("pillar"); else next.set("pillar", p.id); next.delete("standard"); setParams(next, { replace: true }); }}>
+                  <span className="ix-num ltr">{String(p.index + 1).padStart(2, "0")}</span>
+                  <span className="ix-name"><b>{p.name}</b><small>{L(`${stds.length} معيار · ${n} مؤشر · ${ok} معتمد`, `${stds.length} standards · ${n} indicators`)}</small></span>
+                  <span className="ix-bar"><i style={{ width: `${n ? (100 * ok) / n : 0}%` }} /></span>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
       )}
 
       <Panel>
@@ -93,11 +103,16 @@ export default function IndicatorsPage() {
         </div>
         {selected?.classificationNote && <p className="t1-summary">{L("ملاحظة تصنيف:", "Classification note:")} {selected.classificationNote}</p>}
 
+        <section className="ix-standards" aria-label={L("المعايير ومؤشراتها", "Standards and their indicators")}>
+        {groups.map(({ standard: s, indicators }) => <AccordionPanel key={s.code} id={`ix-standard-${s.code}`}
+          className="ix-standard" style={tint(pillarMap.map.get(s.code)?.index ?? -1)}
+          open={openStandard === s.code} onToggle={() => setOpenStandard((current) => current === s.code ? null : s.code)}
+          header={<><code className="pill-code ltr">{stdLabel(s.code)}</code><b>{s.nameAr}</b><small>{L(`${indicators.length} مؤشر`, `${indicators.length} indicators`)}</small></>}>
         <DataTable<IndicatorRow>
           rowKey={(r) => r.code}
-          data={list}
+          data={indicators}
           loading={rows.isLoading}
-          resetKey={`${standard}|${status}|${q}|${withConflicts}|${pillar}`}
+          resetKey={`${s.code}|${standard}|${status}|${q}|${withConflicts}|${pillar}`}
           onRowClick={(r) => navigate(`/indicators/${r.code}`)}
           pageSizes={[20, 50, 120]}
           columns={[
@@ -135,6 +150,9 @@ export default function IndicatorsPage() {
             </>
           )}
         />
+        </AccordionPanel>)}
+        {groups.length === 0 && !rows.isLoading && <p className="ix-empty">{L("لا مؤشرات بهذه المرشحات.", "No indicators match these filters.")}</p>}
+        </section>
       </Panel>
     </>
   );

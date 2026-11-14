@@ -3,7 +3,7 @@
  * - <html data-theme>: colours. <html data-corners>: square, rounded or smooth corners, independent of the theme.
  * - Both come from the viewer's appearance: what they picked in the Appearance panel (gear in the top bar), saved in this
  *   browser under localStorage APPEARANCE_KEY, or the defaults ACTIVE_THEME (below) and CORNERS (config.ts).
- * - A page can pin its own look while it is mounted (the public landing keeps BRAND_APPEARANCE): pinAppearance().
+ * - A page may pin its own look while mounted: pinAppearance(). The public landing follows the viewer's choice.
  *   The saved choice is untouched and comes back when the page unmounts.
  * Every --ds-* token, the legacy aliases in app.css / shared/ui.css, the scrollbar and antd portals (modals, drawers,
  * dropdowns, messages under <body>) follow the attributes. useDsTheme() / useDsCorners() read the look on <html> and
@@ -28,9 +28,6 @@ export interface Appearance {
 
 /** The documented defaults: ACTIVE_THEME + CORNERS. */
 export const DEFAULT_APPEARANCE: Readonly<Appearance> = Object.freeze({ theme: ACTIVE_THEME, corners: CORNERS });
-
-/** The public landing page's fixed brand look, whatever the viewer picked. */
-export const BRAND_APPEARANCE: Readonly<Appearance> = Object.freeze({ theme: "navy-gold", corners: "square" });
 
 /** A stored value → a valid appearance. Bad JSON, an unknown theme or corner style: that field takes its default. */
 export function parseAppearance(raw: string | null | undefined): Appearance {
@@ -123,7 +120,7 @@ export function resetAppearance() {
 }
 
 /**
- * Show `look` on <html> until the returned function is called (a page's own look, e.g. the landing's brand look).
+ * Show `look` on <html> until the returned function is called (for a page that needs its own look).
  * The latest pin wins; releasing it restores the previous pin or the viewer's choice. Nothing is saved.
  */
 export function pinAppearance(look: Appearance): () => void {

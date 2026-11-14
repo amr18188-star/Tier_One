@@ -5,7 +5,7 @@ One theme drives the whole site (app, login screens, antd): `theme.ts` puts it o
 `index.css` globally; `scrollbar.css` is imported once in `src/main.tsx`; feature Tailwind entries (`landing.css`) import
 the tokens again for their utilities. Corners are a second, independent axis on `<html data-corners>` (see "Corners").
 Each viewer picks both at run time in the Appearance panel (gear in the top bar), saved in this browser;
-the defaults are `ACTIVE_THEME` (theme.ts) and `CORNERS` (config.ts). The public landing keeps navy-gold + square
+the defaults are `ACTIVE_THEME` (theme.ts) and `CORNERS` (config.ts). The public landing follows the same choice
 (see "Runtime appearance").
 
 | File | What it holds |
@@ -21,12 +21,12 @@ the defaults are `ACTIVE_THEME` (theme.ts) and `CORNERS` (config.ts). The public
 | `index.css` | Plain-CSS entry: primitives, every theme, then `corners.css`, and `<html>` `color-scheme` from `--ds-color-scheme`. Imported globally by `theme.ts`. |
 | `tailwind-theme.css` | Tailwind v4 `@theme inline reference` mapping, for a Tailwind entry. |
 | `scrollbar.css` | Site-wide scrollbar in the colours of the surface it sits on: tokens per context (light, dark section, sidebar, modal mask), Firefox fallback. Imported once in `main.tsx`. |
-| `theme.ts` | The appearance store: the viewer's `{ theme, corners }` (localStorage `t1.appearance`, defaults `ACTIVE_THEME` + `CORNERS`) on `<html data-theme / data-corners>` before the first render; `setAppearance()`, `resetAppearance()`, `pinAppearance()`, `BRAND_APPEARANCE`; `useDsTheme()` / `useDsCorners()` read what `<html>` shows. |
-| `appearance.tsx` | React side: `AppearanceProvider` (wraps the app, feeds antd), `useAppearance()`, `usePinnedAppearance()` / `<PinnedAppearance>`. |
+| `theme.ts` | The appearance store: the viewer's `{ theme, corners }` (localStorage `t1.appearance`, defaults `ACTIVE_THEME` + `CORNERS`) on `<html data-theme / data-corners>` before the first render; `setAppearance()`, `resetAppearance()`, optional `pinAppearance()`; `useDsTheme()` / `useDsCorners()` read what `<html>` shows. |
+| `appearance.tsx` | React side: `AppearanceProvider` (wraps the app, feeds antd), `useAppearance()`, optional `usePinnedAppearance()` / `<PinnedAppearance>`. |
 | `antd-theme.ts` | `antdTheme(name, base, { corners })`: theme tokens + corner scale → antd `ThemeConfig` (colours and radius). Fed to `ConfigProvider` by `AppearanceProvider`. |
 | `tokens.ts` | The same values as typed constants (antd needs real colours and px, not `var()`): `palette`, `themes`, `corners`; the panel registry `themeLabels`, `cornerLabels`, `pillButtons`. |
 | `tokens.test.ts` | Parses the CSS and fails if `tokens.ts` differs; checks the AA pairs antd and the app use, the corner scales, and the shadcn mapping. |
-| `appearance.test.ts` | The store: storage → `<html>` at load, validation, set / reset, landing pin, blocked storage. |
+| `appearance.test.ts` | The store: storage → `<html>` at load, validation, set / reset, optional pin, blocked storage. |
 | `../../app/AppearanceMenu.tsx` | The Appearance button and panel (top bar of `app/Shell.tsx`), styled by `../../app/appearance.css` with tokens only. |
 | `../shadcn.css` | shadcn's Tailwind entry and the one shadcn variable → `--ds-*` mapping (see "shadcn"). Not imported yet. |
 
@@ -62,16 +62,15 @@ the defaults are `ACTIVE_THEME` (theme.ts) and `CORNERS` (config.ts). The public
 
    Page root, as in `LandingPage.tsx`:
    ```tsx
-   <div data-landing="" data-ds-page="" data-theme="navy-gold" dir="rtl" lang="ar">
+   <div data-landing="" data-ds-page="" dir="rtl" lang="ar">
      <div dir="rtl" className="min-h-screen w-full bg-ds-bg text-ds-fg">{/* utilities go on this inner element */}</div>
    </div>
    ```
-   `data-landing` scopes the CSS, `data-ds-page` + `data-theme` mark the themed page root, `dir`/`lang` set the
+   `data-landing` scopes the CSS, the theme inherits from `<html>`, and `dir`/`lang` set the
    direction (the landing is always RTL Arabic; a bilingual page would take them from `useLang()`).
    Without Tailwind, import `index.css` alone and use `var(--ds-…)`.
-2. The site theme is already on `<html>` (`theme.ts`). A page root may repeat it, but never with a different value. A
-   page with its own fixed look pins it on `<html>` while mounted (`usePinnedAppearance(look)`, as `App.tsx` does for the
-   landing with `BRAND_APPEARANCE`), so every ancestor carries the same theme. Switching the attribute re-themes the subtree.
+2. The site theme is already on `<html>` (`theme.ts`). The landing inherits it directly, so changing Appearance re-themes
+   the hero, footer and all sections immediately. Only pages with an explicit fixed look should use `usePinnedAppearance(look)`.
 3. Sections: the default scope is light. Put `data-section="dark"` on dark blocks (header, footer, dark sections, a dark card in a light section). `data-section="light"` flips back inside a dark block. The same class then gives the right colour in both: `text-ds-heading` is navy on light and white on dark.
 4. Utilities:
    - Semantic (follow theme and section): `bg-ds-bg`, `bg-ds-bg-cool`, `bg-ds-bg-warm`, `bg-ds-surface`, `hover:bg-ds-surface-hover`, `border-ds-border`, `border-ds-accent-border`, `text-ds-heading`, `text-ds-highlight`, `text-ds-body`, `text-ds-eyebrow`, `text-ds-icon`, `bg-ds-tile`, `bg-ds-btn-primary-bg` / `-fg` / `-border` / `-hover-*`, `bg-ds-btn-ghost-*`, `stroke-ds-chart-*` …
@@ -162,18 +161,14 @@ changes at once, with no reload.
   access is in try/catch: with storage blocked the defaults load and a change lasts for the tab. Another tab's change
   follows through the `storage` event. API: `getAppearance()`, `setAppearance({ theme?, corners? })` (saves and applies),
   `resetAppearance()` (removes the key), `subscribeAppearance()`, `pinAppearance(look)` → release function,
-  `parseAppearance(raw)`, `DEFAULT_APPEARANCE` (= `ACTIVE_THEME` + `CORNERS`), `BRAND_APPEARANCE` (navy-gold + square).
+  `parseAppearance(raw)`, `DEFAULT_APPEARANCE` (= `ACTIVE_THEME` + `CORNERS`).
   `setDsTheme()` / `setDsCorners()` are `setAppearance()` shortcuts.
 - **React** (`appearance.tsx`). `App.tsx` wraps everything in `<AppearanceProvider base={antdBase}>`. It renders the antd
   `ConfigProvider` with `antdTheme(theme shown on <html>, base, { corners })`; nested providers (`DarkBlock`) inherit it.
   `useAppearance()` → `{ theme, corners, shown, isDefault, setTheme, setCorners, reset }` (`theme` / `corners` = the saved
   choice; `shown` = what `<html>` shows, which differs only while a page pins its look).
-- **The landing stays the brand page.** `App.tsx` renders the public landing inside `<PinnedAppearance look={BRAND_APPEARANCE}>`:
-  while it is mounted `<html>` shows navy-gold + square (set in a layout effect, before paint), and the viewer's choice
-  comes back when they leave (login, MFA and change-password screens and the signed-in app follow the choice). One theme
-  on every ancestor, so no `[data-theme="x"] [data-section="dark"]` rule of another theme reaches a landing section.
-  Proof: landing full-page captures at 1440 and 375 are 0 px different from the pre-change capture with the key unset,
-  app-soft + rounded, app-soft + smooth and navy-gold + smooth.
+- **The public landing follows the viewer.** It inherits `<html data-theme / data-corners>` without pinning a brand look.
+  Its hero exposes the same Appearance control to signed-out visitors. Navy-gold + square remains the default.
 - **The panel** (`app/AppearanceMenu.tsx`, `app/appearance.css`). A gear button in the top bar (`app/Shell.tsx`), between
   the language toggle and the account menu, the same size and style as the language button, with a tooltip and
   `aria-label` "المظهر / Appearance"; visible at every width. It opens the panel as a Popover under the button from `md`
