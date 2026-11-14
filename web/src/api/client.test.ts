@@ -49,3 +49,11 @@ describe("createApiClient", () => {
     expect(e).toMatchObject({ status: 0, code: "network" });
   });
 });
+
+describe("createApiClient 204", () => {
+  it("resolves a 204 to null so react-query accepts it as data", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 204 })));
+    const c = createApiClient({ csrfUrl: "/csrf" });
+    await expect(c.get("/api/results")).resolves.toBeNull();
+  });
+});
