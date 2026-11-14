@@ -6,6 +6,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../../api/client";
 import type { Catalog, GrantView, RbacChange, RoleDetail, RoleSummary } from "../../api/types";
 import { errorText } from "../../shared/format";
+import { AppLoading } from "../../shared/AppLoading";
 import { L } from "../../shared/i18n";
 import { QueryState } from "../../shared/QueryState";
 import { usePermissions } from "../../shared/session";
@@ -31,7 +32,7 @@ export default function MatrixPage() {
       subtitle={L("كل تعديل يرسل طلبًا بالفرق والسبب، ويسري بعد اعتماد مدير أعلى غير الذي طلبه.", "Every edit sends a request with the difference and a reason. It takes effect after another super administrator approves it.")}
       extra={roles.data && perms.can("adm.roles", "A") && <Button type="primary" size="large" icon={<PlusOutlined aria-hidden />} onClick={() => setCreating(true)}>{L("دور جديد", "New role")}</Button>} />
   );
-  if (catalog.isLoading || roles.isLoading) return <>{header}<div className="center-screen"><Spin /></div></>;
+  if (catalog.isLoading || roles.isLoading) return <>{header}<AppLoading /></>;
   if (!catalog.data || !roles.data) return <>{header}<Alert type="error" message={L("تعذر تحميل المصفوفة.", "Could not load the matrix.")} /></>;
 
   return (

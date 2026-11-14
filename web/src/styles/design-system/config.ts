@@ -12,7 +12,7 @@
 import type { CornerStyle } from "./tokens";
 
 /**
- * The default: "square" (navy-gold, sharp corners everywhere), "rounded" (4–16px corners, pill chips) or
- * "smooth" (8–24px corners, pill buttons and chips).
+ * The default: "rounded" (4–16px corners, pill chips). Other choices are "square" (sharp corners everywhere)
+ * and "smooth" (8–24px corners, pill buttons and chips).
  */
-export const CORNERS: CornerStyle = "square";
+export const CORNERS: CornerStyle = "rounded";

@@ -3,7 +3,7 @@
  * The viewer picks it in the Appearance panel (gear in the top bar; saved in localStorage "t1.appearance"); the default is
  * CORNERS in ./config.ts. theme.ts puts it on <html data-corners> before the first render.
  * Without TypeScript: set <html data-corners="rounded"> (devtools), or override here with
- * :root[data-corners="rounded"] { … }. No attribute = square.
+ * :root[data-corners="rounded"] { … }. No attribute = rounded.
  *
  *   token               square  rounded  smooth   use
  *   --ds-radius-xs      0       4px      8px      bars, swatches, small codes, active-link bars
@@ -20,15 +20,6 @@
  * re-resolves them too. Only custom properties here, no element rules.
  */
 :root,
-[data-corners="square"] {
-  --ds-radius-xs: 0px;
-  --ds-radius-sm: 0px;
-  --ds-radius-md: 0px;
-  --ds-radius-lg: 0px;
-  --ds-radius-xl: 0px;
-  --ds-radius-pill: 0px;
-}
-
 [data-corners="rounded"] {
   --ds-radius-xs: 4px;
   --ds-radius-sm: 6px;
@@ -36,6 +27,15 @@
   --ds-radius-lg: 12px;
   --ds-radius-xl: 16px;
   --ds-radius-pill: 999px;
+}
+
+[data-corners="square"] {
+  --ds-radius-xs: 0px;
+  --ds-radius-sm: 0px;
+  --ds-radius-md: 0px;
+  --ds-radius-lg: 0px;
+  --ds-radius-xl: 0px;
+  --ds-radius-pill: 0px;
 }
 
 [data-corners="smooth"] {

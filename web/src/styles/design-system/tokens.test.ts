@@ -596,8 +596,8 @@ describe("legacy CSS: no white text on a --navy fill (it is the heading colour, 
 describe("corners.css matches tokens.ts", () => {
   const b = blocks(read("./corners.css"));
   const styleBlocks: Record<CornerStyle, Record<string, string>> = {
-    square: b.get(":root, [data-corners=\"square\"]")!,
-    rounded: b.get("[data-corners=\"rounded\"]")!,
+    square: b.get("[data-corners=\"square\"]")!,
+    rounded: b.get(":root, [data-corners=\"rounded\"]")!,
     smooth: b.get("[data-corners=\"smooth\"]")!,
   };
   const shared = b.get(":root, [data-corners]")!;
@@ -644,9 +644,13 @@ describe("corners.css matches tokens.ts", () => {
     expect(shared).toEqual({ "--ds-radius-round": "50%", "--ds-radius": "var(--ds-radius-md)", "--radius": "var(--ds-radius-lg)" });
   });
 
-  it("CORNERS is a valid style, square by default (the navy-gold choice)", () => {
+  it("CORNERS is a valid style, rounded by default", () => {
     expect(isCornerStyle(CORNERS)).toBe(true);
-    expect(CORNERS).toBe("square");
+    expect(CORNERS).toBe("rounded");
+    // Explicit choices must override :root's rounded fallback on <html>.
+    const selectors = [...b.keys()];
+    expect(selectors.indexOf(":root, [data-corners=\"rounded\"]")).toBeLessThan(selectors.indexOf("[data-corners=\"square\"]"));
+    expect(selectors.indexOf(":root, [data-corners=\"rounded\"]")).toBeLessThan(selectors.indexOf("[data-corners=\"smooth\"]"));
   });
 });
 

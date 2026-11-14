@@ -139,10 +139,10 @@ function read(): ThemeName {
   return isThemeName(value) ? value : ACTIVE_THEME;
 }
 
-/** Same rule as corners.css: no (or an unknown) data-corners value means square. */
+/** Same rule as corners.css: no (or an unknown) data-corners value means the default style. */
 function readCorners(): CornerStyle {
   const value = root?.dataset.corners;
-  return isCornerStyle(value) ? value : "square";
+  return isCornerStyle(value) ? value : CORNERS;
 }
 
 function watch(attribute: string) {

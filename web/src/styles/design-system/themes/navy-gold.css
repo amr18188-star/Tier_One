@@ -11,7 +11,7 @@
  *   change with the section.
  * - No shadcn variable here: ../../shadcn.css maps them to these tokens, once for every theme.
  * - No radius here: corners are their own axis (../corners.css, switch CORNERS in ../config.ts).
- *   navy-gold is designed square (§4), which is the default.
+ *   navy-gold can use any corner style; the original sharp look uses square (§4).
  * - Only custom properties here, no element rules. Primitives come from ../primitives.css.
  * - Do not nest a second [data-theme] inside this one: section rules of both themes would match.
  */

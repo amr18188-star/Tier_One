@@ -39,7 +39,7 @@ afterEach(() => vi.unstubAllGlobals());
 describe("parseAppearance", () => {
   it("validates each field against the registry and falls back to the defaults", async () => {
     const { parseAppearance, DEFAULT_APPEARANCE } = await boot(storage().api);
-    expect(DEFAULT_APPEARANCE).toEqual({ theme: "navy-gold", corners: CORNERS });
+    expect(DEFAULT_APPEARANCE).toEqual({ theme: "navy-gold", corners: "rounded" });
     for (const raw of [null, undefined, "", "{bad json", '"navy-gold"', "[]", "42", '{"theme":1}']) expect(parseAppearance(raw), String(raw)).toEqual(DEFAULT_APPEARANCE);
     expect(parseAppearance('{"theme":"app-soft","corners":"smooth"}')).toEqual({ theme: "app-soft", corners: "smooth" });
     expect(parseAppearance('{"theme":"no-such-theme","corners":"rounded"}')).toEqual({ theme: "navy-gold", corners: "rounded" });
@@ -50,18 +50,18 @@ describe("parseAppearance", () => {
 
 describe("appearance store", () => {
   it("applies the saved choice to <html> when the module loads (before React renders)", async () => {
-    const { api } = storage({ "t1.appearance": '{"theme":"app-soft","corners":"rounded"}' });
+    const { api } = storage({ "t1.appearance": '{"theme":"app-soft","corners":"square"}' });
     const { html, getAppearance, APPEARANCE_KEY } = await boot(api);
     expect(APPEARANCE_KEY).toBe("t1.appearance");
-    expect(html.dataset).toEqual({ theme: "app-soft", corners: "rounded" });
-    expect(getAppearance()).toEqual({ theme: "app-soft", corners: "rounded" });
+    expect(html.dataset).toEqual({ theme: "app-soft", corners: "square" });
+    expect(getAppearance()).toEqual({ theme: "app-soft", corners: "square" });
   });
 
   it("no or a bad saved value: the defaults", async () => {
     const cases: Record<string, string>[] = [{}, { "t1.appearance": "{oops" }, { "t1.appearance": '{"theme":"x","corners":"y"}' }];
     for (const initial of cases) {
       const { html } = await boot(storage(initial).api);
-      expect(html.dataset).toEqual({ theme: "navy-gold", corners: CORNERS });
+      expect(html.dataset).toEqual({ theme: "navy-gold", corners: "rounded" });
     }
   });
 
@@ -87,7 +87,7 @@ describe("appearance store", () => {
     const { html, resetAppearance } = await boot(api);
     resetAppearance();
     expect(data.has("t1.appearance")).toBe(false);
-    expect(html.dataset).toEqual({ theme: "navy-gold", corners: CORNERS });
+    expect(html.dataset).toEqual({ theme: "navy-gold", corners: "rounded" });
   });
 
   it("an optional pin shows its own look without touching the saved choice, and releasing restores it", async () => {

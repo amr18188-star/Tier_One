@@ -1,10 +1,11 @@
 import { lazy, Suspense, useEffect, useState, type ComponentType, type ReactNode } from "react";
-import { App as AntApp, ConfigProvider, Spin, type ThemeConfig } from "antd";
+import { App as AntApp, ConfigProvider, type ThemeConfig } from "antd";
 import type { Locale } from "antd/es/locale";
 import arEG from "antd/locale/ar_EG";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { onLangChange, useLang, type Lang } from "../shared/i18n";
+import { AppLoading } from "../shared/AppLoading";
 import { ErrorScreen, NoAccess } from "../shared/QueryState";
 import { SessionProvider, usePermissions, useSession } from "../shared/session";
 import { AppearanceProvider } from "../styles/design-system/appearance";
@@ -73,7 +74,8 @@ const antdBase: ThemeConfig = {
   },
 };
 
-const pageFallback = <div className="center-screen"><Spin /></div>;
+const pageFallback = <AppLoading />;
+const screenFallback = <AppLoading fullScreen />;
 
 /** لغة antd: العربية مضمنة، والإنجليزية تحمل عند اختيارها أول مرة. */
 function useAntLocale(lang: Lang): Locale {
@@ -112,20 +114,20 @@ const LandingPage = load(() => import("../features/landing/LandingPage"));
 
 /** صفحة التعريف العامة تتبع المظهر المحفوظ مثل بقية التطبيق. */
 const landingRoute = (
-  <Suspense fallback={pageFallback}>
+  <Suspense fallback={screenFallback}>
     <LandingPage />
   </Suspense>
 );
 
 function Gate() {
   const { me, loading, error, retry } = useSession();
-  if (loading) return <div className="center-screen"><Spin size="large" /></div>;
+  if (loading) return screenFallback;
   // خطأ الخادم أو الشبكة ليس خروجًا: شاشة إعادة محاولة بدل نموذج الدخول.
   if (error) return <ErrorScreen error={error} onRetry={retry} />;
   // غير المسجل على «/» تحديدًا يرى صفحة التعريف؛ وأي عنوان آخر، وأي دخول لم يكتمل، يعرض نموذج الدخول كما كان.
   if (!me || me.mfaPending || me.mustChangePassword) {
     return (
-      <Suspense fallback={pageFallback}>
+      <Suspense fallback={screenFallback}>
         <Routes>
           {!me && <Route path="/" element={landingRoute} />}
           <Route path="*" element={<LoginPage />} />
@@ -134,7 +136,7 @@ function Gate() {
     );
   }
   return (
-    <Suspense fallback={<div className="center-screen"><Spin size="large" /></div>}>
+    <Suspense fallback={screenFallback}>
       <Shell>
         <Suspense fallback={pageFallback}>
           <Routes>

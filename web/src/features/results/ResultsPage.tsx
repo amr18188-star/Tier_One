@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Alert, Button, Drawer, Input, Segmented, Select, Space, Tag, Tooltip } from "antd";
 import { DownloadOutlined, PrinterOutlined, QuestionCircleOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { api, query } from "../../api/client";
 import type { Cycle, HeatCell, IndicatorResult, IndicatorResults, Performance, Results, StandardResult } from "../../api/collection";
-import { PillarBand, StdCode, usePillarMap, type PillarInfo } from "../../shared/pillars";
+import { PillarBand, StdCode, stdLabel, tint, usePillarMap, type PillarInfo } from "../../shared/pillars";
+import { AccordionPanel } from "../../shared/AccordionPanel";
 import { HBarChart, ProgressToTarget, SegmentBar } from "../../shared/charts";
 import { L } from "../../shared/i18n";
 import { PeriodNav } from "../../shared/PeriodNav";
@@ -12,6 +13,8 @@ import { num, performance as perfText, withUnit } from "../../shared/labels";
 import { DataTable, EmptyNote, FilterMeta, oneOf, PageHeader, Panel } from "../../shared/ui";
 import { usePeriodParams, useSearchState } from "../../shared/usePeriodParams";
 import { ReportView } from "./ReportView";
+import { groupResultIndicators } from "./indicatorGroups";
+import "./results.css";
 
 const PERF: Performance[] = ["Achieved", "Near", "Behind", "NoData", "NoTarget", "Incomplete", "NotStarted"];
 const PERF_COLORS: Record<string, string> = { Achieved: "var(--ds-status-ok)", Near: "var(--ds-status-near)", Behind: "var(--ds-status-late-ink)", NoData: "var(--ds-status-none)", NoTarget: "var(--ds-status-none-ink)" };
@@ -30,7 +33,10 @@ export default function ResultsPage() {
   const std = params.get("std") ?? undefined;
   const q = params.get("q") ?? "";
   const [open, setOpen] = useState<IndicatorResult | null>(null);
+  const [openStandard, setOpenStandard] = useState<string | null>(null);
   const [printing, setPrinting] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
+  const pendingUnitRef = useRef<{ id: string; focusPicker: boolean } | null>(null);
   const pillarMap = usePillarMap();
 
   const set = (key: string, value: string | undefined) => update({ [key]: value });
@@ -41,6 +47,27 @@ export default function ResultsPage() {
     queryFn: () => api.get<Results | null>(`/api/results${query({ cycleId: cycleParam, unitId: unitParam })}`),
   });
   const r = res.data;
+  useLayoutEffect(() => {
+    const pending = pendingUnitRef.current;
+    if (!r || r.unit.id !== pending?.id) return;
+    pendingUnitRef.current = null;
+
+    // The shell normally scrolls the document, but use a local scroll container if one owns this page.
+    let scroller: Element | null = pickerRef.current?.parentElement ?? null;
+    while (scroller) {
+      const overflow = window.getComputedStyle(scroller).overflowY;
+      if (/(auto|scroll)/.test(overflow) && scroller.scrollHeight > scroller.clientHeight) break;
+      scroller = scroller.parentElement;
+    }
+    (scroller ?? document.scrollingElement ?? document.documentElement).scrollTo({ top: 0, behavior: "auto" });
+    if (pending.focusPicker) pickerRef.current?.querySelector<HTMLElement>("[role=combobox]")?.focus({ preventScroll: true });
+  }, [r]);
+
+  const pickUnit = (unitId: string, focusPicker = false) => {
+    if (unitId === r?.unit.id) return;
+    pendingUnitRef.current = { id: unitId, focusPicker };
+    set("unit", unitId);
+  };
   // الدورات التي لها نتائج كما كانت في القائمة: غير المسودة؛ الربع بلا دورة منها «لا دورة».
   const live = cycles.data?.filter((c) => c.status !== "Draft");
   // السنوات التي فيها دورة منها فقط: نقر سنة يفتح دورة لها نتائج، لا سنة فارغة يعود فيها الخادم إلى دورته الافتراضية.
@@ -58,8 +85,54 @@ export default function ResultsPage() {
 
   const rows = (r?.indicators ?? []).filter((i) => (!perf || i.performance === perf) && (!std || i.standardCode === std)
     && (!q || i.name.includes(q) || i.code.toLowerCase().includes(q.toLowerCase())));
+  const indicatorsFiltered = !!(perf || std || q);
+  const indicatorGroups = r ? groupResultIndicators(r.standards, r.indicators) : [];
   const count = (p: Performance) => r?.indicators.filter((i) => i.performance === p).length ?? 0;
   const who = r?.unit.kind === "University" ? L("الجامعة", "University") : r?.unit.name;
+
+  const renderIndicatorsTable = (data: IndicatorResult[], resetKey: string) => (
+    <DataTable<IndicatorResult>
+      rowKey={(i) => i.indicatorId}
+      data={data}
+      loading={res.isLoading}
+      resetKey={resetKey}
+      onRowClick={setOpen}
+      pageSizes={[20, 50, 100]}
+      columns={[
+        { title: L("الرمز", "Code"), dataIndex: "code", width: 96, render: (c: string, i) => <StdCode code={c} standard={i.standardCode} map={pillarMap.map} /> },
+        { title: L("المؤشر", "Indicator"), dataIndex: "name", ellipsis: true },
+        { title: L("الفعلي", "Actual"), key: "a", width: 110, render: (_, i) => <b className="ltr">{withUnit(i.actual, i.unit)}</b> },
+        {
+          title: L("المستهدف", "Target"), key: "t", width: 130, render: (_, i) => (
+            <span>
+              <span className="ltr">{withUnit(i.target, i.unit)}</span>
+              {i.targetSource === "University" && <Tooltip title={L("لا مستهدف خاص بالكلية؛ تقارن بمستهدف الجامعة.", "No college target; compared with the university target.")}><small className="muted"> ({L("الجامعة", "univ.")})</small></Tooltip>}
+            </span>
+          ),
+        },
+        { title: L("الإنجاز", "Achievement"), key: "p", width: 190, render: (_, i) => <Achievement i={i} /> },
+        ...(r && r.unit.kind !== "University" ? [{
+          title: L("من نسبة الجامعة المرجوة", "vs university target"), key: "u", width: 150,
+          render: (_: unknown, i: IndicatorResult) => i.universityTarget === null || i.targetSource === "University" ? <span className="muted">—</span> : (
+            <Tooltip title={L(`مستهدف الجامعة ${withUnit(i.universityTarget, i.unit)}`, `University target ${withUnit(i.universityTarget, i.unit)}`)}>
+              <span className="ltr">{withUnit(i.universityTarget, i.unit)}</span>
+              {i.universityAchievement !== null && <b className="ltr ms">{Math.round(i.universityAchievement * 100)}%</b>}
+            </Tooltip>
+          ),
+        }] : []),
+        { title: L("عن السابقة", "vs previous"), key: "d", width: 110, render: (_, i) => <Delta i={i} /> },
+        { title: L("الحالة", "Status"), dataIndex: "performance", width: 150, render: (p: Performance) => <><i className={`perf-dot perf-${perfText[p].tone}`} />{perfText[p].text}</> },
+      ]}
+      renderCard={(i) => (
+        <>
+          <div className="dt-card-row"><StdCode code={i.code} standard={i.standardCode} map={pillarMap.map} /><span><i className={`perf-dot perf-${perfText[i.performance].tone}`} />{perfText[i.performance].text}</span></div>
+          <b>{i.name}</b>
+          <small>{i.summary}</small>
+        </>
+      )}
+      empty={L("لا مؤشرات بهذه المرشحات.", "No indicators match.")}
+    />
+  );
 
   return (
     <>
@@ -83,10 +156,10 @@ export default function ResultsPage() {
         <PeriodNav mode="cycle" cycles={live} years={years} value={period.value} onChange={period.onChange} ariaLabel={L("دورة القياس: السنة والربع", "Measured cycle: year and quarter")} />
       )}
 
-      <div className="r-pickers">
+      <div className="r-pickers" ref={pickerRef}>
         {r && r.units.length > 1 && (
           <label className="r-picker"><span>{L("الجهة المعروضة", "Unit")}</span>
-            <Select value={r.unit.id} onChange={(v) => set("unit", v)} style={{ minWidth: 240 }} showSearch optionFilterProp="label" aria-label={L("الجهة", "Unit")}
+            <Select value={r.unit.id} onChange={(v) => pickUnit(v)} style={{ minWidth: 240 }} showSearch optionFilterProp="label" aria-label={L("الجهة", "Unit")}
               options={r.units.map((u) => ({ value: u.id, label: u.kind === "University" ? L("الجامعة كلها", "Whole university") : u.name }))} />
           </label>
         )}
@@ -103,7 +176,9 @@ export default function ResultsPage() {
 
       <Panel title={L(`الأداء بحسب المعيار — ${who ?? ""}`, "By standard")} query={res}
         extra={<span className="r-legend">{(["Achieved", "Near", "Behind", "NoData"] as const).map((p) => <span key={p}><i style={{ background: PERF_COLORS[p] }} />{p === "NoData" ? L("بلا بيانات", "No data") : perfText[p].text}</span>)}</span>}>
-        {() => groupByPillar(r!.standards, pillarMap.map).map((g) => (
+        {() => (
+          <div className="r-standards-grid">
+            {groupByPillar(r!.standards, pillarMap.map).map((g) => (
           <div key={g.key} className="r-pgroup">
             {pillarMap.pillars.length > 0 && (
               <PillarBand info={g.info}>
@@ -125,12 +200,14 @@ export default function ResultsPage() {
           </button>
             ))}
           </div>
-        ))}
+            ))}
+          </div>
+        )}
       </Panel>
 
       {r && r.heatUnits.length > 1 && (
         <Panel title={L("خريطة الكليات × المعايير", "Colleges × standards")} extra={<Tooltip title={L("نسبة مؤشرات المعيار المحققة في الكلية مقابل مستهدفها. الرمادي: لا بيانات معتمدة.", "Share achieved per standard.")}><QuestionCircleOutlined /></Tooltip>}>
-          <Heatmap r={r} map={pillarMap.map} onPick={(unitId) => set("unit", unitId)} />
+          <Heatmap r={r} map={pillarMap.map} onPick={(unitId) => pickUnit(unitId, true)} />
         </Panel>
       )}
 
@@ -143,47 +220,20 @@ export default function ResultsPage() {
           <FilterMeta shown={rows.length} total={r?.indicators.length} noun={L("مؤشر", "indicators")} active={!!(perf || std || q)}
             onReset={() => update({ perf: undefined, std: undefined, q: undefined })} />
         </div>
-        <DataTable<IndicatorResult>
-          rowKey={(i) => i.indicatorId}
-          data={rows}
-          loading={res.isLoading}
-          resetKey={`${perf}|${std}|${q}|${r?.unit.id}`}
-          onRowClick={setOpen}
-          pageSizes={[20, 50, 100]}
-          columns={[
-            { title: L("الرمز", "Code"), dataIndex: "code", width: 96, render: (c: string, i) => <StdCode code={c} standard={i.standardCode} map={pillarMap.map} /> },
-            { title: L("المؤشر", "Indicator"), dataIndex: "name", ellipsis: true },
-            { title: L("الفعلي", "Actual"), key: "a", width: 110, render: (_, i) => <b className="ltr">{withUnit(i.actual, i.unit)}</b> },
-            {
-              title: L("المستهدف", "Target"), key: "t", width: 130, render: (_, i) => (
-                <span>
-                  <span className="ltr">{withUnit(i.target, i.unit)}</span>
-                  {i.targetSource === "University" && <Tooltip title={L("لا مستهدف خاص بالكلية؛ تقارن بمستهدف الجامعة.", "No college target; compared with the university target.")}><small className="muted"> ({L("الجامعة", "univ.")})</small></Tooltip>}
-                </span>
-              ),
-            },
-            { title: L("الإنجاز", "Achievement"), key: "p", width: 190, render: (_, i) => <Achievement i={i} /> },
-            ...(r && r.unit.kind !== "University" ? [{
-              title: L("من نسبة الجامعة المرجوة", "vs university target"), key: "u", width: 150,
-              render: (_: unknown, i: IndicatorResult) => i.universityTarget === null || i.targetSource === "University" ? <span className="muted">—</span> : (
-                <Tooltip title={L(`مستهدف الجامعة ${withUnit(i.universityTarget, i.unit)}`, `University target ${withUnit(i.universityTarget, i.unit)}`)}>
-                  <span className="ltr">{withUnit(i.universityTarget, i.unit)}</span>
-                  {i.universityAchievement !== null && <b className="ltr ms">{Math.round(i.universityAchievement * 100)}%</b>}
-                </Tooltip>
-              ),
-            }] : []),
-            { title: L("عن السابقة", "vs previous"), key: "d", width: 110, render: (_, i) => <Delta i={i} /> },
-            { title: L("الحالة", "Status"), dataIndex: "performance", width: 150, render: (p: Performance) => <><i className={`perf-dot perf-${perfText[p].tone}`} />{perfText[p].text}</> },
-          ]}
-          renderCard={(i) => (
-            <>
-              <div className="dt-card-row"><StdCode code={i.code} standard={i.standardCode} map={pillarMap.map} /><span><i className={`perf-dot perf-${perfText[i.performance].tone}`} />{perfText[i.performance].text}</span></div>
-              <b>{i.name}</b>
-              <small>{i.summary}</small>
-            </>
-          )}
-          empty={L("لا مؤشرات بهذه المرشحات.", "No indicators match.")}
-        />
+        {indicatorsFiltered || !r ? renderIndicatorsTable(rows, `${perf}|${std}|${q}|${r?.unit.id}`) : (
+          <section className="r-indicator-groups" aria-label={L("المعايير ومؤشراتها", "Standards and their indicators")}>
+            {indicatorGroups.map((group) => (
+              <AccordionPanel key={group.code} id={`r-indicator-standard-${group.code}`}
+                className="r-indicator-group" style={tint(pillarMap.map.get(group.code)?.index ?? -1)}
+                open={openStandard === group.code}
+                onToggle={() => setOpenStandard((selected) => selected === group.code ? null : group.code)}
+                header={<><code className="pill-code ltr">{stdLabel(group.code)}</code><b>{group.name}</b><small>{L(`${group.indicators.length} مؤشر`, `${group.indicators.length} indicators`)}</small></>}>
+                {renderIndicatorsTable(group.indicators, `${group.code}|${r.unit.id}|${r.cycle.id}`)}
+              </AccordionPanel>
+            ))}
+            {indicatorGroups.length === 0 && <EmptyNote>{L("لا مؤشرات في هذه الدورة.", "No indicators in this cycle.")}</EmptyNote>}
+          </section>
+        )}
       </Panel>
 
       {open && r && <IndicatorDrawer cycleId={r.cycle.id} unitId={r.unit.id} university={r.unit.kind === "University"} item={open} onClose={() => setOpen(null)} />}

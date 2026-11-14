@@ -1,0 +1,110 @@
+.r-standards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+
+.r-standards-grid .r-pgroup {
+  min-width: 0;
+  margin-bottom: 0;
+  padding: 12px;
+  align-content: start;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-lg);
+  background: var(--ds-surface);
+}
+
+.r-standards-grid .pill-band {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.r-standards-grid .pill-band-num {
+  padding-inline-end: 10px;
+  border-inline-end: 1px solid color-mix(in srgb, var(--ds-on-dark-fg) 35%, transparent);
+}
+
+.r-standards-grid .pill-band-name b {
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.r-standards-grid .pill-band-extra {
+  grid-column: 1 / -1;
+  justify-self: stretch;
+  justify-content: flex-end;
+  padding-block-start: 6px;
+  border-block-start: 1px solid color-mix(in srgb, var(--ds-on-dark-fg) 35%, transparent);
+  font-weight: 600;
+}
+
+.r-standards-grid .r-std > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.r-standards-grid .r-std {
+  grid-template-columns: 56px minmax(0, 1fr);
+}
+
+.r-standards-grid .r-std .ch-seg {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 1200px) {
+  .r-standards-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .r-standards-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.r-indicator-groups {
+  display: grid;
+  gap: var(--ds-space-sm);
+  min-width: 0;
+}
+
+.r-indicator-group {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-lg);
+  background: var(--ds-surface);
+}
+
+.r-indicator-group > .ds-acc-head {
+  min-height: 52px;
+  background: var(--pt);
+}
+
+.r-indicator-group > .ds-acc-head:hover {
+  background: color-mix(in srgb, var(--pc) 14%, var(--ds-surface));
+}
+
+.r-indicator-group > .ds-acc-head .ds-acc-title > b {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.r-indicator-group > .ds-acc-head .ds-acc-title > small {
+  color: var(--ds-label);
+  white-space: nowrap;
+}
+
+.r-indicator-group > .ds-acc-head .ds-acc-chev { color: var(--pc); }
+
+@media (max-width: 639px) {
+  .r-indicator-group > .ds-acc-head .ds-acc-title { flex-wrap: wrap; }
+  .r-indicator-group > .ds-acc-head .ds-acc-title > b { flex-basis: calc(100% - 64px); }
+  .r-indicator-group > .ds-acc-head .ds-acc-title > small { margin-inline-start: auto; }
+}

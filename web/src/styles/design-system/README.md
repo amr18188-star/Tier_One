@@ -17,7 +17,7 @@ the defaults are `ACTIVE_THEME` (theme.ts) and `CORNERS` (config.ts). The public
 | `themes/indigo-silver.css` | `[data-theme="indigo-silver"]`: Midnight indigo & silver, cool and sober. |
 | `themes/graphite-gold.css` | `[data-theme="graphite-gold"]`: Graphite & gold, the neutral executive palette. |
 | `corners.css` | The corner scale `--ds-radius-xs … xl`, `-pill`, `-round` for `data-corners="square" \| "rounded" \| "smooth"`. |
-| `config.ts` | `CORNERS`: the default corner style (square). |
+| `config.ts` | `CORNERS`: the default corner style (rounded). |
 | `index.css` | Plain-CSS entry: primitives, every theme, then `corners.css`, and `<html>` `color-scheme` from `--ds-color-scheme`. Imported globally by `theme.ts`. |
 | `tailwind-theme.css` | Tailwind v4 `@theme inline reference` mapping, for a Tailwind entry. |
 | `scrollbar.css` | Site-wide scrollbar in the colours of the surface it sits on: tokens per context (light, dark section, sidebar, modal mask), Firefox fallback. Imported once in `main.tsx`. |
@@ -168,7 +168,7 @@ changes at once, with no reload.
   `useAppearance()` → `{ theme, corners, shown, isDefault, setTheme, setCorners, reset }` (`theme` / `corners` = the saved
   choice; `shown` = what `<html>` shows, which differs only while a page pins its look).
 - **The public landing follows the viewer.** It inherits `<html data-theme / data-corners>` without pinning a brand look.
-  Its hero exposes the same Appearance control to signed-out visitors. Navy-gold + square remains the default.
+  Its hero exposes the same Appearance control to signed-out visitors. Navy-gold + rounded is the default.
 - **The panel** (`app/AppearanceMenu.tsx`, `app/appearance.css`). A gear button in the top bar (`app/Shell.tsx`), between
   the language toggle and the account menu, the same size and style as the language button, with a tooltip and
   `aria-label` "المظهر / Appearance"; visible at every width. It opens the panel as a Popover under the button from `md`
@@ -394,11 +394,11 @@ tokens are theme level, in `themes/<name>.css`, as full `background` values (rec
 The viewer picks the style in the Appearance panel ("Runtime appearance"). The default is one line in `config.ts`:
 
 ```ts
-export const CORNERS: CornerStyle = "square"; // or "rounded" | "smooth"
+export const CORNERS: CornerStyle = "rounded"; // or "square" | "smooth"
 ```
 
 `theme.ts` puts the style on `<html data-corners>` before the first render. Without TypeScript, set the attribute in devtools or
-override in CSS: `:root[data-corners="rounded"] { … }`. No attribute means square. A live change of the attribute
+override in CSS: `:root[data-corners="rounded"] { … }`. No attribute means rounded. A live change of the attribute
 re-themes antd too (`useDsCorners()` watches it, like `useDsTheme()`).
 
 | Token | Utility | square | rounded | smooth | Use |

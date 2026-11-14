@@ -78,7 +78,7 @@ export default function ProgressPage() {
             <section className="t1-panel pg-pillars" aria-label={L("الركائز مقارنة بالجامعة", "Pillars vs university")}>
               <header className="pg-sec-head">
                 <h2>{L("الكلية مقابل الجامعة في كل ركيزة", "College vs university by pillar")}</h2>
-                <span className="pg-key"><i className="me" /> {p.unit.name} <i className="uni" /> {L("الجامعة (القيم المنقولة)", "University (transferred)")}</span>
+                <span className="pg-key"><span><i className="me" aria-hidden="true" />{p.unit.name}</span><span><i className="uni" aria-hidden="true" />{L("الجامعة (القيم المنقولة)", "University (transferred)")}</span></span>
               </header>
               <div className="pg-pillar-grid">
                 {p.pillars.map((x) => (
@@ -130,7 +130,8 @@ export default function ProgressPage() {
 function Bar({ value, cls, label }: { value: number; cls: string; label: string }) {
   return (
     <div className={`pg-bar ${cls}`} title={`${label}: ${num(value)}%`}>
-      <span><i style={{ width: `${Math.min(100, value)}%` }} /></span>
+      <span className="pg-bar-track"><i style={{ width: `${Math.min(100, value)}%` }} /></span>
+      <small className="pg-bar-label">{label}</small>
       <b className="ltr">{num(value)}%</b>
     </div>
   );
