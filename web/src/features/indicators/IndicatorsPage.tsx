@@ -123,7 +123,7 @@ export default function IndicatorsPage() {
             { title: L("مستهدف 2031", "2031 target"), dataIndex: "target2031", width: 120, render: (v: number | null, r) => <b className="ltr">{withUnit(v, r.unit)}</b> },
             {
               title: L("التعارضات", "Conflicts"), dataIndex: "openConflicts", width: 100, align: "center",
-              render: (n: number) => n > 0 ? <Badge count={n} color="#b42318" /> : <span className="muted">—</span>,
+              render: (n: number) => n > 0 ? <Badge count={n} color="var(--ds-status-late-ink)" /> : <span className="muted">—</span>,
             },
           ]}
           renderCard={(r) => (
@@ -131,7 +131,7 @@ export default function IndicatorsPage() {
               <div className="dt-card-row"><StdCode code={r.code} standard={r.standardCode} map={pillarMap.map} /><Tag color={definitionStatus[r.status].color}>{definitionStatus[r.status].text}</Tag></div>
               <b>{r.nameAr}</b>
               <div className="dt-card-row"><span>{L("مستهدف 2031", "2031 target")}</span><b className="ltr">{withUnit(r.target2031, r.unit)}</b></div>
-              {r.openConflicts > 0 && <div className="dt-card-row"><span>{L("تعارضات مفتوحة", "Open conflicts")}</span><Badge count={r.openConflicts} color="#b42318" /></div>}
+              {r.openConflicts > 0 && <div className="dt-card-row"><span>{L("تعارضات مفتوحة", "Open conflicts")}</span><Badge count={r.openConflicts} color="var(--ds-status-late-ink)" /></div>}
             </>
           )}
         />

@@ -1,25 +1,23 @@
-import { useState, type ReactNode } from "react";
-import { Input, Progress, Segmented, Select, Tag } from "antd";
-import { CheckCircleOutlined, ClockCircleOutlined, EditOutlined, InboxOutlined, RollbackOutlined } from "@ant-design/icons";
+import { useMemo, type KeyboardEvent, type ReactNode } from "react";
+import { Skeleton } from "antd";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, query } from "../../api/client";
 import type { Cycle, FormRow, SubmissionStatus } from "../../api/collection";
 import { formatDate } from "../../shared/format";
 import { L } from "../../shared/i18n";
-import { dueText, submissionStatus } from "../../shared/labels";
-import { DataTable, EmptyNote, FilterMeta, oneOf, PageHeader, Panel } from "../../shared/ui";
+import { slotName } from "../../shared/period";
+import { PeriodNav } from "../../shared/PeriodNav";
+import { QueryError } from "../../shared/QueryState";
+import { usePermissions } from "../../shared/session";
+import { EmptyNote, oneOf, Panel, PageHeader } from "../../shared/ui";
+import { usePeriodParams, useSearchState } from "../../shared/usePeriodParams";
+import { byPriority, formModes, type Filters, type Mode } from "./model";
+import { MonitorView } from "./MonitorView";
+import { TasksView } from "./TasksView";
+import "./forms.css";
 
-const VIEWS = ["mine", "all", "NotStarted", "InProgress", "InReview", "Returned", "Approved"] as const;
-type View = (typeof VIEWS)[number];
-
-const PIPE: { status: SubmissionStatus; tone: string; icon: ReactNode }[] = [
-  { status: "NotStarted", tone: "idle", icon: <InboxOutlined aria-hidden /> },
-  { status: "InProgress", tone: "work", icon: <EditOutlined aria-hidden /> },
-  { status: "Returned", tone: "bad", icon: <RollbackOutlined aria-hidden /> },
-  { status: "InReview", tone: "review", icon: <ClockCircleOutlined aria-hidden /> },
-  { status: "Approved", tone: "ok", icon: <CheckCircleOutlined aria-hidden /> },
-];
+const STATUSES = ["NotStarted", "InProgress", "InReview", "Returned", "Approved"] as const satisfies readonly SubmissionStatus[];
+const MODES = ["tasks", "monitor"] as const satisfies readonly Mode[];
 
 /** نسبة المؤشرات المدخلة من المطلوب في كل نماذج الدورة. */
 function entryPct(rows: FormRow[]) {
@@ -27,144 +25,141 @@ function entryPct(rows: FormRow[]) {
   return req === 0 ? 0 : Math.round((100 * rows.reduce((n, r) => n + r.completed, 0)) / req);
 }
 
+/** الروابط القديمة: view=mine تصير mine=1، وview=all بلا مرشح؛ يرتب الرابط قبل كل تغيير. */
+function normalizeLegacy(next: URLSearchParams) {
+  const legacy = next.get("view");
+  if (legacy === "mine" || legacy === "all") {
+    next.delete("view");
+    if (legacy === "mine") next.set("mine", "1");
+  }
+}
+
 /**
- * النماذج: يفتح على «مطلوب مني» (ما ينتظر إدخالي أو مراجعتي الآن)، والأقدم موعدًا أولًا.
- * النقر على صف يفتح النموذج نفسه للإدخال أو المراجعة.
+ * نماذج الجهات: سنة الخطة وأرباعها في صف تحت الرأس، ثم وضعان بحسب الدور: «مهامي» (ما ينتظرني بإجراء واحد لكل نموذج)
+ * و«متابعة الجهات» (الكليات صفوفًا تفتح على أقسامها). بطاقات المراحل هي مرشح الحالة الوحيد في المتابعة.
  */
 export default function FormsPage() {
-  const [params, setParams] = useSearchParams();
-  const navigate = useNavigate();
-  const view: View = oneOf(params.get("view"), VIEWS) ?? "mine";
-  const q = params.get("q") ?? "";
+  // الرابط هو الحالة: السنة والدورة (usePeriodParams) ومعهما tab وview وmine وq، في نسخة واحدة لا يكتب أحدها فوق الآخر.
+  const search = useSearchState(normalizeLegacy);
+  const { params, update } = search;
+  const perms = usePermissions();
+
   const cycles = useQuery({ queryKey: ["cycles"], queryFn: () => api.get<Cycle[]>("/api/cycles") });
-  const live = cycles.data?.filter((c) => c.status !== "Draft") ?? [];
-  const cycleId = params.get("cycle") ?? live.find((c) => c.status === "Open")?.id ?? live[0]?.id;
-
-  const set = (key: string, value: string | undefined) => {
-    const next = new URLSearchParams(params);
-    if (value) next.set(key, value);
-    else next.delete(key);
-    setParams(next, { replace: true });
-  };
-
-  // الرابط يتغير داخل انتقال (startTransition في React Router) مع إعادة رسم القائمة، فيبقى الخيار القديم محددًا حتى يكتمل.
-  // لذلك يعرض الشريط الخيار المنقور فورًا، ويعود إلى قيمة الرابط متى تغيرت.
-  const [picked, setPicked] = useState<{ from: View; to: View } | null>(null);
-  if (picked && picked.from !== view) setPicked(null);
-  const shownView = picked && picked.from === view ? picked.to : view;
+  const period = usePeriodParams({ mode: "cycle", cycles: cycles.data, search });
+  const ready = cycles.isSuccess && period.ready;
+  const timeline = period.timeline;
+  const slot = ready ? period.slot : null;
+  const cycle = slot?.cycle ?? null;
+  // قبل وصول الدورات يطلب ما في الرابط مباشرة؛ الدورة قيد الإعداد لا نماذج لها بعد.
+  const cycleId = ready ? (cycle && cycle.status !== "Draft" ? cycle.id : undefined) : period.urlCycleId ?? undefined;
+  const cycleOpen = cycle ? cycle.status === "Open" : true;
 
   const all = useQuery({
     queryKey: ["forms", cycleId],
     queryFn: () => api.get<FormRow[]>(`/api/forms${query({ cycleId })}`),
     enabled: !!cycleId,
   });
-  // الأولوية: المعاد للتصحيح، ثم ما ينتظرني، ثم الأقرب موعدًا.
-  const rows = (all.data ?? []).filter((r) =>
-    (view === "mine" ? r.awaitingMe : view === "all" ? true : r.status === view)
-    && (!q || r.unitName.includes(q) || (r.parentName ?? "").includes(q)))
-    .sort((a, b) => Number(b.status === "Returned") - Number(a.status === "Returned") || Number(b.awaitingMe) - Number(a.awaitingMe) || a.dueOn.localeCompare(b.dueOn));
-  const filtered = view !== "mine" || !!q;
-  const count = (f: (r: FormRow) => boolean) => all.data?.filter(f).length ?? 0;
+  const rows = useMemo(() => [...(all.data ?? [])].sort(byPriority), [all.data]);
+  const loading = all.isLoading;
+  const count = (f: (r: FormRow) => boolean) => rows.filter(f).length;
+
+  const { modes, initial, readOnly } = formModes(perms, rows.some((r) => r.awaitingMe));
+  const tab = oneOf(params.get("tab"), MODES);
+  const mode: Mode = tab && modes.includes(tab) ? tab : initial;
+  const legacyView = params.get("view");
+  const filters: Filters = {
+    view: oneOf(legacyView, STATUSES),
+    mine: params.get("mine") === "1" || legacyView === "mine",
+    q: params.get("q") ?? "",
+  };
+
+  const setFilters = (patch: Partial<Filters>) => update({
+    ...("view" in patch ? { view: patch.view } : {}),
+    ...("mine" in patch ? { mine: patch.mine ? "1" : undefined } : {}),
+    ...("q" in patch ? { q: patch.q || undefined } : {}),
+  });
+  const resetFilters = () => update({ cycle: params.get("cycle") ?? undefined, year: params.get("year") ?? undefined, tab: params.get("tab") ?? undefined }, true);
+  const setMode = (m: Mode) => update({ tab: m === initial ? undefined : m });
+  const showMine = () => (modes.includes("tasks") && mode !== "tasks" ? setMode("tasks") : setFilters({ mine: true }));
+
+  const waiting = count((r) => r.awaitingMe);
+  const overdue = count((r) => r.overdue);
+  const periodName = slot ? slotName(slot) : "";
+
+  let body;
+  if (cycles.isError && !cycles.data) body = <Panel><QueryError error={cycles.error} onRetry={() => void cycles.refetch()} /></Panel>;
+  else if (!ready) body = <Panel loading><span /></Panel>;
+  else if (timeline.years.length === 0)
+    body = <Panel><EmptyNote>{L("لا توجد دورة لجمع البيانات بعد. تفتح الدورات من صفحة «دورات جمع البيانات».", "There is no collection cycle yet.")}</EmptyNote></Panel>;
+  else if (!slot)
+    body = <Panel><EmptyNote>{L(`لا دورة لجمع البيانات في ${period.value.year} بعد.`, `No collection cycle in ${period.value.year} yet.`)}</EmptyNote></Panel>;
+  else if (slot.state === "future")
+    body = (
+      <Panel>
+        <EmptyNote>{L(`لم يُفتح ${periodName} بعد. يفتح الإدخال في ${formatDate(slot.cycle!.opensOn)}.`, `${periodName} is not open yet. Entry opens on ${formatDate(slot.cycle!.opensOn)}.`)}</EmptyNote>
+      </Panel>
+    );
+  else if (all.isError && !all.data) body = <Panel><QueryError error={all.error} onRetry={() => void all.refetch()} /></Panel>;
+  else if (mode === "tasks") body = <TasksView rows={rows} loading={loading} periodName={periodName} cycleOpen={cycleOpen} />;
+  else
+    body = (
+      <MonitorView rows={rows} loading={loading} filters={filters} onFilters={setFilters} onReset={resetFilters} onShowMine={showMine}
+        canMine={!readOnly} readOnly={readOnly} cycleOpen={cycleOpen} resetKey={`${cycleId}|${filters.view}|${filters.mine}|${filters.q}`} />
+    );
 
   return (
     <>
       <PageHeader title={L("نماذج الجهات", "Unit forms")}
-        subtitle={L("كل جهة تدخل قيم مؤشراتها في نموذج واحد، ثم يمر على المراجعين حتى اعتماد الجودة المركزية.",
-          "Each unit enters its values in one form, which then passes through reviewers up to central quality approval.")}
+        subtitle={readOnly
+          ? L("اطلاع على نماذج الجهات في نطاقك ومراحلها، دون إدخال أو مراجعة.", "A read-only view of the unit forms in your scope and their stages.")
+          : L("كل جهة تدخل قيم مؤشراتها في نموذج واحد، ثم يمر على المراجعين حتى اعتماد الجودة المركزية.",
+            "Each unit enters its values in one form, which then passes through reviewers up to central quality approval.")}
         stats={all.data ? [
-          { label: L("مطلوب مني الآن", "Waiting for me"), value: count((r) => r.awaitingMe), tone: count((r) => r.awaitingMe) > 0 ? "warn" : undefined },
-          { label: L("متأخر عن الموعد", "Overdue"), value: count((r) => r.overdue), tone: count((r) => r.overdue) > 0 ? "bad" : undefined },
-          { label: L("معتمد نهائيًا", "Approved"), value: <span className="ltr">{count((r) => r.status === "Approved")}/{all.data.length}</span>, tone: "ok" },
-          { label: L("اكتمال الإدخال", "Entry complete"), value: <span className="ltr">{entryPct(all.data)}%</span> },
-        ] : undefined}
-        extra={live.length > 1 && (
-          <Select value={cycleId} onChange={(v) => set("cycle", v)} style={{ minWidth: 260 }} aria-label={L("الدورة", "Cycle")}
-            options={live.map((c) => ({ value: c.id, label: `${c.name}${c.status === "Closed" ? L(" (مغلقة)", " (closed)") : ""}` }))} />
-        )} />
+          ...(readOnly ? [] : [{ label: L("مطلوب مني الآن", "Waiting for me"), value: waiting, tone: waiting > 0 ? "warn" as const : undefined }]),
+          { label: L("متأخر عن الموعد", "Overdue"), value: overdue, tone: overdue > 0 ? "bad" as const : undefined },
+          { label: L("معتمد نهائيًا", "Approved"), value: <span className="ltr">{count((r) => r.status === "Approved")}/{rows.length}</span>, tone: "ok" as const },
+          { label: L("اكتمال الإدخال", "Entry complete"), value: <span className="ltr">{entryPct(rows)}%</span> },
+        ] : undefined} />
 
-      {cycles.isSuccess && live.length === 0 ? (
-        <Panel><EmptyNote>{L("لا توجد دورة مفتوحة الآن. تفتح الدورات من صفحة «دورات جمع البيانات».", "No open cycle right now.")}</EmptyNote></Panel>
-      ) : (
-        <>
-          {/* مسار النماذج في الدورة: كم نموذجًا في كل مرحلة، والنقر يعرضها. */}
-          <nav className="f-pipe" aria-label={L("النماذج بحسب مرحلتها", "Forms by stage")}>
-            {PIPE.map((p, k) => {
-              const n = count((r) => r.status === p.status);
-              const total = all.data?.length || 1;
-              return (
-                <button key={p.status} type="button" className={`f-pipe-step tone-${p.tone}${view === p.status ? " on" : ""}`} aria-pressed={view === p.status}
-                  onClick={() => set("view", view === p.status ? undefined : p.status)}>
-                  <span className="f-pipe-n ltr">{all.isLoading ? "…" : n}</span>
-                  <span className="f-pipe-label">{p.icon}{submissionStatus[p.status].text}</span>
-                  <span className="f-pipe-bar"><i style={{ width: `${(100 * n) / total}%` }} /></span>
-                  {k < PIPE.length - 1 && <span className="f-pipe-arrow" aria-hidden />}
-                </button>
-              );
-            })}
-          </nav>
+      {ready
+        ? <PeriodNav mode="cycle" cycles={cycles.data} value={period.value} onChange={period.onChange} />
+        : !cycles.isError && <div className="fq is-loading" aria-hidden><Skeleton.Input active size="small" /></div>}
 
-          <Panel>
-            <div className="lcp-filters">
-              <Segmented value={shownView} onChange={(v) => { setPicked({ from: view, to: v as View }); set("view", v === "mine" ? undefined : String(v)); }}
-                options={[
-                  { value: "mine", label: L("مطلوب مني", "Waiting for me") },
-                  { value: "all", label: L("الكل", "All") },
-                  ...(["NotStarted", "InProgress", "InReview", "Returned", "Approved"] as SubmissionStatus[]).map((s) => ({ value: s, label: submissionStatus[s].text })),
-                ]} />
-              <Input.Search key={q} allowClear defaultValue={q} placeholder={L("اسم الجهة أو الكلية", "Unit or college name")} onSearch={(v) => set("q", v || undefined)} />
-              <FilterMeta shown={rows.length} total={all.data?.length} noun={L("نموذج", "forms")} active={filtered}
-                onReset={() => setParams(params.get("cycle") ? { cycle: params.get("cycle")! } : {}, { replace: true })} />
-            </div>
-            <DataTable<FormRow>
-              rowKey={(r) => r.id}
-              data={rows}
-              loading={all.isLoading}
-              resetKey={`${cycleId}|${view}|${q}`}
-              onRowClick={(r) => navigate(`/forms/${r.id}`)}
-              pageSizes={[20, 50, 100]}
-              columns={[
-                {
-                  title: L("الجهة", "Unit"), key: "unit", render: (_, r) => (
-                    <span><b>{r.unitName}</b>{r.parentName && <small className="muted"> · {r.parentName}</small>}</span>
-                  ),
-                },
-                { title: L("عند", "At"), dataIndex: "stepName", width: 170 },
-                {
-                  title: L("الحالة", "Status"), key: "status", width: 150, render: (_, r) => (
-                    <span>
-                      <Tag color={submissionStatus[r.status].color}>{submissionStatus[r.status].text}</Tag>
-                      {r.awaitingMe && <Tag color="cyan">{L("ينتظرك", "Yours")}</Tag>}
-                    </span>
-                  ),
-                },
-                {
-                  title: L("الإدخال", "Entered"), key: "done", width: 170, render: (_, r) => (
-                    <Progress percent={r.required ? Math.round((100 * r.completed) / r.required) : 0} size="small"
-                      format={() => <span className="ltr">{r.completed}/{r.required}</span>} />
-                  ),
-                },
-                {
-                  title: L("الموعد", "Due"), dataIndex: "dueOn", width: 150, render: (d: string, r) => (
-                    <span className={`t1-due${r.overdue ? " late" : ""}`}>
-                      {r.status === "Approved" ? formatDate(d) : <>{dueText(d)}<br /><small className="muted ltr">{formatDate(d)}</small></>}
-                    </span>
-                  ),
-                },
-              ]}
-              renderCard={(r) => (
-                <>
-                  <div className="dt-card-row"><b>{r.unitName}</b><Tag color={submissionStatus[r.status].color}>{submissionStatus[r.status].text}</Tag></div>
-                  <small className="muted">{r.parentName && `${r.parentName} · `}{r.stepName}{r.status !== "Approved" && ` · ${dueText(r.dueOn)}`}</small>
-                  <Progress percent={r.required ? Math.round((100 * r.completed) / r.required) : 0} size="small" format={() => <span className="ltr">{r.completed}/{r.required}</span>} />
-                </>
-              )}
-              empty={view === "mine"
-                ? <span><CheckCircleOutlined /> {L("لا شيء ينتظرك الآن في هذه الدورة.", "Nothing is waiting for you in this cycle.")}</span>
-                : L("لا نماذج بهذه المرشحات.", "No forms match these filters.")}
-            />
-          </Panel>
-        </>
-      )}
+      {modes.length > 1 && ready && slot && slot.state !== "future"
+        ? <ModeTabs modes={modes} mode={mode} onMode={setMode}>{body}</ModeTabs>
+        : body}
+    </>
+  );
+}
+
+const MODE_TEXT: Record<Mode, () => string> = {
+  monitor: () => L("متابعة الجهات", "Units overview"),
+  tasks: () => L("مهامي", "My tasks"),
+};
+
+/** تبويبا «متابعة الجهات / مهامي» لمن له الوضعان (العميد، اللجنة، الجودة، المدير الأعلى). الأسهم تنقل بين التبويبين. */
+function ModeTabs({ modes, mode, onMode, children }: { modes: Mode[]; mode: Mode; onMode: (m: Mode) => void; children: ReactNode }) {
+  const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight" && e.key !== "Home" && e.key !== "End") return;
+    e.preventDefault();
+    const i = modes.indexOf(mode);
+    const rtl = document.documentElement.dir === "rtl";
+    const step = e.key === "Home" ? -i : e.key === "End" ? modes.length - 1 - i : (e.key === "ArrowRight") !== rtl ? 1 : -1;
+    const next = modes[(i + step + modes.length) % modes.length];
+    onMode(next);
+    document.getElementById(`fm-tab-${next}`)?.focus();
+  };
+  return (
+    <>
+      <div className="fm-tabs" role="tablist" aria-label={L("طريقة العرض", "View")} onKeyDown={onKey}>
+        {modes.map((m) => (
+          <button key={m} id={`fm-tab-${m}`} type="button" role="tab" className="fm-tab" aria-selected={m === mode} aria-controls="fm-tabpanel"
+            tabIndex={m === mode ? 0 : -1} onClick={() => onMode(m)}>
+            {MODE_TEXT[m]()}
+          </button>
+        ))}
+      </div>
+      <div id="fm-tabpanel" role="tabpanel" aria-labelledby={`fm-tab-${mode}`} className="fm-tabpanel">{children}</div>
     </>
   );
 }

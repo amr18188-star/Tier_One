@@ -21,6 +21,8 @@
  *                            vignette is rgba(7, 26, 51, a). Only the comma rgba() form keeps Chrome's legacy
  *                            gradient interpolation; the space form rgb(7 26 51 / a) and color-mix() do not
  *                            (measured: 1-unit differences over ~9.4k hero pixels).
+ * - --color-night-*, --color-midnight-*, --color-silver-*, --color-graphite-*
+ *                            The three later palettes (night-gold, indigo-silver, graphite-gold); see the end of the block.
  * - --color-soft-*           The old /app palette, for the app-soft theme. Navy & Gold also uses three of them
  *                            to stay pixel-identical: the old app's shadow-sm/md (soft-navy-800), its global
  *                            focus outline and ::selection (soft-gold-500, soft-navy-950).
@@ -110,4 +112,239 @@
   --color-soft-danger-600: #d0453e;
   --color-soft-danger-400: #ef6a63; /* tokens.css .dark --destructive */
   --color-soft-info-700: #1e40af;
+
+  /* App palette: the colours the signed-in app wrote by hand before the token audit (2026-11-14), kept so navy-gold
+     renders them unchanged. Only themes/*.css use them, through the audit tokens (--ds-status-*, --ds-on-dark-* ...).
+     Name = hue family + lightness step (step = 10 x (100 - HSL lightness %)). */
+  --color-app-blue-130: #d3ddeb;
+  --color-app-blue-210: #b9c6d8;
+  --color-app-blue-180: #c4d0e0;
+  --color-app-teal-110: #d5f1f2;
+  --color-app-green-290: #86e3ae;
+  --color-app-amber-350: #f6c453;
+  --color-app-red-210: #ffa394;
+  --color-app-amber-870: #3b2a05;
+  --color-app-blue-215: #b9c7dc;
+  --color-app-blue-185: #c3cfe1;
+  --color-app-blue-290: #9fb0c9;
+  --color-app-amber-355: #e6b867;
+  --color-app-orange-440: #d29e4c;
+  --color-app-blue-30: #f6f8fb;
+  --color-app-blue-940: #030c1e;
+  --color-app-blue-890: #101828;
+  --color-app-blue-810: #16294a;
+  --color-app-blue-830: #102446;
+  --color-app-grey-990: #000000;
+  --color-app-green-600: #2e9e63;
+  --color-app-green-740: #1c6a43;
+  --color-app-green-80: #e2f3e8;
+  --color-app-green-250: #a6d8bb;
+  --color-app-green-40: #f1faf4;
+  --color-app-green-270: #9fd3b5;
+  --color-app-amber-500: #d9a227;
+  --color-app-orange-720: #8f4500;
+  --color-app-amber-60: #fff4e0;
+  --color-app-amber-250: #ecd193;
+  --color-app-amber-40: #fdf8ec;
+  --color-app-amber-590: #b5841a;
+  --color-app-amber-510: #d9a520;
+  --color-app-red-530: #c2412d;
+  --color-app-red-600: #b42318;
+  --color-app-red-50: #fdecea;
+  --color-app-red-200: #efb4aa;
+  --color-app-red-30: #fdf3f1;
+  --color-app-red-470: #d1553f;
+  --color-app-red-20: #fff8f7;
+  --color-app-red-230: #e0b0a8;
+  --color-app-orange-510: #d07a2a;
+  --color-app-blue-330: #8ea9c8;
+  --color-app-blue-190: #c4ccd8;
+  --color-app-slate-390: #8d99ab;
+  --color-app-blue-280: #aab6c6;
+  --color-app-blue-430: #5aa9c9;
+  --color-app-blue-620: #2b5797;
+  --color-app-blue-500: #4a78b5;
+  --color-app-amber-505: #ffa500;
+  --color-app-blue-50: #e8f0fb;
+  --color-app-blue-660: #1d4f91;
+  --color-app-indigo-40: #f1eefb;
+  --color-app-purple-560: #5b3fa0;
+  --color-app-green-110: #d7f0e0;
+  --color-app-green-780: #145c36;
+  --color-app-green-470: #59b77f;
+  --color-app-lime-90: #e9f6dc;
+  --color-app-lime-750: #3d6b16;
+  --color-app-lime-400: #9ccc65;
+  --color-app-lime-520: #7cb342;
+  --color-app-amber-90: #fdf1d3;
+  --color-app-amber-760: #7a5600;
+  --color-app-amber-370: #f2c14e;
+  --color-app-red-70: #fde4df;
+  --color-app-red-640: #9b2c1c;
+  --color-app-red-350: #e57364;
+  --color-app-green-700: #1f7a4c;
+  --color-app-green-580: #4f9a3a;
+  --color-app-amber-480: #c9973f;
+  --color-app-red-550: #b8452f;
+  --color-app-red-75: #fde2df;
+  --color-app-amber-80: #fff0d4;
+  --color-app-green-115: #d9efe2;
+  --color-app-green-240: #a9dcc0;
+  --color-app-green-820: #0f4d2e;
+  --color-app-blue-55: #edf1f5;
+  --color-app-slate-410: #8a94a3;
+  --color-app-slate-360: #98a2b0;
+  --color-app-slate-350: #9aa4b2;
+  --color-app-blue-270: #b0b9c6;
+  --color-app-slate-250: #b5bdc8;
+  --color-app-slate-355: #9aa5b4;
+  --color-app-slate-320: #a3adba;
+  --color-app-slate-470: #7b8794;
+  --color-app-slate-590: #5b6576;
+  --color-app-blue-200: #c3cbd6;
+  --color-app-blue-250: #b6bfcb;
+  --color-app-amber-520: #c99a2e;
+  --color-app-blue-70: #e6ecf2;
+  --color-app-blue-75: #e8edf3;
+  --color-app-blue-90: #e3e8ee;
+  --color-app-blue-80: #e6ebf1;
+  --color-app-blue-40: #f1f3f7;
+  --color-app-blue-85: #e7eaf0;
+  --color-app-blue-750: #1f3a5f;
+  --color-app-blue-60: #e9eef5;
+  --color-app-purple-530: #6b4fa0;
+  --color-app-purple-40: #f3effa;
+  --color-app-teal-630: #2f8f83;
+  --color-app-orange-570: #c27a1a;
+  --color-app-blue-550: #2f6db5;
+  --color-app-blue-45: #eef4fb;
+  --color-app-blue-505: #3f8fbf;
+  --color-app-slate-400: #8a97a6;
+  --color-app-orange-575: #d48806;
+  --color-app-amber-50: #fffbe6;
+  --color-app-amber-220: #ffe58f;
+  --color-app-lime-660: #389e0d;
+  --color-app-lime-40: #f6ffed;
+  --color-app-lime-260: #b7eb8f;
+  --color-app-red-560: #cf1322;
+  --color-app-red-35: #fff1f0;
+  --color-app-red-190: #ffa39e;
+  --color-app-orange-580: #d46b08;
+  --color-app-amber-55: #fff7e6;
+  --color-app-orange-220: #ffd591;
+  --color-app-blue-560: #0958d9;
+  --color-app-blue-65: #e6f4ff;
+  --color-app-blue-220: #91caff;
+  --color-app-purple-610: #531dab;
+  --color-app-purple-30: #f9f0ff;
+  --color-app-purple-180: #d3adf7;
+  --color-app-teal-680: #08979c;
+  --color-app-teal-50: #e6fffb;
+  --color-app-teal-280: #87e8de;
+  --color-app-indigo-560: #1d39c4;
+  --color-app-blue-35: #f0f5ff;
+  --color-app-blue-160: #adc6ff;
+  --color-app-blue-20: #fafbfc;
+  --color-app-blue-95: #f6f9fb;
+  --color-app-teal-40: #f3f8f7;
+  --color-app-blue-100: #e6ebf2;
+  --color-app-blue-105: #f4f6f9;
+  --color-app-teal-60: #e8f6f6;
+  --color-app-amber-65: #fbf5e6;
+  --color-app-blue-880: #0f1b2e;
+  --color-app-blue-110: #dce6f2;
+  --color-app-blue-115: #e9edf2;
+  --color-app-grey-930: #111111;
+  --color-app-red-540: #c0392b;
+  --color-app-grey-660: #525659;
+
+  /* Palettes added 2026-11-14 (night-gold, indigo-silver, graphite-gold). Only themes/<name>.css use them. Names are free in
+     Tailwind 4 (no slate / indigo / gray …): night, midnight, silver, graphite, ink. graphite-gold takes its gold from the Gold scale. */
+  /* Night: the dark palette night-gold (surfaces, text, and status colours tuned for dark cards) */
+  --color-night-990: #03080f; /* deepest ink: shade, code blocks, shadows */
+  --color-night-950: #060d18; /* chrome and sidebar */
+  --color-night-930: #08111f; /* sidebar top */
+  --color-night-925: #0a1424; /* page background */
+  --color-night-900: #0f1a2c; /* cards, inputs, modals, drawers, dropdowns */
+  --color-night-875: #132034; /* subtle hover, chart panel */
+  --color-night-850: #16243a; /* row and option hover */
+  --color-night-800: #1a2a43; /* tracks, muted fills, table group rows */
+  --color-night-760: #1d3152; /* navy fill under white text: table heads, active tabs (= dark-section bg) */
+  --color-night-700: #263c5e; /* sidebar active link, dark-section hover */
+  --color-night-650: #2b3c57; /* hairlines and field borders on cards */
+  --color-night-600: #3a5275; /* borders on the navy fill */
+  --color-night-500: #56698a; /* elapsed-time hatch, dark grid lines */
+  --color-night-400: #8493a9; /* captions, axis labels, neutral marks */
+  --color-night-300: #a3b1c4; /* body text, sidebar links */
+  --color-night-200: #c3cedc; /* labels, secondary text */
+  --color-night-100: #dce3ed; /* strong body text */
+  --color-night-50: #eef2f8; /* headings and text */
+  --color-night-blue-500: #5b8bd6; /* first chart series, info marks */
+  --color-night-blue-400: #7aa3e3; /* progress fill, share values */
+  --color-night-blue-300: #8fb4ec; /* primary button (navy text on it) */
+  --color-night-blue-200: #b6cff4; /* zero-state and info text */
+  --color-night-steel-400: #8ea4c2; /* target series, planned marks */
+  --color-night-green-400: #45bd7f; /* achieved marks */
+  --color-night-green-300: #86dfab; /* achieved text */
+  --color-night-lime-400: #9cc95e; /* 90-99% marks */
+  --color-night-lime-300: #c0e18f; /* 90-99% text */
+  --color-night-amber-400: #e8b542; /* near-target marks */
+  --color-night-amber-300: #f3c86e; /* near-target text */
+  --color-night-amber-700: #7d5a10; /* near value box (white text on it) */
+  --color-night-orange-400: #e8883a; /* gap (missing) marks */
+  --color-night-orange-300: #f6b37a; /* caution text */
+  --color-night-red-400: #ef5f5f; /* late marks */
+  --color-night-red-300: #ff9f90; /* late text */
+  --color-night-purple-400: #a68ce2; /* sector and special marks */
+  --color-night-purple-300: #c6b2f2; /* special text */
+  --color-night-cyan-400: #4cc4cc; /* highlight and administration marks */
+  --color-night-cyan-300: #86dde2; /* highlight text */
+  --color-night-geek-300: #a3b3ff; /* category text */
+  --color-night-geek-400: #7f93f0; /* category marks */
+  --color-night-900-rgb: 15, 26, 44;
+
+  /* Midnight indigo: the indigo-silver palette */
+  --color-midnight-990: #0b0d29; /* deepest ink: shade, code blocks */
+  --color-midnight-950: #12153c; /* chrome and sidebar */
+  --color-midnight-900: #1b1f52; /* headings, primary button, page band */
+  --color-midnight-800: #252a68; /* band middle, sidebar hover */
+  --color-midnight-700: #31377d; /* band end, sidebar active, avatar */
+  --color-midnight-600: #3e4696; /* links, highlighted words, eyebrows */
+  --color-midnight-500: #5560b0; /* icons, tab ink bar, actual series, under review */
+  --color-midnight-400: #7c85c7; /* chart area and series */
+  --color-midnight-100: #e7e9f5; /* icon tiles, chips */
+  --color-midnight-50: #f3f4fa; /* page background */
+  --color-midnight-25: #f8f8fc; /* hover tint */
+  --color-midnight-900-rgb: 27, 31, 82;
+
+  /* Silver: accents of indigo-silver */
+  --color-silver-50: #f6f7f9; /* muted boxes, callouts */
+  --color-silver-100: #eceef2; /* tracks */
+  --color-silver-200: #dee1e7; /* hairlines, light accent on dark */
+  --color-silver-300: #c8cdd7; /* accent on dark: eyebrows, indicator, primary on dark */
+  --color-silver-400: #a9b0bd; /* accent lines on light (decorative) */
+  --color-silver-500: #868e9e; /* hover border, target series, group titles on navy */
+  --color-silver-600: #6b7385; /* target line */
+  --color-silver-700: #545b6c; /* body and labels */
+  --color-silver-800: #3d4352; /* strong body */
+
+  /* Graphite: the graphite-gold palette (gold comes from the Gold scale above) */
+  --color-graphite-990: #0d0f12; /* deepest ink: shade, code blocks */
+  --color-graphite-950: #15181c; /* chrome and sidebar */
+  --color-graphite-900: #1d2126; /* headings, primary button, page band */
+  --color-graphite-800: #272c32; /* band middle, sidebar hover */
+  --color-graphite-700: #333941; /* band end, sidebar active, avatar */
+  --color-graphite-600: #454c56; /* borders on dark, strong labels */
+  --color-graphite-500: #5c6470; /* body text */
+  --color-graphite-400: #858c97; /* captions, target series */
+  --color-graphite-350: #a0a6af; /* sidebar group titles */
+  --color-graphite-300: #b5bac1; /* sidebar links, index numbers */
+  --color-graphite-200: #dadde1; /* hairlines, text on dark */
+  --color-graphite-100: #eceef0; /* tracks */
+  --color-graphite-50: #f5f6f7; /* page background */
+  --color-graphite-25: #fafafb; /* hover tint, muted boxes */
+  --color-graphite-900-rgb: 29, 33, 38;
+
+  /* AA text inks shared by the light palettes (indigo-silver, graphite-gold) */
+  --color-ink-teal-700: #0b6b70; /* AA Tag text: highlight (cyan) Tags in the light palettes */
 }

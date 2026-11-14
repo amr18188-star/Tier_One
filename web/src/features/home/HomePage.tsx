@@ -126,10 +126,10 @@ export default function HomePage() {
           ) : (
             <>
               <SegmentBar label={L("حالة المؤشرات", "Indicator status")} segments={[
-                { key: "a", label: L("محقق", "Achieved"), count: r.indicators.filter((i) => i.performance === "Achieved").length, color: "#2e9e63" },
-                { key: "n", label: L("قريب من المستهدف", "Near"), count: r.indicators.filter((i) => i.performance === "Near").length, color: "#d9a227" },
-                { key: "b", label: L("متأخر", "Behind"), count: r.indicators.filter((i) => i.performance === "Behind").length, color: "#b42318" },
-                { key: "o", label: L("بلا بيانات أو مستهدف أو جزئي", "Not judged"), count: r.indicators.filter((i) => !["Achieved", "Near", "Behind"].includes(i.performance)).length, color: "#c4ccd8" },
+                { key: "a", label: L("محقق", "Achieved"), count: r.indicators.filter((i) => i.performance === "Achieved").length, color: "var(--ds-status-ok)" },
+                { key: "n", label: L("قريب من المستهدف", "Near"), count: r.indicators.filter((i) => i.performance === "Near").length, color: "var(--ds-status-near)" },
+                { key: "b", label: L("متأخر", "Behind"), count: r.indicators.filter((i) => i.performance === "Behind").length, color: "var(--ds-status-late-ink)" },
+                { key: "o", label: L("بلا بيانات أو مستهدف أو جزئي", "Not judged"), count: r.indicators.filter((i) => !["Achieved", "Near", "Behind"].includes(i.performance)).length, color: "var(--ds-status-none)" },
               ]} />
               <p className="t1-help mt">{L(`${r.unit.kind === "University" ? "الجامعة" : r.unit.name} · محسوبة من ${r.formsApproved} نموذجًا معتمدًا نهائيًا من ${r.formsTotal}.`,
                 `From ${r.formsApproved} of ${r.formsTotal} approved forms.`)}</p>
@@ -158,9 +158,9 @@ export default function HomePage() {
             <Panel title={L("حالة تعريفات المؤشرات", "Indicator definitions")} query={home}>
               {() => (
                 <SegmentBar label={L("حالة التعريفات", "Definition status")} segments={[
-                  { key: "Approved", label: L("معتمد", "Approved"), count: approved, color: "#1c6a43" },
+                  { key: "Approved", label: L("معتمد", "Approved"), count: approved, color: "var(--ds-status-ok-ink)" },
                   { key: "UnderReview", label: L("قيد الاعتماد", "Under review"), count: d!.definitionStatus.find((s) => s.key === "UnderReview")?.count ?? 0, color: "var(--ds-status-review)" },
-                  { key: "Draft", label: L("مسودة", "Draft"), count: d!.definitionStatus.find((s) => s.key === "Draft")?.count ?? 0, color: "#aab6c6" },
+                  { key: "Draft", label: L("مسودة", "Draft"), count: d!.definitionStatus.find((s) => s.key === "Draft")?.count ?? 0, color: "var(--ds-status-draft)" },
                 ]} />
               )}
             </Panel>

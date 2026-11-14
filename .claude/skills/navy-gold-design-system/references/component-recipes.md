@@ -122,27 +122,32 @@ One `data-theme` per page. Light is the default scope. Container: `mx-auto max-w
 
 ## 3. Theme switch (more than one style system)
 
-```tsx
-import { useState, type ReactNode } from "react";
-import { themeNames, type ThemeName } from "@/styles/design-system/tokens";
+The site theme and corner style are per viewer and site-wide: the Appearance panel (gear in the top bar,
+`web/src/app/AppearanceMenu.tsx`) sets them on `<html>` and saves them (localStorage `t1.appearance`). Read or change them
+from any component with `useAppearance()`; never put a different `data-theme` on a page root.
 
-export function ThemedPage({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<ThemeName>("navy-gold");
+```tsx
+import { useAppearance } from "@/styles/design-system/appearance";
+import { themeLabels, themeNames } from "@/styles/design-system/tokens";
+import { L } from "@/shared/i18n";
+
+export function ThemeSelect() {
+  const { theme, setTheme } = useAppearance();       // saved choice; CSS tokens, antd and the scrollbar follow at once
   return (
-    <div data-feature="" data-theme={theme}>
-      <div className="min-h-screen bg-ds-bg text-ds-fg">
-        <select
-          value={theme}
-          onChange={(e) => setTheme(e.target.value as ThemeName)}
-          className="rounded-ds border border-ds-border bg-ds-surface px-3 py-2 text-sm text-ds-heading"
-        >
-          {themeNames.map((name) => <option key={name} value={name}>{name}</option>)}
-        </select>
-        {children}
-      </div>
-    </div>
+    <select value={theme} onChange={(e) => setTheme(e.target.value as typeof theme)}
+      className="rounded-ds border border-ds-border bg-ds-surface px-3 py-2 text-sm text-ds-heading">
+      {themeNames.map((n) => <option key={n} value={n}>{L(themeLabels[n].ar, themeLabels[n].en)}</option>)}
+    </select>
   );
 }
+```
+
+A page with its own fixed look (a brand page, like the landing) pins it while mounted, so `<html>` and the page agree:
+
+```tsx
+import { usePinnedAppearance } from "@/styles/design-system/appearance";
+import { BRAND_APPEARANCE } from "@/styles/design-system/theme";
+usePinnedAppearance(BRAND_APPEARANCE);              // navy-gold + square until unmount; the viewer's choice comes back after
 ```
 
 Switching the attribute re-themes the whole subtree; the children keep their classes.

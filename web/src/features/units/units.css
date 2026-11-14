@@ -3,12 +3,12 @@
 .un-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
 .un-search { width: 240px; }
 .un-bulk { display: inline-flex; gap: 6px; margin-inline-start: auto; }
-.un-std { border: 1px solid var(--hair); border-radius: var(--ds-radius-lg); margin-bottom: 10px; overflow: hidden; background: #fff; }
+.un-std { border: 1px solid var(--hair); border-radius: var(--ds-radius-lg); margin-bottom: 10px; overflow: hidden; background: var(--ds-surface); }
 .un-std > header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 7px 12px; background: var(--sunk); font-size: 13px; color: var(--navy); }
 .un-std > header .muted { font-size: 12px; }
 .un-std-count { margin-inline-start: auto; font-size: 12px; color: var(--muted); font-family: var(--font-display); }
 .un-row { display: grid; grid-template-columns: auto 44px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 6px 12px; border-top: 1px solid var(--hair); font-size: 13px; cursor: pointer; line-height: 1.6; }
-.un-row.on { background: #f3f8f7; }
+.un-row.on { background: var(--ds-app-row-selected); }
 .un-row.taken { cursor: default; color: var(--muted); }
 .un-row .ant-tag { margin: 0; font-size: 11px; }
 .un-code { font-size: 12px; color: var(--navy); direction: ltr; }
@@ -18,13 +18,13 @@
 .un-ind { font-size: 12.5px; white-space: nowrap; }
 .un-ind b { font-family: var(--font-display); color: var(--navy); }
 /* ألوان شجرة الجهات: لون لكل نوع من الجذر إلى الفروع، شريط بجانب الاسم وعلامة النوع ودليل أعلى الجدول. */
-.un-k-University { --uk: #1f3a5f; --uk-bg: #e9eef5; }
-.un-k-Sector { --uk: #6b4fa0; --uk-bg: #f3effa; }
-.un-k-Administration { --uk: #2f8f83; --uk-bg: #ffffff; }
-.un-k-Center { --uk: #c27a1a; --uk-bg: #ffffff; }
-.un-k-College, .un-k-Institute { --uk: #2f6db5; --uk-bg: #eef4fb; }
-.un-k-Institute { --uk: #3f8fbf; }
-.un-k-Department { --uk: #8a97a6; --uk-bg: #ffffff; }
+.un-k-University { --uk: var(--ds-unit-university); --uk-bg: var(--ds-unit-university-bg); }
+.un-k-Sector { --uk: var(--ds-unit-sector); --uk-bg: var(--ds-unit-sector-bg); }
+.un-k-Administration { --uk: var(--ds-unit-administration); --uk-bg: var(--ds-surface); }
+.un-k-Center { --uk: var(--ds-unit-center); --uk-bg: var(--ds-surface); }
+.un-k-College, .un-k-Institute { --uk: var(--ds-unit-college); --uk-bg: var(--ds-unit-college-bg); }
+.un-k-Institute { --uk: var(--ds-unit-institute); }
+.un-k-Department { --uk: var(--ds-unit-department); --uk-bg: var(--ds-surface); }
 .un-tree .ant-table-tbody > tr > td { background: var(--uk-bg); }
 .un-tree .ant-table-tbody > tr > td:first-child { box-shadow: inset -4px 0 0 var(--uk); }
 .un-tree .ant-table-tbody > tr.un-k-University > td:first-child,

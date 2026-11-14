@@ -1,0 +1,392 @@
+/*
+ * Theme "night-gold": Night navy & gold, the dark palette (كحلي ليلي وذهبي). For long sessions and dim rooms: every
+ * surface is dark (page, cards, tables, inputs, modals, drawers, dropdowns; antd runs its darkAlgorithm, `scheme: "dark"` in
+ * tokens.ts), gold stays the accent, and the primary action is a light navy-blue with navy text.
+ * In a dark palette the light scope is the page scope: "light" means "the default surfaces", which are dark here.
+ * data-section="dark" is the navy band scope (page band, heroes, table heads), lighter and more saturated than the page.
+ * Status, score, tier, heat, unit and Tag colours keep their hue (green = achieved, amber = near, red = late, orange = gap)
+ * and are tuned for the dark card: lighter marks, light text, soft fills = the mark mixed into the card colour.
+ * Pillar data colours stay data: --ds-pillar-* lifts them toward white and mixes their tint into the card (shared/pillars.tsx).
+ * Same scheme and token names as navy-gold.css. Only custom properties here. Primitives come from ../primitives.css.
+ * No shadcn variable (../../shadcn.css maps them), no radius (../corners.css).
+ */
+
+/* ---------- Theme level ---------- */
+[data-theme="night-gold"] {
+  --ds-font: "Cairo", "Geist Variable", "Segoe UI", sans-serif;
+  --ds-font-heading: "Cairo", "Geist Variable", "Segoe UI", sans-serif;
+  --ds-color-scheme: dark;
+
+  /* Header and footer chrome */
+  --ds-chrome: var(--color-night-950);
+
+  /* Textures (landing; same recipes as navy-gold) */
+  --ds-grid-hero: var(--color-night-700);
+  --ds-grid-dark: var(--color-night-500);
+  --ds-texture-hero: linear-gradient(to right, var(--color-night-700) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-night-700) 1px, transparent 1px);
+  --ds-texture-dark: linear-gradient(to right, var(--color-night-500) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-night-500) 1px, transparent 1px);
+  --ds-hero-vignette: radial-gradient(
+    ellipse at center,
+    rgba(var(--color-night-900-rgb), 0.96) 0%,
+    rgba(var(--color-night-900-rgb), 0.88) 40%,
+    rgba(var(--color-night-900-rgb), 0.65) 75%,
+    rgba(var(--color-night-900-rgb), 0.4) 100%
+  );
+
+  /* Data visualisation */
+  --ds-chart-1: var(--color-night-blue-500);
+  --ds-chart-2: var(--color-gold-400);
+  --ds-chart-3: var(--color-night-steel-400);
+  --ds-chart-4: var(--color-night-cyan-400);
+  --ds-chart-5: var(--color-gold-200);
+  --ds-chart-actual: var(--color-gold-400);
+  --ds-chart-target: var(--color-night-steel-400);
+  --ds-chart-area: var(--color-gold-400);
+  --ds-chart-current: var(--color-gold-200);
+  --ds-chart-bg: var(--color-night-900);
+  --ds-chart-grid: var(--color-night-650);
+  --ds-chart-axis: var(--color-night-400);
+  --ds-chart-up: var(--color-night-green-400);
+  --ds-chart-down: var(--color-night-red-400);
+  --ds-chart-college: var(--color-night-blue-300);
+  --ds-status-review: var(--color-gold-500);
+
+  /* Elevation and global states */
+  --ds-shadow-sm: 0 8px 24px color-mix(in srgb, var(--color-night-990) 35%, transparent);
+  --ds-shadow-md: 0 16px 40px color-mix(in srgb, var(--color-night-990) 50%, transparent);
+  --ds-focus: color-mix(in oklab, var(--color-gold-400) 45%, transparent);
+  --ds-selection-bg: var(--color-gold-400);
+  --ds-selection-fg: var(--color-night-950);
+
+  /* App sidebar (theme level). Contrast in tokens.test.ts. */
+  --ds-sidebar-bg: var(--color-night-950);
+  --ds-sidebar-fg: var(--color-night-300);
+  --ds-sidebar-fg-active: var(--color-paper);
+  --ds-sidebar-muted: var(--color-night-400);
+  --ds-sidebar-hover-bg: var(--color-night-850);
+  --ds-sidebar-active-bg: var(--color-night-700);
+  --ds-sidebar-indicator: var(--color-gold-400);
+  --ds-sidebar-border: var(--color-night-800);
+  --ds-sidebar-focus: var(--color-gold-400);
+  --ds-sidebar-badge-bg: var(--color-gold-400);
+  --ds-sidebar-badge-fg: var(--color-night-950);
+  --ds-sidebar-bg-top: var(--color-night-930);
+  --ds-sidebar-glow: color-mix(in srgb, var(--color-gold-400) 7%, transparent);
+
+  /* Page band, Home hero, plan hero, sign-in panel */
+  --ds-band-from: var(--color-navy-800);
+  --ds-band-via: var(--color-navy-700);
+  --ds-band-to: var(--color-night-760);
+  --ds-band-glow: color-mix(in srgb, var(--color-gold-400) 14%, transparent);
+  --ds-band-glow-accent: color-mix(in srgb, var(--color-gold-400) 16%, transparent);
+  --ds-accent-on-dark: var(--color-gold-400);
+
+  /* Gradients: same recipes as navy-gold.css (README "Gradients") */
+  --ds-shade: var(--color-night-990);
+  --ds-gradient-hero: radial-gradient(60% 90% at 0% 0%, var(--ds-band-glow), transparent 60%),
+    radial-gradient(50% 80% at 100% 100%, var(--ds-band-glow-accent), transparent 60%),
+    linear-gradient(125deg, var(--ds-band-from) 0%, var(--ds-band-via) 55%, var(--ds-band-to) 100%);
+  --ds-gradient-sidebar: radial-gradient(120% 45% at 100% 0%, var(--ds-sidebar-glow), transparent 60%),
+    linear-gradient(180deg, var(--ds-sidebar-bg-top) 0%, var(--ds-sidebar-bg) 100%);
+  --ds-gradient-auth: radial-gradient(120% 80% at 85% 10%, var(--ds-band-glow), transparent 55%),
+    radial-gradient(90% 70% at 10% 100%, var(--ds-band-glow-accent), transparent 60%),
+    linear-gradient(160deg, var(--ds-band-via) 0%, var(--ds-band-from) 55%, var(--ds-shade) 100%);
+  --ds-gradient-avatar: linear-gradient(135deg, var(--color-navy-700), var(--color-navy-900));
+  --ds-gradient-progress: linear-gradient(90deg, var(--color-night-blue-500), var(--color-night-blue-300));
+  --ds-gradient-callout: linear-gradient(90deg, var(--color-night-800), var(--color-night-900));
+  --ds-gradient-surface-subtle: linear-gradient(180deg, var(--color-night-875), var(--color-night-900));
+  --ds-hatch-light: repeating-linear-gradient(135deg, var(--color-night-850) 0 6px, var(--color-night-900) 6px 12px);
+  --ds-hatch-muted: repeating-linear-gradient(135deg, var(--color-night-500) 0 6px, var(--color-night-600) 6px 12px);
+
+  /* ---- Audit tokens (README "Audit tokens") ---- */
+  /* on-dark */
+  --ds-on-dark-fg: var(--color-paper);
+  --ds-on-dark-body: var(--color-app-blue-130);
+  --ds-on-dark-muted: var(--color-app-blue-210);
+  --ds-on-dark-soft: var(--color-app-blue-180);
+  --ds-on-dark-code: var(--color-app-teal-110);
+  --ds-on-dark-ok: var(--color-app-green-290);
+  --ds-on-dark-warn: var(--color-app-amber-350);
+  --ds-on-dark-bad: var(--color-app-red-210);
+  --ds-on-dark-now: var(--color-app-amber-350);
+  --ds-on-dark-now-ink: var(--color-app-amber-870);
+
+  /* auth */
+  --ds-auth-muted: var(--color-app-blue-215);
+  --ds-auth-body: var(--color-app-blue-185);
+  --ds-auth-faint: var(--color-app-blue-210);
+  --ds-auth-icon: var(--color-app-amber-355);
+  --ds-auth-icon-tint: var(--color-app-orange-440);
+  --ds-auth-page: var(--color-night-925);
+  --ds-auth-logo-shadow: var(--color-night-990);
+
+  /* shadow */
+  --ds-shadow-ink: var(--color-app-grey-990);
+  --ds-shadow-navy: var(--color-night-990);
+  --ds-shadow-band: var(--color-night-990);
+  --ds-shadow-mark: var(--color-app-grey-990);
+
+  /* status */
+  --ds-status-ok: var(--color-night-green-400);
+  --ds-status-ok-ink: var(--color-night-green-300);
+  --ds-status-ok-soft: color-mix(in srgb, var(--color-night-green-400) 18%, var(--color-night-900));
+  --ds-status-ok-border: color-mix(in srgb, var(--color-night-green-400) 45%, var(--color-night-900));
+  --ds-status-ok-tint: color-mix(in srgb, var(--color-night-green-400) 10%, var(--color-night-900));
+  --ds-status-done-border: color-mix(in srgb, var(--color-night-green-400) 55%, var(--color-night-900));
+  --ds-status-near: var(--color-night-amber-400);
+  --ds-status-near-ink: var(--color-night-amber-300);
+  --ds-status-near-soft: color-mix(in srgb, var(--color-night-amber-400) 18%, var(--color-night-900));
+  --ds-status-near-border: color-mix(in srgb, var(--color-night-amber-400) 45%, var(--color-night-900));
+  --ds-status-near-tint: color-mix(in srgb, var(--color-night-amber-400) 10%, var(--color-night-900));
+  --ds-status-near-mark: var(--color-night-amber-700);
+  --ds-status-near-bar: var(--color-night-amber-400);
+  --ds-status-late: var(--color-night-red-400);
+  --ds-status-late-ink: var(--color-night-red-300);
+  --ds-status-late-soft: color-mix(in srgb, var(--color-night-red-400) 18%, var(--color-night-900));
+  --ds-status-late-border: color-mix(in srgb, var(--color-night-red-400) 45%, var(--color-night-900));
+  --ds-status-late-tint: color-mix(in srgb, var(--color-night-red-400) 10%, var(--color-night-900));
+  --ds-status-late-bar: var(--color-night-red-400);
+  --ds-status-flag-bg: color-mix(in srgb, var(--color-night-red-400) 12%, var(--color-night-900));
+  --ds-status-vacant-border: color-mix(in srgb, var(--color-night-red-400) 55%, var(--color-night-900));
+  --ds-status-gap: var(--color-night-orange-400);
+  --ds-status-plan: var(--color-night-steel-400);
+  --ds-status-none: var(--color-night-600);
+  --ds-status-none-ink: var(--color-night-400);
+  --ds-status-draft: var(--color-night-400);
+  --ds-status-progress: var(--color-night-cyan-400);
+  --ds-status-info: var(--color-night-blue-400);
+  --ds-status-share: var(--color-night-blue-400);
+  --ds-status-caution: var(--color-night-orange-300);
+  --ds-status-zero-soft: color-mix(in srgb, var(--color-night-blue-500) 20%, var(--color-night-900));
+  --ds-status-zero-ink: var(--color-night-blue-200);
+  --ds-status-exempt-soft: color-mix(in srgb, var(--color-night-purple-400) 20%, var(--color-night-900));
+  --ds-status-exempt-ink: var(--color-night-purple-300);
+
+  /* score */
+  --ds-score-full-soft: color-mix(in srgb, var(--color-night-green-400) 22%, var(--color-night-900));
+  --ds-score-full-ink: var(--color-night-green-300);
+  --ds-score-full-mark: var(--color-night-green-400);
+  --ds-score-high-soft: color-mix(in srgb, var(--color-night-lime-400) 20%, var(--color-night-900));
+  --ds-score-high-ink: var(--color-night-lime-300);
+  --ds-score-high-mark: var(--color-night-lime-400);
+  --ds-score-high-bar: var(--color-night-lime-400);
+  --ds-score-mid-soft: color-mix(in srgb, var(--color-night-amber-400) 20%, var(--color-night-900));
+  --ds-score-mid-ink: var(--color-night-amber-300);
+  --ds-score-mid-mark: var(--color-night-amber-400);
+  --ds-score-low-soft: color-mix(in srgb, var(--color-night-red-400) 20%, var(--color-night-900));
+  --ds-score-low-ink: var(--color-night-red-300);
+  --ds-score-low-mark: var(--color-night-red-400);
+
+  /* tier */
+  --ds-tier-1: var(--color-night-green-400);
+  --ds-tier-2: var(--color-night-lime-400);
+  --ds-tier-3: var(--color-night-amber-400);
+  --ds-tier-4: var(--color-night-orange-400);
+  --ds-tier-5: var(--color-night-red-400);
+  --ds-tier-ink: var(--color-night-950);
+
+  /* heat */
+  --ds-heat-1: color-mix(in srgb, var(--color-night-red-400) 22%, var(--color-night-900));
+  --ds-heat-2: color-mix(in srgb, var(--color-night-amber-400) 22%, var(--color-night-900));
+  --ds-heat-3: color-mix(in srgb, var(--color-night-green-400) 18%, var(--color-night-900));
+  --ds-heat-4: color-mix(in srgb, var(--color-night-green-400) 38%, var(--color-night-900));
+  --ds-heat-4-ink: var(--color-night-50);
+  --ds-heat-none: var(--color-night-800);
+
+  /* neutral */
+  --ds-neutral-mark: var(--color-night-400);
+  --ds-neutral-axis: var(--color-night-400);
+  --ds-neutral-faint: var(--color-night-400);
+  --ds-neutral-off: var(--color-night-650);
+  --ds-neutral-na: var(--color-night-600);
+  --ds-neutral-stopped: var(--color-night-500);
+  --ds-neutral-lead: var(--color-night-500);
+  --ds-neutral-base: var(--color-night-400);
+  --ds-neutral-actual: var(--color-night-200);
+  --ds-neutral-arrow: var(--color-night-600);
+  --ds-neutral-dot: var(--color-night-500);
+
+  /* chart */
+  --ds-chart-accent: var(--color-gold-400);
+  --ds-chart-value: var(--color-night-50);
+  --ds-chart-track: var(--color-night-800);
+  --ds-chart-ring-track: var(--color-night-800);
+  --ds-chart-grid-soft: var(--color-night-800);
+  --ds-chart-grid-faint: var(--color-night-800);
+  --ds-chart-off: var(--color-night-875);
+  --ds-chart-off-key: var(--color-night-800);
+  --ds-chart-target-line: var(--color-night-amber-400);
+
+  /* unit */
+  --ds-unit-university: var(--color-night-blue-200);
+  --ds-unit-university-bg: color-mix(in srgb, var(--color-night-blue-500) 16%, var(--color-night-900));
+  --ds-unit-sector: var(--color-night-purple-300);
+  --ds-unit-sector-bg: color-mix(in srgb, var(--color-night-purple-400) 16%, var(--color-night-900));
+  --ds-unit-administration: var(--color-night-cyan-400);
+  --ds-unit-center: var(--color-night-orange-400);
+  --ds-unit-college: var(--color-night-blue-400);
+  --ds-unit-college-bg: color-mix(in srgb, var(--color-night-blue-500) 12%, var(--color-night-900));
+  --ds-unit-institute: var(--color-night-cyan-300);
+  --ds-unit-department: var(--color-night-300);
+
+  /* tag */
+  --ds-tag-pending-fg: var(--color-night-amber-300);
+  --ds-tag-pending-bg: color-mix(in srgb, var(--color-night-amber-400) 14%, var(--color-night-900));
+  --ds-tag-pending-border: color-mix(in srgb, var(--color-night-amber-400) 45%, var(--color-night-900));
+  --ds-tag-positive-fg: var(--color-night-lime-300);
+  --ds-tag-positive-bg: color-mix(in srgb, var(--color-night-lime-400) 14%, var(--color-night-900));
+  --ds-tag-positive-border: color-mix(in srgb, var(--color-night-lime-400) 45%, var(--color-night-900));
+  --ds-tag-negative-fg: var(--color-night-red-300);
+  --ds-tag-negative-bg: color-mix(in srgb, var(--color-night-red-400) 14%, var(--color-night-900));
+  --ds-tag-negative-border: color-mix(in srgb, var(--color-night-red-400) 45%, var(--color-night-900));
+  --ds-tag-caution-fg: var(--color-night-orange-300);
+  --ds-tag-caution-bg: color-mix(in srgb, var(--color-night-orange-400) 14%, var(--color-night-900));
+  --ds-tag-caution-border: color-mix(in srgb, var(--color-night-orange-400) 45%, var(--color-night-900));
+  --ds-tag-info-fg: var(--color-night-blue-200);
+  --ds-tag-info-bg: color-mix(in srgb, var(--color-night-blue-500) 16%, var(--color-night-900));
+  --ds-tag-info-border: color-mix(in srgb, var(--color-night-blue-500) 50%, var(--color-night-900));
+  --ds-tag-special-fg: var(--color-night-purple-300);
+  --ds-tag-special-bg: color-mix(in srgb, var(--color-night-purple-400) 14%, var(--color-night-900));
+  --ds-tag-special-border: color-mix(in srgb, var(--color-night-purple-400) 45%, var(--color-night-900));
+  --ds-tag-highlight-fg: var(--color-night-cyan-300);
+  --ds-tag-highlight-bg: color-mix(in srgb, var(--color-night-cyan-400) 12%, var(--color-night-900));
+  --ds-tag-highlight-border: color-mix(in srgb, var(--color-night-cyan-400) 40%, var(--color-night-900));
+  --ds-tag-category-fg: var(--color-night-geek-300);
+  --ds-tag-category-bg: color-mix(in srgb, var(--color-night-geek-400) 14%, var(--color-night-900));
+  --ds-tag-category-border: color-mix(in srgb, var(--color-night-geek-400) 45%, var(--color-night-900));
+
+  /* app */
+  --ds-app-muted-bg: var(--color-night-875);
+  --ds-app-faint-bg: var(--color-night-875);
+  --ds-app-row-hover: var(--color-night-850);
+  --ds-app-row-selected: color-mix(in srgb, var(--color-gold-400) 8%, var(--color-night-900));
+  --ds-app-table-group: var(--color-night-800);
+  --ds-app-topbar: var(--color-night-925);
+  --ds-app-note-bg: color-mix(in srgb, var(--color-gold-400) 8%, var(--color-night-900));
+  --ds-app-partner-bg: color-mix(in srgb, var(--color-gold-400) 12%, var(--color-night-900));
+  --ds-app-code-bg: var(--color-night-990);
+  --ds-app-code-fg: var(--color-app-blue-110);
+  --ds-app-print-desk: var(--color-night-950);
+  --ds-app-print-ink: var(--color-night-100);
+  --ds-app-pdf-icon: var(--color-night-red-400);
+  --ds-app-pdf-frame: var(--color-night-950);
+
+  /* Navy fill under white text (legacy --navy as a background: table heads, active tabs and filters, selected
+     segments); = the light heading in a light palette. */
+  --ds-ink-fill: var(--color-night-760);
+
+  /* Pillar data colours (shared/pillars.tsx tint()): --pc = pillar colour keep% toward lift; --pt = the pillar's own
+     tint keep% , else the pillar colour mix% into the card. Light palettes: 100% / 100% (the data as is). */
+  --ds-pillar-keep: 80%;
+  --ds-pillar-lift: var(--color-paper);
+  --ds-pillar-tint-keep: 0%;
+  --ds-pillar-tint-mix: 10%;
+}
+
+/* ---------- Light scope (default; the page scope) ---------- */
+[data-theme="night-gold"],
+[data-theme="night-gold"] [data-section="light"] {
+  --ds-bg: var(--color-night-900);
+  --ds-bg-cool: var(--color-night-925);
+  --ds-bg-warm: color-mix(in srgb, var(--color-gold-400) 7%, var(--color-night-900));
+  --ds-fg: var(--color-night-50);
+  --ds-surface: var(--color-night-900);
+  --ds-surface-hover: var(--color-night-850);
+  --ds-surface-hover-soft: var(--color-night-875);
+  --ds-surface-warm: var(--color-night-875);
+  --ds-callout: var(--color-night-850);
+  --ds-border: var(--color-night-650);
+  --ds-line-soft: var(--color-paper);
+  --ds-track: var(--color-night-800);
+  --ds-accent: var(--color-gold-400);
+  --ds-accent-strong: var(--color-gold-400);
+  --ds-accent-border: color-mix(in oklab, var(--color-gold-400) 35%, transparent);
+  --ds-heading: var(--color-night-50);
+  --ds-highlight: var(--color-gold-400);
+  --ds-highlight-display: var(--color-gold-200);
+  --ds-body: var(--color-night-300);
+  --ds-body-strong: var(--color-night-100);
+  --ds-label: var(--color-night-200);
+  --ds-faint: var(--color-night-400);
+  --ds-index: var(--color-night-500);
+  --ds-eyebrow: var(--color-gold-400);
+  --ds-eyebrow-aa: var(--color-gold-400);
+  --ds-icon: var(--color-gold-400);
+  --ds-tile: color-mix(in srgb, var(--color-gold-400) 10%, var(--color-night-900));
+  --ds-tile-active: var(--color-gold-400);
+  --ds-tile-active-fg: var(--color-night-950);
+  --ds-tile-solid: var(--color-night-760);
+  --ds-tile-solid-fg: var(--color-gold-400);
+  --ds-live: var(--color-night-green-400);
+  --ds-focus-ring: var(--color-gold-400);
+  --ds-link: var(--color-gold-400);
+  --ds-link-hover: var(--color-night-50);
+  --ds-destructive: color-mix(in srgb, var(--color-soft-danger-400) 55%, var(--color-paper));
+  --ds-btn-primary-bg: var(--color-night-blue-300);
+  --ds-btn-primary-fg: var(--color-night-950);
+  --ds-btn-primary-border: var(--color-night-blue-300);
+  --ds-btn-primary-hover-bg: var(--color-gold-400);
+  --ds-btn-primary-hover-fg: var(--color-night-950);
+  --ds-btn-primary-hover-border: var(--color-gold-400);
+  --ds-btn-ghost-bg: transparent;
+  --ds-btn-ghost-fg: var(--color-night-50);
+  --ds-btn-ghost-border: color-mix(in oklab, var(--color-paper) 22%, transparent);
+  --ds-btn-ghost-hover-bg: var(--color-gold-400);
+  --ds-btn-ghost-hover-fg: var(--color-night-950);
+  --ds-btn-ghost-hover-border: var(--color-gold-400);
+}
+
+/* ---------- Dark scope (navy blocks) ---------- */
+[data-theme="night-gold"] [data-section="dark"],
+[data-theme="night-gold"][data-section="dark"] {
+  --ds-bg: var(--color-night-760);
+  --ds-bg-cool: var(--color-night-760);
+  --ds-bg-warm: var(--color-night-760);
+  --ds-fg: var(--color-paper);
+  --ds-surface: var(--color-night-700);
+  --ds-surface-hover: var(--color-navy-500);
+  --ds-surface-hover-soft: var(--color-navy-500);
+  --ds-surface-warm: var(--color-night-700);
+  --ds-callout: var(--color-night-700);
+  --ds-border: var(--color-night-600);
+  --ds-line-soft: var(--color-paper);
+  --ds-track: var(--color-night-700);
+  --ds-accent: var(--color-gold-400);
+  --ds-accent-strong: var(--color-gold-400);
+  --ds-accent-border: color-mix(in oklab, var(--color-gold-400) 30%, transparent);
+  --ds-heading: var(--color-paper);
+  --ds-highlight: var(--color-gold-400);
+  --ds-highlight-display: var(--color-gold-200);
+  --ds-body: var(--color-mist-300);
+  --ds-body-strong: var(--color-mist-100);
+  --ds-label: var(--color-mist-100);
+  --ds-faint: var(--color-night-steel-400);
+  --ds-index: color-mix(in oklab, var(--color-paper) 20%, transparent);
+  --ds-eyebrow: var(--color-gold-400);
+  --ds-eyebrow-aa: var(--color-gold-400);
+  --ds-icon: var(--color-gold-400);
+  --ds-tile: color-mix(in oklab, var(--color-gold-400) 10%, transparent);
+  --ds-tile-active: var(--color-gold-400);
+  --ds-tile-active-fg: var(--color-night-950);
+  --ds-tile-solid: var(--color-night-950);
+  --ds-tile-solid-fg: var(--color-gold-400);
+  --ds-live: var(--color-night-green-400);
+  --ds-focus-ring: var(--color-gold-400);
+  --ds-link: var(--color-gold-400);
+  --ds-link-hover: var(--color-paper);
+  --ds-destructive: color-mix(in srgb, var(--color-soft-danger-400) 40%, var(--color-paper));
+  --ds-btn-primary-bg: var(--color-gold-400);
+  --ds-btn-primary-fg: var(--color-night-950);
+  --ds-btn-primary-border: var(--color-gold-400);
+  --ds-btn-primary-hover-bg: transparent;
+  --ds-btn-primary-hover-fg: var(--color-gold-400);
+  --ds-btn-primary-hover-border: var(--color-gold-400);
+  --ds-btn-ghost-bg: transparent;
+  --ds-btn-ghost-fg: var(--color-paper);
+  --ds-btn-ghost-border: color-mix(in oklab, var(--color-paper) 20%, transparent);
+  --ds-btn-ghost-hover-bg: var(--color-gold-400);
+  --ds-btn-ghost-hover-fg: var(--color-night-950);
+  --ds-btn-ghost-hover-border: var(--color-gold-400);
+}

@@ -158,7 +158,7 @@ export default function FormPage() {
         <div className="f-navs">
           {pillars.map((p) => (
             <nav key={p.code ?? "-"} className="f-std-nav" style={tint(pillarIndex(p.code))} aria-label={p.name ?? L("المعايير", "Standards")}>
-              {p.name && <span className="f-pillar-label"><code className="ltr">{p.code}</code> {p.name}</span>}
+              {p.name && <span className="f-pillar-label">{p.name}</span>}
               {p.sections.map((s) => {
                 const done = s.items.filter((i) => i.value).length;
                 return (
@@ -201,7 +201,7 @@ export default function FormPage() {
       {f.events.length > 0 && (
         <Panel title={L("سجل النموذج", "Form history")} icon={<HistoryOutlined />}>
           <Timeline items={[...f.events].reverse().map((e) => ({
-            color: e.action === "Returned" ? "red" : e.action === "Approved" ? "green" : e.action === "Reopened" ? "orange" : "blue",
+            color: e.action === "Returned" ? "red" : e.action === "Approved" ? "green" : e.action === "Reopened" ? "var(--ds-status-caution)" : "blue",
             children: (
               <>
                 <b>{eventText(e.action)}</b> — {e.byName} <small className="muted ltr">{formatDateTime(e.at)}</small>

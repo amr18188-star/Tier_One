@@ -23,8 +23,9 @@
  * - It is layered (base) and wrapped in :where() (specificity 0): any theme or page rule that sets one of these names
  *   wins, whatever the import order. Nothing does today.
  * - There is no .dark class. shadcn's dark: variant means "inside the nearest data-section=dark" (below).
- * Radius: --radius comes from styles/design-system/corners.css (= --ds-radius-lg, switch CORNERS in config.ts).
- * rounded-xs … xl read --ds-radius-xs … xl, 2xl–4xl are xl × 1.25–1.75: all 0 when square, never negative.
+ * Radius: --radius comes from styles/design-system/corners.css (= --ds-radius-lg; <html data-corners>, the viewer's
+ * Appearance choice, default CORNERS in config.ts). rounded-xs … xl read --ds-radius-xs … xl, 2xl–4xl are xl × 1.25–1.75:
+ * all 0 when square, never negative. Smooth (lg 20px) makes the default and lg buttons (h-8 / h-9) and badges pills.
  * Fonts: IBM Plex Sans Arabic (body), Noto Kufi Arabic (headings).
  * The variable → token table is in styles/design-system/README.md ("shadcn"). tokens.test.ts checks this file:
  * no raw colour, every variable mapped to a token that exists in every theme, AA pairs in both sections.

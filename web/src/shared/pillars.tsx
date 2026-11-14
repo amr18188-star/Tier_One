@@ -23,10 +23,17 @@ export function paletteAt(index: number) {
   return index < 0 ? NEUTRAL : PALETTE[index % PALETTE.length];
 }
 
-/** متغيرا اللون على العنصر: --pc للون الركيزة و--pt لدرجتها الفاتحة. */
+/**
+ * متغيرا اللون على العنصر: --pc للون الركيزة و--pt لدرجتها الفاتحة. اللونان بيانات ثابتة، ولقاؤهما بلوحة الألوان من رموزها
+ * (--ds-pillar-*، styles/design-system/themes): في اللوحات الفاتحة 100% فيبقيان كما هما بالضبط، وفي الداكنة يفتح اللون نحو
+ * الأبيض قليلًا وتصبح الدرجة لون الركيزة ممزوجًا بلون البطاقة الداكن، فلا تظهر رقع فاتحة على صفحة داكنة.
+ */
 export function tint(index: number): CSSProperties {
   const p = paletteAt(index);
-  return { "--pc": p.c, "--pt": p.t } as CSSProperties;
+  return {
+    "--pc": `color-mix(in srgb, ${p.c} var(--ds-pillar-keep, 100%), var(--ds-pillar-lift, transparent))`,
+    "--pt": `color-mix(in srgb, ${p.t} var(--ds-pillar-tint-keep, 100%), color-mix(in srgb, var(--pc) var(--ds-pillar-tint-mix, 0%), var(--ds-surface, transparent)))`,
+  } as CSSProperties;
 }
 
 export interface PillarInfo { index: number; id: string; code: string; name: string }
@@ -64,7 +71,7 @@ export function stdLabel(code: string): string {
 export function StdCode({ code, standard, map, title }: { code: string; standard?: string; map: Map<string, PillarInfo>; title?: string }) {
   const p = map.get(standard ?? code.split(".")[0]);
   return (
-    <code className="pill-code ltr" style={tint(p ? p.index : -1)} title={title ?? (p ? `${p.code} — ${p.name}` : undefined)}>{stdLabel(code)}</code>
+    <code className="pill-code ltr" style={tint(p ? p.index : -1)} title={title ?? (p ? `${String(p.index + 1).padStart(2, "0")} — ${p.name}` : undefined)}>{stdLabel(code)}</code>
   );
 }
 
@@ -73,7 +80,7 @@ export function PillarBand({ info, children }: { info: PillarInfo | undefined; c
   return (
     <div className="pill-band" style={tint(info ? info.index : -1)}>
       <span className="pill-band-num ltr">{info ? String(info.index + 1).padStart(2, "0") : "—"}</span>
-      <span className="pill-band-name"><small>{info ? info.code : ""}</small><b>{info ? info.name : "معايير بلا ركيزة"}</b></span>
+      <span className="pill-band-name"><b>{info ? info.name : "معايير بلا ركيزة"}</b></span>
       {children && <span className="pill-band-extra">{children}</span>}
     </div>
   );

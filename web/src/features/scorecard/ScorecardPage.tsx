@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { memo, useId, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Alert, Button, Drawer, Tag, Tooltip } from "antd";
 import {
   AimOutlined, ApartmentOutlined, DownloadOutlined, FundOutlined, GlobalOutlined, LineChartOutlined, SettingOutlined, TrophyOutlined, WarningOutlined,
@@ -7,14 +7,17 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../../api/client";
 import type { IndicatorScore, Level, PillarScore, Rag, Scorecard, TierBand, TierResult } from "../../api/scorecard";
+import { AccordionPanel, useSingleOpen } from "../../shared/AccordionPanel";
 import { L } from "../../shared/i18n";
 import { num } from "../../shared/labels";
 import { tint } from "../../shared/pillars";
 import { QueryState } from "../../shared/QueryState";
 import { usePermissions } from "../../shared/session";
 import { EmptyNote, PageHeader, Panel } from "../../shared/ui";
+import { pillarNum } from "../strategy/model";
 import "../strategy/strategy.css";
 import "./scorecard.css";
+import "./scorecard-accordion.css";
 
 /**
  * بطاقة أداء الجامعة وتصنيفها: ما كانت تحسبه أوراق ملف «الإطار الشامل» (بطاقة مؤشرات الأداء، وحاسبة التصنيف، والرسوم والتحليلات،
@@ -30,7 +33,7 @@ const VIEWS: { key: View; icon: ReactNode; ar: string; en: string }[] = [
   { key: "trend", icon: <LineChartOutlined aria-hidden />, ar: "الاتجاه عبر السنوات والأرباع", en: "Trends" },
 ];
 
-const TIER_COLORS = ["#1f7a4c", "#4f9a3a", "#c9973f", "#d07a2a", "#b8452f"];
+const TIER_COLORS = ["var(--ds-tier-1)", "var(--ds-tier-2)", "var(--ds-tier-3)", "var(--ds-tier-4)", "var(--ds-tier-5)"];
 const RAG_TEXT: Record<Rag, { ar: string; en: string }> = {
   Strong: { ar: "قوي / على المسار", en: "Strong" },
   Developing: { ar: "قيد التطوير", en: "Developing" },
@@ -111,7 +114,7 @@ function Ring({ value, size = 76, color, label }: { value: number; size?: number
   const r = size / 2 - 7, C = 2 * Math.PI * r;
   return (
     <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} role="img" aria-label={label ?? `${num(value)}%`} className="sc-ring">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#e8edf3" strokeWidth="8" />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--ds-chart-ring-track)" strokeWidth="8" />
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth="8" strokeLinecap="round"
         strokeDasharray={`${((C * Math.min(100, Math.max(0, value))) / 100).toFixed(1)} ${C.toFixed(1)}`} transform={`rotate(-90 ${size / 2} ${size / 2})`} />
       <text x={size / 2} y={size / 2 + 5} textAnchor="middle">{num(value)}</text>
@@ -122,7 +125,7 @@ function Ring({ value, size = 76, color, label }: { value: number; size?: number
 function Bar({ value, color }: { value: number | null; color?: string }) {
   return (
     <span className="sc-bar" aria-hidden>
-      <i style={{ width: `${Math.min(100, Math.max(0, value ?? 0))}%`, background: color ?? (value === null ? "transparent" : value >= 100 ? "#2e9e63" : value >= 90 ? "#7cb342" : value >= 70 ? "#d9a227" : "#c2412d") }} />
+      <i style={{ width: `${Math.min(100, Math.max(0, value ?? 0))}%`, background: color ?? (value === null ? "transparent" : value >= 100 ? "var(--ds-status-ok)" : value >= 90 ? "var(--ds-score-high-bar)" : value >= 70 ? "var(--ds-status-near)" : "var(--ds-status-late)") }} />
     </span>
   );
 }
@@ -267,10 +270,23 @@ function Furthest({ c, onPick }: { c: Scorecard; onPick: (i: IndicatorScore) => 
 
 // ----------------------------------------------------------------- الركائز والمؤشرات
 
+/**
+ * كل ركيزة لوحة تطوى (AccordionPanel المشتركة)، وركيزة واحدة مفتوحة، كما في الشريط الجانبي: كلها مطوية عند الدخول،
+ * فتح ركيزة يطوي المفتوحة، والضغط على رأس المفتوحة يطويها. ?pillar=<رمز الركيزة> يحفظ المفتوحة بـ replace فيبقيها التحميل؛
+ * رمز لا يطابق ركيزة يحذف بـ replace. المرشح (البحث والحالة) لا يخفي ركيزة: يعرض كل رأس عدد مؤشراته المطابقة،
+ * والمفتوحة بلا مطابقة تقول ذلك في محتواها.
+ */
 function PillarsView({ c, onPick }: { c: Scorecard; onPick: (i: IndicatorScore) => void }) {
   const [q, setQ] = useState("");
   const [level, setLevel] = useState<Level | "all">("all");
-  const match = (i: IndicatorScore) => (level === "all" || i.level === level) && (!q || i.name.includes(q) || i.code.startsWith(q));
+  const filtering = level !== "all" || q !== "";
+  // صفوف كل ركيزة بعد المرشح، ثابتة ما لم يتغير المرشح: فتح ركيزة لا يعيد رسم جداول اللوحات (PillarPanel و PillarStandards مذكّرتان).
+  const stdsByPillar = useMemo(() => {
+    const match = (i: IndicatorScore) => (level === "all" || i.level === level) && (!q || i.name.includes(q) || i.code.startsWith(q));
+    return c.pillars.map((p) => p.standards.map((s) => ({ s, rows: s.indicators.filter(match) })).filter((x) => x.rows.length > 0));
+  }, [c.pillars, q, level]);
+  const codes = useMemo(() => c.pillars.map((p) => p.code), [c.pillars]);
+  const { openKey, toggle } = useSingleOpen({ param: "pillar", keys: codes });
   return (
     <>
       <div className="sc-filter">
@@ -281,55 +297,94 @@ function PillarsView({ c, onPick }: { c: Scorecard; onPick: (i: IndicatorScore) 
           </button>
         ))}
       </div>
-      {c.pillars.map((p, index) => {
-        const stds = p.standards.map((s) => ({ s, rows: s.indicators.filter(match) })).filter((x) => x.rows.length > 0);
-        if (stds.length === 0) return null;
-        return (
-          <section key={p.id} className="lcp-panel sc-pblock" style={tint(index)}>
-            <header className="sc-pblock-head">
-              <span className="ltr sc-pillar-num">{String(index + 1).padStart(2, "0")}</span>
-              <span className="grow"><small>{L(`الركيزة ${p.code}`, `Pillar ${p.code}`)}</small><b>{p.name}</b></span>
-              <span className="sc-score"><small>{L("درجة الركيزة", "Pillar score")}</small><b className="ltr">{num(p.score)}</b></span>
-            </header>
-            {stds.map(({ s, rows }) => (
-              <div key={s.code} className="sc-std">
-                <div className="sc-std-head"><code className="pill-code ltr">{L(`م${s.code}`, `S${s.code}`)}</code><b>{s.name}</b><span className="sc-score-sm ltr">{num(s.score)}</span></div>
-                <div className="sc-table" role="table">
-                  <div className="sc-row head" role="row">
-                    <span role="columnheader">{L("المؤشر", "Indicator")}</span>
-                    <span role="columnheader">{L("أحدث قيمة", "Latest")}</span>
-                    <span role="columnheader">{L("المستهدف النهائي", "Final target")}</span>
-                    <span role="columnheader">{L("الإنجاز", "Achievement")}</span>
-                    <span role="columnheader">{L("السنوات 1–5", "Years 1–5")}</span>
-                    <span role="columnheader">{L("الحالة", "Status")}</span>
-                  </div>
-                  {rows.map((i) => (
-                    <div key={i.id} className="sc-row" role="row" onClick={() => onPick(i)} tabIndex={0} onKeyDown={(e) => e.key === "Enter" && onPick(i)}>
-                      <span role="cell" className="sc-name"><code className="ltr">{i.code}</code> {i.name} <small className="muted">({i.unit})</small></span>
-                      <span role="cell" className="ltr">{fmt(i.latest, i.unit)}{i.latestIndex >= 0 && <small className="muted"> Q{(i.latestIndex % 4) + 1}/Y{Math.floor(i.latestIndex / 4) + 1}</small>}</span>
-                      <span role="cell" className="ltr">{fmt(i.finalTarget, i.unit)}</span>
-                      <span role="cell" className="sc-ach"><Bar value={i.latest === null ? null : i.score} /><b className="ltr">{i.latest === null ? "—" : pct(i.score)}</b>
-                        {i.rawAchievement !== null && i.rawAchievement > 100 && <Tooltip title={L("النسبة الفعلية قبل حد الـ100 (للعلم)", "Uncapped (info)")}><small className="sc-raw ltr">{pct(i.rawAchievement)}</small></Tooltip>}
-                      </span>
-                      <span role="cell" className="sc-years">
-                        {i.yearScoresVsYearly.map((y, k) => (
-                          <Tooltip key={k} title={L(`السنة ${k + 1}: ${y === null ? "لا قيمة" : `${num(y)}% من مستهدف السنة (${fmt(i.yearTargets[k], i.unit)})`}`, `Year ${k + 1}`)}>
-                            <i className={cellTone(y)} />
-                          </Tooltip>
-                        ))}
-                      </span>
-                      <span role="cell"><Tag color={LEVEL_TEXT[i.level].color}>{LEVEL_TEXT[i.level].ar}</Tag></span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </section>
-        );
-      })}
+      <div className="sc-acc">
+        {c.pillars.map((p, index) => (
+          <PillarPanel key={p.id} p={p} index={index} open={openKey === p.code} onToggle={toggle} onPick={onPick} stds={stdsByPillar[index]} filtering={filtering} />
+        ))}
+      </div>
     </>
   );
 }
+
+type StdRows = { s: PillarScore["standards"][number]; rows: IndicatorScore[] };
+
+/**
+ * لوحة ركيزة على AccordionPanel: بطاقة بحد علوي بلون الركيزة، والرأس الرقم 01…06 (ترتيب الخطة) والاسم وملخصه ودرجة الركيزة.
+ * رمز الركيزة (أ، ب …) لا يعرض؛ يبقى في المفاتيح والرابط ولقارئ الشاشة. مذكّرة: الفتح يعيد رسم لوحتين فقط.
+ */
+const PillarPanel = memo(function PillarPanel({ p, index, open, onToggle, onPick, stds, filtering }: {
+  p: PillarScore;
+  index: number;
+  open: boolean;
+  onToggle: (code: string) => void;
+  onPick: (i: IndicatorScore) => void;
+  stds: StdRows[];
+  filtering: boolean;
+}) {
+  const uid = useId();
+  const shown = stds.reduce((n, x) => n + x.rows.length, 0);
+  return (
+    <AccordionPanel id={`sc-pillar${uid}`} open={open} onToggle={() => onToggle(p.code)} className="lcp-panel sc-pblock sc-acc-panel" style={tint(index)}
+      header={(
+        <span className="sc-pblock-head sc-acc-title">
+          <span className="ltr sc-pillar-num" aria-hidden>{pillarNum(index)}</span>
+          <span className="grow">
+            <b><span className="sr-only">{L(`الركيزة ${p.code}: `, `Pillar ${p.code}: `)}</span>{p.name}</b>
+            <span className="sc-acc-sum">
+              {!filtering ? <>{L("لها قيمة", "Reported")} <span className="ltr">{p.evaluated}/{p.indicators}</span> · {L("في المستوى", "On target")} <span className="ltr">{p.inLevel}</span></>
+                : shown === 0 ? L("لا مؤشرات مطابقة", "No matching indicators")
+                : <>{L("المطابقة", "Matching")} <span className="ltr">{shown}/{p.indicators}</span></>}
+            </span>
+          </span>
+          <span className="sc-score"><small>{L("درجة الركيزة", "Pillar score")}</small><b className="ltr">{num(p.score)}</b></span>
+        </span>
+      )}>
+      <PillarStandards stds={stds} onPick={onPick} />
+    </AccordionPanel>
+  );
+});
+
+/** معايير الركيزة ومؤشراتها (كما كانت تحت رأس الركيزة)؛ مذكّرة على صفوف المرشح، فلا تعاد عند فتح لوحة أو طيها. */
+const PillarStandards = memo(function PillarStandards({ stds, onPick }: { stds: StdRows[]; onPick: (i: IndicatorScore) => void }) {
+  return (
+    <div className="sc-acc-content">
+      {stds.length === 0 && <EmptyNote>{L("لا مؤشرات في هذه الركيزة تطابق البحث أو الحالة المختارة.", "No indicators in this pillar match the filter.")}</EmptyNote>}
+      {stds.map(({ s, rows }) => (
+        <div key={s.code} className="sc-std">
+          <div className="sc-std-head"><code className="pill-code ltr">{L(`م${s.code}`, `S${s.code}`)}</code><b>{s.name}</b><span className="sc-score-sm ltr">{num(s.score)}</span></div>
+          <div className="sc-table" role="table">
+            <div className="sc-row head" role="row">
+              <span role="columnheader">{L("المؤشر", "Indicator")}</span>
+              <span role="columnheader">{L("أحدث قيمة", "Latest")}</span>
+              <span role="columnheader">{L("المستهدف النهائي", "Final target")}</span>
+              <span role="columnheader">{L("الإنجاز", "Achievement")}</span>
+              <span role="columnheader">{L("السنوات 1–5", "Years 1–5")}</span>
+              <span role="columnheader">{L("الحالة", "Status")}</span>
+            </div>
+            {rows.map((i) => (
+              <div key={i.id} className="sc-row" role="row" onClick={() => onPick(i)} tabIndex={0} onKeyDown={(e) => e.key === "Enter" && onPick(i)}>
+                <span role="cell" className="sc-name"><code className="ltr">{i.code}</code> {i.name} <small className="muted">({i.unit})</small></span>
+                <span role="cell" className="ltr">{fmt(i.latest, i.unit)}{i.latestIndex >= 0 && <small className="muted"> Q{(i.latestIndex % 4) + 1}/Y{Math.floor(i.latestIndex / 4) + 1}</small>}</span>
+                <span role="cell" className="ltr">{fmt(i.finalTarget, i.unit)}</span>
+                <span role="cell" className="sc-ach"><Bar value={i.latest === null ? null : i.score} /><b className="ltr">{i.latest === null ? "—" : pct(i.score)}</b>
+                  {i.rawAchievement !== null && i.rawAchievement > 100 && <Tooltip title={L("النسبة الفعلية قبل حد الـ100 (للعلم)", "Uncapped (info)")}><small className="sc-raw ltr">{pct(i.rawAchievement)}</small></Tooltip>}
+                </span>
+                <span role="cell" className="sc-years">
+                  {i.yearScoresVsYearly.map((y, k) => (
+                    <Tooltip key={k} title={L(`السنة ${k + 1}: ${y === null ? "لا قيمة" : `${num(y)}% من مستهدف السنة (${fmt(i.yearTargets[k], i.unit)})`}`, `Year ${k + 1}`)}>
+                      <i className={cellTone(y)} />
+                    </Tooltip>
+                  ))}
+                </span>
+                <span role="cell"><Tag color={LEVEL_TEXT[i.level].color}>{LEVEL_TEXT[i.level].ar}</Tag></span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+});
 
 // ----------------------------------------------------------------- بطاقة أداء القطاع العام
 
@@ -349,7 +404,7 @@ function PssView({ c }: { c: Scorecard }) {
               <article key={p.number} className="sc-pss-card">
                 <header><span className="sc-pss-n">{p.number}</span><b>{p.nameAr}</b><small className="ltr">{p.nameEn}</small></header>
                 <div className="sc-pss-body">
-                  <Ring value={p.inLevelPercent ?? 0} color={p.inLevelPercent === null ? "#c4ccd8" : p.inLevelPercent >= 85 ? "#2e9e63" : p.inLevelPercent >= 70 ? "#d9a227" : "#c2412d"}
+                  <Ring value={p.inLevelPercent ?? 0} color={p.inLevelPercent === null ? "var(--ds-status-none)" : p.inLevelPercent >= 85 ? "var(--ds-status-ok)" : p.inLevelPercent >= 70 ? "var(--ds-status-near)" : "var(--ds-status-late)"}
                     label={L(`${pct(p.inLevelPercent)} في المستوى`, "In level")} />
                   <dl>
                     <div><dt>{L("مؤشرات مرتبطة", "Linked")}</dt><dd>{p.indicators}</dd></div>

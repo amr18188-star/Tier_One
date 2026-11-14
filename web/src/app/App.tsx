@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useState, type ComponentType, type ReactNode } from "react";
 import { App as AntApp, ConfigProvider, Spin, type ThemeConfig } from "antd";
 import type { Locale } from "antd/es/locale";
 import arEG from "antd/locale/ar_EG";
@@ -7,8 +7,8 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { onLangChange, useLang, type Lang } from "../shared/i18n";
 import { ErrorScreen, NoAccess } from "../shared/QueryState";
 import { SessionProvider, usePermissions, useSession } from "../shared/session";
-import { antdTheme } from "../styles/design-system/antd-theme";
-import { useDsCorners, useDsTheme } from "../styles/design-system/theme";
+import { AppearanceProvider, PinnedAppearance } from "../styles/design-system/appearance";
+import { BRAND_APPEARANCE } from "../styles/design-system/theme";
 
 /**
  * بعد نشر إصدار جديد تتغير أسماء ملفات الصفحات، فتفشل الصفحة المفتوحة قبله في تحميل صفحة لم تفتحها بعد.
@@ -63,9 +63,9 @@ const queryClient = new QueryClient({
 onLangChange(() => void queryClient.invalidateQueries());
 
 /**
- * خطوط antd كما هي. الألوان والزوايا من سمة نظام التصميم النشطة (styles/design-system/theme.ts):
- * antdTheme يبنيها من tokens.ts، وتغيير data-theme على <html> يعيد تلوين antd معها.
- * والزوايا (مربعة أو مستديرة) من CORNERS في styles/design-system/config.ts، وتغيير data-corners يتبعه antd أيضًا.
+ * خطوط antd كما هي. الألوان والزوايا من مظهر المستخدم (styles/design-system/theme.ts وappearance.tsx):
+ * يختار لوحة الألوان والزوايا (حادة أو مستديرة أو ناعمة) من زر المظهر أسفل القائمة الجانبية، ويحفظ اختياره في المتصفح،
+ * والافتراضي ACTIVE_THEME وCORNERS. يبني AppearanceProvider سمة antd منهما بـ antdTheme، فيتغير كل شيء فورًا بلا إعادة تحميل.
  */
 const antdBase: ThemeConfig = {
   token: {
@@ -111,9 +111,17 @@ function Guard({ need, children }: { need: string[]; children: ReactNode }) {
 /** صفحة التعريف العامة لزائر لم يسجل دخوله. */
 const LandingPage = load(() => import("../features/landing/LandingPage"));
 
+/** صفحة التعريف بهويتها الثابتة (كحلي وذهبي، زوايا حادة) أيًا كان اختيار المستخدم؛ يعود اختياره عند مغادرتها. */
+const landingRoute = (
+  <PinnedAppearance look={BRAND_APPEARANCE}>
+    <Suspense fallback={pageFallback}>
+      <LandingPage theme={BRAND_APPEARANCE.theme} />
+    </Suspense>
+  </PinnedAppearance>
+);
+
 function Gate() {
   const { me, loading, error, retry } = useSession();
-  const dsTheme = useDsTheme();
   if (loading) return <div className="center-screen"><Spin size="large" /></div>;
   // خطأ الخادم أو الشبكة ليس خروجًا: شاشة إعادة محاولة بدل نموذج الدخول.
   if (error) return <ErrorScreen error={error} onRetry={retry} />;
@@ -122,7 +130,7 @@ function Gate() {
     return (
       <Suspense fallback={pageFallback}>
         <Routes>
-          {!me && <Route path="/" element={<LandingPage theme={dsTheme} />} />}
+          {!me && <Route path="/" element={landingRoute} />}
           <Route path="*" element={<LoginPage />} />
         </Routes>
       </Suspense>
@@ -166,21 +174,20 @@ function Gate() {
 export function App() {
   const lang = useLang();
   const locale = useAntLocale(lang);
-  const dsTheme = useDsTheme();
-  const corners = useDsCorners();
-  const theme = useMemo(() => antdTheme(dsTheme, antdBase, { corners }), [dsTheme, corners]);
   return (
-    <ConfigProvider direction={lang === "ar" ? "rtl" : "ltr"} locale={locale} theme={theme}>
-      <AntApp>
-        <QueryClientProvider client={queryClient}>
-          <BrowserRouter>
-            {/* إعادة التركيب عند تغيير اللغة تعيد كل النصوص ونتائج الخادم بها. */}
-            <SessionProvider key={lang}>
-              <Gate />
-            </SessionProvider>
-          </BrowserRouter>
-        </QueryClientProvider>
-      </AntApp>
-    </ConfigProvider>
+    <AppearanceProvider base={antdBase}>
+      <ConfigProvider direction={lang === "ar" ? "rtl" : "ltr"} locale={locale}>
+        <AntApp>
+          <QueryClientProvider client={queryClient}>
+            <BrowserRouter>
+              {/* إعادة التركيب عند تغيير اللغة تعيد كل النصوص ونتائج الخادم بها. */}
+              <SessionProvider key={lang}>
+                <Gate />
+              </SessionProvider>
+            </BrowserRouter>
+          </QueryClientProvider>
+        </AntApp>
+      </ConfigProvider>
+    </AppearanceProvider>
   );
 }

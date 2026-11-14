@@ -1,0 +1,98 @@
+/*
+ * شريط السنة والربع المشترك (PeriodNav): أزرار السنوات، ثم السهمان واسم الخانة وسطر حالتها، ثم خانات الأرباع.
+ * الألوان من رموز نظام التصميم وحدها (--ds-*)، والزوايا من --ds-radius-*، والمسافات من --ds-space-* (shared/layout.css،
+ * ولكل واحدة قيمة احتياطية إن لم يحمل)، والخصائص منطقية فتنقلب مع اللغة.
+ * ألوان الحالة من رموز الحالة: مغلق/انتهى --ds-status-ok، مفتوح/جارٍ --ds-status-near، لم يفتح/لم يبدأ --ds-status-none، لا دورة بخط متقطع.
+ */
+
+.fq {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; min-width: 0;
+  padding: 12px var(--ds-space-md, 16px); background: var(--ds-surface); color: var(--ds-fg);
+  border: 1px solid var(--ds-border); border-radius: var(--ds-radius-lg);
+}
+.fq.is-loading { min-height: 66px; }
+
+/* السنوات: مجموعة أزرار متلاصقة بخط رفيع واحد بينها. */
+.fq-years { display: flex; flex: none; max-width: 100%; overflow-x: auto; scrollbar-width: thin; padding-block: 2px; }
+.fq-year {
+  flex: none; min-width: 58px; min-height: 36px; padding: 0 12px; margin-inline-start: -1px;
+  border: 1px solid var(--ds-border); background: var(--ds-surface); color: var(--ds-body-strong);
+  font: inherit; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+/* حلقة التركيز العامة (shared/ui.css) تغير الزاوية؛ هنا تبقى زاوية الزر نفسه. */
+.fq-year:focus-visible { border-radius: 0; }
+.fq-year:first-child { margin-inline-start: 0; border-start-start-radius: var(--ds-radius-md); border-end-start-radius: var(--ds-radius-md); }
+.fq-year:last-child { border-start-end-radius: var(--ds-radius-md); border-end-end-radius: var(--ds-radius-md); }
+.fq-year:hover { background: var(--ds-surface-hover); }
+.fq-year[aria-pressed="true"] {
+  position: relative; z-index: 1;
+  background: var(--ds-btn-primary-bg); color: var(--ds-btn-primary-fg); border-color: var(--ds-btn-primary-border);
+}
+.fq-year:focus-visible { position: relative; z-index: 2; }
+
+.fq-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; flex: 1 1 520px; min-width: 0; }
+.fq-step { display: flex; align-items: center; gap: 10px; flex: 1 1 300px; min-width: 0; }
+.fq-arrow {
+  flex: none; width: 40px; height: 40px; display: grid; place-items: center; padding: 0;
+  border: 1px solid var(--ds-border); border-radius: var(--ds-radius-md); background: var(--ds-surface);
+  color: var(--ds-heading); font: inherit; font-size: 13px; cursor: pointer;
+}
+.fq-arrow:hover:not(:disabled) { background: var(--ds-surface-hover); }
+.fq-arrow:focus-visible, .fq-chip:focus-visible { border-radius: var(--ds-radius-md); }
+.fq-arrow:disabled { background: transparent; color: var(--ds-faint); cursor: not-allowed; }
+.fq-now { flex: 1 1 auto; min-width: 0; display: grid; gap: 2px; }
+.fq-name {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px;
+  font-family: var(--font-display); font-size: 16px; font-weight: 700; line-height: 1.5; color: var(--ds-heading);
+}
+.fq-trial {
+  font-family: var(--font-body); font-size: 12px; font-weight: 600; line-height: 1.6; color: var(--ds-eyebrow-aa);
+  padding: 0 8px; border: 1px solid var(--ds-accent-border); border-radius: var(--ds-radius-pill);
+}
+.fq-state { font-size: 13px; line-height: 1.6; color: var(--ds-body); }
+.fq-state[data-state="open"] { color: var(--ds-body-strong); font-weight: 600; }
+
+/* خانات الأرباع: لون الحالة خلفية خفيفة وخط سفلي، ومعه أيقونة ونص الحالة في الاسم المقروء (اللون لا يأتي وحده). */
+.fq-chips { display: flex; gap: var(--ds-space-sm, 8px); margin-inline-start: auto; max-width: 100%; overflow-x: auto; scrollbar-width: thin; padding: 4px; }
+.fq-chip {
+  --fq-tone: var(--ds-faint);
+  flex: none; min-width: 52px; min-height: 40px; padding: 0 10px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  border: 1px solid var(--ds-border); border-radius: var(--ds-radius-md);
+  background: color-mix(in srgb, var(--fq-tone) 12%, transparent); color: var(--ds-fg);
+  box-shadow: inset 0 -3px 0 var(--fq-tone);
+  font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer;
+}
+.fq-chip[data-state="closed"] { --fq-tone: var(--ds-status-ok); }
+.fq-chip[data-state="open"] { --fq-tone: var(--ds-status-near); }
+.fq-chip[data-state="future"] { --fq-tone: var(--ds-status-none); color: var(--ds-body); }
+.fq-chip[data-state="none"] { background: transparent; border-style: dashed; box-shadow: none; color: var(--ds-faint); cursor: not-allowed; }
+/* ربع معطل له حالة (quarter: له دورة مثلًا): لونه باق، والإطار متقطع. */
+.fq-chip[data-off="true"]:not([data-state="none"]) { border-style: dashed; color: var(--ds-body); cursor: not-allowed; }
+.fq-chip:hover:not(:disabled) { background: color-mix(in srgb, var(--fq-tone) 22%, transparent); }
+.fq-chip[aria-pressed="true"] {
+  border-color: var(--ds-heading); border-style: solid; font-weight: 700;
+  box-shadow: inset 0 -3px 0 var(--fq-tone), 0 0 0 1px var(--ds-heading);
+}
+.fq-chip-icon { font-size: 12px; }
+
+/* الشريط كله معطل (disabled): المحدد ظاهر كما هو، والباقي باهت ولا ينقر. */
+.fq.is-disabled button { cursor: not-allowed; }
+.fq.is-disabled :is(.fq-year, .fq-chip):not([aria-pressed="true"]) { opacity: 0.55; }
+
+/* داخل درج أو نموذج: بلا إطار ولا خلفية، والأجزاء تحت بعضها. */
+.fq.is-compact { flex-direction: column; align-items: stretch; gap: 10px; padding: 0; background: transparent; border: 0; border-radius: 0; }
+.fq.is-compact .fq-strip { flex-direction: column; align-items: stretch; flex-basis: auto; gap: 10px; }
+.fq.is-compact .fq-step { flex-basis: auto; }
+.fq.is-compact .fq-chips { margin-inline-start: 0; }
+.fq.is-compact .fq-name { font-size: 15px; }
+
+@media (max-width: 640px) {
+  .fq { flex-direction: column; align-items: stretch; gap: 10px; padding: 12px; }
+  .fq.is-compact { padding: 0; }
+  .fq-year { flex: 1 0 auto; min-height: 40px; }
+  .fq-strip { flex-direction: column; align-items: stretch; flex-basis: auto; gap: 10px; }
+  .fq-step { flex-basis: auto; }
+  .fq-chips { margin-inline-start: 0; }
+  .fq-chip { flex: 1 0 auto; min-width: 56px; min-height: 44px; }
+}

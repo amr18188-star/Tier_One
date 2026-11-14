@@ -1,7 +1,7 @@
 import { cloneElement, useCallback, useEffect, useId, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactElement, type ReactNode } from "react";
 import { AutoComplete, Button, Drawer, Dropdown, Input, Tooltip } from "antd";
 import {
-  AimOutlined, ApartmentOutlined, AuditOutlined, BankOutlined, BarChartOutlined, BranchesOutlined, CalendarOutlined, ClusterOutlined, ControlOutlined, DatabaseOutlined, DoubleLeftOutlined, DoubleRightOutlined, DownOutlined, FileDoneOutlined, FilePdfOutlined, FormOutlined, GlobalOutlined, HomeOutlined, LogoutOutlined, MenuOutlined,
+  AimOutlined, ApartmentOutlined, AuditOutlined, BankOutlined, BarChartOutlined, BranchesOutlined, CalendarOutlined, ClusterOutlined, ControlOutlined, DatabaseOutlined, DoubleLeftOutlined, DoubleRightOutlined, DownOutlined, FileDoneOutlined, FilePdfOutlined, FormOutlined, HomeOutlined, LogoutOutlined, MenuOutlined,
   PartitionOutlined, RiseOutlined, SafetyCertificateOutlined, SearchOutlined, SettingOutlined, TeamOutlined, TrophyOutlined, UnorderedListOutlined,
 } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
@@ -12,6 +12,7 @@ import type { IndicatorRow, OrgUnit } from "../api/tier1";
 import { L, setLang, useLang } from "../shared/i18n";
 import { usePermissions, useSession } from "../shared/session";
 import { initials } from "../shared/ui";
+import { AppearanceButton } from "./AppearanceMenu";
 // شعار الجامعة الرسمي. أسماء الملفات بلون الخلفية: «-dark» حروفه بيضاء للقائمة الكحلية، و«-light» حروفه كحلية للشريط الأبيض.
 import logoOnNavy from "../assets/brand/capital-university-logo-dark.png";
 import logoOnWhite from "../assets/brand/capital-university-logo-light.png";
@@ -205,7 +206,6 @@ export function Shell({ children }: { children: ReactNode }) {
   const toggleLang = () => setLang(lang === "ar" ? "en" : "ar");
 
   const tipSide: TipSide = lang === "ar" ? "left" : "right";
-  const langText = lang === "ar" ? "English" : "العربية";
   const logoutText = L("تسجيل الخروج", "Sign out");
   // في الشريط المطوي يبقى نص الشعار في الصفحة مخفيًا بصريًا (nav.css)، فاسم الرابط لقارئ الشاشة لا يتغير.
   const brand = (
@@ -218,15 +218,11 @@ export function Shell({ children }: { children: ReactNode }) {
     </Link>
   );
   // asRail للشريط الجانبي على الحاسوب وحده؛ الدرج يمرر false دائمًا.
+  // اللغة والمظهر في الشريط العلوي وحده (زر اللغة وزر المظهر)؛ تسجيل الخروج هنا أسفل القائمة، وفي قائمة الحساب أيضًا.
   const sideBody = (asRail: boolean) => (
     <>
       <SideNav groups={visible} open={openGroup} active={activeGroup} onToggle={toggleGroup} onNavigate={() => setDrawer(false)} rail={asRail} />
       <div className="lcp-side-foot">
-        <RailTip title={asRail ? langText : undefined} side={tipSide}>
-          <button type="button" onClick={toggleLang} aria-label={asRail ? langText : undefined}>
-            <GlobalOutlined aria-hidden /><span className="lcp-side-foot-label">{langText}</span>
-          </button>
-        </RailTip>
         <RailTip title={asRail ? logoutText : undefined} side={tipSide}>
           <button type="button" onClick={logout} aria-label={asRail ? logoutText : undefined}>
             <LogoutOutlined aria-hidden /><span className="lcp-side-foot-label">{logoutText}</span>
@@ -264,6 +260,8 @@ export function Shell({ children }: { children: ReactNode }) {
           <GlobalSearch />
           <span className="lcp-top-space" />
           <Button type="text" className="lcp-lang" onClick={toggleLang}>{lang === "ar" ? "EN" : "ع"}</Button>
+          {/* المظهر (لوحة الألوان والزوايا) بجانب اللغة والحساب. */}
+          <AppearanceButton />
           <Dropdown trigger={["click"]} placement={lang === "ar" ? "bottomLeft" : "bottomRight"} menu={{
             items: [
               {

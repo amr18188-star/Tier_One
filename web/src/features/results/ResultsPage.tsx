@@ -2,25 +2,28 @@ import { useState } from "react";
 import { Alert, Button, Drawer, Input, Segmented, Select, Space, Tag, Tooltip } from "antd";
 import { DownloadOutlined, PrinterOutlined, QuestionCircleOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
 import { api, query } from "../../api/client";
 import type { Cycle, HeatCell, IndicatorResult, IndicatorResults, Performance, Results, StandardResult } from "../../api/collection";
 import { PillarBand, StdCode, usePillarMap, type PillarInfo } from "../../shared/pillars";
 import { HBarChart, ProgressToTarget, SegmentBar } from "../../shared/charts";
 import { L } from "../../shared/i18n";
+import { PeriodNav } from "../../shared/PeriodNav";
 import { num, performance as perfText, withUnit } from "../../shared/labels";
 import { DataTable, EmptyNote, FilterMeta, oneOf, PageHeader, Panel } from "../../shared/ui";
+import { usePeriodParams, useSearchState } from "../../shared/usePeriodParams";
 import { ReportView } from "./ReportView";
 
 const PERF: Performance[] = ["Achieved", "Near", "Behind", "NoData", "NoTarget", "Incomplete", "NotStarted"];
-const PERF_COLORS: Record<string, string> = { Achieved: "#2e9e63", Near: "#d9a227", Behind: "#b42318", NoData: "#c4ccd8", NoTarget: "#8d99ab" };
+const PERF_COLORS: Record<string, string> = { Achieved: "var(--ds-status-ok)", Near: "var(--ds-status-near)", Behind: "var(--ds-status-late-ink)", NoData: "var(--ds-status-none)", NoTarget: "var(--ds-status-none-ink)" };
 
 /**
  * النتائج: القيم المعتمدة نهائيًا مقابل المستهدف للجامعة أو لكلية، بملخص لكل معيار، وخريطة الكليات × المعايير،
  * وجدول المؤشرات بحالة الأداء والتغير عن الدورة السابقة. النقر على مؤشر يفتح مقارنة الكليات واتجاهه عبر الدورات.
  */
 export default function ResultsPage() {
-  const [params, setParams] = useSearchParams();
+  // الرابط هو الحالة (cycle وyear وunit وperf وstd وq) في نسخة واحدة يكتب منها شريط السنة والربع والمرشحات.
+  const search = useSearchState();
+  const { params, update } = search;
   const cycleParam = params.get("cycle") ?? undefined;
   const unitParam = params.get("unit") ?? undefined;
   const perf = oneOf(params.get("perf"), PERF);
@@ -30,12 +33,7 @@ export default function ResultsPage() {
   const [printing, setPrinting] = useState(false);
   const pillarMap = usePillarMap();
 
-  const set = (key: string, value: string | undefined) => {
-    const next = new URLSearchParams(params);
-    if (value) next.set(key, value);
-    else next.delete(key);
-    setParams(next, { replace: true });
-  };
+  const set = (key: string, value: string | undefined) => update({ [key]: value });
 
   const cycles = useQuery({ queryKey: ["cycles"], queryFn: () => api.get<Cycle[]>("/api/cycles") });
   const res = useQuery({
@@ -43,7 +41,12 @@ export default function ResultsPage() {
     queryFn: () => api.get<Results | null>(`/api/results${query({ cycleId: cycleParam, unitId: unitParam })}`),
   });
   const r = res.data;
-  const live = cycles.data?.filter((c) => c.status !== "Draft") ?? [];
+  // الدورات التي لها نتائج كما كانت في القائمة: غير المسودة؛ الربع بلا دورة منها «لا دورة».
+  const live = cycles.data?.filter((c) => c.status !== "Draft");
+  // السنوات التي فيها دورة منها فقط: نقر سنة يفتح دورة لها نتائج، لا سنة فارغة يعود فيها الخادم إلى دورته الافتراضية.
+  const years = live && [...new Set(live.map((c) => c.targetYear))];
+  // الافتراضي كما كان من الخادم (أحدث دورة فيها اعتماد، وإلا أحدثها)؛ الطلب يبقى بـ cycle= من الرابط.
+  const period = usePeriodParams({ mode: "cycle", cycles: live, years, search, defaults: { cycleId: r?.cycle.id } });
 
   if (res.isSuccess && !r)
     return (
@@ -76,13 +79,11 @@ export default function ResultsPage() {
           </Space>
         )} />
 
+      {period.ready && !!live?.length && (cycleParam || r) && (
+        <PeriodNav mode="cycle" cycles={live} years={years} value={period.value} onChange={period.onChange} ariaLabel={L("دورة القياس: السنة والربع", "Measured cycle: year and quarter")} />
+      )}
+
       <div className="r-pickers">
-        {live.length > 0 && (
-          <label className="r-picker"><span>{L("دورة القياس", "Cycle")}</span>
-            <Select value={r?.cycle.id ?? cycleParam} onChange={(v) => set("cycle", v)} style={{ minWidth: 260 }} aria-label={L("الدورة", "Cycle")}
-              options={live.map((c) => ({ value: c.id, label: c.name }))} />
-          </label>
-        )}
         {r && r.units.length > 1 && (
           <label className="r-picker"><span>{L("الجهة المعروضة", "Unit")}</span>
             <Select value={r.unit.id} onChange={(v) => set("unit", v)} style={{ minWidth: 240 }} showSearch optionFilterProp="label" aria-label={L("الجهة", "Unit")}
@@ -140,11 +141,7 @@ export default function ResultsPage() {
           <Input.Search key={q} allowClear defaultValue={q} placeholder={L("رمز المؤشر أو اسمه", "Code or name")} onSearch={(v) => set("q", v || undefined)} />
           {std && <Tag closable onClose={() => set("std", undefined)}>{L("المعيار", "Standard")} {std}</Tag>}
           <FilterMeta shown={rows.length} total={r?.indicators.length} noun={L("مؤشر", "indicators")} active={!!(perf || std || q)}
-            onReset={() => {
-              const next = new URLSearchParams(params);
-              ["perf", "std", "q"].forEach((k) => next.delete(k));
-              setParams(next, { replace: true });
-            }} />
+            onReset={() => update({ perf: undefined, std: undefined, q: undefined })} />
         </div>
         <DataTable<IndicatorResult>
           rowKey={(i) => i.indicatorId}
@@ -216,9 +213,9 @@ function OverallRing({ r }: { r: Results }) {
   return (
     <div className="r-ring" title={L("نسبة المؤشرات المحققة من المؤشرات التي حكم عليها", "Share achieved of judged indicators")}>
       <svg viewBox="0 0 56 56" width="56" height="56" aria-hidden>
-        <circle cx="28" cy="28" r={R} fill="none" stroke="#e6ecf2" strokeWidth="6" />
-        <circle cx="28" cy="28" r={R} fill="none" stroke="#2e9e63" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${(C * pct).toFixed(1)} ${C.toFixed(1)}`} transform="rotate(-90 28 28)" />
-        <text x="28" y="32" textAnchor="middle" fontSize="12" fontWeight="700" fill="#16294a">{Math.round(pct * 100)}%</text>
+        <circle cx="28" cy="28" r={R} fill="none" stroke="var(--ds-chart-track)" strokeWidth="6" />
+        <circle cx="28" cy="28" r={R} fill="none" stroke="var(--ds-status-ok)" strokeWidth="6" strokeLinecap="round" strokeDasharray={`${(C * pct).toFixed(1)} ${C.toFixed(1)}`} transform="rotate(-90 28 28)" />
+        <text x="28" y="32" textAnchor="middle" fontSize="12" fontWeight="700" fill="var(--ds-chart-value)">{Math.round(pct * 100)}%</text>
       </svg>
       <span><b>{L("نسبة التحقق", "Achieved share")}</b><small>{L(`${a} محقق من ${judged} حكم عليه`, `${a} of ${judged} judged`)}</small></span>
     </div>
@@ -293,11 +290,11 @@ function Heatmap({ r, onPick, map }: { r: Results; onPick: (unitId: string) => v
         </tbody>
       </table>
       <div className="r-heat-legend">
-        <span><i className="h4" style={{ background: "#a9dcc0" }} />{L("75% فأكثر محقق", "≥75% achieved")}</span>
-        <span><i style={{ background: "#d9efe2" }} />50–74%</span>
-        <span><i style={{ background: "#fff0d4" }} />25–49%</span>
-        <span><i style={{ background: "#fde2df" }} />{L("أقل من 25%", "<25%")}</span>
-        <span><i style={{ background: "#edf1f5" }} />{L("لا بيانات معتمدة", "No approved data")}</span>
+        <span><i className="h4" style={{ background: "var(--ds-heat-4)" }} />{L("75% فأكثر محقق", "≥75% achieved")}</span>
+        <span><i style={{ background: "var(--ds-heat-3)" }} />50–74%</span>
+        <span><i style={{ background: "var(--ds-heat-2)" }} />25–49%</span>
+        <span><i style={{ background: "var(--ds-heat-1)" }} />{L("أقل من 25%", "<25%")}</span>
+        <span><i style={{ background: "var(--ds-heat-none)" }} />{L("لا بيانات معتمدة", "No approved data")}</span>
       </div>
     </div>
   );

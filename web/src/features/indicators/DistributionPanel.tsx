@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Segmented, Table, Tag } from "antd";
+import { Button, Table, Tag } from "antd";
 import { ClusterOutlined, EditOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
@@ -7,17 +7,19 @@ import type { Distribution, IndicatorTargets } from "../../api/tier1";
 import { HBarChart } from "../../shared/charts";
 import { L } from "../../shared/i18n";
 import { aggregation, distributionStatus, num, withUnit } from "../../shared/labels";
+import { PeriodNav } from "../../shared/PeriodNav";
 import { Panel } from "../../shared/ui";
+import { usePlanCalendar } from "../../shared/usePeriodParams";
 import { TargetEditor, type TargetSlot } from "./TargetEditor";
-
-const YEARS = [2027, 2028, 2029, 2030, 2031];
 
 /**
  * هل يحقق توزيع الكليات مستهدف الجامعة؟ الملخص مكتوب أولًا، ثم الأعمدة لكل كلية، ثم جدول الإدخال.
  * الكلية بلا مستهدف خاص يسري عليها المستهدف الموحد «لكل كلية» ويظهر بلون مختلف.
  */
 export function DistributionPanel({ code }: { code: string }) {
+  // السنة حالة اللوحة نفسها (لا رابط)، والافتراضي 2027 كما كان. السنوات من تقويم الخطة، وبدونه من سنوات مستهدفات المؤشر.
   const [year, setYear] = useState(2027);
+  const calendar = usePlanCalendar();
   const [slot, setSlot] = useState<TargetSlot | null>(null);
   const dist = useQuery({ queryKey: ["distribution", code, year], queryFn: () => api.get<Distribution>(`/api/kpi/indicators/${code}/distribution?year=${year}`) });
   const targets = useQuery({ queryKey: ["targets", code], queryFn: () => api.get<IndicatorTargets>(`/api/kpi/indicators/${code}/targets`) });
@@ -26,7 +28,8 @@ export function DistributionPanel({ code }: { code: string }) {
 
   return (
     <Panel title={L("التوزيع على الكليات", "Distribution to colleges")} icon={<ClusterOutlined aria-hidden />} query={[dist, targets]}
-      extra={<Segmented value={year} onChange={(v) => setYear(Number(v))} options={YEARS} />}>
+      extra={<PeriodNav mode="year" compact value={{ year }} onChange={(next) => setYear(next.year)} years={calendar.isError ? targets.data?.years : undefined}
+        ariaLabel={L("سنة التوزيع", "Distribution year")} />}>
       {() => (
         <>
           <div className="t1-summary">
@@ -45,7 +48,7 @@ export function DistributionPanel({ code }: { code: string }) {
                 }))} />
               <div className="ch-legend">
                 <span><i className="ch-key" style={{ borderColor: "var(--ds-chart-college)" }} />{L("مستهدف خاص بالكلية", "College's own target")}</span>
-                <span><i className="ch-key" style={{ borderColor: "#c99a2e" }} />{L("المستهدف الموحد لكل كلية", "Per-college target")}</span>
+                <span><i className="ch-key" style={{ borderColor: "var(--ds-chart-accent)" }} />{L("المستهدف الموحد لكل كلية", "Per-college target")}</span>
               </div>
               {t!.actions.canEditColleges && (
                 <details className="mt">

@@ -3,7 +3,7 @@ import type { IndicatorResult } from "../../api/collection";
 import type { IndicatorNode, InitiativeNode, PillarNode, StandardNode, StrategyTree } from "../../api/tier1";
 
 /**
- * ما تشترك فيه عروض الخطة الثلاثة (الخريطة، والخط الزمني، والمستكشف): العنصر المختار، ولون كل ركيزة،
+ * ما تشترك فيه عروض الخطة (الخريطة، والخط الزمني، والهيكل والعلاقات) وصفحة تفاصيل العنصر: العنصر المختار، ولون كل ركيزة،
  * وحالة كل مؤشر (من آخر نتيجة معتمدة إن وجدت، وإلا من اكتمال خطة مستهدفه).
  */
 
@@ -19,8 +19,10 @@ export type Editing =
   | { kind: "standard"; standard?: StandardNode; pillarId?: string }
   | { kind: "initiative"; initiative?: InitiativeNode; standardId: string }
   | { kind: "indicator"; standardCode: string }
+  /** after: مفتاح العنصر الذي تفتح تفاصيله بعد الحذف (P:/S:)، أو "board" للوحة «الهيكل والعلاقات». */
   | { kind: "delete"; title: string; explain: string; url: string; after: string };
 
+/** explore صفحة تفاصيل عنصر واحد (?view=explore&node=…)، تفتح من داخل العروض ولا تبويب لها. */
 export type View = "map" | "roadmap" | "explore";
 
 export { paletteAt, tint } from "../../shared/pillars";
@@ -56,6 +58,31 @@ export function find(t: StrategyTree, key: string): Selection {
     if (i) return { kind: "indicator", indicator: i, standard: s };
   }
   return { kind: "root" };
+}
+
+/** رقم الركيزة للعرض بترتيبها في الخطة: 01…06، كما في الخريطة ولوحة الهيكل. */
+export function pillarNum(index: number): string {
+  return String(index + 1).padStart(2, "0");
+}
+
+/** رابط صفحة تفاصيل عنصر: ?view=explore&node=P:…|S:…|M:…|I:… */
+export function detailSearch(key: string): string {
+  return `?${new URLSearchParams({ view: "explore", node: key })}`;
+}
+
+/**
+ * رابط لوحة «الهيكل والعلاقات» (?view=board) لعنصر من الخطة: ركيزته (none للمعيار بلا ركيزة)، والمؤشر أو المبادرة محددًا فيها.
+ * إن لم يكن العنصر في الخطة تبقى الركيزة المعطاة إن وجدت؛ واللوحة تصحح ما لا يصلح بنفسها.
+ */
+export function boardSearch(t: StrategyTree, key: string | null, pillar?: string | null): string {
+  const out = new URLSearchParams({ view: "board" });
+  const sel = key ? find(t, key) : null;
+  const id = !sel || sel.kind === "root" ? pillar ?? null
+    : sel.kind === "pillar" ? sel.pillar.id
+    : pillarIndexOf(t, sel.standard) >= 0 ? sel.standard.pillarId : "none";
+  if (id) out.set("pillar", id);
+  if (key && sel && (sel.kind === "indicator" || sel.kind === "initiative")) out.set("focus", key);
+  return `?${out}`;
 }
 
 /** سنة البدء وسنة التحقق الفعليتان (الفارغة تعني أول الخطة أو آخرها). */

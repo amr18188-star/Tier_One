@@ -17,12 +17,14 @@ disagrees with the CSS, the CSS wins: re-read the file.
 | `web/src/styles/design-system/themes/navy-gold.css` | `--ds-*` tokens for the landing look (no shadcn variables: §7) | `[data-theme="navy-gold"]` | `index.css` |
 | `web/src/styles/design-system/themes/app-soft.css` | Same names, the old `/app` palette | `[data-theme="app-soft"]` | `index.css` |
 | `web/src/styles/design-system/corners.css` | Corner scale `--ds-radius-xs … xl`, `-pill`, `-round`, aliases `--ds-radius`, shadcn `--radius` (section 2a) | `:root` + `[data-corners]` | `index.css` (last) |
-| `web/src/styles/design-system/config.ts` | `CORNERS = "square" \| "rounded"`: the one corner switch | — | `theme.ts`, `antd-theme.ts` |
+| `web/src/styles/design-system/config.ts` | `CORNERS = "square"`: the default corner style (`"square" \| "rounded" \| "smooth"`) | — | `theme.ts`, `antd-theme.ts` |
 | `web/src/styles/design-system/index.css` | Plain-CSS entry: primitives, then each theme, then `corners.css` (order matters) | — | a feature's Tailwind entry, or any CSS that wants `var(--ds-*)` |
 | `web/src/styles/design-system/tailwind-theme.css` | `@theme inline reference`: `--color-ds-*`, primitives, `--radius-ds*`, `--font-ds`, `--shadow-ds-*` | emits nothing on `:root` | a feature's Tailwind entry, after `index.css` |
 | `web/src/styles/design-system/tokens.ts` | The same values as typed TS constants (real colours for antd) | — | `antd-theme.ts`, `tokens.test.ts`, `LandingPage.tsx` (type) |
 | `web/src/styles/design-system/antd-theme.ts` | `antdTheme(name, base, { tone, corners })`: tokens → antd `ThemeConfig` (section 8) | — | `web/src/app/App.tsx` |
-| `web/src/styles/design-system/theme.ts` | `ACTIVE_THEME` → `<html data-theme>`, `CORNERS` → `<html data-corners>`, `useDsTheme()`, `setDsTheme()`, `useDsCorners()`, `setDsCorners()`; imports `index.css` | `<html>` | `web/src/app/App.tsx` |
+| `web/src/styles/design-system/theme.ts` | Appearance store: localStorage `t1.appearance` → `<html data-theme>` / `<html data-corners>` (defaults `ACTIVE_THEME`, `CORNERS`); `setAppearance()`, `resetAppearance()`, `pinAppearance()`, `BRAND_APPEARANCE`, `useDsTheme()`, `useDsCorners()`, `setDsTheme()`, `setDsCorners()`; imports `index.css` | `<html>` | `appearance.tsx`, `web/src/app/App.tsx` |
+| `web/src/styles/design-system/appearance.tsx` | `AppearanceProvider` (antd `ConfigProvider` from the look on `<html>`), `useAppearance()`, `usePinnedAppearance()`, `<PinnedAppearance>` | — | `web/src/app/App.tsx`, `web/src/app/AppearanceMenu.tsx` |
+| `web/src/styles/design-system/appearance.test.ts` | The store: load, validation, set / reset, pins, blocked storage | — | vitest |
 | `web/src/styles/design-system/tokens.test.ts` | Parses the CSS; fails if `tokens.ts` differs or an AA pair fails | — | vitest |
 | `web/src/styles/design-system/scrollbar.css` | Scrollbar tokens and drawing (section 9) | `:root`, `[data-theme]` scopes, element selectors | `web/src/main.tsx`, once, after `app.css` |
 | `web/src/styles/design-system/README.md` | Short usage and the add-a-theme steps | — | — |
@@ -54,22 +56,24 @@ again through its own Tailwind entry (see SKILL.md); the values are the same.
 
 ## 2a. Corners
 
-Corners are their own axis, set on `<html data-corners>` from `CORNERS` in `config.ts` (default `"square"`). Theme
-files declare no radius, so every theme works with either style. CSS-only override: `:root[data-corners="rounded"]`.
-No attribute = square.
+Corners are their own axis, set on `<html data-corners>`: the viewer's Appearance choice (localStorage `t1.appearance`),
+or `CORNERS` in `config.ts` (default `"square"`). The landing pins square. Theme files declare no radius, so every theme
+works with any style. CSS-only override: `:root[data-corners="rounded"]`. No attribute = square.
 
-| Token | Utility | square | rounded | Use |
-|---|---|---|---|---|
-| `--ds-radius-xs` | `rounded-ds-xs` | 0 | 4px | bars, swatches, small codes, active-link bars, scrollbar thumb |
-| `--ds-radius-sm` | `rounded-ds-sm` | 0 | 6px | code pills, focus rings, inner boxes |
-| `--ds-radius-md` | `rounded-ds-md` | 0 | 8px | buttons, inputs, icon tiles, list rows |
-| `--ds-radius-lg` | `rounded-ds-lg` | 0 | 12px | cards, panels, tables, modals |
-| `--ds-radius-xl` | `rounded-ds-xl` | 0 | 16px | page bands, hero, large panels |
-| `--ds-radius-pill` | `rounded-ds-pill` | 0 | 999px | chips, count badges, progress bars, status dots |
-| `--ds-radius-round` | `rounded-ds-round` | 50% | 50% | real circles only |
-| `--ds-radius` | `rounded-ds` | = md | = md | alias |
-| `--radius` (shadcn) | `rounded-lg` in shadcn parts | = lg | = lg | alias |
-| `--r` (legacy app CSS) | — | = xl | = xl | alias in `shared/ui.css`, `shared/theme.css` |
+| Token | Utility | square | rounded | smooth | Use |
+|---|---|---|---|---|---|
+| `--ds-radius-xs` | `rounded-ds-xs` | 0 | 4px | 8px | bars, swatches, small codes, active-link bars, scrollbar thumb |
+| `--ds-radius-sm` | `rounded-ds-sm` | 0 | 6px | 12px | code pills, focus rings, inner boxes |
+| `--ds-radius-md` | `rounded-ds-md` | 0 | 8px | 16px | buttons, inputs, icon tiles, list rows |
+| `--ds-radius-lg` | `rounded-ds-lg` | 0 | 12px | 20px | cards, panels, tables, modals |
+| `--ds-radius-xl` | `rounded-ds-xl` | 0 | 16px | 24px | page bands, hero, large panels |
+| `--ds-radius-pill` | `rounded-ds-pill` | 0 | 999px | 999px | chips, count badges, progress bars, status dots |
+| `--ds-radius-round` | `rounded-ds-round` | 50% | 50% | 50% | real circles only |
+| `--ds-radius` | `rounded-ds` | = md | = md | = md | alias |
+| `--radius` (shadcn) | `rounded-lg` in shadcn parts | = lg | = lg | = lg | alias |
+| `--r` (legacy app CSS) | — | = xl | = xl | = xl | alias in `shared/ui.css`, `shared/theme.css` |
+
+Smooth also makes antd buttons and tags pills (`pillButtons` in `tokens.ts`, §8) and the scrollbar thumb fully round (§9).
 
 The px values are mirrored in `tokens.ts` (`corners`) for antd; `tokens.test.ts` checks both ways and checks that no
 theme file declares a radius. A subtree with its own `data-corners` re-resolves the tokens, `rounded-ds*` and the
@@ -386,8 +390,9 @@ Notes:
 
 `web/src/styles/design-system/tokens.ts` exports:
 - `palette`: every primitive as a plain colour string (ash in 8-bit hex).
-- `corners`: per corner style (`square`, `rounded`) the px steps `xs`, `sm`, `md`, `lg`, `xl`, `pill` (= corners.css);
-  `CornerStyle`, `isCornerStyle()`.
+- `corners`: per corner style (`square`, `rounded`, `smooth`) the px steps `xs`, `sm`, `md`, `lg`, `xl`, `pill`
+  (= corners.css); `CornerStyle`, `isCornerStyle()`, `cornerStyles`; `pillButtons` (smooth: antd Button and Tag are pills).
+- Appearance panel registry: `themeLabels` (`{ ar, en }` per theme, required by `satisfies`) and `cornerLabels`.
 - `themes`: per theme `fontFamily`, `chrome`, `gridHero`, `gridDark`, `chart` (`series`, `actual`,
   `target`, `area`, `current`, `bg`, `grid`, `axis`, `up`, `down`), `shadow`, `focus`, `selection`,
   `sidebar` (the `--ds-sidebar-*` tokens), `band` (`--ds-band-*`), `shade` (`--ds-shade`), `gradient`
@@ -402,14 +407,14 @@ Notes:
 
 Use it where CSS variables can't reach: antd (below), canvas charts, print/PDF, values computed in JS.
 
-**antd is wired to the tokens.** `antd-theme.ts` → `antdTheme(name, base = {}, { tone = "light" } = {})` returns a
-`ThemeConfig`; `App.tsx` calls it with `useDsTheme()` and its fonts:
+**antd is wired to the tokens.** `antd-theme.ts` → `antdTheme(name, base = {}, { tone = "light", corners } = {})` returns
+a `ThemeConfig`; `AppearanceProvider` (`appearance.tsx`) calls it with the look on `<html>` and `App.tsx`'s fonts:
 
 ```tsx
 const antdBase: ThemeConfig = { token: { fontFamily: '"IBM Plex Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif', fontSize: 14 } };
-const dsTheme = useDsTheme();                                   // <html data-theme>, re-renders on change
-const theme = useMemo(() => antdTheme(dsTheme, antdBase), [dsTheme]);
-<ConfigProvider direction={…} locale={…} theme={theme}>…</ConfigProvider>
+<AppearanceProvider base={antdBase}>                             {/* antdTheme(useDsTheme(), base, { corners: useDsCorners() }) */}
+  <ConfigProvider direction={…} locale={…}>…</ConfigProvider>    {/* inherits the theme */}
+</AppearanceProvider>
 ```
 
 | antd | From `themes[name]` (light section unless noted) |
@@ -423,6 +428,7 @@ const theme = useMemo(() => antdTheme(dsTheme, antdBase), [dsTheme]);
 | `colorBorder`, `colorBorderSecondary` | `border` |
 | `colorBgLayout`, `colorBgContainer`, `colorBgElevated`, `colorBgSpotlight` | `bgCool`, `surface`, `surface`, `sections.dark.bg` |
 | `borderRadius` / `borderRadiusLG` / `SM` / `XS` / `Outer` | `antdRadii(corners[style])`: md, lg, sm, xs, xs (square: all 0) |
+| Button `borderRadius` / `LG` / `SM`, Tag `borderRadiusSM` | `pill` in smooth only (`pillButtons`); square and rounded set none |
 | Progress `lineBorderRadius`, Table `stickyScrollBarBorderRadius` | `pill` |
 | Button default (colour, bg, border, hover and active) | `btnGhost.fg`, `surface`, `btnGhost.border`, `btnGhost.hoverFg` / `hoverBg` / `hoverBorder` |
 | Input, InputNumber, DatePicker: `hoverBorderColor`, `activeBorderColor`, `activeShadow` | `accentStrong`, `focusRing`, `0 0 0 2px` + `focus` |
@@ -487,8 +493,8 @@ Tailwind. The top comment of the file is the source of truth.
 A scrollbar takes the colours of the surface it sits on. The track is that surface: it is transparent, so the
 scroller's own background shows through (the sidebar gradient included). The thumb is a quiet tone of the same surface,
 `color-mix(in srgb, SURFACE p%, INK)` with the surface's own text colour, one step stronger on hover and while dragged. It
-fills the whole track width (no inset, no floating pill, no sheen) and its corner follows `CORNERS`
-(`--ds-radius-xs`: square, or 4px when rounded).
+fills the whole track width (no inset, no floating pill, no sheen) and its corner follows `<html data-corners>`
+(`--ds-radius-xs`: square, or 4px when rounded; smooth sets `--scrollbar-radius: var(--ds-radius-pill)`, a round end).
 
 Tokens: `--scrollbar-size` 10px (= thumb width), `--scrollbar-radius` `var(--ds-radius-xs)`, `--scrollbar-min-thumb`
 40px, `--scrollbar-track` transparent, `--scrollbar-thumb` / `-thumb-hover` / `-thumb-active`, the sidebar palette

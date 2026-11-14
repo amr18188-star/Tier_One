@@ -1,0 +1,48 @@
+/* ===== لوحة تطوى (AccordionPanel.tsx): الأكورديون نفسه في الشريط الجانبي (app/nav.css)، لكل الصفحات =====
+ * .ds-acc اللوحة · .ds-acc-head زر الرأس · .ds-acc-title ما يمرره المستدعي في header · .ds-acc-chev السهم
+ * .ds-acc-body يطوى بالشبكة (0fr ← 1fr) · .ds-acc-inner يقص المحتوى ويخفيه وهو مطوي.
+ * الحركة 220ms كلها داخل prefers-reduced-motion: no-preference؛ وبدونها الفتح والطي فوريان.
+ * .ds-acc-inner بـ overflow: clip لا يصنع حاوية تمرير. المطوي مخفي عن Tab وقارئ الشاشة (visibility) ولا يرسم (content-visibility)،
+ * وكلاهما بعد انتهاء الطي. الألوان والمسافات من الرموز وحدها؛ شكل كل صفحة (حدود، حشوة، ألوان الرأس) في CSS الصفحة عبر className.
+ * المحددات بـ > حتى لا تتأثر لوحة داخل لوحة. */
+
+.ds-acc { min-width: 0; }
+
+.ds-acc-head {
+  display: flex; align-items: center; gap: var(--ds-space-sm); width: 100%; min-height: 44px; margin: 0;
+  padding: var(--ds-space-sm) var(--ds-space-md); border: 0; border-radius: 0; background: transparent;
+  color: inherit; font: inherit; line-height: 1.5; text-align: start; cursor: pointer;
+}
+/* التحويم تبديل لون فقط: لا رفع ولا تكبير. */
+.ds-acc-head:hover { background: var(--ds-app-row-hover); }
+/* الحلقة داخل الزر، فلا يقصها إطار اللوحة. */
+.ds-acc-head:focus-visible { outline-offset: -3px; border-radius: 0; }
+.ds-acc-title { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: var(--ds-space-sm); }
+.ds-acc-chev { flex: none; font-size: 12px; color: var(--ds-body); }
+
+/* السهم: لأسفل واللوحة مفتوحة، ونحو نهاية السطر وهي مطوية (يمين في الإنجليزية، يسار في العربية). */
+.ds-acc[data-open="false"] > .ds-acc-head .ds-acc-chev { transform: rotate(-90deg); }
+html[dir="rtl"] .ds-acc[data-open="false"] > .ds-acc-head .ds-acc-chev { transform: rotate(90deg); }
+
+.ds-acc-body { display: grid; grid-template-rows: 0fr; grid-template-columns: minmax(0, 1fr); }
+.ds-acc[data-open="true"] > .ds-acc-body { grid-template-rows: 1fr; }
+.ds-acc-inner { min-height: 0; min-width: 0; overflow: clip; visibility: hidden; content-visibility: hidden; }
+.ds-acc[data-open="true"] > .ds-acc-body > .ds-acc-inner { visibility: visible; content-visibility: visible; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .ds-acc-head { transition: background 0.15s; }
+  .ds-acc-body { transition: grid-template-rows 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .ds-acc-chev { transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+  /* عند الطي يبقى المحتوى ظاهرًا حتى ينتهي الانطواء ثم يخفى؛ عند الفتح يظهر فورًا. */
+  .ds-acc-inner { transition: visibility 0s linear 220ms; }
+  .ds-acc[data-open="true"] > .ds-acc-body > .ds-acc-inner { transition-delay: 0s; }
+  /* content-visibility لا تتدرج؛ تؤخر مثل visibility بـ allow-discrete. */
+  @supports (transition-behavior: allow-discrete) {
+    .ds-acc-inner { transition: visibility 0s linear 220ms, content-visibility 0s linear 220ms; transition-behavior: allow-discrete; }
+    .ds-acc[data-open="true"] > .ds-acc-body > .ds-acc-inner { transition-delay: 0s; }
+  }
+}
+/* متصفح بلا allow-discrete كان سيخفي المحتوى أول الطي: يكتفي بـ visibility كما في الشريط الجانبي. */
+@supports not (transition-behavior: allow-discrete) {
+  .ds-acc-inner { content-visibility: visible; }
+}

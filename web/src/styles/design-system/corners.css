@@ -1,17 +1,19 @@
 /*
- * Corner style: a second axis next to the colour theme. Any [data-theme] works with either style.
- * The switch is CORNERS in ./config.ts; theme.ts puts it on <html data-corners> before the first render.
+ * Corner style: a second axis next to the colour theme. Any [data-theme] works with any style.
+ * The viewer picks it in the Appearance panel (gear in the top bar; saved in localStorage "t1.appearance"); the default is
+ * CORNERS in ./config.ts. theme.ts puts it on <html data-corners> before the first render.
  * Without TypeScript: set <html data-corners="rounded"> (devtools), or override here with
  * :root[data-corners="rounded"] { … }. No attribute = square.
  *
- *   token               square  rounded   use
- *   --ds-radius-xs      0       4px       bars, swatches, small codes, active-link bars
- *   --ds-radius-sm      0       6px       code pills, focus rings, small buttons
- *   --ds-radius-md      0       8px       inputs, buttons, list rows (= --ds-radius, rounded-ds)
- *   --ds-radius-lg      0       12px      cards, tiles, panels, tables, modals (= shadcn --radius)
- *   --ds-radius-xl      0       16px      page bands, large panels (legacy --r)
- *   --ds-radius-pill    0       999px     chips, count badges, progress bars
- *   --ds-radius-round   50%     50%       real circles only (avatars, dots, step numbers)
+ *   token               square  rounded  smooth   use
+ *   --ds-radius-xs      0       4px      8px      bars, swatches, small codes, active-link bars
+ *   --ds-radius-sm      0       6px      12px     code pills, focus rings, small buttons
+ *   --ds-radius-md      0       8px      16px     inputs, buttons, list rows (= --ds-radius, rounded-ds)
+ *   --ds-radius-lg      0       12px     20px     cards, tiles, panels, tables, modals (= shadcn --radius)
+ *   --ds-radius-xl      0       16px     24px     page bands, large panels (legacy --r)
+ *   --ds-radius-pill    0       999px    999px    chips, count badges, progress bars
+ *   --ds-radius-round   50%     50%      50%      real circles only (avatars, dots, step numbers)
+ * smooth also makes antd buttons and tags pills (antd-theme.ts, `pillButtons` in tokens.ts).
  *
  * The px numbers are mirrored in tokens.ts (`corners`) for antd; tokens.test.ts fails if the two differ.
  * Aliases (--ds-radius, --radius) are declared with the scale, so a subtree with its own data-corners
@@ -33,6 +35,15 @@
   --ds-radius-md: 8px;
   --ds-radius-lg: 12px;
   --ds-radius-xl: 16px;
+  --ds-radius-pill: 999px;
+}
+
+[data-corners="smooth"] {
+  --ds-radius-xs: 8px;
+  --ds-radius-sm: 12px;
+  --ds-radius-md: 16px;
+  --ds-radius-lg: 20px;
+  --ds-radius-xl: 24px;
   --ds-radius-pill: 999px;
 }
 

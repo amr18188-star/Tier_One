@@ -1,0 +1,147 @@
+/* ===== مراجعة مؤشرات الكليات: إعادة التصميم (فوق review.css دون تعديله) =====
+ * شريط المرشحات (الربع، والبحث، والعدد، والحالات) ثم الركائز لوحات تطوى (shared/AccordionPanel)، لوحة واحدة مفتوحة.
+ * رأس الركيزة: الرقم 01…06 بلون الركيزة، والاسم، وعدد المؤشرات وحالاتها نصًا (اللون ليس الدليل الوحيد)، والمنقول بشريط.
+ * الألوان والزوايا والمسافات من الرموز وحدها (--ds-*، --ds-radius-*، --ds-space-*)؛ لون الركيزة --pc / --pt من tint().
+ * التحويم تبديل لون فقط، والخصائص منطقية (RTL أولًا). */
+
+/* الشريط ثم المحتوى بمسافة الشريط الموحدة (shared/layout.css). */
+.rv-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--ds-toolbar-gap); min-width: 0; }
+
+.rv-head-period { font-weight: 700; color: var(--ds-on-dark-fg); }
+
+/* ----- شريط المرشحات ----- */
+.rv-toolbar { gap: var(--ds-space-sm) 12px; }
+.rv-toolbar .rv-period { min-width: 240px; }
+.rv-toolbar .rv-search { width: 280px; max-width: 100%; }
+.rv-toolbar .lcp-filter-meta { margin-inline-start: auto; }
+.rv-chips { display: flex; flex-wrap: wrap; gap: var(--ds-space-sm); flex-basis: 100%; min-width: 0; }
+
+.rv-chip {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 12px; margin: 0;
+  border: 1px solid var(--ds-border); border-radius: var(--ds-radius-pill); background: var(--ds-surface);
+  color: var(--ds-heading); font: inherit; font-size: 13px; line-height: 1.4; white-space: nowrap; cursor: pointer;
+}
+.rv-chip:hover { background: var(--ds-surface-hover); }
+.rv-chip b { font-family: var(--font-display); color: var(--ds-body); }
+.rv-chip[aria-pressed="true"] { background: var(--ds-btn-primary-bg); border-color: var(--ds-btn-primary-border); color: var(--ds-btn-primary-fg); }
+.rv-chip[aria-pressed="true"] b { color: inherit; }
+
+/* نقطة الحالة: مع اسمها دائمًا. */
+.rv-chip i, .rv-p-st i { flex: none; width: 8px; height: 8px; border-radius: var(--ds-radius-round); background: var(--rv-st, var(--ds-neutral-dot)); }
+[data-st="Ready"] { --rv-st: var(--ds-status-info); }
+[data-st="Changed"] { --rv-st: var(--ds-status-late); }
+[data-st="Incomplete"] { --rv-st: var(--ds-status-near); }
+[data-st="Transferred"] { --rv-st: var(--ds-status-ok); }
+[data-st="NoData"] { --rv-st: var(--ds-neutral-dot); }
+
+.rv-empty-actions { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--ds-space-sm) var(--ds-space-md); }
+
+/* ----- الركائز ----- */
+.rv-acc { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--ds-space-sm); overflow-anchor: none; }
+
+.rv-pillar {
+  background: var(--ds-surface); border: 1px solid var(--ds-border); border-inline-start: 4px solid var(--pc);
+  border-radius: var(--ds-radius-lg); overflow: clip;
+}
+.rv-pillar > .ds-acc-head { gap: 12px; min-height: 68px; padding: 12px var(--ds-space-md); }
+.rv-pillar[data-open="true"] > .ds-acc-head { background: color-mix(in srgb, var(--pt) 55%, var(--ds-surface)); }
+.rv-pillar[data-open="true"] > .ds-acc-head:hover,
+.rv-pillar > .ds-acc-head:hover { background: var(--ds-app-row-hover); }
+.rv-pillar > .ds-acc-head .ds-acc-title { gap: 14px; }
+
+.rv-p-num { flex: none; min-width: 2.2ch; font-family: var(--font-display); font-size: 22px; font-weight: 700; line-height: 1; color: var(--pc); }
+.rv-p-main { flex: 1 1 auto; min-width: 0; display: grid; gap: 2px; }
+.rv-p-name { font-family: var(--font-display); font-size: 15.5px; line-height: 1.6; color: var(--ds-heading); }
+.rv-p-sum { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 14px; font-size: 12.5px; line-height: 1.6; color: var(--ds-body); }
+.rv-p-st { display: inline-flex; align-items: center; gap: 6px; }
+
+.rv-p-state { flex: none; display: grid; gap: 6px; width: 150px; }
+.rv-p-state-label { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 12.5px; color: var(--ds-body); }
+.rv-p-state-label b { font-family: var(--font-display); font-size: 15px; color: var(--ds-heading); }
+.rv-p-bar { display: block; height: 6px; border-radius: var(--ds-radius-pill); background: var(--ds-track); overflow: hidden; }
+.rv-p-bar i { display: block; height: 100%; border-radius: inherit; background: var(--ds-status-ok); }
+
+/* المحتوى: صفوف المؤشرات بخطوط شعرية بينها، بلا بطاقة لكل صف (الركيزة هي البطاقة). */
+.rv-list { border-top: 1px solid var(--ds-border); }
+.rv-pillar-empty { border-top: 1px solid var(--ds-border); padding: 0 var(--ds-space-md); }
+.rv-pillar .rv-row { margin: 0; border: 0; border-top: 1px solid var(--ds-border); border-radius: 0; background: transparent; box-shadow: none; overflow: visible; }
+.rv-pillar .rv-row:first-child { border-top: 0; }
+.rv-pillar .rv-row.open { background: var(--ds-app-faint-bg); }
+.rv-pillar .rv-head { min-height: 64px; padding: 10px var(--ds-space-md); }
+.rv-pillar .rv-head:hover { background: var(--ds-app-row-hover); }
+.rv-pillar .rv-name b { color: var(--ds-heading); }
+.rv-pillar .rv-name small { color: var(--ds-body); }
+.rv-pillar .rv-uni b { color: var(--ds-heading); font-variant-numeric: tabular-nums; }
+.rv-pillar .rv-uni small { color: var(--ds-body); }
+.rv-pillar .rv-detail { padding: 12px var(--ds-space-md) var(--ds-space-md); }
+.rv-pillar .rv-tr { font-variant-numeric: tabular-nums; }
+
+@media (max-width: 960px) {
+  .rv-toolbar .rv-period { min-width: 200px; }
+}
+
+/* ----- الجوال ----- */
+@media (max-width: 640px) {
+  /* أهداف لمس 44px على الأقل، والحقول بعرض الشريط. */
+  .rv-toolbar .rv-period, .rv-toolbar .rv-search { flex: 1 1 100%; width: 100%; min-width: 0; max-width: none; }
+  .rv-toolbar .ant-select-single { height: 44px; }
+  .rv-toolbar .rv-search.ant-input-affix-wrapper { min-height: 44px; }
+  .rv-toolbar .lcp-filter-meta { margin-inline-start: 0; }
+  .rv-toolbar .lcp-filter-meta .ant-btn { min-height: 44px; }
+  /* الحالات صف واحد يتمرر داخله (لا الصفحة). */
+  .rv-chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-block-end: 2px; }
+  .rv-chips::-webkit-scrollbar { display: none; }
+  .rv-chip { min-height: 44px; padding-inline: 14px; }
+
+  .rv-pillar > .ds-acc-head { padding: 12px; gap: 8px; }
+  .rv-pillar > .ds-acc-head .ds-acc-title { flex-wrap: wrap; gap: 6px 10px; }
+  .rv-p-num { font-size: 18px; }
+  .rv-p-main { flex-basis: calc(100% - 2.2ch - 10px); }
+  .rv-p-name { font-size: 14.5px; }
+  .rv-p-state { width: auto; flex: 1 1 100%; padding-inline-start: calc(2.2ch + 10px); }
+}
+
+/* ----- صفوف المؤشرات بحسب عرض القائمة نفسها: الشريط الجانبي يضيقها على الشاشات المتوسطة (1024 ← نحو 700px) ----- */
+.rv-list { container: rv-list / inline-size; }
+
+/* متوسط: الاسم وتحته أعمدة الكليات، وبجانبهما القيمتان والحالة. */
+@container rv-list (max-width: 900px) {
+  .rv-pillar .rv-head { grid-template-columns: minmax(0, 1fr) 104px 104px auto; gap: 6px 14px; }
+  .rv-pillar .rv-name { grid-column: 1; grid-row: 1; }
+  .rv-pillar .rv-colleges { grid-column: 1; grid-row: 2; order: 0; justify-self: start; }
+  .rv-pillar .rv-uni { grid-row: 1 / span 2; }
+  .rv-pillar .rv-state { grid-column: auto; grid-row: 1 / span 2; justify-content: flex-end; }
+}
+
+/* ضيق (الجوال): الاسم بعرض الصف، ثم القيمتان جنبًا إلى جنب، ثم أعمدة الكليات، ثم الحالة؛ وجدول الكليات بطاقات. */
+@container rv-list (max-width: 640px) {
+  .rv-pillar .rv-head { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 12px; }
+  .rv-pillar .rv-name { grid-column: 1 / -1; grid-row: auto; }
+  .rv-pillar .rv-uni { grid-row: auto; text-align: start; justify-items: start; }
+  .rv-pillar .rv-colleges { grid-column: 1 / -1; grid-row: auto; order: 5; justify-self: stretch; }
+  .rv-pillar .rv-state { grid-column: 1 / -1; grid-row: auto; order: 6; justify-content: space-between; }
+  .rv-pillar .rv-detail { padding: 12px; }
+
+  /* جدول الكليات بطاقات: كل صف بطاقة باسم الكلية، وتحته الخلايا عمودين، في كل خلية عنوانها (data-label) فوق قيمتها. */
+  .rv-pillar .rv-table { display: grid; gap: var(--ds-space-sm); border: 0; background: none; overflow: visible; }
+  .rv-pillar .rv-tr {
+    min-width: 0; display: grid; grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px;
+    padding: 10px 12px; border: 1px solid var(--ds-border); border-radius: var(--ds-radius-lg); background: var(--ds-surface);
+  }
+  .rv-pillar .rv-tr:last-child { border-bottom: 1px solid var(--ds-border); }
+  .rv-pillar .rv-tr.head { display: none; }
+  .rv-pillar .rv-tr.total { background: var(--ds-app-muted-bg); }
+  .rv-pillar .rv-tr > .rv-td-name { grid-column: 1 / -1; padding-block-end: 6px; border-bottom: 1px solid var(--ds-border); }
+  .rv-pillar .rv-tr > [data-label] { display: grid; align-content: start; justify-items: start; gap: 2px; min-width: 0; }
+  .rv-pillar .rv-tr > [data-label]::before { content: attr(data-label); color: var(--ds-body); font-size: 12px; font-weight: 400; line-height: 1.5; }
+  /* الخلايا الرقمية اتجاهها LTR: «البداية» فيها يسار، فتحاذى إلى اليمين في العربية مثل باقي البطاقة. */
+  html[dir="rtl"] .rv-pillar .rv-tr > .ltr[data-label] { justify-items: end; text-align: end; }
+  .rv-pillar .rv-tr > .rv-td-target { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 12px; }
+
+  .rv-pillar .rv-transfer { padding: 12px; }
+  .rv-pillar .rv-transfer label, .rv-pillar .rv-transfer label.grow { flex: 1 1 100%; min-width: 0; }
+  .rv-pillar .rv-transfer .ant-input-number-group-wrapper, .rv-pillar .rv-transfer .ant-input-number { width: 100% !important; }
+  .rv-pillar .rv-transfer .ant-input-number-input { height: 42px; }
+  .rv-pillar .rv-transfer .ant-input { min-height: 44px; }
+  .rv-pillar .rv-transfer .ant-btn { min-height: 44px; }
+}

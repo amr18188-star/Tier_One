@@ -1,10 +1,10 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { Button, Grid, Input, Tag, Tooltip } from "antd";
+import { useEffect, useRef, type ReactNode } from "react";
+import { Button, Tag, Tooltip } from "antd";
 import {
-  AimOutlined, ApartmentOutlined, BankOutlined, BulbOutlined, CalendarOutlined, DeleteOutlined, DownOutlined, EditOutlined, FileTextOutlined, FlagFilled,
-  FlagOutlined, LeftOutlined, PlusOutlined, RightOutlined, RocketOutlined, SearchOutlined, TrophyOutlined, UnorderedListOutlined,
+  AimOutlined, ApartmentOutlined, BulbOutlined, CalendarOutlined, DeleteOutlined, EditOutlined, FileTextOutlined, FlagFilled,
+  FlagOutlined, LeftOutlined, PlusOutlined, RightOutlined, RocketOutlined, TrophyOutlined,
 } from "@ant-design/icons";
-import { Link } from "react-router-dom";
+import { Link, Navigate, useSearchParams } from "react-router-dom";
 import type { IndicatorNode, InitiativeNode, PillarNode, StandardNode } from "../../api/tier1";
 import { howCalculated } from "../../shared/calc";
 import { L, useLang } from "../../shared/i18n";
@@ -12,161 +12,105 @@ import { aggregation, definitionStatus, direction, horizon, initiativeStatus, le
 import { EmptyNote } from "../../shared/ui";
 import { IndicatorPlan } from "./IndicatorPlan";
 import {
-  allIndicators, allInitiatives, dotState, dotText, finalTarget, find, pillarIndexOf, span, targetOf, targetsComplete, tint, usePlan,
+  allIndicators, allInitiatives, boardSearch, detailSearch, dotState, dotText, finalTarget, find, pillarIndexOf, pillarNum, span, targetOf,
+  targetsComplete, tint, usePlan, type Selection,
 } from "./model";
-import { Dots, DotLegend, StateBar } from "./PlanMap";
+import { DotLegend, Dots } from "./PlanMap";
 import { Sparkline, YearBar } from "./PlanCharts";
 import { stdLabel } from "../../shared/pillars";
 
 /**
- * المستكشف: شجرة الخطة على جانب، وتفاصيل العنصر المختار على الجانب الآخر بلون ركيزته،
- * مع مسار التنقل (الخطة › الركيزة › المعيار) والإضافة والتعديل والحذف من مكانها بحسب الصلاحية.
+ * صفحة تفاصيل عنصر واحد (?view=explore&node=P:|S:|M:|I:): ركيزة أو معيار أو مبادرة أو مؤشر بلون ركيزته،
+ * وفوقها سطر المسار من «الهيكل والعلاقات» إلى العنصر، وكل عنصر مرتبط فيها يفتح صفحته بإضافة إلى السجل،
+ * والإضافة والتعديل والحذف من مكانها بحسب الصلاحية. لا شجرة ولا «الخطة كاملة»: بلا عنصر صالح تحول إلى اللوحة بالاستبدال.
  */
 export function Explorer({ selected }: { selected: string }) {
   const { tree } = usePlan();
-  const screens = Grid.useBreakpoint();
-  const narrow = screens.lg === false;
-  const [navOpen, setNavOpen] = useState(false);
+  const [params] = useSearchParams();
+  const rootRef = useRef<HTMLDivElement>(null);
   const sel = find(tree, selected);
-  // لون التفاصيل لون ركيزة العنصر المختار؛ الخطة كاملة بالكحلي.
-  const index = sel.kind === "pillar" ? tree.pillars.findIndex((p) => p.id === sel.pillar.id)
-    : sel.kind === "root" ? -2 : pillarIndexOf(tree, sel.standard);
-  // على الشاشة الضيقة تطوى الشجرة بعد كل اختيار فتظهر التفاصيل مباشرة.
-  useEffect(() => setNavOpen(false), [selected]);
+  const missing = sel.kind === "root";
+
+  // كل عنصر جديد صفحة جديدة: تبدأ من أولها، والتركيز على عنوانها فيقرؤه قارئ الشاشة.
+  useEffect(() => {
+    if (missing) return;
+    window.scrollTo({ top: 0 });
+    rootRef.current?.querySelector<HTMLElement>("h1")?.focus({ preventScroll: true });
+  }, [selected, missing]);
+
+  if (sel.kind === "root") return <Navigate replace to={{ search: boardSearch(tree, null, params.get("pillar")) }} />;
+  const index = sel.kind === "pillar" ? tree.pillars.findIndex((p) => p.id === sel.pillar.id) : pillarIndexOf(tree, sel.standard);
 
   return (
-    <div className="sp-explore">
-      {narrow ? (
-        <div className="sp-nav-mobile">
-          <Button block icon={<UnorderedListOutlined aria-hidden />} onClick={() => setNavOpen(!navOpen)} aria-expanded={navOpen}>
-            {navOpen ? L("إخفاء شجرة الخطة", "Hide plan tree") : L("تصفح شجرة الخطة", "Browse the plan tree")}
-          </Button>
-          {navOpen && <Navigator selected={selected} />}
-        </div>
-      ) : <Navigator selected={selected} />}
-      <section className="sp-detail" aria-live="polite" style={index === -2 ? undefined : tint(index)}>
-        {sel.kind === "root" && <RootDetail />}
-        {sel.kind === "pillar" && <PillarDetail pillar={sel.pillar} />}
-        {sel.kind === "standard" && <StandardDetail standard={sel.standard} />}
-        {sel.kind === "initiative" && <InitiativeDetail initiative={sel.initiative} standard={sel.standard} />}
-        {sel.kind === "indicator" && <IndicatorDetail indicator={sel.indicator} standard={sel.standard} />}
-      </section>
+    <div ref={rootRef} className="sp-detail" style={tint(index)}>
+      <PathLine sel={sel} node={selected} />
+      {sel.kind === "pillar" && <PillarDetail pillar={sel.pillar} />}
+      {sel.kind === "standard" && <StandardDetail standard={sel.standard} />}
+      {sel.kind === "initiative" && <InitiativeDetail initiative={sel.initiative} standard={sel.standard} />}
+      {sel.kind === "indicator" && <IndicatorDetail indicator={sel.indicator} standard={sel.standard} />}
     </div>
   );
 }
 
-// ----------------------------------------------------------------- الشجرة
+// ----------------------------------------------------------------- سطر المسار
 
-function Navigator({ selected }: { selected: string }) {
-  const { tree, select } = usePlan();
-  const [search, setSearch] = useState("");
-  const [closed, setClosed] = useState<Set<string>>(new Set());
-  const q = search.trim().toLowerCase();
-  const hit = (...texts: (string | null | undefined)[]) => !q || texts.some((x) => x?.toLowerCase().includes(q));
-  const toggle = (id: string) => setClosed((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
-  const inside = (s: StandardNode) => selected === `S:${s.id}` || s.initiatives.some((m) => selected === `M:${m.id}`) || s.indicators.some((i) => selected === `I:${i.code}`);
+/** «م1» في العربية و«S1» في الإنجليزية للمعايير المرقمة؛ وغيرها برمزه. */
+function stdShort(code: string): string {
+  return L(stdLabel(code), /^\d+$/.test(code) ? `S${code}` : code);
+}
 
-  const groups = [
-    ...tree.pillars.map((p, index) => ({ key: `P:${p.id}`, pillar: p as PillarNode | null, code: p.code, name: p.nameAr, index, standards: p.standards })),
-    ...(tree.unassigned.length > 0 ? [{ key: "GU", pillar: null, code: "—", name: L("معايير بلا ركيزة", "No pillar"), index: -1, standards: tree.unassigned }] : []),
+/**
+ * «الهيكل والعلاقات ‹ الركيزة 01 ‹ م1 ‹ 1.01»: الأول يفتح اللوحة على ركيزة العنصر (والمؤشر أو المبادرة محددًا فيها)،
+ * والركيزة والمعيار صفحتا تفاصيلهما، والأخير الصفحة الحالية (aria-current). الفاصل يتجه مع اللغة كما في مسار التنقل السابق.
+ */
+function PathLine({ sel, node }: { sel: Exclude<Selection, { kind: "root" }>; node: string }) {
+  const { tree } = usePlan();
+  const Sep = useLang() === "ar" ? LeftOutlined : RightOutlined;
+  const standard = sel.kind === "pillar" ? null : sel.standard;
+  const pillar = sel.kind === "pillar" ? sel.pillar : tree.pillars[pillarIndexOf(tree, sel.standard)] ?? null;
+  const steps: { key: string; to?: string; label: ReactNode; title?: string }[] = [
+    { key: "board", to: boardSearch(tree, node), label: L("الهيكل والعلاقات", "Structure & links") },
   ];
-
-  let matches = 0;
-  const body = groups.map((g) => {
-    const stds = g.standards.map((s) => {
-      const own = hit(s.code, s.nameAr) || hit(g.code, g.name);
-      const ms = s.initiatives.filter((m) => own || hit(m.code, m.nameAr));
-      const is = s.indicators.filter((i) => own || hit(i.code, i.nameAr));
-      return { s, ms, is, show: own || ms.length + is.length > 0 };
-    }).filter((x) => x.show);
-    if (q && stds.length === 0) return null;
-    matches += stds.length;
-    const open = !!q || !closed.has(g.key);
-    return (
-      <li key={g.key} className="sp-nav-group" style={tint(g.index)}>
-        <div className={`sp-nav-p${selected === g.key ? " on" : ""}`}>
-          <button type="button" className="sp-nav-caret" onClick={() => toggle(g.key)} aria-expanded={open} aria-label={open ? L("طي", "Collapse") : L("فتح", "Expand")}>
-            <DownOutlined aria-hidden className={open ? "" : "shut"} />
-          </button>
-          <button type="button" className="sp-nav-btn" onClick={() => (g.pillar ? select(g.key) : toggle(g.key))} aria-current={selected === g.key ? "true" : undefined}>
-            <code>{g.code}</code><span>{g.name}</span>
-          </button>
-        </div>
-        {open && (
-          <ul>
-            {stds.map(({ s, ms, is }) => {
-              const deep = !!q || inside(s);
-              return (
-                <li key={s.id}>
-                  <button type="button" className={`sp-nav-s${selected === `S:${s.id}` ? " on" : ""}`} onClick={() => select(`S:${s.id}`)} aria-current={selected === `S:${s.id}` ? "true" : undefined}>
-                    <code>{stdLabel(s.code)}</code><span>{s.nameAr}</span><small className="ltr-nums">{s.indicators.length}</small>
-                  </button>
-                  {deep && (ms.length > 0 || is.length > 0) && (
-                    <ul className="sp-nav-leaves">
-                      {ms.map((m) => (
-                        <li key={m.id}>
-                          <button type="button" className={selected === `M:${m.id}` ? "on" : ""} onClick={() => select(`M:${m.id}`)} aria-current={selected === `M:${m.id}` ? "true" : undefined}>
-                            <RocketOutlined aria-hidden /><code>{m.code}</code><span>{m.nameAr}</span>
-                          </button>
-                        </li>
-                      ))}
-                      {is.map((i) => (
-                        <li key={i.code}>
-                          <button type="button" className={selected === `I:${i.code}` ? "on" : ""} onClick={() => select(`I:${i.code}`)} aria-current={selected === `I:${i.code}` ? "true" : undefined}>
-                            <AimOutlined aria-hidden /><code>{i.code}</code><span>{i.nameAr}</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </li>
-    );
-  });
+  if (pillar) {
+    const n = pillarNum(tree.pillars.indexOf(pillar));
+    steps.push({ key: `P:${pillar.id}`, to: detailSearch(`P:${pillar.id}`), label: <>{L("الركيزة", "Pillar")} <span className="ltr-nums">{n}</span></>, title: pillar.nameAr });
+  }
+  if (standard) steps.push({ key: `S:${standard.id}`, to: detailSearch(`S:${standard.id}`), label: stdShort(standard.code), title: standard.nameAr });
+  if (sel.kind === "initiative") steps.push({ key: node, label: <span className="ltr-nums">{sel.initiative.code}</span>, title: sel.initiative.nameAr });
+  if (sel.kind === "indicator") steps.push({ key: node, label: <span className="ltr-nums">{sel.indicator.code}</span>, title: sel.indicator.nameAr });
 
   return (
-    <nav className="lcp-panel sp-nav" aria-label={L("شجرة الخطة", "Plan tree")}>
-      <Input allowClear prefix={<SearchOutlined aria-hidden />} value={search} onChange={(e) => setSearch(e.target.value)}
-        placeholder={L("ابحث: ركيزة أو معيار أو مؤشر أو مبادرة", "Search the plan")} aria-label={L("بحث في شجرة الخطة", "Search the plan")} />
-      <button type="button" className={`sp-nav-root${selected === "root" ? " on" : ""}`} onClick={() => select("root")}>
-        <BankOutlined aria-hidden /> {L(`الخطة كاملة ${tree.years[0]}–${tree.years[tree.years.length - 1]}`, "The whole plan")}
-      </button>
-      <ul className="sp-nav-list">{body}</ul>
-      {q && matches === 0 && <p className="t1-help">{L("لا نتائج لهذا البحث.", "No matches.")}</p>}
+    <nav className="sp-path" aria-label={L("موقعك في الخطة", "Where you are")}>
+      <ol>
+        {steps.map((s, k) => {
+          const current = k === steps.length - 1;
+          return (
+            <li key={s.key}>
+              {k > 0 && <Sep aria-hidden className="sp-path-sep" />}
+              {current ? <span aria-current="page" title={s.title}>{s.label}</span> : <Link to={{ search: s.to }} title={s.title}>{s.label}</Link>}
+            </li>
+          );
+        })}
+      </ol>
     </nav>
   );
 }
 
 // ----------------------------------------------------------------- رأس التفاصيل
 
-function Crumbs({ items }: { items: { key: string; label: string }[] }) {
-  const { select } = usePlan();
-  const Sep = useLang() === "ar" ? LeftOutlined : RightOutlined;
-  return (
-    <nav className="sp-crumbs" aria-label={L("موقعك في الخطة", "Where you are")}>
-      <button type="button" onClick={() => select("root")}>{L("الخطة", "Plan")}</button>
-      {items.map((c) => <span key={c.key}><Sep aria-hidden /><button type="button" onClick={() => select(c.key)}>{c.label}</button></span>)}
-    </nav>
-  );
-}
-
-function DetailHead({ index, kind, icon, code, title, sub, chips, actions, crumbs, children }: {
+function DetailHead({ index, kind, icon, code, title, sub, chips, actions, children }: {
   index: number; kind?: string; icon: ReactNode; code?: string; title: string; sub?: string | null; chips?: ReactNode; actions?: ReactNode;
-  crumbs?: { key: string; label: string }[]; children?: ReactNode;
+  children?: ReactNode;
 }) {
   // بلا kind وcode لا يظهر سطر النوع والرمز فوق العنوان (الركيزة: يكفي اسمها، كما في الخريطة).
+  // العنوان h1 الصفحة (اسم الخطة في الشريط العلوي نص هنا)، وtabIndex=-1 ليستقبل التركيز بعد كل انتقال.
   return (
     <header className="sp-dhead" style={tint(index)}>
-      {crumbs && <Crumbs items={crumbs} />}
       <div className="sp-dhead-row">
         <span className="sp-dhead-icon" aria-hidden>{icon}</span>
         <div className="sp-dhead-text">
           {kind && code && <small>{kind} <code>{code}</code></small>}
-          <h2>{title}</h2>
+          <h1 tabIndex={-1}>{title}</h1>
           {sub && <p className="ltr sp-dhead-en">{sub}</p>}
           {chips && <div className="sp-dhead-chips">{chips}</div>}
         </div>
@@ -208,7 +152,7 @@ function fmt(i: IndicatorNode, v: number | null) {
   return v === null ? "—" : i.unit.trim() === "%" ? `${num(v)}%` : withUnit(v, i.unit);
 }
 
-/** صف مؤشر: الاسم، وأفق المستهدف، ومسار المستهدف المصغر، والمستهدف النهائي، وحالته. */
+/** صف مؤشر: الاسم، وأفق المستهدف، ومسار المستهدف المصغر، والمستهدف النهائي، وحالته. النقر يفتح صفحة المؤشر. */
 function IndicatorRow({ i }: { i: IndicatorNode }) {
   const { tree, results, select } = usePlan();
   const years = tree.years;
@@ -266,51 +210,12 @@ function StandardCard({ s }: { s: StandardNode }) {
   );
 }
 
-// ----------------------------------------------------------------- الخطة كاملة
-
-function RootDetail() {
-  const { tree, select } = usePlan();
-  const indicators = allIndicators(tree);
-  return (
-    <>
-      <header className="sp-dhead sp-dhead-root">
-        <div className="sp-dhead-row">
-          <span className="sp-dhead-icon" aria-hidden><BankOutlined /></span>
-          <div className="sp-dhead-text">
-            <small>{L("الخطة كاملة", "Whole plan")}</small>
-            <h2>{L("كيف تقرأ الخطة", "How to read the plan")}</h2>
-          </div>
-        </div>
-        <ol className="sp-howto">
-          <li><FlagOutlined aria-hidden /><span><b>{L("الركيزة", "Pillar")}</b>{L("محور كبير من محاور الخطة، وتحته معاييره.", "A major axis of the plan.")}</span></li>
-          <li><ApartmentOutlined aria-hidden /><span><b>{L("المعيار", "Standard")}</b>{L("ما تقيمه Tier 1، ولكل معيار مبادرات ومؤشرات.", "What Tier 1 assesses.")}</span></li>
-          <li><RocketOutlined aria-hidden /><span><b>{L("المبادرة", "Initiative")}</b>{L("ما ستنفذه الجامعة، بجهة مسؤولة ومدة.", "What the university will do.")}</span></li>
-          <li><AimOutlined aria-hidden /><span><b>{L("المؤشر", "Indicator")}</b>{L("ما يقاس به التقدم، بمستهدف في كل سنة وشرح لحسابه.", "How progress is measured.")}</span></li>
-        </ol>
-      </header>
-      <Section title={L("الركائز", "Pillars")} icon={<FlagOutlined aria-hidden />}>
-        <DotLegend list={indicators} />
-        <div className="sp-pgrid">
-          {tree.pillars.map((p, index) => {
-            const list = p.standards.flatMap((s) => s.indicators);
-            return (
-              <button key={p.id} type="button" className="sp-pmini" style={tint(index)} onClick={() => select(`P:${p.id}`)}>
-                <span className="sp-pillar-num ltr-nums">{String(index + 1).padStart(2, "0")}</span>
-                <span className="sp-pmini-text">
-                  <b>{p.nameAr}</b>
-                  <small>{L(`${p.standards.length} معيار · ${p.standards.reduce((n, s) => n + s.initiatives.length, 0)} مبادرة · ${list.length} مؤشر`, `${p.standards.length} standards · ${list.length} indicators`)}</small>
-                  <StateBar list={list} />
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </Section>
-    </>
-  );
-}
-
 // ----------------------------------------------------------------- الركيزة
+
+/** اسم طويل في عنوان نافذة: يقطع بنقاط بعد 40 حرفًا. */
+function clip(text: string, max = 40): string {
+  return text.length > max ? `${text.slice(0, max).trimEnd()}…` : text;
+}
 
 function PillarDetail({ pillar }: { pillar: PillarNode }) {
   const { tree, edit } = usePlan();
@@ -321,12 +226,11 @@ function PillarDetail({ pillar }: { pillar: PillarNode }) {
   return (
     <>
       <DetailHead index={index} icon={<FlagOutlined />} title={pillar.nameAr} sub={pillar.nameEn}
-        crumbs={[]}
         actions={<>
           {a.canEdit && <Button icon={<EditOutlined />} onClick={() => edit({ kind: "pillar", pillar })}>{L("تعديل", "Edit")}</Button>}
           {a.canAdd && <Button icon={<PlusOutlined />} onClick={() => edit({ kind: "standard", pillarId: pillar.id })}>{L("معيار جديد", "New standard")}</Button>}
           {a.canDelete && <Tooltip title={L("حذف الركيزة", "Delete pillar")}><Button danger icon={<DeleteOutlined />} aria-label={L("حذف الركيزة", "Delete pillar")}
-            onClick={() => edit({ kind: "delete", title: L(`حذف الركيزة ${pillar.code}`, `Delete ${pillar.code}`), url: `/api/strategy/pillars/${pillar.id}/delete`, after: "root",
+            onClick={() => edit({ kind: "delete", title: L(`حذف الركيزة ${pillarNum(index)} — ${clip(pillar.nameAr)}`, `Delete pillar ${pillarNum(index)} — ${clip(pillar.nameEn ?? pillar.nameAr)}`), url: `/api/strategy/pillars/${pillar.id}/delete`, after: "board",
               explain: pillar.standards.length > 0 ? L("لا تحذف ركيزة تحتها معايير؛ انقل معاييرها إلى ركيزة أخرى أولًا.", "Move its standards first.") : L("تحذف الركيزة نهائيًا ويبقى حذفها في السجل.", "The pillar is deleted; the log keeps the record.") })} /></Tooltip>}
         </>}>
         <Desc text={pillar.description} empty={L("لم يكتب شرح هذه الركيزة بعد.", "No description yet.")} />
@@ -363,12 +267,11 @@ function StandardDetail({ standard }: { standard: StandardNode }) {
   return (
     <>
       <DetailHead index={index} kind={L("المعيار", "Standard")} icon={<ApartmentOutlined />} code={stdLabel(standard.code)} title={standard.nameAr} sub={standard.nameEn}
-        crumbs={pillar ? [{ key: `P:${pillar.id}`, label: `${pillar.code} ${pillar.nameAr}` }] : []}
         actions={<>
           {a.canEdit && <Button icon={<EditOutlined />} onClick={() => edit({ kind: "standard", standard })}>{L("تعديل", "Edit")}</Button>}
           {a.canDelete && <Tooltip title={L("حذف المعيار", "Delete standard")}><Button danger icon={<DeleteOutlined />} aria-label={L("حذف المعيار", "Delete standard")}
             onClick={() => edit({ kind: "delete", title: L(`حذف المعيار ${standard.code}`, `Delete ${standard.code}`), url: `/api/strategy/standards/${standard.id}/delete`,
-              after: pillar ? `P:${pillar.id}` : "root",
+              after: pillar ? `P:${pillar.id}` : "board",
               explain: standard.indicators.length + standard.initiatives.length > 0
                 ? L("لا يحذف معيار تحته مؤشرات أو مبادرات؛ احذفها أو انقلها أولًا.", "Delete or move its indicators and initiatives first.")
                 : L("يحذف المعيار نهائيًا ويبقى حذفه في السجل.", "The standard is deleted; the log keeps the record.") })} /></Tooltip>}
@@ -400,13 +303,11 @@ function InitiativeDetail({ initiative: m, standard }: { initiative: InitiativeN
   const { tree, edit } = usePlan();
   const a = tree.actions;
   const index = pillarIndexOf(tree, standard);
-  const pillar = tree.pillars[index];
   const indicators = allIndicators(tree).filter((i) => m.indicatorCodes.includes(i.code));
   const years = m.endYear - m.startYear + 1;
   return (
     <>
       <DetailHead index={index} kind={L("المبادرة", "Initiative")} icon={<RocketOutlined />} code={m.code} title={m.nameAr}
-        crumbs={[...(pillar ? [{ key: `P:${pillar.id}`, label: `${pillar.code} ${pillar.nameAr}` }] : []), { key: `S:${standard.id}`, label: `${stdLabel(standard.code)} ${standard.nameAr}` }]}
         chips={<Tag color={initiativeStatus[m.status].color}>{initiativeStatus[m.status].text}</Tag>}
         actions={<>
           {a.canEdit && <Button icon={<EditOutlined />} onClick={() => edit({ kind: "initiative", initiative: m, standardId: standard.id })}>{L("تعديل", "Edit")}</Button>}
@@ -442,7 +343,6 @@ function IndicatorDetail({ indicator: i, standard }: { indicator: IndicatorNode;
   const { tree, results, resultsFrom, resultsYear, select, edit } = usePlan();
   const a = tree.actions;
   const index = pillarIndexOf(tree, standard);
-  const pillar = tree.pillars[index];
   const years = tree.years;
   const { start, end } = span(i, years);
   const calc = howCalculated(i);
@@ -456,7 +356,6 @@ function IndicatorDetail({ indicator: i, standard }: { indicator: IndicatorNode;
   return (
     <>
       <DetailHead index={index} kind={L("المؤشر", "Indicator")} icon={<AimOutlined />} code={i.code} title={i.nameAr}
-        crumbs={[...(pillar ? [{ key: `P:${pillar.id}`, label: `${pillar.code} ${pillar.nameAr}` }] : []), { key: `S:${standard.id}`, label: `${stdLabel(standard.code)} ${standard.nameAr}` }]}
         chips={<>
           <Tag color={definitionStatus[i.status].color}>{L("التعريف:", "Definition:")} {definitionStatus[i.status].text}</Tag>
           {i.suspended && <Tag color="error">{L("موقوف", "Suspended")}</Tag>}

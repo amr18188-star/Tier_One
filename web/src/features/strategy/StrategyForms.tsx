@@ -7,6 +7,7 @@ import { errorText } from "../../shared/format";
 import { L, useLang } from "../../shared/i18n";
 import { initiativeStatus, options } from "../../shared/labels";
 import { stdLabel } from "../../shared/pillars";
+import { pillarNum } from "./model";
 
 /** بعد أي تعديل في الخطة: الشجرة والقاموس وقوائم المعايير كلها من جديد. */
 export function useRefreshPlan() {
@@ -34,8 +35,8 @@ function EditDrawer({ title, saving, error, onSave, onClose, children }: {
 
 interface PillarFields { nameAr: string; nameEn?: string; description?: string; sortOrder?: number }
 
-/** إضافة ركيزة أو تعديلها: الاسم وشرحها؛ الرمز يولد تلقائيًا ولا يتغير. */
-export function PillarDrawer({ pillar, onClose }: { pillar?: PillarNode; onClose: () => void }) {
+/** إضافة ركيزة أو تعديلها: الاسم وشرحها؛ الرمز يولد تلقائيًا ولا يتغير. num رقمها للعرض (01…06) بترتيبها في الخطة. */
+export function PillarDrawer({ pillar, num, onClose }: { pillar?: PillarNode; num?: string; onClose: () => void }) {
   const [form] = Form.useForm<PillarFields>();
   const refresh = useRefreshPlan();
   useEffect(() => form.setFieldsValue(pillar ? { ...pillar, nameEn: pillar.nameEn ?? undefined, description: pillar.description ?? undefined } : {}), [pillar, form]);
@@ -46,7 +47,7 @@ export function PillarDrawer({ pillar, onClose }: { pillar?: PillarNode; onClose
     onSuccess: async () => { await refresh(); onClose(); },
   });
   return (
-    <EditDrawer title={pillar ? L(`تعديل الركيزة ${pillar.code}`, `Edit pillar ${pillar.code}`) : L("ركيزة جديدة", "New pillar")}
+    <EditDrawer title={pillar ? L(`تعديل الركيزة ${num ?? ""}`, `Edit pillar ${num ?? ""}`).trimEnd() : L("ركيزة جديدة", "New pillar")}
       saving={save.isPending} error={save.error} onSave={() => form.submit()} onClose={onClose}>
       <Form form={form} layout="vertical" onFinish={(f) => save.mutate(f)} requiredMark="optional">
         <Form.Item name="nameAr" label={L("اسم الركيزة", "Pillar name")} rules={[{ required: true, message: L("اكتب اسم الركيزة", "Enter the name") }]}>
@@ -54,7 +55,7 @@ export function PillarDrawer({ pillar, onClose }: { pillar?: PillarNode; onClose
         </Form.Item>
         <Form.Item name="nameEn" label={L("الاسم بالإنجليزية", "English name")}><Input maxLength={200} dir="ltr" /></Form.Item>
         <Form.Item name="description" label={L("شرح الركيزة", "Description")}
-          extra={L("ما تهدف إليه الركيزة ولماذا هي في الخطة. يظهر لكل من يفتح الشجرة.", "What the pillar aims at; shown to everyone who opens the tree.")}>
+          extra={L("ما تهدف إليه الركيزة ولماذا هي في الخطة. يظهر لكل من يفتح تفاصيلها.", "What the pillar aims at; shown to everyone who opens its details.")}>
           <Input.TextArea rows={6} maxLength={4000} showCount />
         </Form.Item>
         <Form.Item name="sortOrder" label={L("الترتيب", "Order")}><InputNumber min={1} max={99} /></Form.Item>
@@ -84,7 +85,7 @@ export function StandardDrawer({ standard, pillars, pillarId, onClose }: { stand
       saving={save.isPending} error={save.error} onSave={() => form.submit()} onClose={onClose}>
       <Form form={form} layout="vertical" onFinish={(f) => save.mutate(f)} requiredMark="optional">
         <Form.Item name="pillarId" label={L("الركيزة", "Pillar")} extra={L("تغييرها ينقل المعيار بمؤشراته ومبادراته إلى الركيزة الأخرى.", "Changing it moves the standard with its indicators and initiatives.")}>
-          <Select allowClear options={pillars.map((p) => ({ value: p.id, label: `${p.code} — ${p.nameAr}` }))} />
+          <Select allowClear options={pillars.map((p, index) => ({ value: p.id, label: `${pillarNum(index)} — ${L(p.nameAr, p.nameEn ?? p.nameAr)}` }))} />
         </Form.Item>
         <Form.Item name="nameAr" label={L("اسم المعيار", "Standard name")} rules={[{ required: true, message: L("اكتب اسم المعيار", "Enter the name") }]}>
           <Input maxLength={200} autoFocus />
@@ -113,8 +114,9 @@ export function InitiativeDrawer({ initiative, standardId, tree, onClose }: { in
   const chosen = Form.useWatch("standardId", form) ?? standardId;
   const first = tree.years[0];
   const last = tree.years[tree.years.length - 1];
+  // InitiativeNode لا يحمل معياره: يأتي من المستدعي (المعيار الأب في صفحة التفاصيل) في الإضافة والتعديل معًا.
   useEffect(() => form.setFieldsValue(initiative
-    ? { ...initiative, description: initiative.description ?? undefined, expectedOutcome: initiative.expectedOutcome ?? undefined }
+    ? { ...initiative, standardId, description: initiative.description ?? undefined, expectedOutcome: initiative.expectedOutcome ?? undefined }
     : { standardId, startYear: first, endYear: last, status: "Planned", indicatorCodes: [] }), [initiative, standardId, first, last, form]);
   const save = useMutation({
     mutationFn: (f: InitiativeFields) => {
@@ -154,7 +156,7 @@ export function InitiativeDrawer({ initiative, standardId, tree, onClose }: { in
           </Form.Item>
         </div>
         <Form.Item name="indicatorCodes" label={L("المؤشرات التي تسهم فيها", "Indicators it contributes to")}
-          extra={L("تظهر المبادرة مع كل مؤشر تختاره هنا في شجرة الخطة.", "The initiative shows with each chosen indicator in the plan tree.")}>
+          extra={L("تظهر المبادرة مع كل مؤشر تختاره هنا في الخطة.", "The initiative shows with each chosen indicator in the plan.")}>
           <Select mode="multiple" showSearch optionFilterProp="label" options={indicatorOptions} />
         </Form.Item>
       </Form>

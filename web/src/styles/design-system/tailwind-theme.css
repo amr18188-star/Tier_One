@@ -120,6 +120,8 @@
   --color-ds-sidebar-glow: var(--ds-sidebar-glow);
   --color-ds-shade: var(--ds-shade);
   --color-ds-accent-on-dark: var(--ds-accent-on-dark);
+  --color-ds-ink-fill: var(--ds-ink-fill);
+  --color-ds-tier-ink: var(--ds-tier-ink);
   --color-ds-band-from: var(--ds-band-from);
   --color-ds-band-via: var(--ds-band-via);
   --color-ds-band-to: var(--ds-band-to);

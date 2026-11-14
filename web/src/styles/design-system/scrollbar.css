@@ -4,12 +4,13 @@
  * A scrollbar belongs to the surface it sits on. The track is that surface: it is transparent, so the scroller's own
  * background shows through (the sidebar gradient included). The thumb is a quiet tone of the same surface, mixed with
  * the surface's own text colour, and gets one step stronger under the pointer and while dragged. The thumb fills the
- * whole track width (no inset, no floating pill, no sheen) and takes its corner from CORNERS: square, or 4px when
- * rounded. Imported once in src/main.tsx, after app.css. Plain CSS, no Tailwind.
+ * whole track width (no inset, no floating pill, no sheen) and takes its corner from the corner style on <html
+ * data-corners> (Appearance panel, default CORNERS): square, 4px when rounded, a full round end when smooth.
+ * Imported once in src/main.tsx, after app.css. Plain CSS, no Tailwind.
  *
  * Tokens (inherited custom properties: a container re-colours every scroller inside it):
  *   --scrollbar-size          10px                  width of a vertical bar, height of a horizontal one (= thumb width)
- *   --scrollbar-radius        var(--ds-radius-xs)   0 when square, 4px when rounded (corners.css)
+ *   --scrollbar-radius        var(--ds-radius-xs)   0 when square, 4px when rounded (corners.css); smooth: --ds-radius-pill
  *   --scrollbar-min-thumb     40px                  shortest thumb
  *   --scrollbar-track         transparent           the surface itself
  *   --scrollbar-thumb, --scrollbar-thumb-hover, --scrollbar-thumb-active
@@ -70,6 +71,10 @@
 :root,
 [data-corners] {
   --scrollbar-radius: var(--ds-radius-xs);
+}
+/* Smooth: the thumb ends are fully round, like its pill buttons and chips. */
+[data-corners="smooth"] {
+  --scrollbar-radius: var(--ds-radius-pill);
 }
 
 /* ---------- Colours by context ---------- */

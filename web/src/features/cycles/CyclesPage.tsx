@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, App, Button, DatePicker, Drawer, Form, Input, Modal, Select, Space, Switch, Tag } from "antd";
+import { Alert, App, Button, DatePicker, Drawer, Form, Input, Modal, Space, Switch, Tag } from "antd";
 import { CalendarOutlined, EditOutlined, LockOutlined, PlayCircleOutlined, PlusOutlined, UnorderedListOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs, { type Dayjs } from "dayjs";
@@ -12,11 +12,12 @@ import { DecisionModal } from "../../shared/DecisionModal";
 import { errorText, formatDate } from "../../shared/format";
 import { L } from "../../shared/i18n";
 import { cycleStatus, submissionStatus } from "../../shared/labels";
+import { PeriodNav } from "../../shared/PeriodNav";
 import { usePermissions } from "../../shared/session";
 import { EmptyNote, PageHeader, Panel } from "../../shared/ui";
 
 const STATUS_COLORS: Record<SubmissionStatus, string> = {
-  NotStarted: "#c4ccd8", InProgress: "#5aa9c9", InReview: "#d9a227", Returned: "#b42318", Approved: "#2e9e63",
+  NotStarted: "var(--ds-status-none)", InProgress: "var(--ds-status-progress)", InReview: "var(--ds-status-near)", Returned: "var(--ds-status-late-ink)", Approved: "var(--ds-status-ok)",
 };
 
 /**
@@ -123,6 +124,36 @@ function CycleClock({ cycle: c }: { cycle: Cycle }) {
   );
 }
 
+/**
+ * حقل الربع في نموذج الدورة: شريط السنة والربع المشترك (PeriodNav) بقيمة الحقل نفسها، رقم الربع في تقويم الخطة (index)،
+ * ومنه السنة والربع عند الحفظ. الربع الذي له دورة رسمية معطل وسببه في سطر الحالة؛ ونقر سنة يبقي رقم الربع إن كان متاحًا فيها.
+ */
+function QuarterField({ quarters, taken, disabled, value, onChange }: {
+  quarters: PlanQuarter[]; taken: Set<string>; disabled?: boolean; value?: number; onChange?: (index: number) => void;
+}) {
+  const selected = quarters.find((q) => q.index === value);
+  const [viewYear, setViewYear] = useState<number | null>(null);
+  const year = viewYear ?? selected?.year ?? quarters[0]?.year ?? null;
+  const free = (y: number, n: number) => !taken.has(`${y}-${n}`);
+  const pick = (y: number, n: number | null | undefined) => {
+    setViewYear(y);
+    const q = n ? quarters.find((x) => x.year === y && x.quarter === n) : undefined;
+    if (q) onChange?.(q.index);
+  };
+  return (
+    <PeriodNav mode="quarter" compact disabled={disabled} ariaLabel={L("الربع الذي تقيسه الدورة", "Quarter measured")}
+      value={{ year, quarter: selected && selected.year === year ? selected.quarter : null }}
+      disabledQuarters={(y, n) => (free(y, n) ? false : L("له دورة", "has a cycle"))}
+      onChange={(next) => {
+        if (next.quarter !== undefined) return pick(next.year, next.quarter);
+        // نقر سنة: الربع نفسه إن كان متاحًا فيها، وإلا أول ربع متاح، وإلا تعرض السنة دون تغيير القيمة.
+        const same = selected && free(next.year, selected.quarter) ? selected.quarter : undefined;
+        const first = quarters.find((x) => x.year === next.year && free(x.year, x.quarter))?.quarter;
+        pick(next.year, same ?? first);
+      }} />
+  );
+}
+
 interface CycleFields { slot: number; name: string; dates: [Dayjs, Dayjs]; trial: boolean }
 
 /**
@@ -180,14 +211,7 @@ function CycleDrawer({ cycle, onClose }: { cycle: Cycle | null; onClose: () => v
             : { slot: firstFree?.index, trial: false, ...(firstFree ? suggest(firstFree) : {}) }}>
           <Form.Item name="slot" label={L("الربع الذي تقيسه الدورة", "Quarter measured")} rules={[{ required: true, message: L("اختر الربع", "Pick the quarter") }]}
             extra={L("بداية الربع الأول من السنة الأولى يضبطها مدير النظام من «إعدادات النظام».", "Quarter 1 of year 1 is set in system settings.")}>
-            <Select disabled={open} showSearch optionFilterProp="label"
-              options={quarters.map((q) => {
-                const busy = taken.has(`${q.year}-${q.quarter}`);
-                return {
-                  value: q.index, disabled: busy,
-                  label: `${q.label} · ${formatDate(q.start)} – ${formatDate(q.end)}${q.current ? L(" (الربع الحالي)", " (current)") : ""}${busy ? L(" — له دورة", " — has a cycle") : ""}`,
-                };
-              })} />
+            <QuarterField quarters={quarters} taken={taken} disabled={open} />
           </Form.Item>
           <Form.Item name="name" label={L("اسم الدورة", "Name")} rules={[{ required: true, message: L("اكتب اسم الدورة", "Enter the name") }]}>
             <Input maxLength={150} />

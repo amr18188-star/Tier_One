@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AimOutlined, ApartmentOutlined, ArrowLeftOutlined, ArrowRightOutlined, NodeIndexOutlined, RocketOutlined } from "@ant-design/icons";
+import { AimOutlined, ApartmentOutlined, ArrowLeftOutlined, ArrowRightOutlined, NodeIndexOutlined, PartitionOutlined, RocketOutlined } from "@ant-design/icons";
 import type { IndicatorNode, PillarNode, StandardNode } from "../../api/tier1";
 import { L, useLang } from "../../shared/i18n";
 import { stdLabel } from "../../shared/pillars";
@@ -30,8 +30,12 @@ function Ring({ value, total, label, hint }: { value: number; total: number; lab
   );
 }
 
-/** compact: سطر واحد بهوية الخطة وأرقامها، لعرض التفاصيل حيث المساحة للعنصر المختار. */
-export function PlanHero({ compact = false }: { compact?: boolean }) {
+/**
+ * compact: سطر واحد بهوية الخطة وأرقامها، للوحة الهيكل وصفحة التفاصيل حيث المساحة للعنصر.
+ * heading=false: اسم الخطة نص لا عنوان، فعنوان العنصر في صفحة التفاصيل هو h1 الصفحة.
+ */
+export function PlanHero({ compact = false, heading = true }: { compact?: boolean; heading?: boolean }) {
+  const Title = heading ? "h1" : "p";
   const { tree } = usePlan();
   const years = tree.years;
   const first = years[0];
@@ -50,7 +54,7 @@ export function PlanHero({ compact = false }: { compact?: boolean }) {
       <section className="sp-hero compact" aria-labelledby="sp-hero-title">
         <div className="sp-hero-id">
           <small>{L("جامعة العاصمة · الخطة الاستراتيجية", "Capital University · Strategic plan")}</small>
-          <h1 id="sp-hero-title">{L("خطة", "Plan")} <span className="ltr-nums">{first}–{last}</span></h1>
+          <Title id="sp-hero-title" className="sp-hero-title">{L("خطة", "Plan")} <span className="ltr-nums">{first}–{last}</span></Title>
         </div>
         <dl className="sp-hero-stats">
           <div><dt>{L("ركائز", "Pillars")}</dt><dd>{tree.pillars.length}</dd></div>
@@ -113,13 +117,16 @@ export function PlanHero({ compact = false }: { compact?: boolean }) {
 
 // ----------------------------------------------------------------- التبويبات
 
-const VIEWS: { key: View; icon: ReactNode; ar: string; en: string; hint: string }[] = [
+/** عروض الصفحة: عروض model.ts، و«الهيكل والعلاقات» (PillarBoard.tsx). صفحة التفاصيل (explore) بلا تبويب: تفتح من داخل العروض. */
+export type PlanView = View | "board";
+
+const VIEWS: { key: PlanView; icon: ReactNode; ar: string; en: string; hint: string }[] = [
   { key: "map", icon: <ApartmentOutlined aria-hidden />, ar: "خريطة الخطة", en: "Plan map", hint: "الركائز ومعاييرها وحالة كل مؤشر" },
   { key: "roadmap", icon: <NodeIndexOutlined aria-hidden />, ar: "الخط الزمني", en: "Roadmap", hint: "متى يبدأ كل مستهدف ومتى يتحقق، ومدد المبادرات" },
-  { key: "explore", icon: <AimOutlined aria-hidden />, ar: "التفاصيل والتعديل", en: "Details", hint: "شجرة الخطة وشرح كل عنصر وتعديله" },
+  { key: "board", icon: <PartitionOutlined aria-hidden />, ar: "الهيكل والعلاقات", en: "Structure & links", hint: "المعايير متجاورة، وروابط المؤشرات بالمبادرات" },
 ];
 
-export function ViewTabs({ view, onView, extra }: { view: View; onView: (v: View) => void; extra?: ReactNode }) {
+export function ViewTabs({ view, onView, extra }: { view: PlanView; onView: (v: PlanView) => void; extra?: ReactNode }) {
   return (
     <div className="sp-tabs-row">
     <div className="sp-tabs" role="tablist" aria-label={L("طريقة العرض", "View")}>

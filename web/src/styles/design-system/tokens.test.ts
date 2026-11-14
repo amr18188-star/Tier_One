@@ -7,13 +7,17 @@
 import { describe, expect, it } from "vitest";
 import { antdTheme } from "./antd-theme";
 import { CORNERS } from "./config";
-import { cornerStyles, corners, isCornerStyle, themes, type SectionTokens, type ThemeName } from "./tokens";
+import { cornerLabels, cornerStyles, corners, isCornerStyle, pillButtons, themeLabels, themeNames, themes, type CornerStyle, type SectionTokens, type ThemeName } from "./tokens";
 
 // Read through Node: vitest turns every CSS import (?raw too) into an empty string. The project has no @types/node.
-const { readFileSync } = (await import(/* @vite-ignore */ `node:${"fs"}`)) as { readFileSync(path: URL, encoding: "utf8"): string };
+const { readFileSync, readdirSync } = (await import(/* @vite-ignore */ `node:${"fs"}`)) as {
+  readFileSync(path: URL, encoding: "utf8"): string;
+  readdirSync(path: URL, options: { recursive: true }): string[];
+};
 const read = (rel: string) => readFileSync(new URL(rel, import.meta.url), "utf8");
 const primitivesCss = read("./primitives.css");
-const css: Record<ThemeName, string> = { "navy-gold": read("./themes/navy-gold.css"), "app-soft": read("./themes/app-soft.css") };
+/** Every registered theme has its file themes/<name>.css, imported by index.css. */
+const css = Object.fromEntries(themeNames.map((n) => [n, read(`./themes/${n}.css`)])) as Record<ThemeName, string>;
 
 /** selector → { --name: raw value } for every rule block of a stylesheet (no nesting in these files). */
 function blocks(text: string): Map<string, Record<string, string>> {
@@ -98,6 +102,7 @@ function same(a: string, b: string): boolean {
 }
 
 const camel = (s: string) => s.replace(/-([a-z0-9])/g, (_, c: string) => c.toUpperCase());
+const kebab = (s: string) => s.replace(/[A-Z]/g, (c) => "-" + c.toLowerCase());
 
 /** --ds-* section token → path in SectionTokens. */
 function sectionPath(name: string): string[] | null {
@@ -137,6 +142,7 @@ describe.each(Object.keys(themes) as ThemeName[])("tokens.ts matches themes/%s.c
 
   it("theme-level tokens", () => {
     expect(theme["--ds-font"]).toBe(t.fontFamily);
+    expect(theme["--ds-color-scheme"], "--ds-color-scheme = scheme").toBe(t.scheme);
     const pairs: [string, string][] = [
       ["--ds-chrome", t.chrome],
       ["--ds-grid-hero", t.gridHero],
@@ -149,6 +155,9 @@ describe.each(Object.keys(themes) as ThemeName[])("tokens.ts matches themes/%s.c
       ...(["actual", "target", "area", "current", "bg", "grid", "axis", "up", "down", "college"] as const).map(
         (k): [string, string] => [`--ds-chart-${k}`, t.chart[k]],
       ),
+      ...(["accent", "value", "track", "ringTrack", "gridSoft", "gridFaint", "off", "offKey", "targetLine"] as const).map(
+        (k): [string, string] => [`--ds-chart-${kebab(k)}`, t.chart[k]],
+      ),
       ["--ds-shadow-sm", t.shadow.sm],
       ["--ds-shadow-md", t.shadow.md],
       ["--ds-focus", t.focus],
@@ -156,12 +165,13 @@ describe.each(Object.keys(themes) as ThemeName[])("tokens.ts matches themes/%s.c
       ["--ds-selection-fg", t.selection.fg],
       ["--ds-shade", t.shade],
       ["--ds-accent-on-dark", t.accentOnDark],
+      ["--ds-ink-fill", t.inkFill],
     ];
     for (const [n, ts] of pairs) expect(same(resolve(theme[n]), ts), `${n}: ${resolve(theme[n])} vs ${ts}`).toBe(true);
   });
 
-  it.each(["sidebar", "band", "gradient", "hatch", "status"] as const)("%s tokens, both ways", (group) => {
-    const prefix = `--ds-${group}-`;
+  it.each(["sidebar", "band", "gradient", "hatch", "status", "shadow", "onDark", "auth", "score", "tier", "heat", "neutral", "unit", "tag", "app", "pillar"] as const)("%s tokens, both ways", (group) => {
+    const prefix = `--ds-${kebab(group)}-`;
     const cssNames = Object.keys(theme).filter((n) => n.startsWith(prefix));
     expect(cssNames.map((n) => camel(n.slice(prefix.length))).sort()).toEqual(Object.keys(t[group]).sort());
     for (const n of cssNames) {
@@ -191,6 +201,34 @@ describe.each(Object.keys(themes) as ThemeName[])("tokens.ts matches themes/%s.c
     }
     const fields = Object.entries(sect).flatMap(([k, v]) => (typeof v === "object" ? Object.keys(v).map((s) => `${k}.${s}`) : [k]));
     expect(fields.filter((f) => !seen.has(f))).toEqual([]);
+  });
+});
+
+// ---------- every theme defines every token (a new palette may not leave one out; a missing token falls back to nothing) ----------
+describe("every theme defines the --ds-* tokens the other themes define", () => {
+  const names = Object.keys(themes) as ThemeName[];
+  const scopes = (name: ThemeName) => {
+    const b = blocks(css[name]);
+    return {
+      theme: Object.keys(b.get(`[data-theme="${name}"]`) ?? {}),
+      light: Object.keys(b.get(`[data-theme="${name}"], [data-theme="${name}"] [data-section="light"]`) ?? {}),
+      dark: Object.keys(b.get(`[data-theme="${name}"] [data-section="dark"], [data-theme="${name}"][data-section="dark"]`) ?? {}),
+    };
+  };
+  const all = Object.fromEntries(names.map((n) => [n, scopes(n)])) as Record<ThemeName, ReturnType<typeof scopes>>;
+  it.each(["theme", "light", "dark"] as const)("%s scope: same names in every theme file", (scope) => {
+    const union = [...new Set(names.flatMap((n) => all[n][scope]))].sort();
+    expect(union.length).toBeGreaterThan(0);
+    for (const n of names) expect(union.filter((x) => !all[n][scope].includes(x)), `missing in themes/${n}.css`).toEqual([]);
+  });
+  it("light and dark sections declare the same names", () => {
+    for (const n of names) expect([...all[n].dark].sort(), n).toEqual([...all[n].light].sort());
+  });
+  it("tokens.ts: every theme has the same groups and keys", () => {
+    const shape = (o: unknown, at = ""): string[] =>
+      o && typeof o === "object" ? Object.entries(o as Record<string, unknown>).flatMap(([k, v]) => (typeof v === "object" ? shape(v, `${at}${k}.`) : [`${at}${k}`])) : [];
+    const ref = shape(themes[names[0]]).sort();
+    for (const n of names.slice(1)) expect(shape(themes[n]).sort(), n).toEqual(ref);
   });
 });
 
@@ -227,6 +265,8 @@ describe.each(Object.keys(themes) as ThemeName[])("AA pairs in %s", (name) => {
     ["sidebar active link", sb.fgActive, sb.activeBg],
     ["sidebar hovered link", sb.fgActive, sb.hoverBg],
     ["sidebar badge", sb.badgeFg, sb.badgeBg],
+    ["white text on the navy fill (legacy --navy fills: table heads, active tabs and filters)", t.onDark.fg, t.inkFill],
+    ["table header text on the navy fill", d.heading, t.inkFill],
   ];
   const ui: [string, string, string][] = [
     ["focus ring on surface", l.focusRing, l.surface],
@@ -264,12 +304,18 @@ describe.each(Object.keys(themes) as ThemeName[])("AA for text on the gradients 
     ["hero / band: kicker (--ds-eyebrow)", d.eyebrow, band],
     ["hero / band: link (--ds-link)", d.link, band],
     ["plan hero: kicker, rings, rail dots (--ds-accent-on-dark)", t.accentOnDark, band],
-    ["active navy tab: icon (--ds-accent-on-dark on --navy)", t.accentOnDark, [l.heading, d.bg]],
+    ["hero / band: paragraph (--ds-on-dark-body)", t.onDark.body, band],
+    ["hero / band: secondary text (--ds-on-dark-muted)", t.onDark.muted, band],
+    ["active navy tab: caption (--ds-on-dark-soft)", t.onDark.soft, [t.inkFill, d.bg]],
+    ["sign-in panel: body (--ds-auth-body)", t.auth.body, auth],
+    ["sign-in panel: subtitle (--ds-auth-muted)", t.auth.muted, auth],
+    ["sign-in panel: copyright (--ds-auth-faint)", t.auth.faint, auth],
+    ["active navy tab: icon (--ds-accent-on-dark on --ds-ink-fill)", t.accentOnDark, [t.inkFill, d.bg]],
     ["sign-in panel: heading", d.heading, auth],
     ["sidebar: link", sb.fg, side],
     ["sidebar: group title", sb.muted, side],
     ["sidebar: active link", sb.fgActive, side],
-    ["avatar: initials", l.btnPrimary.fg, stopsOf(t.gradient.avatar)],
+    ["avatar: initials (--ds-on-dark-fg)", t.onDark.fg, stopsOf(t.gradient.avatar)],
     ["callout: title (--ds-link)", l.link, stopsOf(t.gradient.callout)],
     ["callout: text", l.fg, stopsOf(t.gradient.callout)],
     ["chart panel: label", l.label, stopsOf(t.gradient.surfaceSubtle)],
@@ -288,31 +334,212 @@ describe.each(Object.keys(themes) as ThemeName[])("AA for text on the gradients 
   });
 });
 
+// ---------- palettes: scheme, the navy fill, pillar colours, status colours ----------
+/** OKLab (Björn Ottosson) of an 8-bit colour; Euclidean distance there ≈ perceived difference (0.02 ≈ just noticeable). */
+function oklab(c: string): number[] {
+  const [r, g, b] = rgbOf(c).map((v) => v / 255).map((v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+  const lms = [
+    0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b,
+    0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b,
+    0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b,
+  ].map((x) => Math.cbrt(x));
+  return [
+    0.2104542553 * lms[0] + 0.793617785 * lms[1] - 0.0040720468 * lms[2],
+    1.9779984951 * lms[0] - 2.428592205 * lms[1] + 0.4505937099 * lms[2],
+    0.0259040371 * lms[0] + 0.7827717662 * lms[1] - 0.808675766 * lms[2],
+  ];
+}
+const deltaE = (a: string, b: string) => Math.hypot(...oklab(a).map((x, i) => x - oklab(b)[i]));
+const pct = (v: string) => Number.parseFloat(v) / 100;
+const mixHex = (a: string, w: number, b: string) => hex(rgbOf(a).map((x, i) => Math.round(x * w + rgbOf(b)[i] * (1 - w))));
+
+// The pillar data colours, read from shared/pillars.tsx (PALETTE + NEUTRAL), and tint() itself.
+const pillarsTsx = read("../../shared/pillars.tsx");
+const pillarData = [...pillarsTsx.matchAll(/\{ c: "(#[0-9a-f]{6})", t: "(#[0-9a-f]{6})" \}/gi)].map((m) => ({ c: m[1].toLowerCase(), t: m[2].toLowerCase() }));
+/** --pc / --pt as tint() builds them under a theme (on a light-scope element: --ds-surface = sections.light.surface). */
+function pillarOn(name: ThemeName, d: { c: string; t: string }) {
+  const { pillar, sections } = themes[name];
+  const pc = mixHex(d.c, pct(pillar.keep), pillar.lift);
+  const pt = mixHex(d.t, pct(pillar.tintKeep), mixHex(pc, pct(pillar.tintMix), sections.light.surface));
+  return { pc, pt };
+}
+
+describe("pillar colours meet the palette through --ds-pillar-* (shared/pillars.tsx tint())", () => {
+  it("reads the six pillar colours and the neutral one, and tint() mixes them with the tokens only", () => {
+    expect(pillarData.length).toBe(7);
+    expect(pillarsTsx).toMatch(/"--pc": `color-mix\(in srgb, \$\{p\.c\} var\(--ds-pillar-keep, 100%\), var\(--ds-pillar-lift, transparent\)\)`/);
+    expect(pillarsTsx).toMatch(/"--pt": `color-mix\(in srgb, \$\{p\.t\} var\(--ds-pillar-tint-keep, 100%\), color-mix\(in srgb, var\(--pc\) var\(--ds-pillar-tint-mix, 0%\), var\(--ds-surface, transparent\)\)\)`/);
+  });
+  it.each(themeNames.filter((n) => themes[n].scheme === "light"))("%s (light): the data colours exactly (100%% / 100%%)", (name) => {
+    for (const d of pillarData) expect(pillarOn(name, d)).toEqual({ pc: d.c, pt: d.t });
+  });
+  it.each(themeNames.filter((n) => themes[n].scheme === "dark"))("%s (dark): readable on the dark card, white text on the colour, no light tint", (name) => {
+    const l = themes[name].sections.light;
+    for (const d of pillarData) {
+      const { pc, pt } = pillarOn(name, d);
+      expect(contrast(pc, l.surface), `${d.c} → ${pc} on the card`).toBeGreaterThanOrEqual(3); // marks, codes, numbers
+      expect(contrast("#ffffff", pc), `white on ${pc}`).toBeGreaterThanOrEqual(3); // pillar heads, step numbers, bars
+      expect(contrast(pc, pt), `${pc} on its tint ${pt}`).toBeGreaterThanOrEqual(3); // code chips
+      expect(contrast(l.fg, pt), `text on the tint ${pt}`).toBeGreaterThanOrEqual(4.5); // rows and cards filled with --pt
+      expect(luminance(pt), `tint ${pt} stays dark`).toBeLessThan(0.05);
+    }
+  });
+});
+
+describe.each(themeNames)("palette rules in %s", (name) => {
+  const t = themes[name];
+  const { light: l, dark: d } = t.sections;
+
+  it("navy fill: = the light heading in a light palette, a separate dark fill in a dark one", () => {
+    if (t.scheme === "light") expect(t.inkFill).toBe(l.heading);
+    else {
+      expect(luminance(t.inkFill)).toBeLessThan(0.05);
+      expect(t.inkFill, "antd table header (dark-section bg) = the CSS table heads").toBe(d.bg);
+      expect(contrast(t.inkFill, l.surface), "the navy fill stands out from the card").toBeGreaterThanOrEqual(1.25);
+    }
+  });
+
+  it("the four achievement states (محقق / قريب / متأخر / ناقص) are distinct from each other and from the pillar colours", () => {
+    const states = { ok: t.status.ok, near: t.status.near, late: t.status.late, gap: t.status.gap };
+    const keys = Object.keys(states) as (keyof typeof states)[];
+    for (const [i, a] of keys.entries()) for (const b of keys.slice(i + 1)) expect(deltaE(states[a], states[b]), `${a} vs ${b}`).toBeGreaterThanOrEqual(0.09);
+    for (const k of keys) for (const p of pillarData) expect(deltaE(states[k], pillarOn(name, p).pc), `${k} vs pillar ${p.c}`).toBeGreaterThanOrEqual(0.07);
+    expect(new Set(Object.values(states)).size).toBe(4);
+  });
+
+  it("antd: darkAlgorithm for a dark palette only; success / warning from the status inks when statusToAntd", () => {
+    const a = antdTheme(name, {}, { corners: "square" });
+    expect(a.algorithm !== undefined, "algorithm").toBe(t.scheme === "dark");
+    if (t.statusToAntd) {
+      expect(a.token).toMatchObject({ colorSuccess: t.status.okInk, colorWarning: t.status.nearInk });
+      for (const c of [t.status.okInk, t.status.nearInk]) expect(contrast(c, l.surface), `${c}: antd Tag / Alert text`).toBeGreaterThanOrEqual(4.5);
+    }
+    else expect(Object.keys(a.token ?? {})).not.toEqual(expect.arrayContaining(["colorSuccess"]));
+    if (t.scheme === "dark") {
+      expect(a.token?.colorTextLightSolid, "text on solid primary / danger fills").toBe(l.btnPrimary.fg);
+      expect(contrast(l.btnPrimary.fg, l.destructive), "danger button text").toBeGreaterThanOrEqual(4.5);
+      expect(a.components?.Tooltip?.colorTextLightSolid, "tooltip text").toBe(d.heading);
+      expect(contrast(d.heading, d.bg), "tooltip on the spotlight").toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});
+
+describe.each(themeNames.filter((n) => n !== "navy-gold" && n !== "app-soft"))("new palette %s: AA text on every Tag fill", (name) => {
+  const t = themes[name];
+  it.each(["pending", "positive", "negative", "caution", "info", "special", "highlight", "category"] as const)("%s Tag ≥ 4.5:1", (r) => {
+    expect(contrast(t.tag[`${r}Fg`], t.tag[`${r}Bg`])).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe("navy-gold and app-soft keep antd's own success / warning and the light algorithm", () => {
+  it.each(["navy-gold", "app-soft"] as const)("%s", (name) => {
+    expect(themes[name].statusToAntd).toBe(false);
+    expect(themes[name].scheme).toBe("light");
+    const a = antdTheme(name);
+    expect(a.algorithm).toBeUndefined();
+    expect(a.token?.colorSuccess).toBeUndefined();
+    expect(a.token?.colorWarning).toBeUndefined();
+    expect(a.token?.colorTextLightSolid).toBeUndefined();
+  });
+});
+
+describe.each(themeNames.filter((n) => themes[n].scheme === "dark"))("dark palette %s: dark everywhere, data readable", (name) => {
+  const t = themes[name];
+  const { light: l, dark: d } = t.sections;
+  it("page, cards, fields, popups, tracks, muted boxes and table fills are dark; text is light", () => {
+    const surfaces = [l.bg, l.bgCool, l.bgWarm, l.surface, l.surfaceHover, l.surfaceHoverSoft, l.surfaceWarm, l.callout, l.track, l.tile, t.app.mutedBg, t.app.faintBg,
+      t.app.rowHover, t.app.rowSelected, t.app.tableGroup, t.app.topbar, t.app.noteBg, t.app.partnerBg, t.app.printDesk, t.heat.none, t.chart.bg, t.chart.track, t.chart.off,
+      t.status.okSoft, t.status.nearSoft, t.status.lateSoft, t.status.okTint, t.status.nearTint, t.status.lateTint, t.status.flagBg, t.status.zeroSoft, t.status.exemptSoft,
+      t.score.fullSoft, t.score.highSoft, t.score.midSoft, t.score.lowSoft, t.heat["1"], t.heat["2"], t.heat["3"], t.heat["4"], t.unit.universityBg, t.unit.sectorBg, t.unit.collegeBg,
+      ...(["pending", "positive", "negative", "caution", "info", "special", "highlight", "category"] as const).map((r) => t.tag[`${r}Bg`]), ...stopsOf(t.hatch.light),
+      ...stopsOf(t.gradient.callout), ...stopsOf(t.gradient.surfaceSubtle), d.bg, d.surface, t.inkFill, t.sidebar.bg];
+    for (const s of surfaces) expect(luminance(s), s).toBeLessThan(0.08);
+    for (const fg of [l.fg, l.heading, l.body, l.label, l.bodyStrong, t.chart.value, t.app.printInk, t.app.codeFg]) expect(luminance(fg), fg).toBeGreaterThan(0.3);
+  });
+  it("hairlines and field borders stay visible on the card (≥ 1.4:1)", () => {
+    expect(contrast(l.border, l.surface)).toBeGreaterThanOrEqual(1.4);
+  });
+  it("status, score, tier, chart, unit and neutral marks ≥ 3:1 on the card", () => {
+    const marks = [t.status.ok, t.status.near, t.status.late, t.status.gap, t.status.plan, t.status.progress, t.status.info, t.status.share, t.status.caution, t.status.review,
+      t.status.nearBar, t.status.lateBar, t.score.fullMark, t.score.highMark, t.score.highBar, t.score.midMark, t.score.lowMark, ...(["1", "2", "3", "4", "5"] as const).map((k) => t.tier[k]), ...t.chart.series,
+      t.chart.actual, t.chart.target, t.chart.up, t.chart.down, t.chart.accent, t.chart.targetLine, t.chart.college, t.unit.university, t.unit.sector, t.unit.administration,
+      t.unit.center, t.unit.college, t.unit.institute, t.unit.department, t.neutral.mark, t.neutral.base, t.neutral.actual];
+    for (const c of marks) expect(contrast(c, l.surface), c).toBeGreaterThanOrEqual(3);
+  });
+  it("text on its soft fill ≥ 4.5:1 (chips, heat cells, unit chips, Tags)", () => {
+    const pairs: [string, string][] = [
+      [t.status.okInk, t.status.okSoft], [t.status.nearInk, t.status.nearSoft], [t.status.lateInk, t.status.lateSoft], [t.status.zeroInk, t.status.zeroSoft],
+      [t.status.exemptInk, t.status.exemptSoft], [t.score.fullInk, t.score.fullSoft], [t.score.highInk, t.score.highSoft], [t.score.midInk, t.score.midSoft],
+      [t.score.lowInk, t.score.lowSoft], [t.status.lateInk, t.heat["1"]], [t.status.nearInk, t.heat["2"]], [t.status.okInk, t.heat["3"]], [t.heat["4Ink"], t.heat["4"]],
+      [t.unit.university, t.unit.universityBg], [t.unit.sector, t.unit.sectorBg], [t.unit.college, t.unit.collegeBg], ["#ffffff", t.status.nearMark],
+      ...(["1", "2", "3", "4", "5"] as const).map((k): [string, string] => [t.tier.ink, t.tier[k]]),
+      [l.link, t.app.noteBg], [l.label, t.app.mutedBg], [t.app.codeFg, t.app.codeBg], [t.app.printInk, l.surface], [l.eyebrowAa, l.bgWarm],
+      ...(["pending", "positive", "negative", "caution", "info", "special", "highlight", "category"] as const).map((r): [string, string] => [t.tag[`${r}Fg`], t.tag[`${r}Bg`]]),
+    ];
+    for (const [fg, bg] of pairs) expect(contrast(fg, bg), `${fg} on ${bg}`).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe("legacy CSS: no white text on a --navy fill (it is the heading colour, light in a dark palette; use --ds-ink-fill)", () => {
+  const root = new URL("../../", import.meta.url);
+  const files = readdirSync(root, { recursive: true })
+    .map((f) => f.replace(/\\/g, "/"))
+    .filter((f) => f.endsWith(".css") && !f.startsWith("components/ui") && !f.startsWith("features/landing") && !f.startsWith("styles/design-system"));
+  it.each(files)("%s", (f) => {
+    const text = readFileSync(new URL(f, root), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    const bad = [...text.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .filter((m) => /background(-color)?:\s*var\(--navy\)/.test(m[2]) && /color:\s*var\(--ds-on-dark-fg\)/.test(m[2]))
+      .map((m) => m[1].trim());
+    expect(bad).toEqual([]);
+  });
+});
+
 // ---------- corners (corners.css ⇄ `corners` in tokens.ts, config.ts) ----------
 describe("corners.css matches tokens.ts", () => {
   const b = blocks(read("./corners.css"));
-  const square = b.get(":root, [data-corners=\"square\"]")!;
-  const rounded = b.get("[data-corners=\"rounded\"]")!;
+  const styleBlocks: Record<CornerStyle, Record<string, string>> = {
+    square: b.get(":root, [data-corners=\"square\"]")!,
+    rounded: b.get("[data-corners=\"rounded\"]")!,
+    smooth: b.get("[data-corners=\"smooth\"]")!,
+  };
   const shared = b.get(":root, [data-corners]")!;
   const px = (v: string) => (v.endsWith("px") ? Number.parseFloat(v) : Number.NaN);
 
-  it("finds the three blocks", () => {
-    expect(square).toBeDefined();
-    expect(rounded).toBeDefined();
+  it("finds a block per style and the shared one", () => {
+    for (const style of cornerStyles) expect(styleBlocks[style], style).toBeDefined();
     expect(shared).toBeDefined();
   });
 
   it.each(cornerStyles)("%s steps, both ways", (style) => {
-    const block = style === "square" ? square : rounded;
+    const block = styleBlocks[style];
     const cssSteps = Object.keys(block).map((n) => n.replace("--ds-radius-", ""));
     expect(cssSteps.sort()).toEqual(Object.keys(corners[style]).sort());
     for (const [step, value] of Object.entries(corners[style])) expect(px(block[`--ds-radius-${step}`]), `--ds-radius-${step}`).toBe(value);
   });
 
-  it("square is 0 everywhere; rounded grows step by step", () => {
+  it("square is 0 everywhere; rounded and smooth grow step by step", () => {
     expect(Object.values(corners.square).every((v) => v === 0)).toBe(true);
-    const r = corners.rounded;
-    expect([r.xs, r.sm, r.md, r.lg, r.xl, r.pill]).toEqual([...[r.xs, r.sm, r.md, r.lg, r.xl, r.pill]].sort((x, y) => x - y));
+    for (const r of [corners.rounded, corners.smooth]) {
+      expect([r.xs, r.sm, r.md, r.lg, r.xl, r.pill]).toEqual([...[r.xs, r.sm, r.md, r.lg, r.xl, r.pill]].sort((x, y) => x - y));
+    }
+  });
+
+  it("square and rounded keep their scale; smooth is 8 / 12 / 16 / 20 / 24, pill 999", () => {
+    expect(corners.square).toEqual({ xs: 0, sm: 0, md: 0, lg: 0, xl: 0, pill: 0 });
+    expect(corners.rounded).toEqual({ xs: 4, sm: 6, md: 8, lg: 12, xl: 16, pill: 999 });
+    expect(corners.smooth).toEqual({ xs: 8, sm: 12, md: 16, lg: 20, xl: 24, pill: 999 });
+    expect(pillButtons).toEqual({ square: false, rounded: false, smooth: true });
+  });
+
+  it("every theme and corner style has a name in both languages (the Appearance panel lists them)", () => {
+    for (const name of Object.keys(themes) as ThemeName[]) expect(themeLabels[name], name).toMatchObject({ ar: expect.any(String), en: expect.any(String) });
+    expect(Object.keys(cornerLabels)).toEqual(cornerStyles);
+  });
+
+  it("scrollbar thumb: the xs step, a full pill when smooth", () => {
+    const sb = blocks(read("./scrollbar.css"));
+    expect(sb.get(":root, [data-corners]")?.["--scrollbar-radius"]).toBe("var(--ds-radius-xs)");
+    expect(sb.get("[data-corners=\"smooth\"]")?.["--scrollbar-radius"]).toBe("var(--ds-radius-pill)");
   });
 
   it("aliases and real circles", () => {
@@ -342,6 +569,20 @@ describe("antdTheme", () => {
     expect(antdTheme("app-soft", base).token?.borderRadius).toBe(corners[CORNERS].md);
     const values = JSON.stringify([ng, soft]);
     expect(values).not.toContain("var(");
+  });
+
+  it("smooth: the 8–24 scale, pill buttons (every size) and tags; square and rounded add no button or tag radius", () => {
+    const s = corners.smooth;
+    const smooth = antdTheme("navy-gold", {}, { corners: "smooth" });
+    expect(smooth.token).toMatchObject({ borderRadius: s.md, borderRadiusLG: s.lg, borderRadiusSM: s.sm, borderRadiusXS: s.xs, borderRadiusOuter: s.xs });
+    expect(smooth.components?.Button).toMatchObject({ borderRadius: s.pill, borderRadiusLG: s.pill, borderRadiusSM: s.pill });
+    expect(smooth.components?.Tag?.borderRadiusSM).toBe(s.pill);
+    expect(smooth.components?.Table?.headerBorderRadius).toBe(s.lg);
+    for (const style of ["square", "rounded"] as const) {
+      const t = antdTheme("app-soft", {}, { corners: style });
+      expect(Object.keys(t.components?.Button ?? {}).filter((k) => k.startsWith("borderRadius")), style).toEqual([]);
+      expect(Object.keys(t.components?.Tag ?? {}).filter((k) => k.startsWith("borderRadius")), style).toEqual([]);
+    }
   });
 });
 

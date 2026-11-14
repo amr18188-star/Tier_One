@@ -1,23 +1,140 @@
 /**
- * The site's design switches, on <html> when this module loads (before the first render):
- * - ACTIVE_THEME (below) → <html data-theme>: colours.
- * - CORNERS (config.ts) → <html data-corners>: square or rounded corners, independent of the theme.
- * Every --ds-* token, the legacy aliases in app.css / shared/ui.css and antd portals (modals, drawers, dropdowns,
- * messages under <body>) follow them. useDsTheme() / useDsCorners() feed the antd ConfigProvider (App.tsx) and
- * re-render when the attribute changes, also from devtools.
+ * The site's look, on <html> when this module loads (before the first render):
+ * - <html data-theme>: colours. <html data-corners>: square, rounded or smooth corners, independent of the theme.
+ * - Both come from the viewer's appearance: what they picked in the Appearance panel (gear in the top bar), saved in this
+ *   browser under localStorage APPEARANCE_KEY, or the defaults ACTIVE_THEME (below) and CORNERS (config.ts).
+ * - A page can pin its own look while it is mounted (the public landing keeps BRAND_APPEARANCE): pinAppearance().
+ *   The saved choice is untouched and comes back when the page unmounts.
+ * Every --ds-* token, the legacy aliases in app.css / shared/ui.css, the scrollbar and antd portals (modals, drawers,
+ * dropdowns, messages under <body>) follow the attributes. useDsTheme() / useDsCorners() read the look on <html> and
+ * re-render when the attribute changes (also from devtools); AppearanceProvider (appearance.tsx) feeds antd from them.
+ * Storage may be blocked (private mode, policies): every access is in try/catch, and the look then lasts for this tab.
  */
 import { useSyncExternalStore } from "react";
 import { CORNERS } from "./config";
 import { isCornerStyle, isThemeName, type CornerStyle, type ThemeName } from "./tokens";
 import "./index.css";
 
-/** Change this one value to re-theme everything: app, login screens, landing and antd. */
+/** The default theme (a viewer without a saved choice, and "Restore default" in the Appearance panel). */
 export const ACTIVE_THEME: ThemeName = "navy-gold";
 
+/** localStorage key of the viewer's appearance: JSON { "theme": ThemeName, "corners": CornerStyle }. */
+export const APPEARANCE_KEY = "t1.appearance";
+
+export interface Appearance {
+  theme: ThemeName;
+  corners: CornerStyle;
+}
+
+/** The documented defaults: ACTIVE_THEME + CORNERS. */
+export const DEFAULT_APPEARANCE: Readonly<Appearance> = Object.freeze({ theme: ACTIVE_THEME, corners: CORNERS });
+
+/** The public landing page's fixed brand look, whatever the viewer picked. */
+export const BRAND_APPEARANCE: Readonly<Appearance> = Object.freeze({ theme: "navy-gold", corners: "square" });
+
+/** A stored value → a valid appearance. Bad JSON, an unknown theme or corner style: that field takes its default. */
+export function parseAppearance(raw: string | null | undefined): Appearance {
+  let value: unknown = null;
+  try {
+    value = raw ? JSON.parse(raw) : null;
+  } catch {
+    value = null;
+  }
+  const o = value !== null && typeof value === "object" ? (value as Record<string, unknown>) : {};
+  return {
+    theme: isThemeName(o.theme) ? o.theme : DEFAULT_APPEARANCE.theme,
+    corners: isCornerStyle(o.corners) ? o.corners : DEFAULT_APPEARANCE.corners,
+  };
+}
+
+function load(): Appearance {
+  try {
+    return parseAppearance(window.localStorage.getItem(APPEARANCE_KEY));
+  } catch {
+    return { ...DEFAULT_APPEARANCE };
+  }
+}
+
+/** null removes the key (back to the defaults, and to new defaults if they change later). */
+function save(value: Appearance | null) {
+  try {
+    if (value) window.localStorage.setItem(APPEARANCE_KEY, JSON.stringify(value));
+    else window.localStorage.removeItem(APPEARANCE_KEY);
+  } catch {
+    // Storage blocked: the look stays for this tab only.
+  }
+}
+
 const root = typeof document === "undefined" ? null : document.documentElement;
-if (root) {
-  root.dataset.theme = ACTIVE_THEME;
-  root.dataset.corners = CORNERS;
+let preference: Appearance = load();
+const pins: { look: Appearance }[] = [];
+const listeners = new Set<() => void>();
+
+function apply() {
+  if (!root) return;
+  const look = pins.length ? pins[pins.length - 1].look : preference;
+  if (root.dataset.theme !== look.theme) root.dataset.theme = look.theme;
+  if (root.dataset.corners !== look.corners) root.dataset.corners = look.corners;
+}
+apply();
+
+function changed() {
+  apply();
+  listeners.forEach((l) => l());
+}
+
+// Another tab changed (or cleared) the setting: follow it.
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    if (e.key !== null && e.key !== APPEARANCE_KEY) return;
+    preference = load();
+    changed();
+  });
+}
+
+/** The viewer's saved choice (not a page pin). Stable between changes (useSyncExternalStore snapshot). */
+export function getAppearance(): Appearance {
+  return preference;
+}
+
+export function subscribeAppearance(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+/** Change the theme and/or corner style, save it for this viewer, and apply it now (CSS and antd follow, no reload). */
+export function setAppearance(patch: Partial<Appearance>) {
+  const next: Appearance = {
+    theme: isThemeName(patch.theme) ? patch.theme : preference.theme,
+    corners: isCornerStyle(patch.corners) ? patch.corners : preference.corners,
+  };
+  if (next.theme === preference.theme && next.corners === preference.corners) return;
+  preference = next;
+  save(next);
+  changed();
+}
+
+/** Back to ACTIVE_THEME + CORNERS; the saved choice is removed. */
+export function resetAppearance() {
+  save(null);
+  if (preference.theme === DEFAULT_APPEARANCE.theme && preference.corners === DEFAULT_APPEARANCE.corners) return;
+  preference = { ...DEFAULT_APPEARANCE };
+  changed();
+}
+
+/**
+ * Show `look` on <html> until the returned function is called (a page's own look, e.g. the landing's brand look).
+ * The latest pin wins; releasing it restores the previous pin or the viewer's choice. Nothing is saved.
+ */
+export function pinAppearance(look: Appearance): () => void {
+  const entry = { look: { theme: look.theme, corners: look.corners } };
+  pins.push(entry);
+  apply();
+  return () => {
+    const i = pins.indexOf(entry);
+    if (i >= 0) pins.splice(i, 1);
+    apply();
+  };
 }
 
 function read(): ThemeName {
@@ -42,22 +159,22 @@ function watch(attribute: string) {
 const subscribe = watch("data-theme");
 const subscribeCorners = watch("data-corners");
 
-/** The theme on <html data-theme> (ACTIVE_THEME unless something changed it). */
+/** The theme shown now, on <html data-theme> (the viewer's choice, or a page pin). */
 export function useDsTheme(): ThemeName {
   return useSyncExternalStore(subscribe, read, () => ACTIVE_THEME);
 }
 
-/** Switch the theme at run time (CSS and antd follow). */
+/** Switch the theme at run time and save it for this viewer (CSS and antd follow). Same as setAppearance({ theme }). */
 export function setDsTheme(name: ThemeName) {
-  if (root) root.dataset.theme = name;
+  setAppearance({ theme: name });
 }
 
-/** The corner style on <html data-corners> (CORNERS unless something changed it). */
+/** The corner style shown now, on <html data-corners>. */
 export function useDsCorners(): CornerStyle {
   return useSyncExternalStore(subscribeCorners, readCorners, () => CORNERS);
 }
 
-/** Switch the corner style at run time (CSS and antd follow). */
+/** Switch the corner style at run time and save it for this viewer. Same as setAppearance({ corners }). */
 export function setDsCorners(style: CornerStyle) {
-  if (root) root.dataset.corners = style;
+  setAppearance({ corners: style });
 }

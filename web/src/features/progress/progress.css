@@ -11,7 +11,7 @@
 .pg-key i.uni, .pg-bar.uni i { background: var(--navy); }
 .pg-pillars { margin-bottom: 16px; }
 .pg-pillar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
-.pg-pillar { border: 1px solid var(--hair); border-top: 4px solid var(--pc); border-radius: var(--ds-radius-lg); padding: 10px 12px; display: grid; gap: 6px; background: #fff; }
+.pg-pillar { border: 1px solid var(--hair); border-top: 4px solid var(--pc); border-radius: var(--ds-radius-lg); padding: 10px 12px; display: grid; gap: 6px; background: var(--ds-surface); }
 .pg-pillar > b { font-size: 13px; color: var(--navy); line-height: 1.6; }
 .pg-bar { display: grid; grid-template-columns: minmax(0, 1fr) 56px; align-items: center; gap: 8px; }
 .pg-bar span { height: 9px; border-radius: var(--ds-radius-pill); background: var(--sunk); overflow: hidden; }
@@ -21,12 +21,12 @@
 
 .pg-group { margin-bottom: 18px; }
 .pg-group .pill-band { margin-bottom: 8px; }
-.pg-table { border: 1px solid var(--hair); border-radius: var(--ds-radius-lg); overflow: hidden; background: #fff; }
+.pg-table { border: 1px solid var(--hair); border-radius: var(--ds-radius-lg); overflow: hidden; background: var(--ds-surface); }
 .pg-tr {
   display: grid; grid-template-columns: minmax(220px, 3fr) 140px 110px 120px 140px 100px 150px; gap: 10px; align-items: center;
   padding: 8px 12px; border-bottom: 1px solid var(--hair); font-size: 13px;
 }
-.pg-tr.head { background: var(--navy); color: #fff; font-size: 12px; font-weight: 600; }
+.pg-tr.head { background: var(--ds-ink-fill); color: var(--ds-on-dark-fg); font-size: 12px; font-weight: 600; }
 .pg-std-head { padding: 6px 12px; background: var(--pt); font-size: 12.5px; font-weight: 600; color: var(--navy); border-bottom: 1px solid var(--hair); }
 .pg-std-head .muted { margin-inline-start: 6px; }
 .pg-name { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px; align-items: start; line-height: 1.6; }
@@ -37,14 +37,14 @@
 .pg-num b.rv-up { color: var(--ok); }
 .pg-num b.rv-down { color: var(--crit); }
 .pg-num small { font-size: 11px; white-space: nowrap; }
-.pg-num b.pg-share { color: #4a78b5; }
+.pg-num b.pg-share { color: var(--ds-status-share); }
 .pg-ach { display: flex; align-items: center; gap: 6px; }
 .pg-ach .sc-bar { width: 70px; }
 .pg-ach b { font-family: var(--font-display); font-size: 13.5px; }
 
 .pg-spark polyline { fill: none; stroke-linejoin: round; stroke-linecap: round; }
 .pg-spark polyline.me { stroke: var(--teal); stroke-width: 2; }
-.pg-spark polyline.t { stroke: #d9a520; stroke-width: 1.4; stroke-dasharray: 3 3; }
+.pg-spark polyline.t { stroke: var(--ds-chart-target-line); stroke-width: 1.4; stroke-dasharray: 3 3; }
 .pg-spark circle.me { fill: var(--teal); }
 .pg-spark rect.uni { fill: var(--navy); }
 

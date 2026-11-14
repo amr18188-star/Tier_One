@@ -8,4 +8,13 @@
 @import "./primitives.css";
 @import "./themes/navy-gold.css";
 @import "./themes/app-soft.css";
+@import "./themes/night-gold.css";
+@import "./themes/indigo-silver.css";
+@import "./themes/graphite-gold.css";
 @import "./corners.css";
+
+/* The palette's scheme for the browser's own UI: in a dark palette, controls without an explicit colour (a <button> keeps
+   the UA ButtonText), native scrollbars and autofill turn dark too. --ds-color-scheme is "light" or "dark" per theme. */
+:root {
+  color-scheme: var(--ds-color-scheme, light);
+}

@@ -76,7 +76,7 @@ html[dir="rtl"] .lcp-nav-panel[data-open="false"] .lcp-nav-chev { transform: rot
 .lcp-nav a:focus-visible { outline-color: var(--ds-sidebar-focus, #7fd1d5); }
 .lcp-nav .lcp-badge { background: var(--ds-sidebar-badge-bg, var(--gold)); color: var(--ds-sidebar-badge-fg, #1d1405); }
 .lcp-side-foot { border-top-color: var(--ds-sidebar-border, rgba(255, 255, 255, 0.1)); }
-/* زرا اللغة والخروج تفاعليان، فبلون الروابط لا بلون العناوين. */
+/* زر الخروج تفاعلي، فبلون الروابط لا بلون العناوين. اللغة والمظهر في الشريط العلوي (Shell). */
 .lcp-side-foot button { color: var(--ds-sidebar-fg, #b7c5da); }
 .lcp-side-foot button:hover { background: var(--ds-sidebar-hover-bg, rgba(255, 255, 255, 0.06)); color: var(--ds-sidebar-fg-active, #fff); }
 .lcp-side-foot button:focus-visible { outline-color: var(--ds-sidebar-focus, #7fd1d5); }
@@ -110,7 +110,7 @@ html[dir="rtl"] .lcp-nav-panel[data-open="false"] .lcp-nav-chev { transform: rot
   .lcp.is-rail { grid-template-columns: 72px minmax(0, 1fr); }
   /*
    * محتوى 48px. الارتفاع محسوب ليتسع بلا تمرير مع أكبر مجموعة مفتوحة (6 روابط) على شاشة 720px:
-   * 24 حشوة + 93 رأس + 20 فجوتان + 446 قائمة + 91 تذييل = 674px. على الأقصر يبقى التمرير، بشريط أنحف كي لا يضيق الزر عن 40px.
+   * 24 حشوة + 93 رأس + 20 فجوتان + 446 قائمة + 49 تذييل = 632px. على الأقصر يبقى التمرير، بشريط أنحف كي لا يضيق الزر عن 40px.
    */
   .lcp.is-rail > .lcp-side {
     padding: 12px; gap: 10px;
@@ -127,7 +127,7 @@ html[dir="rtl"] .lcp-nav-panel[data-open="false"] .lcp-nav-chev { transform: rot
   .lcp.is-rail > .lcp-side .lcp-side-head > .lcp-brand { flex: none; align-self: stretch; justify-content: center; padding: 0; }
   .lcp.is-rail > .lcp-side .lcp-brand img { height: 36px; }
 
-  /* نصوص مخفية بصريًا تبقى اسمًا لقارئ الشاشة: نص الشعار فورًا، وأسماء الروابط والزرين بعد أن تتلاشى. */
+  /* نصوص مخفية بصريًا تبقى اسمًا لقارئ الشاشة: نص الشعار فورًا، وأسماء الروابط وزر الخروج بعد أن تتلاشى. */
   .lcp.is-rail > .lcp-side .lcp-brand-text,
   .lcp.is-rail:not(.is-railing) > .lcp-side :is(.lcp-nav-label, .lcp-side-foot-label) {
     position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
@@ -193,11 +193,24 @@ html[dir="rtl"] .lcp-nav-panel[data-open="false"] .lcp-nav-chev { transform: rot
   .lcp.is-rail > .lcp-side .lcp-nav-inner .lcp-rail-dot { top: 6px; inset-inline-start: 24px; }
   .lcp.is-rail:not(.is-railing) > .lcp-side .lcp-nav-inner .lcp-rail-dot { inset-inline-start: calc(50% + 3px); }
 
-  /* زرا اللغة والخروج (8 + 1 خط + 40 + 2 + 40 = 91): أيقونة في الوسط. */
+  /* زر الخروج (8 + 1 خط + 40 = 49): أيقونة في الوسط. */
   .lcp.is-rail > .lcp-side .lcp-side-foot { padding-top: 8px; }
   .lcp.is-rail > .lcp-side .lcp-side-foot button { min-height: 40px; padding-inline: 16px; }
   .lcp.is-rail:not(.is-railing) > .lcp-side .lcp-side-foot button { justify-content: center; padding-inline: 0; }
   .lcp.is-rail > .lcp-side .lcp-side-foot .anticon { font-size: 16px; }
+}
+
+/*
+ * الشريط العلوي على الجوال والجهاز اللوحي: القائمة واللغة والمظهر بحجمها الكامل (هدف لمس 32px أو أكثر)، والبحث وحده يتقلص
+ * ويملأ ما بقي (بلا الفاصل)، فلا يخرج شيء عن الشاشة عند 375px.
+ */
+@media (max-width: 960px) {
+  .lcp-top > .lcp-burger, .lcp-top > .lcp-lang, .lcp-top .lcp-look { flex: none; }
+  .lcp-top > .lcp-top-space { display: none; }
+  .lcp-top .t1-search { flex: 1 1 auto; min-width: 0; }
+}
+@media (max-width: 480px) {
+  .lcp-top { gap: 4px; }
 }
 
 /* الحركة: العرض والحشوة ~220ms، والنصوص تتلاشى عند الطي وتظهر عند التوسيع. بتقليل الحركة كل ذلك فوري (ولا .is-railing). */

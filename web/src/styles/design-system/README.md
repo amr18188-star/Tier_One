@@ -1,25 +1,30 @@
 # Design system tokens
 
 Multi-theme CSS tokens built from the Navy & Gold design system (`Frontend/React/HERO_DESIGN_SYSTEM.md`).
-One theme drives the whole site (app, login screens, landing, antd): `theme.ts` puts it on `<html data-theme>` and loads
+One theme drives the whole site (app, login screens, antd): `theme.ts` puts it on `<html data-theme>` and loads
 `index.css` globally; `scrollbar.css` is imported once in `src/main.tsx`; feature Tailwind entries (`landing.css`) import
-the tokens again for their utilities. Corners are a second, independent axis: `CORNERS` in `config.ts` → `<html data-corners>`
-(see "Corners" below).
+the tokens again for their utilities. Corners are a second, independent axis on `<html data-corners>` (see "Corners").
+Each viewer picks both at run time in the Appearance panel (gear in the top bar), saved in this browser;
+the defaults are `ACTIVE_THEME` (theme.ts) and `CORNERS` (config.ts). The public landing keeps navy-gold + square
+(see "Runtime appearance").
 
 | File | What it holds |
 |---|---|
 | `primitives.css` | Raw palettes on `:root` (`--color-navy-900`, `--color-gold-400`, `--color-soft-*` …). |
 | `themes/navy-gold.css` | `[data-theme="navy-gold"]`: the landing look, Cairo. Pixel-identical to the old `Home.jsx` with square corners. |
 | `themes/app-soft.css` | `[data-theme="app-soft"]`: the old `/app` palette (navy #0d2440, gold #c9a227). |
-| `corners.css` | The corner scale `--ds-radius-xs … xl`, `-pill`, `-round` for `data-corners="square" \| "rounded"`. |
-| `config.ts` | `CORNERS`: the one line that makes the whole site square or rounded. |
+| `corners.css` | The corner scale `--ds-radius-xs … xl`, `-pill`, `-round` for `data-corners="square" \| "rounded" \| "smooth"`. |
+| `config.ts` | `CORNERS`: the default corner style (square). |
 | `index.css` | Plain-CSS entry: primitives, both themes, then `corners.css`. Imported globally by `theme.ts`. |
 | `tailwind-theme.css` | Tailwind v4 `@theme inline reference` mapping, for a Tailwind entry. |
 | `scrollbar.css` | Site-wide scrollbar in the colours of the surface it sits on: tokens per context (light, dark section, sidebar, modal mask), Firefox fallback. Imported once in `main.tsx`. |
-| `theme.ts` | The switches: `ACTIVE_THEME` → `<html data-theme>`, `CORNERS` → `<html data-corners>`, before the first render; `useDsTheme()`, `setDsTheme()`, `useDsCorners()`, `setDsCorners()`. |
-| `antd-theme.ts` | `antdTheme(name, base, { corners })`: theme tokens + corner scale → antd `ThemeConfig` (colours and radius). Fed to `ConfigProvider` in `App.tsx`. |
-| `tokens.ts` | The same values as typed constants (antd needs real colours and px, not `var()`): `palette`, `themes`, `corners`. |
-| `tokens.test.ts` | Parses the CSS and fails if `tokens.ts` differs; checks the AA pairs antd and the app use, and the shadcn mapping. |
+| `theme.ts` | The appearance store: the viewer's `{ theme, corners }` (localStorage `t1.appearance`, defaults `ACTIVE_THEME` + `CORNERS`) on `<html data-theme / data-corners>` before the first render; `setAppearance()`, `resetAppearance()`, `pinAppearance()`, `BRAND_APPEARANCE`; `useDsTheme()` / `useDsCorners()` read what `<html>` shows. |
+| `appearance.tsx` | React side: `AppearanceProvider` (wraps the app, feeds antd), `useAppearance()`, `usePinnedAppearance()` / `<PinnedAppearance>`. |
+| `antd-theme.ts` | `antdTheme(name, base, { corners })`: theme tokens + corner scale → antd `ThemeConfig` (colours and radius). Fed to `ConfigProvider` by `AppearanceProvider`. |
+| `tokens.ts` | The same values as typed constants (antd needs real colours and px, not `var()`): `palette`, `themes`, `corners`; the panel registry `themeLabels`, `cornerLabels`, `pillButtons`. |
+| `tokens.test.ts` | Parses the CSS and fails if `tokens.ts` differs; checks the AA pairs antd and the app use, the corner scales, and the shadcn mapping. |
+| `appearance.test.ts` | The store: storage → `<html>` at load, validation, set / reset, landing pin, blocked storage. |
+| `../../app/AppearanceMenu.tsx` | The Appearance button and panel (top bar of `app/Shell.tsx`), styled by `../../app/appearance.css` with tokens only. |
 | `../shadcn.css` | shadcn's Tailwind entry and the one shadcn variable → `--ds-*` mapping (see "shadcn"). Not imported yet. |
 
 ## Use
@@ -61,8 +66,9 @@ the tokens again for their utilities. Corners are a second, independent axis: `C
    `data-landing` scopes the CSS, `data-ds-page` + `data-theme` mark the themed page root, `dir`/`lang` set the
    direction (the landing is always RTL Arabic; a bilingual page would take them from `useLang()`).
    Without Tailwind, import `index.css` alone and use `var(--ds-…)`.
-2. The site theme is already on `<html>` (`theme.ts`). A page root may repeat it (the landing gets it from `useDsTheme()`
-   through `App.tsx`), but never with a different value. Switching the attribute re-themes the subtree.
+2. The site theme is already on `<html>` (`theme.ts`). A page root may repeat it, but never with a different value. A
+   page with its own fixed look pins it on `<html>` while mounted (`usePinnedAppearance(look)`, as `App.tsx` does for the
+   landing with `BRAND_APPEARANCE`), so every ancestor carries the same theme. Switching the attribute re-themes the subtree.
 3. Sections: the default scope is light. Put `data-section="dark"` on dark blocks (header, footer, dark sections, a dark card in a light section). `data-section="light"` flips back inside a dark block. The same class then gives the right colour in both: `text-ds-heading` is navy on light and white on dark.
 4. Utilities:
    - Semantic (follow theme and section): `bg-ds-bg`, `bg-ds-bg-cool`, `bg-ds-bg-warm`, `bg-ds-surface`, `hover:bg-ds-surface-hover`, `border-ds-border`, `border-ds-accent-border`, `text-ds-heading`, `text-ds-highlight`, `text-ds-body`, `text-ds-eyebrow`, `text-ds-icon`, `bg-ds-tile`, `bg-ds-btn-primary-bg` / `-fg` / `-border` / `-hover-*`, `bg-ds-btn-ghost-*`, `stroke-ds-chart-*` …
@@ -141,12 +147,55 @@ distinct chart series, radius steps never negative, and AA in both sections of b
 popover, primary, secondary, muted and accent, the destructive and outline button recipes (4.5:1), ring on background
 and card (3:1), and the sidebar pairs.
 
+## Runtime appearance (Appearance panel)
+
+Each viewer chooses the palette and the corner style at run time; everything (CSS tokens, antd, shadcn, the scrollbar)
+changes at once, with no reload.
+
+- **Store** (`theme.ts`). The choice is `{ theme, corners }`, saved under one localStorage key, **`t1.appearance`**
+  (`{"theme":"app-soft","corners":"smooth"}`). When the module loads (imported by `App.tsx`, before the first render) it
+  reads the key, validates each field against the theme registry (`themes`) and the corner list (`corners`), falls back
+  to `ACTIVE_THEME` / `CORNERS` field by field, and sets `<html data-theme>` and `<html data-corners>`. Every storage
+  access is in try/catch: with storage blocked the defaults load and a change lasts for the tab. Another tab's change
+  follows through the `storage` event. API: `getAppearance()`, `setAppearance({ theme?, corners? })` (saves and applies),
+  `resetAppearance()` (removes the key), `subscribeAppearance()`, `pinAppearance(look)` → release function,
+  `parseAppearance(raw)`, `DEFAULT_APPEARANCE` (= `ACTIVE_THEME` + `CORNERS`), `BRAND_APPEARANCE` (navy-gold + square).
+  `setDsTheme()` / `setDsCorners()` are `setAppearance()` shortcuts.
+- **React** (`appearance.tsx`). `App.tsx` wraps everything in `<AppearanceProvider base={antdBase}>`. It renders the antd
+  `ConfigProvider` with `antdTheme(theme shown on <html>, base, { corners })`; nested providers (`DarkBlock`) inherit it.
+  `useAppearance()` → `{ theme, corners, shown, isDefault, setTheme, setCorners, reset }` (`theme` / `corners` = the saved
+  choice; `shown` = what `<html>` shows, which differs only while a page pins its look).
+- **The landing stays the brand page.** `App.tsx` renders the public landing inside `<PinnedAppearance look={BRAND_APPEARANCE}>`:
+  while it is mounted `<html>` shows navy-gold + square (set in a layout effect, before paint), and the viewer's choice
+  comes back when they leave (login, MFA and change-password screens and the signed-in app follow the choice). One theme
+  on every ancestor, so no `[data-theme="x"] [data-section="dark"]` rule of another theme reaches a landing section.
+  Proof: landing full-page captures at 1440 and 375 are 0 px different from the pre-change capture with the key unset,
+  app-soft + rounded, app-soft + smooth and navy-gold + smooth.
+- **The panel** (`app/AppearanceMenu.tsx`, `app/appearance.css`). A gear button in the top bar (`app/Shell.tsx`), between
+  the language toggle and the account menu, the same size and style as the language button, with a tooltip and
+  `aria-label` "المظهر / Appearance"; visible at every width. It opens the panel as a Popover under the button from `md`
+  (768px) up, and as a bottom sheet (antd Drawer) on phones; no dimming, so the change shows behind it. The sidebar footer
+  keeps only "تسجيل الخروج" (the language toggle is in the top bar). An error boundary wraps the button and panel: a panel
+  bug hides the button and nothing else (the provider keeps the saved look). The panel holds:
+  - Palette cards, one per entry of `themes` in `tokens.ts`, in `themeLabels` order. Each preview sits inside an element
+    with that theme's `data-theme`, so it shows the real colours (sidebar gradient, band, card, primary button). It reads
+    only theme-level and light-scope tokens, with no `data-section` inside, so the nested theme never leaks.
+  - A corner control "حاد · مستدير · ناعم" / "Square · Rounded · Smooth" (`cornerLabels`); each icon carries its own
+    `data-corners`, so it shows the real corner.
+  - "استعادة الافتراضي" / "Restore default" (disabled when already default).
+  - a11y: a dialog labelled by its title and described by the note (Popover: non-modal, antd's `role="tooltip"` on the box
+    is dropped; Tab or Shift+Tab out of either end closes it and returns focus to the gear; outside click closes. Sheet:
+    `aria-modal` with antd's focus trap). On open the checked palette takes focus; both groups are `role="radiogroup"` with
+    `role="radio"` + `aria-checked`, roving tabindex, arrows (mirrored in Arabic), Home / End, Space / Enter; Escape closes
+    and focus returns to the gear (`aria-haspopup="dialog"`, `aria-expanded`). Styling uses tokens only.
+- **A new palette appears by itself**: add the theme (steps at the end) and its name in `themeLabels` (the `satisfies`
+  check fails without one). Nothing in the panel names a theme.
+
 ## Site theme and antd
 
-- **One switch.** `theme.ts`: `ACTIVE_THEME = "navy-gold"`. When the module loads (imported by `App.tsx`, before the first
-  render) it sets `<html data-theme>` and imports `index.css`. Every `--ds-*` token, the legacy aliases below, antd
-  portals (modals, drawers, dropdowns, messages under `<body>`), the landing and the scrollbar follow it. `useDsTheme()`
-  watches the attribute (MutationObserver), so changing it at run time (devtools, or `setDsTheme("app-soft")`) re-themes antd too.
+- **One switch, per viewer.** The theme on `<html data-theme>` is the viewer's choice (above), `ACTIVE_THEME` by default.
+  Every `--ds-*` token, the legacy aliases below, antd portals (modals, drawers, dropdowns, messages under `<body>`) and the
+  scrollbar follow it. `useDsTheme()` watches the attribute (MutationObserver), so a change from devtools re-themes antd too.
 - **Mapper.** `antdTheme(name, base, { tone })` in `antd-theme.ts`. Colours and radius only, every value from `tokens.ts`;
   `base` carries App.tsx's fonts (IBM Plex Sans Arabic, 14px) unchanged. A new theme re-themes antd as soon as it has its
   entry in `tokens.ts`; nothing in the mapper names a theme. `tone: "dark"` builds a full dark theme for a nested
@@ -155,10 +204,12 @@ and card (3:1), and the sidebar pairs.
   `shared/ui.tsx` carry `data-section="dark"`, and their actions sit in `DarkBlock`: a nested `ConfigProvider` with
   `antdDarkBlockTheme(useDsTheme())`. That sets only Button colours from the dark-section tokens (primary gold-400 with
   navy-900 text, links gold-400). Fields keep the page theme, and radius comes from the parent provider.
-- **Radius** comes from the corner style, not the theme: `antdTheme(name, base, { corners })` (App.tsx passes
+- **Radius** comes from the corner style, not the theme: `antdTheme(name, base, { corners })` (AppearanceProvider passes
   `useDsCorners()`, default `CORNERS`) reads `corners[style]` in `tokens.ts` through `antdRadii(scale)`: `borderRadius` = md,
   `borderRadiusLG` = lg, `SM` = sm, `XS` = xs, `Outer` = xs; Table `headerBorderRadius` = lg, `stickyScrollBarBorderRadius`
-  and Progress `lineBorderRadius` = pill. Square: all 0. Rounded: 8 / 12 / 6 / 4 / 4, pill 999.
+  and Progress `lineBorderRadius` = pill. Square: all 0. Rounded: 8 / 12 / 6 / 4 / 4, pill 999. Smooth: 16 / 20 / 12 / 8 / 8,
+  pill 999, and (`pillButtons.smooth`) Button `borderRadius` / `LG` / `SM` and Tag `borderRadiusSM` = pill, so every
+  button and tag is a pill; square and rounded set no Button or Tag radius.
 
 | antd token | From `themes[name]` (light section unless noted) | navy-gold |
 |---|---|---|
@@ -211,11 +262,14 @@ The app does not use antd Menu or Layout (the shell is custom), so they have no 
 | `--hair` | `--ds-border` | ash-200 |
 | `--teal`, `--teal-100`, `--gold` inside `.lcp-side` / `.lcp-drawer .ant-drawer-body` | `--ds-sidebar-indicator`, `-focus`, `-badge-bg` | gold-400 |
 
-Unchanged on purpose: status colours (`--warn*`, `--ok*`, `--crit*`), fonts, `--shadow*`, `--space-*`, `--side-w`.
+Status colours are per-theme tokens too (same values in both themes today): `--ok` / `--ok-bg` → `--ds-status-ok-ink` /
+`-ok-soft`, `--warn` / `--warn-bg` → `--ds-status-near-ink` / `-near-soft`, `--crit` / `--crit-bg` → `--ds-status-late-ink` /
+`-late-soft`; the graph palette `--g-ok`, `--g-near`, `--g-bad`, `--g-plan`, `--g-gap` → `--ds-status-ok`, `-near`, `-late`,
+`-plan`, `-gap`. `--shadow` / `--shadow-up` mix `--ds-shadow-ink`. Unchanged: fonts, `--space-*`, `--side-w`.
 `shared/theme.css`: `--band` is `var(--ds-gradient-hero)`; inside the band (`data-section="dark"`) the kicker
 and `code` use `--ds-eyebrow`, links `--ds-link`, and the primary-button glow `--ds-btn-primary-bg` at 45%; the open-cycle
-card glow is `--teal` at 10%. Every gradient in the app CSS reads a gradient token (see "Gradients"). Colours written
-directly in non-gradient rules (some text and shadow colours) do not follow the theme. Radii in the app CSS all use the corner scale.
+card glow is `--teal` at 10%. Every gradient in the app CSS reads a gradient token (see "Gradients"), every other colour an
+audit token (see "Audit tokens"). Radii in the app CSS all use the corner scale.
 
 **Sidebar tokens** (theme level; the signed-in shell's navy sidebar): `--ds-sidebar-bg`, `-fg`, `-fg-active`, `-muted`,
 `-hover-bg`, `-active-bg`, `-indicator`, `-border`, `-focus`, `-badge-bg`, `-badge-fg` (utilities `bg-ds-sidebar-bg` …),
@@ -270,31 +324,34 @@ tokens are theme level, in `themes/<name>.css`, as full `background` values (rec
 - **New gradient role:** add `--ds-gradient-<role>` to every theme, the field to `GradientTokens` and `gradients()` in
   `tokens.ts`, and an AA case in `tokens.test.ts` if text sits on it.
 
-## Corners (square | rounded)
+## Corners (square | rounded | smooth)
 
-**Change this one line** in `config.ts`:
+The viewer picks the style in the Appearance panel ("Runtime appearance"). The default is one line in `config.ts`:
 
 ```ts
-export const CORNERS: CornerStyle = "square"; // or "rounded"
+export const CORNERS: CornerStyle = "square"; // or "rounded" | "smooth"
 ```
 
-`theme.ts` puts it on `<html data-corners>` before the first render. Without TypeScript, set the attribute in devtools or
+`theme.ts` puts the style on `<html data-corners>` before the first render. Without TypeScript, set the attribute in devtools or
 override in CSS: `:root[data-corners="rounded"] { … }`. No attribute means square. A live change of the attribute
 re-themes antd too (`useDsCorners()` watches it, like `useDsTheme()`).
 
-| Token | Utility | square | rounded | Use |
-|---|---|---|---|---|
-| `--ds-radius-xs` | `rounded-ds-xs` | 0 | 4px | bars, swatches, small codes, active-link bars, scrollbar thumb |
-| `--ds-radius-sm` | `rounded-ds-sm` | 0 | 6px | code pills, focus rings, small buttons, inner boxes |
-| `--ds-radius-md` = `--ds-radius` | `rounded-ds-md`, `rounded-ds` | 0 | 8px | buttons, inputs, icon tiles, list rows (antd `borderRadius`) |
-| `--ds-radius-lg` = shadcn `--radius` | `rounded-ds-lg` | 0 | 12px | cards, panels, tables, modals (antd `borderRadiusLG`) |
-| `--ds-radius-xl` = legacy `--r` | `rounded-ds-xl` | 0 | 16px | page bands, large panels, hero |
-| `--ds-radius-pill` | `rounded-ds-pill` | 0 | 999px | chips, count badges, progress bars, status dots |
-| `--ds-radius-round` | `rounded-ds-round` | 50% | 50% | real circles only: avatars, step numbers, chart dots |
+| Token | Utility | square | rounded | smooth | Use |
+|---|---|---|---|---|---|
+| `--ds-radius-xs` | `rounded-ds-xs` | 0 | 4px | 8px | bars, swatches, small codes, active-link bars, scrollbar thumb |
+| `--ds-radius-sm` | `rounded-ds-sm` | 0 | 6px | 12px | code pills, focus rings, small buttons, inner boxes |
+| `--ds-radius-md` = `--ds-radius` | `rounded-ds-md`, `rounded-ds` | 0 | 8px | 16px | buttons, inputs, icon tiles, list rows (antd `borderRadius`) |
+| `--ds-radius-lg` = shadcn `--radius` | `rounded-ds-lg` | 0 | 12px | 20px | cards, panels, tables, modals (antd `borderRadiusLG`) |
+| `--ds-radius-xl` = legacy `--r` | `rounded-ds-xl` | 0 | 16px | 24px | page bands, large panels, hero |
+| `--ds-radius-pill` | `rounded-ds-pill` | 0 | 999px | 999px | chips, count badges, progress bars, status dots |
+| `--ds-radius-round` | `rounded-ds-round` | 50% | 50% | 50% | real circles only: avatars, step numbers, chart dots |
+
+**Smooth** is the soft style: the 8–24px scale above, pill buttons and tags in antd (`pillButtons` in `tokens.ts`), a
+fully round scrollbar thumb, and in shadcn (`rounded-lg` = 20px) pill default and large buttons and badges.
 
 **Themes and corners combine freely.** Themes hold colours only; no theme file declares a radius (`tokens.test.ts` fails if
-one does). navy-gold was designed square and app-soft comes from the rounded `/app`, but any theme works with either
-style: `navy-gold` + `rounded`, `app-soft` + `square`. The two switches are `ACTIVE_THEME` (theme.ts) and `CORNERS` (config.ts).
+one does). navy-gold was designed square and app-soft comes from the rounded `/app`, but any theme works with any
+style: `navy-gold` + `smooth`, `app-soft` + `square`. The defaults are `ACTIVE_THEME` (theme.ts) and `CORNERS` (config.ts).
 
 **What follows the switch:** antd (global `borderRadius*` tokens, Table header, sticky scrollbar, Progress bar; every antd
 component that reads them: Button, Input, Select and its dropdown, DatePicker, Tag, Segmented, Modal, Popover, Tooltip,
@@ -304,7 +361,7 @@ and the legacy CSS (`--r`, `styles/app.css`, `shared/ui.css`, `shared/theme.css`
 The old px values were mapped to the nearest step: ≤4px xs, 5–6 sm, 7–9 md, 10–13 lg, ≥14 xl, 99px/999px and
 half-height count badges pill, 50% round.
 
-**Stays the same in both styles:** real circles (`--ds-radius-round`), antd internals with no radius token (Switch track,
+**Stays the same in every style:** real circles (`--ds-radius-round`), antd internals with no radius token (Switch track,
 Radio, Badge dot and count, Spin, Timeline dots, Drawer edges), shadcn's own `rounded-full` and fixed `rounded-[2px]` /
 `[4px]` in `src/components/ui`, and hairline grids on the landing (`gap-px` over `bg-ds-border` with filled cells: they
 need `overflow-hidden` before they can be rounded).
@@ -319,10 +376,10 @@ and the scrollbar follow it; antd and the legacy `--r` follow `<html>` only.
 A scrollbar takes the colours of the surface it sits on. The track is that surface: it is transparent, so the
 scroller's own background shows through (the sidebar gradient included). The thumb is a quiet tone of the same surface,
 `color-mix(in srgb, SURFACE p%, INK)` with the surface's own text colour, one step stronger on hover and while dragged. It
-fills the whole track width (no inset, no floating pill, no sheen) and its corner follows `CORNERS`
-(`--ds-radius-xs`: square, or 4px when rounded).
+fills the whole track width (no inset, no floating pill, no sheen) and its corner follows `<html data-corners>`
+(`--ds-radius-xs`: square, or 4px when rounded; `--ds-radius-pill` when smooth, a fully round end).
 
-Tokens: `--scrollbar-size` 10px (= thumb width), `--scrollbar-radius` `var(--ds-radius-xs)`, `--scrollbar-min-thumb`
+Tokens: `--scrollbar-size` 10px (= thumb width), `--scrollbar-radius` `var(--ds-radius-xs)` (smooth: `var(--ds-radius-pill)`), `--scrollbar-min-thumb`
 40px, `--scrollbar-track` transparent, `--scrollbar-thumb` / `-thumb-hover` / `-thumb-active`, the sidebar palette
 `--scrollbar-sidebar-thumb` / `-hover` / `-active`, and `--scrollbar-overlay-thumb` / `-hover` / `-active` (modal mask).
 
@@ -353,6 +410,37 @@ rest (non-text UI that is present but quiet), stronger on hover.
 - `forced-colors: active`: no custom styling; the browser draws system-coloured scrollbars. Hidden scrollers stay hidden
   (`.lcp-seg`, `.f-pipe`, `.sp-tabs`, `.sp-rail`, antd Anchor, Tailwind `no-scrollbar`).
 
+## Audit tokens
+
+Every colour the app CSS and TSX used to write by hand (2026-11-14 audit) now reads a theme-level token, so a palette or a
+corner switch changes all of it. navy-gold keeps each old value exactly (primitives `--color-app-*` in `primitives.css`,
+`palette.app` in `tokens.ts`); app-soft takes soft-palette values for the navy-bound roles and the same values for data colours.
+`tokens.ts` mirrors every group (`onDark`, `auth`, `status`, `score`, `tier`, `heat`, `neutral`, `unit`, `tag`, `app`, and the
+extra fields of `chart` and `shadow`); `tokens.test.ts` checks them both ways and fails when a theme lacks a token another theme has.
+
+| Group | Tokens | Used for |
+|---|---|---|
+| `--ds-on-dark-*` | `fg`, `body`, `muted`, `soft`, `code`, `ok`, `warn`, `bad`, `now`, `now-ink` | text and hairlines on navy fills (band, heroes, table heads, pillar heads, active tabs); hairlines as `color-mix(in srgb, var(--ds-on-dark-fg) N%, transparent)` |
+| `--ds-auth-*` | `muted`, `body`, `faint`, `icon`, `icon-tint`, `page`, `logo-shadow` | sign-in brand panel and form side |
+| `--ds-shadow-*` (colours) | `ink`, `navy`, `band`, `mark` | shadows: `0 1px 2px color-mix(in srgb, var(--ds-shadow-ink) 6%, transparent)` |
+| `--ds-status-*` | `ok`, `near`, `late` (marks), `-ink` (text), `-soft` (chip fill), `-border`, `-tint`, `-mark`, `-bar`; `gap`, `plan`, `none`, `none-ink`, `draft`, `progress`, `info`, `share`, `caution`, `review`, `zero-*`, `exempt-*`, `flag-bg`, `vacant-border`, `done-border` | achievement and workflow states (legacy `--ok` / `--warn` / `--crit`, `--g-*`, Home / Results / Cycles segments) |
+| `--ds-score-*` | `full`, `high`, `mid`, `low` × `soft`, `ink`, `mark` (+ `high-bar`) | scorecard and progress achievement bands |
+| `--ds-tier-1` … `5`, `--ds-heat-1` … `4`, `-4-ink`, `-none` | | scorecard tiers, results heat map |
+| `--ds-neutral-*` | `mark`, `axis`, `faint`, `off`, `na`, `stopped`, `lead`, `base`, `actual`, `arrow`, `dot` | neutral greys of data views |
+| `--ds-chart-*` (extra) | `accent`, `value`, `track`, `ring-track`, `grid-soft`, `grid-faint`, `off`, `off-key`, `target-line` | chart parts outside the categorical series |
+| `--ds-unit-*` | `university`, `sector`, `administration`, `center`, `college`, `institute`, `department` (+ `-bg`) | unit kinds on the units page |
+| `--ds-tag-*` | `pending`, `positive`, `negative`, `caution`, `info`, `special`, `highlight`, `category` × `fg`, `bg`, `border` | antd `Tag color="gold" / "green" / "red" / "orange" / "blue" / "purple" / "cyan" / "geekblue"`, mapped by role at the end of `shared/ui.css` |
+| `--ds-app-*` | `muted-bg`, `faint-bg`, `row-hover`, `row-selected`, `table-group`, `topbar`, `note-bg`, `partner-bg`, `code-bg`, `code-fg`, `print-desk`, `print-ink`, `pdf-icon`, `pdf-frame` | surfaces of the antd pages |
+
+- TSX: `style={{ background: "var(--ds-status-ok)" }}`, SVG `stroke="var(--ds-chart-track)"`, data maps of colours hold `var(--ds-…)`
+  strings (CyclesPage, HomePage, ResultsPage, ScorecardPage). antd props that take a custom colour (`Badge color`, Timeline item
+  `color`) take a `var()` string the same way; antd status presets (`success`, `processing`, `error`, `warning`, `default`)
+  follow the antd theme.
+- Data colours stay data: pillar `--pc` / `--pt` (`shared/pillars.tsx`, the `:root` default in `strategy.css`) and the 17 official
+  UN SDG colours (`ScorecardPage.tsx`). Whatever mixes with them comes from tokens.
+- A new palette defines every token above; keep the hue meaning of status, score, tier, heat, unit and Tag colours and keep
+  `on-dark` / `auth` text AA on its navy fill (tested).
+
 ## Reference implementation
 
 `src/features/landing/`: `LandingPage.tsx` (root and imports), `landing.css` (Tailwind entry), `LandingChrome.tsx` (header and
@@ -376,9 +464,11 @@ the redesigned footer, and the analytics section (القيادة bar removed, ho
    No shadcn variables: `styles/shadcn.css` maps them to these tokens for every theme (the test fails on any other name).
    No radius: corners come from `corners.css` whatever the theme. Gradients: keep the recipes, change the colours ("Gradients").
 4. Import it in `index.css`, after the other themes and before `corners.css`.
-5. Add `<name>` to `ThemeName` and `themes` in `tokens.ts`, then run `npx vitest run src/styles/design-system`: it fails
-   on any value that differs from the CSS and on any AA pair below 4.5:1 (text) or 3:1 (UI). antd needs nothing else:
-   `antdTheme` reads the new entry. Set `ACTIVE_THEME` in `theme.ts` (or `<html data-theme>`) to use it.
+5. Add `<name>` to `ThemeName` and `themes` in `tokens.ts`, and its panel name to `themeLabels` (`{ ar, en }`; the
+   `satisfies` check fails without it), then run `npx vitest run src/styles/design-system`: it fails on any value that
+   differs from the CSS and on any AA pair below 4.5:1 (text) or 3:1 (UI). antd needs nothing else: `antdTheme` reads
+   the new entry. The Appearance panel lists it with a live preview at once (viewers pick it there); to make it the
+   default for everyone, set `ACTIVE_THEME` in `theme.ts`.
 
 New semantic roles: add `--ds-<role>` to every theme, then `--color-ds-<role>: var(--ds-<role>);` to `tailwind-theme.css`,
 and the field to `tokens.ts` (the test checks both ways).

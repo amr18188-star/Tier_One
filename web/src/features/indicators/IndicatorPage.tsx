@@ -70,7 +70,7 @@ export default function IndicatorPage() {
                 {d!.actions.canSubmit && <Button type="primary" icon={<SendOutlined />} loading={submit.isPending} onClick={() => submit.mutate()}>{L("إرسال للاعتماد", "Submit for approval")}</Button>}
                 {d!.actions.canApprove && <Button type="primary" icon={<CheckOutlined />} onClick={() => setDecision("approve")}>{L("اعتماد", "Approve")}</Button>}
                 {d!.actions.canApprove && <Button icon={<RollbackOutlined />} onClick={() => setDecision("return")}>{L("إعادة بملاحظات", "Return")}</Button>}
-                <Link to={`/strategy?node=I:${d!.code}`}><Button icon={<PartitionOutlined />}>{L("في شجرة الخطة", "In the plan tree")}</Button></Link>
+                <Link to={`/strategy?node=I:${d!.code}`}><Button icon={<PartitionOutlined />}>{L("في الخطة الاستراتيجية", "In the strategic plan")}</Button></Link>
                 <Tooltip title={L("طباعة بطاقة المؤشر", "Print the indicator card")}><Button icon={<PrinterOutlined />} onClick={() => window.print()} aria-label={L("طباعة", "Print")} /></Tooltip>
               </div>
             } />

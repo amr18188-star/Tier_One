@@ -1,0 +1,153 @@
+/*
+ * صفحة النماذج (FormsPage): تبويبا الوضعين، وبطاقات المهام، وصفوف الكليات القابلة للفتح.
+ * الألوان من رموز نظام التصميم وحدها (--ds-*؛ أو المتغيرات القديمة التي تساويها)، والزوايا من --ds-radius-*،
+ * والمسافات من --ds-space-* (shared/layout.css)، والخصائص منطقية (start/end) فتنقلب مع اللغة.
+ * ألوان الحالة من رموز الحالة: معتمد --ds-status-ok، معاد ومتأخر --ds-status-late (والنص -late-ink والخلفية -late-soft). شريط السنة والربع في shared/period-nav.css (PeriodNav).
+ */
+
+/* ===== تبويبا الوضعين ===== */
+.fm-tabs { display: flex; gap: var(--ds-space-xs); border-bottom: 1px solid var(--ds-border); overflow-x: auto; scrollbar-width: none; }
+.fm-tab {
+  flex: none; min-height: 42px; padding: 8px var(--ds-space-md); margin-bottom: -1px;
+  border: 0; background: transparent; color: var(--ds-body); box-shadow: inset 0 -3px 0 transparent;
+  font: inherit; font-size: 14.5px; font-weight: 600; cursor: pointer;
+}
+.fm-tab:hover { color: var(--ds-heading); }
+.fm-tab[aria-selected="true"] { color: var(--ds-heading); box-shadow: inset 0 -3px 0 var(--ds-heading); }
+/* اللوحة في شبكة الصفحة نفسها: فجوة .lcp-page بين أجزائها كما لو لم تكن ملفوفة. */
+.fm-tabpanel { display: grid; grid-template-columns: minmax(0, 1fr); gap: inherit; min-width: 0; }
+.fm-tabpanel > * { min-width: 0; }
+
+/* ===== مطلوب مني: شريط صغير في المتابعة، ومفتاح «مطلوب مني فقط» ===== */
+.fm-pending {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--ds-space-sm) var(--ds-space-md);
+  padding: 10px var(--ds-space-md); color: var(--ds-fg); font-weight: 600;
+  background: var(--ds-callout); border: 1px solid var(--ds-accent-border); border-inline-start: 3px solid var(--ds-accent);
+  border-radius: var(--ds-radius-lg);
+}
+.fm-pending .anticon { color: var(--ds-icon); }
+.fm-mine { display: inline-flex; align-items: center; gap: var(--ds-space-sm); min-height: 32px; color: var(--ds-fg); }
+.fm-mine label { cursor: pointer; font-weight: 600; }
+
+/* ===== بطاقات المهام ===== */
+.fm-cards {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: var(--ds-space-md);
+}
+.fm-cards > li { display: grid; min-width: 0; }
+.fm-card {
+  display: flex; flex-direction: column; gap: var(--ds-space-sm); min-width: 0;
+  padding: var(--ds-space-md); background: var(--ds-surface); color: var(--ds-fg);
+  border: 1px solid var(--ds-border); border-radius: var(--ds-radius-lg);
+}
+.fm-card.is-returned { border-color: var(--ds-status-late); border-inline-start-width: 3px; }
+.fm-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--ds-space-sm); }
+.fm-card-head h3 { margin: 0; min-width: 0; font-size: 15.5px; font-weight: 700; line-height: 1.5; color: var(--ds-heading); }
+.fm-card-head .ant-tag { margin-inline-end: 0; flex: none; }
+.fm-card-parent { margin-top: -6px; font-size: 12.5px; color: var(--ds-body); }
+.fm-card-progress { display: grid; gap: 6px; font-size: 13.5px; color: var(--ds-body-strong); }
+.fm-card-cta { align-self: flex-start; margin-top: auto; }
+.fm-note {
+  padding: 8px 10px; font-size: 13px; line-height: 1.75; color: var(--ds-fg);
+  background: var(--ds-status-late-soft);
+  border-inline-start: 3px solid var(--ds-status-late); border-radius: var(--ds-radius-sm);
+}
+.fm-muted { color: var(--ds-body); }
+
+/* شريط التقدم: مسار من --ds-track، وتعبئة الإدخال بتدرج التقدم، والاعتماد بلون الحالة المحققة. */
+.fm-bar { display: block; height: 6px; min-width: 0; overflow: hidden; background: var(--ds-track); border-radius: var(--ds-radius-pill); }
+.fm-bar i { display: block; height: 100%; background: var(--ds-gradient-progress); border-radius: var(--ds-radius-pill); }
+.fm-bar.tone-ok i { background: var(--ds-status-ok); }
+
+.fm-due { font-size: 13px; line-height: 1.6; color: var(--ds-body); }
+.fm-due small { margin-inline-start: 4px; font-size: 12px; }
+.fm-due.is-late { color: var(--ds-status-late-ink); font-weight: 600; }
+
+/* ===== لوحات الطي (الكليات، وما أرسل وما اعتمد) ===== */
+.fm-folds, .fm-colleges { display: grid; gap: var(--ds-space-sm); min-width: 0; }
+.fm-fold { min-width: 0; overflow: hidden; background: var(--ds-surface); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-lg); }
+.fm-fold-title { margin: 0; font: inherit; color: inherit; }
+.fm-fold-head {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 10px var(--ds-space-md);
+  border: 0; background: transparent; color: var(--ds-fg); font: inherit; text-align: start; cursor: pointer;
+}
+.fm-fold-head:hover { background: var(--ds-surface-hover-soft); }
+.fm-fold-head:focus-visible { outline-offset: -2px; }
+.fm-fold-chev { flex: none; font-size: 11px; color: var(--ds-label); }
+.fm-fold-name { font-weight: 600; color: var(--ds-heading); }
+.fm-none { margin: 0; padding: 12px var(--ds-space-md); border-top: 1px solid var(--ds-border); color: var(--ds-body); font-size: 13px; }
+
+/* السهم: لأسفل والصف مفتوح، ونحو نهاية السطر وهو مطوي (كالقائمة الجانبية). */
+.fm-fold[data-open="false"] > .fm-fold-title .fm-fold-chev { transform: rotate(-90deg); }
+html[dir="rtl"] .fm-fold[data-open="false"] > .fm-fold-title .fm-fold-chev { transform: rotate(90deg); }
+
+/* الطي بالشبكة (0fr ← 1fr)؛ المطوي مخفي عن Tab وقارئ الشاشة، والحركة فقط لمن لم يطلب تقليلها. */
+.fm-fold-body { display: grid; grid-template-rows: 0fr; }
+.fm-fold[data-open="true"] > .fm-fold-body { grid-template-rows: 1fr; }
+.fm-fold-inner { min-height: 0; overflow: hidden; visibility: hidden; }
+.fm-fold[data-open="true"] > .fm-fold-body > .fm-fold-inner { visibility: visible; }
+@media (prefers-reduced-motion: no-preference) {
+  .fm-fold-head { transition: background 0.15s; }
+  .fm-fold-body { transition: grid-template-rows 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .fm-fold-chev { transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+  /* عند الطي يبقى المحتوى ظاهرًا حتى ينتهي الانطواء ثم يخفى؛ عند الفتح يظهر فورًا. */
+  .fm-fold-inner { transition: visibility 0s linear 220ms; }
+  .fm-fold[data-open="true"] > .fm-fold-body > .fm-fold-inner { transition-delay: 0s; }
+}
+
+/* رأس الكلية: الاسم، وشريط المعتمد من الكل، والعدد، والتنبيهات. */
+.fm-fold.is-college > .fm-fold-title > .fm-fold-head {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(80px, 160px) auto minmax(0, auto); gap: 6px 14px;
+}
+.fm-col-name { min-width: 0; font-size: 15px; font-weight: 700; color: var(--ds-heading); }
+.fm-col-count { font-size: 13px; color: var(--ds-body-strong); white-space: nowrap; }
+.fm-col-flags { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 10px; }
+.fm-flag { font-size: 12.5px; font-weight: 600; color: var(--ds-status-late-ink); white-space: nowrap; }
+
+/* صفوف النماذج داخل اللوحة: الجهة، الحالة، عند من، الموعد. */
+.fm-rows { display: grid; border-top: 1px solid var(--ds-border); }
+.fm-row {
+  display: grid; grid-template-columns: 20px minmax(0, 1fr) auto minmax(120px, 180px) minmax(110px, 160px); gap: 4px 12px; align-items: center;
+  padding: 10px var(--ds-space-md); font-size: 14px; line-height: 1.6; text-decoration: none;
+}
+.fm-row + .fm-row { border-top: 1px solid var(--ds-border); }
+a.fm-row, a.fm-row:hover { color: var(--ds-fg); }
+a.fm-row:hover { background: var(--ds-surface-hover-soft); }
+a.fm-row:focus-visible { outline-offset: -2px; }
+.fm-row.is-mine { background: color-mix(in srgb, var(--ds-accent) 10%, transparent); }
+a.fm-row.is-mine:hover { background: color-mix(in srgb, var(--ds-accent) 16%, transparent); }
+.fm-row-mark { display: flex; justify-content: center; color: var(--ds-label); }
+/* القسم تحت كليته: إزاحة بخط رفيع على شكل زاوية. */
+.fm-rows.is-tree .fm-row:not(.is-own) .fm-row-mark::before {
+  content: ""; display: block; width: 9px; height: 10px; transform: translateY(-4px);
+  border-inline-start: 1px solid var(--ds-border); border-block-end: 1px solid var(--ds-border);
+}
+.fm-row-unit { min-width: 0; }
+.fm-row-unit b { font-weight: 600; }
+.fm-row-unit small { font-size: 12.5px; color: var(--ds-body); }
+.fm-row-flag { font-size: 12.5px; font-weight: 600; color: var(--ds-eyebrow-aa); }
+.fm-row-tag .ant-tag { margin-inline-end: 0; }
+.fm-row-at { font-size: 13px; color: var(--ds-body); }
+
+/* ===== الجوال ===== */
+@media (max-width: 640px) {
+  .fm-card-cta { align-self: stretch; }
+
+  .fm-fold.is-college > .fm-fold-title > .fm-fold-head {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "chev name count" ". bar bar" ". flags flags";
+  }
+  .fm-fold.is-college .fm-fold-chev { grid-area: chev; }
+  .fm-fold.is-college .fm-col-name { grid-area: name; }
+  .fm-fold.is-college .fm-col-count { grid-area: count; }
+  .fm-fold.is-college .fm-fold-head > .fm-bar { grid-area: bar; }
+  .fm-fold.is-college .fm-col-flags { grid-area: flags; justify-content: flex-start; }
+  .fm-fold.is-college .fm-col-flags:empty { display: none; }
+
+  .fm-row { grid-template-columns: 20px minmax(0, 1fr) auto; grid-template-areas: "mark unit tag" ". at due"; padding: 10px 12px; }
+  .fm-row-mark { grid-area: mark; }
+  .fm-row-unit { grid-area: unit; }
+  .fm-row-tag { grid-area: tag; }
+  .fm-row-at { grid-area: at; }
+  .fm-row > .fm-due { grid-area: due; text-align: end; }
+}

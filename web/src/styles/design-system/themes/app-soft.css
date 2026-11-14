@@ -13,6 +13,8 @@
 [data-theme="app-soft"] {
   --ds-font: "Cairo", "Geist Variable", "Segoe UI", sans-serif; /* tokens.css --font-family-sans */
   --ds-font-heading: "Cairo", "Geist Variable", "Segoe UI", sans-serif;
+  /* Native UI (default text of form controls, unstyled scrollbars, autofill): <html> color-scheme (index.css). */
+  --ds-color-scheme: light;
 
   --ds-chrome: var(--color-soft-navy-950); /* the app sidebar colour */
 
@@ -93,6 +95,180 @@
   --ds-gradient-surface-subtle: linear-gradient(180deg, var(--color-soft-neutral-25), var(--color-paper));
   --ds-hatch-light: repeating-linear-gradient(135deg, var(--color-soft-neutral-75) 0 6px, var(--color-paper) 6px 12px);
   --ds-hatch-muted: repeating-linear-gradient(135deg, var(--color-soft-neutral-500) 0 6px, var(--color-soft-neutral-300) 6px 12px);
+
+  /* ---- Token audit (2026-11-14): every colour the app CSS and TSX wrote by hand, as a role. navy-gold = the exact old value.
+     Groups: on-dark, auth, shadow colours, status, score, tier, heat, neutral, chart extras, unit kinds, antd Tag roles, app surfaces.
+     Roles and both values: new-tokens.md (session notes) and README "Audit tokens". */
+  /* on-dark */
+  --ds-on-dark-fg: var(--color-paper);
+  --ds-on-dark-body: var(--color-soft-navy-100);
+  --ds-on-dark-muted: var(--color-soft-neutral-200);
+  --ds-on-dark-soft: var(--color-soft-neutral-200);
+  --ds-on-dark-code: var(--color-soft-navy-100);
+  --ds-on-dark-ok: var(--color-app-green-290);
+  --ds-on-dark-warn: var(--color-app-amber-350);
+  --ds-on-dark-bad: var(--color-app-red-210);
+  --ds-on-dark-now: var(--color-soft-gold-300);
+  --ds-on-dark-now-ink: var(--color-soft-navy-950);
+  /* auth */
+  --ds-auth-muted: var(--color-soft-neutral-200);
+  --ds-auth-body: var(--color-soft-navy-100);
+  --ds-auth-faint: var(--color-soft-neutral-200);
+  --ds-auth-icon: var(--color-soft-gold-300);
+  --ds-auth-icon-tint: var(--color-soft-gold-500);
+  --ds-auth-page: var(--color-soft-neutral-50);
+  --ds-auth-logo-shadow: var(--color-app-blue-940);
+  /* shadow */
+  --ds-shadow-ink: var(--color-app-blue-890);
+  --ds-shadow-navy: var(--color-soft-navy-800);
+  --ds-shadow-band: var(--color-soft-navy-950);
+  --ds-shadow-mark: var(--color-app-grey-990);
+  /* status */
+  --ds-status-ok: var(--color-app-green-600);
+  --ds-status-ok-ink: var(--color-app-green-740);
+  --ds-status-ok-soft: var(--color-app-green-80);
+  --ds-status-ok-border: var(--color-app-green-250);
+  --ds-status-ok-tint: var(--color-app-green-40);
+  --ds-status-done-border: var(--color-app-green-270);
+  --ds-status-near: var(--color-app-amber-500);
+  --ds-status-near-ink: var(--color-app-orange-720);
+  --ds-status-near-soft: var(--color-app-amber-60);
+  --ds-status-near-border: var(--color-app-amber-250);
+  --ds-status-near-tint: var(--color-app-amber-40);
+  --ds-status-near-mark: var(--color-app-amber-590);
+  --ds-status-near-bar: var(--color-app-amber-510);
+  --ds-status-late: var(--color-app-red-530);
+  --ds-status-late-ink: var(--color-app-red-600);
+  --ds-status-late-soft: var(--color-app-red-50);
+  --ds-status-late-border: var(--color-app-red-200);
+  --ds-status-late-tint: var(--color-app-red-30);
+  --ds-status-late-bar: var(--color-app-red-470);
+  --ds-status-flag-bg: var(--color-app-red-20);
+  --ds-status-vacant-border: var(--color-app-red-230);
+  --ds-status-gap: var(--color-app-orange-510);
+  --ds-status-plan: var(--color-app-blue-330);
+  --ds-status-none: var(--color-app-blue-190);
+  --ds-status-none-ink: var(--color-app-slate-390);
+  --ds-status-draft: var(--color-app-blue-280);
+  --ds-status-progress: var(--color-app-blue-430);
+  --ds-status-info: var(--color-app-blue-620);
+  --ds-status-share: var(--color-app-blue-500);
+  --ds-status-caution: var(--color-app-amber-505);
+  --ds-status-zero-soft: var(--color-app-blue-50);
+  --ds-status-zero-ink: var(--color-app-blue-660);
+  --ds-status-exempt-soft: var(--color-app-indigo-40);
+  --ds-status-exempt-ink: var(--color-app-purple-560);
+  /* score */
+  --ds-score-full-soft: var(--color-app-green-110);
+  --ds-score-full-ink: var(--color-app-green-780);
+  --ds-score-full-mark: var(--color-app-green-470);
+  --ds-score-high-soft: var(--color-app-lime-90);
+  --ds-score-high-ink: var(--color-app-lime-750);
+  --ds-score-high-mark: var(--color-app-lime-400);
+  --ds-score-high-bar: var(--color-app-lime-520);
+  --ds-score-mid-soft: var(--color-app-amber-90);
+  --ds-score-mid-ink: var(--color-app-amber-760);
+  --ds-score-mid-mark: var(--color-app-amber-370);
+  --ds-score-low-soft: var(--color-app-red-70);
+  --ds-score-low-ink: var(--color-app-red-640);
+  --ds-score-low-mark: var(--color-app-red-350);
+  /* tier */
+  --ds-tier-1: var(--color-app-green-700);
+  --ds-tier-2: var(--color-app-green-580);
+  --ds-tier-3: var(--color-app-amber-480);
+  --ds-tier-4: var(--color-app-orange-510);
+  --ds-tier-5: var(--color-app-red-550);
+  --ds-tier-ink: var(--color-paper); /* number on a tier colour (scorecard ladder) */
+  /* heat */
+  --ds-heat-1: var(--color-app-red-75);
+  --ds-heat-2: var(--color-app-amber-80);
+  --ds-heat-3: var(--color-app-green-115);
+  --ds-heat-4: var(--color-app-green-240);
+  --ds-heat-4-ink: var(--color-app-green-820);
+  --ds-heat-none: var(--color-soft-neutral-75);
+  /* neutral */
+  --ds-neutral-mark: var(--color-soft-neutral-500);
+  --ds-neutral-axis: var(--color-soft-neutral-400);
+  --ds-neutral-faint: var(--color-soft-neutral-400);
+  --ds-neutral-off: var(--color-soft-neutral-300);
+  --ds-neutral-na: var(--color-soft-neutral-300);
+  --ds-neutral-stopped: var(--color-soft-neutral-400);
+  --ds-neutral-lead: var(--color-soft-neutral-300);
+  --ds-neutral-base: var(--color-soft-neutral-500);
+  --ds-neutral-actual: var(--color-soft-neutral-600);
+  --ds-neutral-arrow: var(--color-soft-neutral-200);
+  --ds-neutral-dot: var(--color-soft-neutral-300);
+  /* chart */
+  --ds-chart-accent: var(--color-soft-gold-500);
+  --ds-chart-value: var(--color-soft-navy-950);
+  --ds-chart-track: var(--color-soft-neutral-75);
+  --ds-chart-ring-track: var(--color-soft-neutral-75);
+  --ds-chart-grid-soft: var(--color-soft-neutral-150);
+  --ds-chart-grid-faint: var(--color-soft-neutral-150);
+  --ds-chart-off: var(--color-soft-neutral-50);
+  --ds-chart-off-key: var(--color-soft-neutral-100);
+  --ds-chart-target-line: var(--color-app-amber-510);
+  /* unit */
+  --ds-unit-university: var(--color-app-blue-750);
+  --ds-unit-university-bg: var(--color-app-blue-60);
+  --ds-unit-sector: var(--color-app-purple-530);
+  --ds-unit-sector-bg: var(--color-app-purple-40);
+  --ds-unit-administration: var(--color-app-teal-630);
+  --ds-unit-center: var(--color-app-orange-570);
+  --ds-unit-college: var(--color-app-blue-550);
+  --ds-unit-college-bg: var(--color-app-blue-45);
+  --ds-unit-institute: var(--color-app-blue-505);
+  --ds-unit-department: var(--color-app-slate-400);
+  /* tag */
+  --ds-tag-pending-fg: var(--color-app-orange-575);
+  --ds-tag-pending-bg: var(--color-app-amber-50);
+  --ds-tag-pending-border: var(--color-app-amber-220);
+  --ds-tag-positive-fg: var(--color-app-lime-660);
+  --ds-tag-positive-bg: var(--color-app-lime-40);
+  --ds-tag-positive-border: var(--color-app-lime-260);
+  --ds-tag-negative-fg: var(--color-app-red-560);
+  --ds-tag-negative-bg: var(--color-app-red-35);
+  --ds-tag-negative-border: var(--color-app-red-190);
+  --ds-tag-caution-fg: var(--color-app-orange-580);
+  --ds-tag-caution-bg: var(--color-app-amber-55);
+  --ds-tag-caution-border: var(--color-app-orange-220);
+  --ds-tag-info-fg: var(--color-app-blue-560);
+  --ds-tag-info-bg: var(--color-app-blue-65);
+  --ds-tag-info-border: var(--color-app-blue-220);
+  --ds-tag-special-fg: var(--color-app-purple-610);
+  --ds-tag-special-bg: var(--color-app-purple-30);
+  --ds-tag-special-border: var(--color-app-purple-180);
+  --ds-tag-highlight-fg: var(--color-app-teal-680);
+  --ds-tag-highlight-bg: var(--color-app-teal-50);
+  --ds-tag-highlight-border: var(--color-app-teal-280);
+  --ds-tag-category-fg: var(--color-app-indigo-560);
+  --ds-tag-category-bg: var(--color-app-blue-35);
+  --ds-tag-category-border: var(--color-app-blue-160);
+  /* app */
+  --ds-app-muted-bg: var(--color-soft-neutral-25);
+  --ds-app-faint-bg: var(--color-soft-neutral-25);
+  --ds-app-row-hover: var(--color-soft-neutral-25);
+  --ds-app-row-selected: var(--color-soft-neutral-50);
+  --ds-app-table-group: var(--color-soft-neutral-100);
+  --ds-app-topbar: var(--color-soft-neutral-50);
+  --ds-app-note-bg: var(--color-soft-neutral-50);
+  --ds-app-partner-bg: var(--color-soft-gold-50);
+  --ds-app-code-bg: var(--color-soft-navy-950);
+  --ds-app-code-fg: var(--color-soft-navy-100);
+  --ds-app-print-desk: var(--color-soft-neutral-75);
+  --ds-app-print-ink: var(--color-app-grey-930);
+  --ds-app-pdf-icon: var(--color-app-red-540);
+  --ds-app-pdf-frame: var(--color-app-grey-660);
+
+  /* Navy fill under white text: legacy --navy used as a background (table heads, active tabs and filters, selected
+     segments, step numbers). = the light --ds-heading here; a dark palette sets its own (README "Palettes"). */
+  --ds-ink-fill: var(--color-soft-navy-950);
+  /* Pillar data colours (shared/pillars.tsx tint()): --pc = the pillar colour keep% toward lift, --pt = the pillar's own
+     tint tint-keep%, the rest the pillar colour tint-mix% into --ds-surface. 100% / 100%: the data colours exactly. */
+  --ds-pillar-keep: 100%;
+  --ds-pillar-lift: var(--color-paper);
+  --ds-pillar-tint-keep: 100%;
+  --ds-pillar-tint-mix: 0%;
 }
 
 /* ---------- Light scope (default) ---------- */

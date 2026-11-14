@@ -5,8 +5,8 @@
 :root {
   --side-w: 268px;
   --r: var(--ds-radius-xl);
-  --shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 6px 20px rgba(16, 24, 40, 0.05);
-  --shadow-up: 0 12px 30px rgba(16, 24, 40, 0.1);
+  --shadow: 0 1px 2px color-mix(in srgb, var(--ds-shadow-ink) 5%, transparent), 0 6px 20px color-mix(in srgb, var(--ds-shadow-ink) 5%, transparent);
+  --shadow-up: 0 12px 30px color-mix(in srgb, var(--ds-shadow-ink) 10%, transparent);
   --teal-50: var(--ds-tile, #e8f6f6);
   --teal-100: var(--ds-accent, #c7e8e9);
   --navy-50: var(--ds-track, #eef2f8);
@@ -36,51 +36,51 @@
 
 /* ----- القائمة الجانبية ----- */
 .lcp-side, .lcp-drawer .ant-drawer-body {
-  display: flex; flex-direction: column; gap: 18px; padding: 20px 14px; color: #fff;
+  display: flex; flex-direction: column; gap: 18px; padding: 20px 14px; color: var(--ds-sidebar-fg-active);
   background: var(--ds-gradient-sidebar);
 }
 .lcp-side { position: sticky; top: 0; height: 100vh; overflow-y: auto; }
 /* القائمة الطويلة تمرر داخل الشريط؛ لا ينضغط زر الطلب ولا الشعار لتتسع. */
 .lcp-side > *, .lcp-drawer .ant-drawer-body > * { flex-shrink: 0; }
 .lcp-drawer .ant-drawer-content { background: transparent; }
-.lcp-brand { display: flex; align-items: center; gap: 12px; color: #fff; padding: 4px 6px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
-.lcp-brand:hover { color: #fff; }
+.lcp-brand { display: flex; align-items: center; gap: 12px; color: var(--ds-sidebar-fg-active); padding: 4px 6px 16px; border-bottom: 1px solid var(--ds-sidebar-border); }
+.lcp-brand:hover { color: var(--ds-sidebar-fg-active); }
 .lcp-brand img { height: 44px; width: auto; flex: none; object-fit: contain; }
 .lcp-brand b { display: block; font-family: var(--font-display); font-size: 15px; line-height: 1.45; }
-.lcp-brand small { color: #b7c5da; font-size: 12px; }
+.lcp-brand small { color: var(--ds-sidebar-muted); font-size: 12px; }
 .lcp-cta {
   display: flex; align-items: center; justify-content: center; gap: 8px; height: 46px; border-radius: var(--ds-radius-lg);
-  background: var(--teal); color: #fff; font-weight: 600; box-shadow: 0 8px 22px color-mix(in srgb, var(--teal) 35%, transparent); transition: background 0.15s, transform 0.15s;
+  background: var(--teal); color: var(--ds-on-dark-fg); font-weight: 600; box-shadow: 0 8px 22px color-mix(in srgb, var(--teal) 35%, transparent); transition: background 0.15s, transform 0.15s;
 }
-.lcp-cta:hover { background: var(--teal-ink); color: #fff; transform: translateY(-1px); }
+.lcp-cta:hover { background: var(--teal-ink); color: var(--ds-on-dark-fg); transform: translateY(-1px); }
 .lcp-nav { display: grid; gap: 4px; }
 .lcp-nav a {
   position: relative; display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: var(--ds-radius-lg);
-  color: #c9d4e5; font-size: 14.5px; transition: background 0.15s, color 0.15s;
+  color: var(--ds-sidebar-fg); font-size: 14.5px; transition: background 0.15s, color 0.15s;
 }
 .lcp-nav a .anticon { font-size: 18px; }
-.lcp-nav a:hover { background: rgba(255, 255, 255, 0.06); color: #fff; }
-.lcp-nav a.active { background: rgba(255, 255, 255, 0.11); color: #fff; font-weight: 600; }
+.lcp-nav a:hover { background: var(--ds-sidebar-hover-bg); color: var(--ds-sidebar-fg-active); }
+.lcp-nav a.active { background: var(--ds-sidebar-active-bg); color: var(--ds-sidebar-fg-active); font-weight: 600; }
 .lcp-nav a.active::before {
   content: ""; position: absolute; inset-inline-start: -14px; top: 10px; bottom: 10px; width: 4px;
   border-start-end-radius: var(--ds-radius-xs); border-end-end-radius: var(--ds-radius-xs); background: var(--teal);
 }
 .lcp-badge {
   margin-inline-start: auto; min-width: 22px; height: 22px; padding: 0 7px; border-radius: var(--ds-radius-pill);
-  display: inline-grid; place-items: center; background: var(--gold); color: #1d1405; font-size: 12px; font-weight: 700;
+  display: inline-grid; place-items: center; background: var(--gold); color: var(--ds-sidebar-badge-fg); font-size: 12px; font-weight: 700;
 }
-.lcp-side-foot { margin-top: auto; display: grid; gap: 2px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+.lcp-side-foot { margin-top: auto; display: grid; gap: 2px; padding-top: 12px; border-top: 1px solid var(--ds-sidebar-border); }
 .lcp-side-foot button {
   display: flex; align-items: center; gap: 10px; padding: 9px 14px; border: 0; border-radius: var(--ds-radius-lg); background: transparent;
-  color: #b7c5da; font: inherit; font-size: 13.5px; cursor: pointer; text-align: start;
+  color: var(--ds-sidebar-fg); font: inherit; font-size: 13.5px; cursor: pointer; text-align: start;
 }
-.lcp-side-foot button:hover { background: rgba(255, 255, 255, 0.06); color: #fff; }
+.lcp-side-foot button:hover { background: var(--ds-sidebar-hover-bg); color: var(--ds-sidebar-fg-active); }
 
 /* ----- الشريط العلوي والمحتوى ----- */
 .lcp-main { min-width: 0; display: flex; flex-direction: column; }
 .lcp-top {
   position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 8px; height: 64px; padding: 0 28px;
-  background: rgba(244, 246, 249, 0.86); backdrop-filter: blur(10px);
+  background: color-mix(in srgb, var(--ds-app-topbar) 86%, transparent); backdrop-filter: blur(10px);
 }
 .lcp-top-space { flex: 1; }
 .lcp-burger, .lcp-top-brand { display: none !important; }
@@ -89,12 +89,12 @@
 .lcp-lang { font-weight: 600; color: var(--navy); }
 .lcp-user {
   display: flex; align-items: center; gap: 10px; padding: 4px; padding-inline-end: 14px; border: 0; border-radius: var(--ds-radius-pill);
-  background: #fff; box-shadow: var(--shadow); cursor: pointer; font: inherit; color: var(--ink); max-width: 260px;
+  background: var(--ds-surface); box-shadow: var(--shadow); cursor: pointer; font: inherit; color: var(--ink); max-width: 260px;
 }
 .lcp-user-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13.5px; }
 .lcp-avatar {
   width: 34px; height: 34px; border-radius: var(--ds-radius-round); flex: none; display: grid; place-items: center;
-  background: var(--ds-gradient-avatar); color: #fff; font-weight: 700; font-size: 13px;
+  background: var(--ds-gradient-avatar); color: var(--ds-on-dark-fg); font-weight: 700; font-size: 13px;
 }
 .lcp-content { padding: 4px 28px 48px; }
 .lcp-page { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; min-width: 0; }
@@ -107,7 +107,7 @@
 .lcp-head-extra { display: flex; flex-wrap: wrap; gap: 8px; }
 .lcp-back { display: inline-flex; gap: 6px; align-items: center; color: var(--muted); font-size: 13.5px; margin-bottom: 2px; }
 .lcp-back:hover { color: var(--teal-ink); }
-.lcp-panel { background: #fff; border-radius: var(--r); box-shadow: var(--shadow); padding: 20px; min-width: 0; }
+.lcp-panel { background: var(--ds-surface); border-radius: var(--r); box-shadow: var(--shadow); padding: 20px; min-width: 0; }
 .lcp-panel-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; margin-bottom: 14px; }
 .lcp-panel-head h2 { margin: 0; font-size: 16px; font-family: var(--font-display); color: var(--navy); display: flex; align-items: center; gap: 8px; }
 .lcp-panel-head h2 .anticon { color: var(--teal); }
@@ -116,7 +116,7 @@
 .lcp-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
 .lcp-split { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: 20px; align-items: start; }
 .lcp-split > div { display: grid; gap: 20px; min-width: 0; }
-.lcp-muted-box { padding: 12px 14px; border-radius: var(--ds-radius-lg); background: #f8fafc; color: var(--muted); font-size: 13.5px; line-height: 1.8; }
+.lcp-muted-box { padding: 12px 14px; border-radius: var(--ds-radius-lg); background: var(--ds-app-muted-bg); color: var(--muted); font-size: 13.5px; line-height: 1.8; }
 
 /* ----- الأزرار ----- */
 .lcp-btn {
@@ -124,21 +124,21 @@
   font: inherit; font-weight: 600; border: 1px solid transparent; cursor: pointer; transition: transform 0.15s, background 0.15s;
 }
 .lcp-btn:hover { transform: translateY(-1px); }
-.lcp-btn.light { background: #fff; color: var(--navy); }
+.lcp-btn.light { background: var(--ds-surface); color: var(--navy); }
 .lcp-btn.light:hover { color: var(--teal-ink); }
-.lcp-btn.ghost { background: rgba(255, 255, 255, 0.12); color: #fff; border-color: rgba(255, 255, 255, 0.28); }
-.lcp-btn.ghost:hover { background: rgba(255, 255, 255, 0.2); color: #fff; }
+.lcp-btn.ghost { background: color-mix(in srgb, var(--ds-on-dark-fg) 12%, transparent); color: var(--ds-on-dark-fg); border-color: color-mix(in srgb, var(--ds-on-dark-fg) 28%, transparent); }
+.lcp-btn.ghost:hover { background: color-mix(in srgb, var(--ds-on-dark-fg) 20%, transparent); color: var(--ds-on-dark-fg); }
 
 /* ----- الترحيب ----- */
 .lcp-hero {
-  position: relative; overflow: hidden; border-radius: var(--ds-radius-xl); padding: 28px 30px; color: #fff;
+  position: relative; overflow: hidden; border-radius: var(--ds-radius-xl); padding: 28px 30px; color: var(--ds-on-dark-fg);
   background: var(--ds-gradient-hero);
 }
 .lcp-hero small { color: var(--ds-eyebrow); font-size: 13.5px; }
-.lcp-hero h1 { font-family: var(--font-display); font-size: clamp(22px, 2.6vw, 30px); margin: 4px 0 6px; line-height: 1.5; color: #fff; }
-.lcp-hero p { color: #d3ddeb; margin: 0; max-width: 620px; line-height: 1.9; }
+.lcp-hero h1 { font-family: var(--font-display); font-size: clamp(22px, 2.6vw, 30px); margin: 4px 0 6px; line-height: 1.5; color: var(--ds-on-dark-fg); }
+.lcp-hero p { color: var(--ds-on-dark-body); margin: 0; max-width: 620px; line-height: 1.9; }
 .lcp-hero-actions { position: relative; display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
-.lcp-hero-decor { position: absolute; inset-inline-end: -30px; top: -40px; width: 300px; fill: none; stroke: rgba(255, 255, 255, 0.12); stroke-width: 12; pointer-events: none; }
+.lcp-hero-decor { position: absolute; inset-inline-end: -30px; top: -40px; width: 300px; fill: none; stroke: color-mix(in srgb, var(--ds-on-dark-fg) 12%, transparent); stroke-width: 12; pointer-events: none; }
 
 /* ----- المؤشرات ----- */
 .lcp-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
@@ -151,7 +151,7 @@
   .lcp-stats.six .lcp-stat-text b { font-size: 22px; }
 }
 .lcp-stat {
-  display: flex; align-items: center; gap: 14px; padding: 16px 18px; background: #fff; border-radius: var(--r);
+  display: flex; align-items: center; gap: 14px; padding: 16px 18px; background: var(--ds-surface); border-radius: var(--r);
   box-shadow: var(--shadow); color: var(--ink); transition: transform 0.15s, box-shadow 0.15s;
 }
 a.lcp-stat:hover { transform: translateY(-2px); box-shadow: var(--shadow-up); color: var(--ink); }
@@ -168,7 +168,7 @@ a.lcp-stat:hover { transform: translateY(-2px); box-shadow: var(--shadow-up); co
 
 /* مؤشرات صغيرة داخل اللوحة */
 .course-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
-.course-kpi { padding: 12px 14px; border-radius: var(--ds-radius-lg); background: #f8fafc; display: grid; gap: 2px; }
+.course-kpi { padding: 12px 14px; border-radius: var(--ds-radius-lg); background: var(--ds-app-muted-bg); display: grid; gap: 2px; }
 .course-kpi b { font-size: 22px; color: var(--navy); line-height: 1.2; font-variant-numeric: tabular-nums; }
 .course-kpi span { color: var(--muted); font-size: 12.5px; }
 .course-kpi.ok b { color: var(--ok); }
@@ -177,7 +177,7 @@ a.lcp-stat:hover { transform: translateY(-2px); box-shadow: var(--shadow-up); co
 /* ----- قوائم مختصرة ----- */
 .lcp-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .lcp-list-item {
-  display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: var(--ds-radius-lg); background: #f8fafc; color: var(--ink);
+  display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: var(--ds-radius-lg); background: var(--ds-app-muted-bg); color: var(--ink);
   transition: background 0.15s;
 }
 a.lcp-list-item:hover { background: var(--teal-50); color: var(--ink); }
@@ -186,7 +186,7 @@ a.lcp-list-item:hover { background: var(--teal-50); color: var(--ink); }
 .lcp-list-item .grow small { color: var(--muted); }
 .lcp-list-item .go { color: var(--muted); flex: none; }
 .lcp-date {
-  width: 54px; flex: none; text-align: center; border-radius: var(--ds-radius-lg); background: #fff; box-shadow: var(--shadow); padding: 6px 0; line-height: 1.2;
+  width: 54px; flex: none; text-align: center; border-radius: var(--ds-radius-lg); background: var(--ds-surface); box-shadow: var(--shadow); padding: 6px 0; line-height: 1.2;
 }
 .lcp-date b { display: block; font-size: 20px; color: var(--navy); }
 .lcp-date small { font-size: 11px; color: var(--muted); }
@@ -196,10 +196,10 @@ a.lcp-list-item:hover { background: var(--teal-50); color: var(--ink); }
 
 /* ----- شارات ----- */
 .kind { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: var(--ds-radius-pill); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
-.kind-Training { background: #e8f1fd; color: #1d4f91; }
+.kind-Training { background: var(--ds-status-zero-soft); color: var(--ds-status-zero-ink); }
 .kind-Exam { background: var(--gold-50); color: var(--gold-ink); }
 .kind-Translation { background: var(--teal-50); color: var(--teal-ink); }
-.kind-Document { background: #f1ecfb; color: #5b3c99; }
+.kind-Document { background: var(--ds-status-exempt-soft); color: var(--ds-status-exempt-ink); }
 .kind-Other { background: var(--sunk); color: var(--muted); }
 .lcp-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: var(--ds-radius-pill); font-size: 12.5px; background: var(--sunk); color: var(--muted); }
 .lcp-chip.ok { background: var(--ok-bg); color: var(--ok); }
@@ -207,13 +207,13 @@ a.lcp-list-item:hover { background: var(--teal-50); color: var(--ink); }
 .lcp-chip.info { background: var(--teal-50); color: var(--teal-ink); }
 
 /* ----- الجدول ----- */
-.dt { background: #fff; border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden; }
+.dt { background: var(--ds-surface); border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden; }
 .dt-pad { padding: 20px; }
 .dt .ant-table { background: transparent; }
 .dt .ant-table-thead > tr > th {
-  background: var(--teal) !important; color: #fff !important; font-weight: 600; border-bottom: none !important; white-space: nowrap; padding: 14px 16px !important;
+  background: var(--teal) !important; color: var(--ds-on-dark-fg) !important; font-weight: 600; border-bottom: none !important; white-space: nowrap; padding: 14px 16px !important;
 }
-.dt .ant-table-thead > tr > th::before { background-color: rgba(255, 255, 255, 0.22) !important; }
+.dt .ant-table-thead > tr > th::before { background-color: color-mix(in srgb, var(--ds-on-dark-fg) 22%, transparent) !important; }
 .dt .ant-table-tbody > tr > td { padding: 13px 16px !important; border-bottom: 1px solid var(--hair) !important; }
 .dt .ant-table-tbody > tr.ant-table-measure-row > td { padding: 0 !important; border: 0 !important; }
 .dt .ant-table-tbody > tr:nth-child(even) > td { background: var(--row-alt); }
@@ -224,41 +224,41 @@ a.lcp-list-item:hover { background: var(--teal-50); color: var(--ink); }
 .dt-service small { font-size: 12.5px; line-height: 1.6; }
 .dt-ref { font-family: var(--font-mono); color: var(--navy); font-weight: 600; direction: ltr; unicode-bidi: isolate; white-space: nowrap; }
 /* تذييل الجدول (الترقيم) في pager.css. */
-.dt-cards { display: grid; gap: 10px; padding: 12px; background: #f8fafc; }
+.dt-cards { display: grid; gap: 10px; padding: 12px; background: var(--ds-app-muted-bg); }
 .dt-card {
-  display: grid; gap: 8px; padding: 14px 16px; border-radius: var(--ds-radius-xl); background: #fff; box-shadow: var(--shadow);
+  display: grid; gap: 8px; padding: 14px 16px; border-radius: var(--ds-radius-xl); background: var(--ds-surface); box-shadow: var(--shadow);
   border-inline-start: 4px solid var(--teal);
 }
 .dt-card-click { cursor: pointer; }
 .dt-card-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .lcp-prog { display: grid; gap: 3px; min-width: 110px; }
 .lcp-prog small { color: var(--muted); font-size: 11.5px; }
-.lcp-prog-bar { height: 6px; border-radius: var(--ds-radius-xs); background: #e6ecf2; overflow: hidden; }
+.lcp-prog-bar { height: 6px; border-radius: var(--ds-radius-xs); background: var(--ds-chart-track); overflow: hidden; }
 .lcp-prog-bar i { display: block; height: 100%; border-radius: var(--ds-radius-xs); background: var(--ds-gradient-progress); }
-.lcp-prog-bar i.full { background: #2e9e64; }
+.lcp-prog-bar i.full { background: var(--ds-status-ok); }
 .lcp-filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .lcp-filters .ant-input-affix-wrapper { max-width: 320px; }
 /* مرشحات الحالة: على الشاشة الضيقة تمرر أفقيًا داخل إطارها، فلا تعرض الصفحة كلها. */
-.lcp-seg { background: #fff; box-shadow: var(--shadow); padding: 4px; border-radius: var(--ds-radius-lg); max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.lcp-seg { background: var(--ds-surface); box-shadow: var(--shadow); padding: 4px; border-radius: var(--ds-radius-lg); max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 .lcp-seg::-webkit-scrollbar { display: none; }
 .lcp-filters { min-width: 0; }
 .lcp-seg .ant-segmented-item { border-radius: var(--ds-radius-md); }
-.lcp-seg .ant-segmented-item-selected { background: var(--teal); color: #fff; }
-.seg-count { display: inline-block; min-width: 20px; margin-inline-start: 6px; padding: 0 6px; border-radius: var(--ds-radius-pill); background: rgba(0, 0, 0, 0.06); font-size: 12px; }
-.ant-segmented-item-selected .seg-count { background: rgba(255, 255, 255, 0.25); }
+.lcp-seg .ant-segmented-item-selected { background: var(--teal); color: var(--ds-on-dark-fg); }
+.seg-count { display: inline-block; min-width: 20px; margin-inline-start: 6px; padding: 0 6px; border-radius: var(--ds-radius-pill); background: color-mix(in srgb, var(--ds-shadow-ink) 6%, transparent); font-size: 12px; }
+.ant-segmented-item-selected .seg-count { background: color-mix(in srgb, var(--ds-on-dark-fg) 25%, transparent); }
 
 .lcp-steps { list-style: none; margin: 0; padding: 0; display: grid; }
 .lcp-step { position: relative; display: grid; justify-items: center; align-content: start; text-align: center; gap: 4px; padding: 0 4px; }
 .lcp-step::before {
-  content: ""; position: absolute; top: 17px; inset-inline-start: 50%; width: 100%; height: 3px; background: #e2e8f0; z-index: 0;
+  content: ""; position: absolute; top: 17px; inset-inline-start: 50%; width: 100%; height: 3px; background: var(--ds-border); z-index: 0;
 }
 .lcp-step:last-child::before { display: none; }
 .lcp-step.done::before { background: var(--teal); }
 .lcp-step-dot {
   position: relative; z-index: 1; width: 36px; height: 36px; border-radius: var(--ds-radius-round); display: grid; place-items: center;
-  background: #fff; border: 3px solid #e2e8f0; color: var(--muted); font-weight: 700; margin-bottom: 4px;
+  background: var(--ds-surface); border: 3px solid var(--ds-border); color: var(--muted); font-weight: 700; margin-bottom: 4px;
 }
-.lcp-step.done .lcp-step-dot { background: var(--teal); border-color: var(--teal); color: #fff; }
+.lcp-step.done .lcp-step-dot { background: var(--teal); border-color: var(--teal); color: var(--ds-btn-primary-fg); }
 .lcp-step.current .lcp-step-dot { border-color: var(--teal); color: var(--teal-ink); box-shadow: 0 0 0 6px color-mix(in srgb, var(--teal) 12%, transparent); }
 .lcp-step b { font-size: 13.5px; color: var(--ink); font-weight: 600; }
 .lcp-step small { color: var(--muted); font-size: 12px; }
@@ -268,7 +268,7 @@ a.lcp-list-item:hover { background: var(--teal-50); color: var(--ink); }
 }
 .lcp-next > .anticon { color: var(--teal); font-size: 20px; margin-top: 3px; }
 .lcp-next b { display: block; color: var(--teal-ink); margin-bottom: 2px; }
-.lcp-next.warn { background: var(--warn-bg); border-color: #f3d9ae; }
+.lcp-next.warn { background: var(--warn-bg); border-color: var(--ds-status-near-border); }
 .lcp-next.warn > .anticon, .lcp-next.warn b { color: var(--warn); }
 .lcp-kv { display: grid; gap: 10px; margin: 0; }
 .lcp-kv > div { display: flex; justify-content: space-between; gap: 12px; padding-bottom: 10px; border-bottom: 1px dashed var(--hair); }
@@ -290,14 +290,14 @@ a.lcp-list-item:hover { background: var(--teal-50); color: var(--ink); }
   .lcp { grid-template-columns: minmax(0, 1fr); }
   .lcp-side { display: none; }
   .lcp-burger, .lcp-top-brand { display: inline-flex !important; }
-  .lcp-top { padding: 0 12px; background: #fff; border-bottom: 1px solid var(--line); height: 58px; }
+  .lcp-top { padding: 0 12px; background: var(--ds-surface); border-bottom: 1px solid var(--line); height: 58px; }
   .lcp-user { padding-inline-end: 4px; }
   .lcp-user-name { display: none; }
   .lcp-content { padding: 14px 14px 100px; }
   .lcp-grid-2 { grid-template-columns: minmax(0, 1fr); }
   .lcp-tabbar {
     display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); align-items: end; position: fixed; inset-inline: 0; bottom: 0; z-index: 30;
-    background: #fff; border-top: 1px solid var(--line); padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); box-shadow: 0 -6px 20px rgba(16, 24, 40, 0.06);
+    background: var(--ds-surface); border-top: 1px solid var(--line); padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); box-shadow: 0 -6px 20px color-mix(in srgb, var(--ds-shadow-ink) 6%, transparent);
   }
   .lcp-tabbar a { position: relative; display: grid; justify-items: center; gap: 2px; font-size: 11px; color: var(--muted); padding: 4px 0; }
   .lcp-tabbar a .anticon { font-size: 20px; }
@@ -305,7 +305,7 @@ a.lcp-list-item:hover { background: var(--teal-50); color: var(--ink); }
   .lcp-tabbar .dot { position: absolute; top: 2px; inset-inline-end: calc(50% - 16px); width: 8px; height: 8px; border-radius: var(--ds-radius-round); background: var(--gold); }
   .lcp-tabbar .tab-new {
     justify-self: center; width: 52px; height: 52px; margin-top: -22px; border-radius: var(--ds-radius-round); display: grid; place-items: center;
-    background: var(--teal); color: #fff; font-size: 22px; box-shadow: 0 8px 20px color-mix(in srgb, var(--teal) 40%, transparent);
+    background: var(--teal); color: var(--ds-on-dark-fg); font-size: 22px; box-shadow: 0 8px 20px color-mix(in srgb, var(--teal) 40%, transparent);
   }
   .lcp-hero { padding: 22px 18px; }
   .lcp-panel { padding: 16px; }
@@ -325,7 +325,7 @@ a.lcp-list-item:hover { background: var(--teal-50); color: var(--ink); }
 .lcp-staff .lcp-nav { gap: 12px; }
 .lcp-staff .lcp-nav a { padding: 9px 14px; font-size: 14px; }
 .lcp-nav-sec { display: grid; gap: 2px; }
-.lcp-nav-group { margin: 0 14px 4px; color: #8fa2c0; font-size: 11.5px; font-weight: 600; }
+.lcp-nav-group { margin: 0 14px 4px; color: var(--ds-sidebar-muted); font-size: 11.5px; font-weight: 600; }
 .lcp-staff .lcp-page { max-width: 1440px; }
 .lcp-bell.ant-btn { color: var(--navy); }
 .lcp-bell .anticon { font-size: 18px; }
@@ -338,35 +338,35 @@ a.lcp-list-item:hover { background: var(--teal-50); color: var(--ink); }
 .ant-card > .ant-card-head { border-bottom-color: var(--hair); }
 .ant-card > .ant-card-head .ant-card-head-title { font-family: var(--font-display); color: var(--navy); font-weight: 600; }
 /* الجداول: الرأس التركوازي من سمة antd (App.tsx)؛ هنا أيقونات الترتيب والتصفية فوقه. */
-.ant-table-thead .ant-table-column-sorter { color: rgba(255, 255, 255, 0.55); }
-.ant-table-thead .ant-table-column-sorter-up.active, .ant-table-thead .ant-table-column-sorter-down.active { color: #fff; }
-.ant-table-thead .ant-table-filter-trigger { color: rgba(255, 255, 255, 0.7); }
-.ant-table-thead .ant-table-filter-trigger.active, .ant-table-thead .ant-table-filter-trigger:hover { color: #fff; }
-.ant-descriptions-bordered .ant-descriptions-item-label { background: #f8fafc; }
+.ant-table-thead .ant-table-column-sorter { color: color-mix(in srgb, var(--ds-on-dark-fg) 55%, transparent); }
+.ant-table-thead .ant-table-column-sorter-up.active, .ant-table-thead .ant-table-column-sorter-down.active { color: var(--ds-on-dark-fg); }
+.ant-table-thead .ant-table-filter-trigger { color: color-mix(in srgb, var(--ds-on-dark-fg) 70%, transparent); }
+.ant-table-thead .ant-table-filter-trigger.active, .ant-table-thead .ant-table-filter-trigger:hover { color: var(--ds-on-dark-fg); }
+.ant-descriptions-bordered .ant-descriptions-item-label { background: var(--ds-app-muted-bg); }
 
 /* ===== طبقة الاتساق (مراجعة تجربة الاستخدام): سطوح هادئة، وتركيز واضح للوحة المفاتيح، ولا تمرير أفقي للصفحة. ===== */
 :root {
-  --shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
-  --shadow-up: 0 4px 14px rgba(16, 24, 40, 0.08);
+  --shadow: 0 1px 2px color-mix(in srgb, var(--ds-shadow-ink) 6%, transparent);
+  --shadow-up: 0 4px 14px color-mix(in srgb, var(--ds-shadow-ink) 8%, transparent);
   --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px; --space-6: 24px;
 }
 .lcp-panel { border: 1px solid var(--hair); }
 .lcp-stat { border: 1px solid var(--hair); }
 /* مؤشر تركيز موحد ومرئي على كل عنصر تفاعلي، بلون الإجراء. */
 :where(a, button, [role="button"], [tabindex]):focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; border-radius: var(--ds-radius-sm); }
-.lcp-nav a:focus-visible { outline-color: #7fd1d5; }
+.lcp-nav a:focus-visible { outline-color: var(--ds-sidebar-focus); }
 /* شرائط الاختيار تمرر داخل مكانها على الشاشات الضيقة بدل أن توسع الصفحة. */
 .ant-segmented { max-width: 100%; overflow-x: auto; scrollbar-width: thin; }
 .ant-segmented-group { flex-wrap: nowrap; }
 /* الترحيب بلا زخرفة: لون واحد هادئ، والعناية بالنص. */
 /* هوية الشريط العلوي نفسها في الرئيسية والخطة: التدرج من رمز السمة --ds-gradient-hero (كحلي بتوهج ذهبي خفيف في navy-gold). */
 .lcp-hero {
-  padding: 24px 28px; border-radius: var(--ds-radius-xl); box-shadow: 0 12px 34px rgba(16, 36, 70, 0.18);
+  padding: 24px 28px; border-radius: var(--ds-radius-xl); box-shadow: 0 12px 34px color-mix(in srgb, var(--ds-shadow-band) 18%, transparent);
   background: var(--ds-gradient-hero);
 }
 .lcp-hero-decor { display: none; }
 /* حالات الصفحة (لا صلاحية، غير موجود، فارغ) داخل لوحة لا على الخلفية. */
-.lcp-state { background: #fff; border: 1px solid var(--hair); border-radius: var(--r); padding: 32px 16px; }
+.lcp-state { background: var(--ds-surface); border: 1px solid var(--hair); border-radius: var(--r); padding: 32px 16px; }
 /* الأرقام بعرض ثابت في الجداول والمؤشرات، فتصطف عموديًا. */
 .ant-table td, .lcp-stat-text b, .ltr { font-variant-numeric: tabular-nums; }
 /* شريط الفلاتر: عدد النتائج وزر إعادة الضبط في الطرف. */
@@ -383,3 +383,15 @@ a.lcp-list-item:hover { background: var(--teal-50); color: var(--ink); }
   .lcp-stat-icon { width: 36px; height: 36px; border-radius: var(--ds-radius-lg); font-size: 16px; }
   .lcp-stat-text b { font-size: 22px; }
 }
+/* ===== شارات antd بألوانها الجاهزة (Tag color="gold" …) من رموز السمة --ds-tag-*: الاسم في الشيفرة يبقى، ولونه دور يعرّفه كل ثيم.
+   gold انتظار ومراجعة، green إيجابي، red سلبي، orange تنبيه، blue معلومة، purple خاص (بروفة، دور مخصص)، cyan إبراز، geekblue تصنيف.
+   ألوان الحالة (success / processing / error / warning / default) من سمة antd نفسها (antd-theme.ts).
+   المحدد بوزن antd نفسه (0,2,0) فيغلبها بالترتيب، ويغلبه .lcp-head .ant-tag في theme.css (يحمّل بعده: حد شفاف على الشريط). ===== */
+.ant-tag.ant-tag-gold { color: var(--ds-tag-pending-fg); background: var(--ds-tag-pending-bg); border-color: var(--ds-tag-pending-border); }
+.ant-tag.ant-tag-green { color: var(--ds-tag-positive-fg); background: var(--ds-tag-positive-bg); border-color: var(--ds-tag-positive-border); }
+.ant-tag.ant-tag-red { color: var(--ds-tag-negative-fg); background: var(--ds-tag-negative-bg); border-color: var(--ds-tag-negative-border); }
+.ant-tag.ant-tag-orange { color: var(--ds-tag-caution-fg); background: var(--ds-tag-caution-bg); border-color: var(--ds-tag-caution-border); }
+.ant-tag.ant-tag-blue { color: var(--ds-tag-info-fg); background: var(--ds-tag-info-bg); border-color: var(--ds-tag-info-border); }
+.ant-tag.ant-tag-purple { color: var(--ds-tag-special-fg); background: var(--ds-tag-special-bg); border-color: var(--ds-tag-special-border); }
+.ant-tag.ant-tag-cyan { color: var(--ds-tag-highlight-fg); background: var(--ds-tag-highlight-bg); border-color: var(--ds-tag-highlight-border); }
+.ant-tag.ant-tag-geekblue { color: var(--ds-tag-category-fg); background: var(--ds-tag-category-bg); border-color: var(--ds-tag-category-border); }

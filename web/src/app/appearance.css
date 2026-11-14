@@ -1,0 +1,77 @@
+/* ===== لوحة «المظهر» (AppearanceMenu.tsx): زر في الشريط العلوي، ونافذة تحته على الحاسوب ولوحة سفلية على الجوال.
+   الألوان والزوايا من رموز السمة وحدها، فتتبع ما يختاره المستخدم فورًا. ===== */
+.lcp-look-anchor { display: inline-flex; flex: none; }
+
+/* الحاسوب: نافذة 320px تحت الزر. */
+.ap-pop .ant-popover-inner { width: 320px; max-width: calc(100vw - 24px); padding: 16px 16px 14px; }
+.ap-title { margin: 0 0 4px; color: var(--ds-heading); font-size: 15px; font-weight: 700; line-height: 1.5; }
+
+/* الجوال: لوحة سفلية بارتفاع محتواها، وزاويتاها العلويتان من مقياس الزوايا. */
+.ap-sheet .ant-drawer-content-wrapper { max-height: 88vh; }
+.ap-sheet .ant-drawer-content { border-start-start-radius: var(--ds-radius-xl); border-start-end-radius: var(--ds-radius-xl); }
+.ap-sheet .ant-drawer-header { padding: 12px 16px; }
+.ap-sheet .ant-drawer-body { padding: 12px 16px 20px; }
+
+.ap-restore { margin-top: 18px; }
+
+.ap-note { margin: 0 0 18px; color: var(--ds-label); font-size: 13px; line-height: 1.7; }
+.ap-group + .ap-group { margin-top: 22px; }
+.ap-label { margin: 0 0 10px; color: var(--ds-heading); font-size: 13.5px; font-weight: 600; line-height: 1.5; }
+
+/* ----- لوحات الألوان: بطاقة لكل سمة، والمعاينة داخل data-theme الخاص بها ----- */
+.ap-palettes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.ap-palette {
+  position: relative; display: grid; gap: 8px; margin: 0; padding: 8px;
+  border: 1px solid var(--ds-border); border-radius: var(--ds-radius-lg); background: var(--ds-surface);
+  color: var(--ds-fg); font: inherit; text-align: start; cursor: pointer;
+}
+.ap-palette:hover { border-color: var(--ds-accent-strong); }
+.ap-palette[aria-checked="true"] { border-color: var(--ds-btn-primary-bg); box-shadow: 0 0 0 1px var(--ds-btn-primary-bg); }
+.ap-palette-name { color: var(--ds-heading); font-size: 13px; font-weight: 600; line-height: 1.5; }
+.ap-check {
+  position: absolute; top: 4px; inset-inline-end: 4px; display: inline-grid; place-items: center; width: 22px; height: 22px;
+  border: 2px solid var(--ds-surface); border-radius: var(--ds-radius-round);
+  background: var(--ds-btn-primary-bg); color: var(--ds-btn-primary-fg); font-size: 11px;
+}
+
+/* المعاينة: شريط جانبي وشريط علوي وبطاقة بزر، بألوان السمة نفسها (رموز على مستوى السمة والقسم الفاتح فقط، بلا data-section). */
+.ap-preview {
+  display: grid; grid-template-columns: 28% minmax(0, 1fr); height: 64px; overflow: hidden;
+  border: 1px solid var(--ds-border); border-radius: var(--ds-radius-md); background: var(--ds-bg-cool);
+}
+.ap-pv-side { display: grid; align-content: start; gap: 5px; padding: 9px 6px; background: var(--ds-gradient-sidebar); }
+.ap-pv-side > span { height: 4px; border-radius: var(--ds-radius-pill); background: var(--ds-sidebar-muted); }
+.ap-pv-side > span:first-child { background: var(--ds-sidebar-indicator); }
+.ap-pv-main { display: grid; grid-template-rows: 22px minmax(0, 1fr); gap: 5px; padding: 5px; }
+.ap-pv-band { display: flex; align-items: center; padding-inline: 6px; border-radius: var(--ds-radius-sm); background: var(--ds-gradient-hero); }
+.ap-pv-band > span { width: 45%; height: 4px; border-radius: var(--ds-radius-pill); background: var(--ds-accent-on-dark); }
+.ap-pv-card {
+  display: flex; align-items: center; gap: 4px; padding-inline: 6px;
+  border: 1px solid var(--ds-border); border-radius: var(--ds-radius-sm); background: var(--ds-surface);
+}
+.ap-pv-card > span { flex: 1 1 auto; height: 4px; border-radius: var(--ds-radius-pill); background: var(--ds-heading); }
+.ap-pv-card > span + span { flex-grow: 0.6; background: var(--ds-accent); }
+.ap-pv-card > .ap-pv-btn { flex: none; width: 18px; height: 9px; border-radius: var(--ds-radius-xs); background: var(--ds-btn-primary-bg); }
+
+/* ----- الزوايا: ثلاثة خيارات في شريط، وأيقونة كل خيار بزاويته الحقيقية (data-corners على الأيقونة) ----- */
+.ap-seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; padding: 3px; border-radius: var(--ds-radius-md); background: var(--ds-track); }
+.ap-seg-item {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; margin: 0; padding: 0 8px;
+  border: 0; border-radius: var(--ds-radius-sm); background: transparent;
+  color: var(--ds-label); font: inherit; font-size: 13px; cursor: pointer;
+}
+.ap-seg-item:hover { color: var(--ds-heading); }
+.ap-seg-item[aria-checked="true"] { background: var(--ds-btn-primary-bg); color: var(--ds-btn-primary-fg); font-weight: 600; }
+.ap-corner {
+  flex: none; width: 14px; height: 14px; border: 2px solid currentColor; border-inline-end: 0; border-block-end: 0;
+  border-start-start-radius: var(--ds-radius-sm);
+}
+
+.ap-palette:focus-visible, .ap-seg-item:focus-visible { outline: 2px solid var(--ds-focus-ring); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .ap-palette, .ap-seg-item { transition: border-color 0.15s, background-color 0.15s, color 0.15s; }
+}
+@media (forced-colors: active) {
+  .ap-palette[aria-checked="true"], .ap-seg-item[aria-checked="true"] { outline: 2px solid Highlight; }
+}

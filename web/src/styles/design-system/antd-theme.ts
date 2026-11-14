@@ -8,7 +8,7 @@
  */
 import { theme as antd, type ThemeConfig } from "antd";
 import { CORNERS } from "./config";
-import { corners as cornerScales, themes, type CornerScale, type CornerStyle, type SectionTone, type ThemeName } from "./tokens";
+import { corners as cornerScales, pillButtons, themes, type CornerScale, type CornerStyle, type SectionTone, type ThemeName } from "./tokens";
 
 type Components = NonNullable<ThemeConfig["components"]>;
 
@@ -23,7 +23,7 @@ export function antdRadii(c: CornerScale) {
 export interface AntdThemeOptions {
   /** Section scope to read: "light" for app surfaces (default), "dark" for a nested ConfigProvider inside a navy block. */
   tone?: SectionTone;
-  /** Corner style (App.tsx passes useDsCorners(), so a live <html data-corners> change re-themes antd). Default: CORNERS. */
+  /** Corner style (AppearanceProvider passes the one on <html data-corners>, so a live change re-themes antd). Default: CORNERS. */
   corners?: CornerStyle;
 }
 
@@ -33,6 +33,10 @@ export function antdTheme(name: ThemeName, base: ThemeConfig = {}, { tone = "lig
   const dark = t.sections.dark;
   const c = cornerScales[corners];
   const r = antdRadii(c);
+  // smooth: buttons (every size) and tags are pills. The other styles keep the global radii, as before.
+  const pill = pillButtons[corners] ? c.pill : undefined;
+  // A dark palette (scheme "dark"): the page scope itself is dark, so antd derives fills, masks and disabled shades for dark.
+  const darkPage = t.scheme === "dark";
 
   // Input, InputNumber, DatePicker and Select share the field border states.
   const field = { hoverBorderColor: s.accentStrong, activeBorderColor: s.focusRing };
@@ -49,6 +53,7 @@ export function antdTheme(name: ThemeName, base: ThemeConfig = {}, { tone = "lig
       defaultActiveColor: s.btnGhost.hoverFg,
       defaultActiveBg: s.btnGhost.hoverBg,
       defaultActiveBorderColor: s.btnGhost.hoverBorder,
+      ...(pill !== undefined ? { borderRadius: pill, borderRadiusLG: pill, borderRadiusSM: pill } : {}),
     },
     Input: { ...field, activeShadow: `0 0 0 2px ${t.focus}` },
     InputNumber: { ...field, activeShadow: `0 0 0 2px ${t.focus}` },
@@ -75,7 +80,7 @@ export function antdTheme(name: ThemeName, base: ThemeConfig = {}, { tone = "lig
       bodySortBg: s.bgCool,
       borderColor: s.border,
     },
-    Tag: { defaultBg: s.bgCool, defaultColor: s.fg },
+    Tag: { defaultBg: s.bgCool, defaultColor: s.fg, ...(pill !== undefined ? { borderRadiusSM: pill } : {}) },
     Modal: { contentBg: s.surface, headerBg: s.surface, titleColor: s.heading },
     Drawer: { colorBgElevated: s.surface },
     Tabs: {
@@ -99,11 +104,13 @@ export function antdTheme(name: ThemeName, base: ThemeConfig = {}, { tone = "lig
     },
     // antd's own default is a 100px pill; bars follow the corner style like the app's CSS bars.
     Progress: { lineBorderRadius: c.pill },
+    // A dark palette sets colorTextLightSolid to its primary text colour (below); tooltips sit on the navy spotlight and keep it light.
+    ...(darkPage ? { Tooltip: { colorTextLightSolid: dark.heading } } : {}),
   };
 
   return {
     ...base,
-    ...(tone === "dark" ? { algorithm: antd.darkAlgorithm } : {}),
+    ...(tone === "dark" || darkPage ? { algorithm: antd.darkAlgorithm } : {}),
     token: {
       colorPrimary: s.btnPrimary.bg,
       colorPrimaryBorder: s.focusRing, // antd draws :focus-visible outlines in this colour
@@ -113,7 +120,13 @@ export function antdTheme(name: ThemeName, base: ThemeConfig = {}, { tone = "lig
       colorInfo: s.heading,
       colorInfoBg: s.bgCool,
       colorInfoBorder: s.border,
-      // Success and warning keep antd's defaults: no theme has an AA status token for them yet.
+      // Success and warning: antd's defaults in navy-gold and app-soft (their pixels stay); a theme with statusToAntd seeds them
+      // from its status tokens, so antd's success / warning (Tag, Alert, Badge, Result, Timeline green) match the app's colours.
+      // The ink (text) tone of each state: antd writes Tag and Alert text in colorSuccess / colorWarning, so AA needs the ink.
+      ...(t.statusToAntd ? { colorSuccess: t.status.okInk, colorWarning: t.status.nearInk } : {}),
+      // Text antd puts on solid primary, danger and badge fills: a dark palette has a light primary, so its dark ink.
+      // and hints (form extras, "optional", descriptions): antd's dark default (white 45%) is just under 4.5:1 on the cards.
+      ...(darkPage ? { colorTextLightSolid: s.btnPrimary.fg, colorTextDescription: s.body, colorTextTertiary: s.body } : {}),
       colorError: s.destructive,
       colorText: s.fg,
       colorTextHeading: s.heading,

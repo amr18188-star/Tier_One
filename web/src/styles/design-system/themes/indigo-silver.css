@@ -1,0 +1,388 @@
+/*
+ * Theme "indigo-silver": Midnight indigo & silver (نيلي وفضي). A cool, sober light palette: deep indigo for the
+ * chrome, headings and actions, silver for accents on navy. No warm accent, so the status colours (green, amber, red,
+ * orange) are the only warm colours on a page and carry all the meaning in KPI views.
+ * Same scheme and token names as navy-gold.css: data-theme="indigo-silver" on a container, data-section="dark" | "light"
+ * re-scopes the section tokens. Data roles (status, score, tier, heat, unit, Tag) keep navy-gold's values (AA on white).
+ * Only custom properties here. Primitives come from ../primitives.css. No shadcn variable, no radius.
+ */
+
+/* ---------- Theme level ---------- */
+[data-theme="indigo-silver"] {
+  --ds-font: "Cairo", "Geist Variable", "Segoe UI", sans-serif;
+  --ds-font-heading: "Cairo", "Geist Variable", "Segoe UI", sans-serif;
+  --ds-color-scheme: light;
+
+  /* Header and footer chrome */
+  --ds-chrome: var(--color-midnight-950);
+
+  /* Textures (landing; same recipes as navy-gold) */
+  --ds-grid-hero: var(--color-midnight-800);
+  --ds-grid-dark: var(--color-silver-500);
+  --ds-texture-hero: linear-gradient(to right, var(--color-midnight-800) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-midnight-800) 1px, transparent 1px);
+  --ds-texture-dark: linear-gradient(to right, var(--color-silver-500) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-silver-500) 1px, transparent 1px);
+  --ds-hero-vignette: radial-gradient(
+    ellipse at center,
+    rgba(var(--color-midnight-900-rgb), 0.96) 0%,
+    rgba(var(--color-midnight-900-rgb), 0.88) 40%,
+    rgba(var(--color-midnight-900-rgb), 0.65) 75%,
+    rgba(var(--color-midnight-900-rgb), 0.4) 100%
+  );
+
+  /* Data visualisation */
+  --ds-chart-1: var(--color-midnight-700);
+  --ds-chart-2: var(--color-silver-500);
+  --ds-chart-3: var(--color-midnight-400);
+  --ds-chart-4: var(--color-silver-300);
+  --ds-chart-5: var(--color-midnight-500);
+  --ds-chart-actual: var(--color-midnight-500);
+  --ds-chart-target: var(--color-silver-500);
+  --ds-chart-area: var(--color-midnight-400);
+  --ds-chart-current: var(--color-midnight-500);
+  --ds-chart-bg: var(--color-paper);
+  --ds-chart-grid: var(--color-silver-200);
+  --ds-chart-axis: var(--color-silver-600);
+  --ds-chart-up: var(--color-signal-green);
+  --ds-chart-down: var(--color-signal-red);
+  --ds-chart-college: var(--color-midnight-900);
+  --ds-status-review: var(--color-midnight-500);
+
+  /* Elevation and global states */
+  --ds-shadow-sm: 0 8px 24px color-mix(in srgb, var(--color-midnight-900) 8%, transparent);
+  --ds-shadow-md: 0 16px 40px color-mix(in srgb, var(--color-midnight-900) 14%, transparent);
+  --ds-focus: color-mix(in oklab, var(--color-midnight-500) 40%, transparent);
+  --ds-selection-bg: var(--color-silver-300);
+  --ds-selection-fg: var(--color-midnight-950);
+
+  /* App sidebar (theme level). Contrast in tokens.test.ts. */
+  --ds-sidebar-bg: var(--color-midnight-950);
+  --ds-sidebar-fg: var(--color-silver-300);
+  --ds-sidebar-fg-active: var(--color-paper);
+  --ds-sidebar-muted: var(--color-silver-400);
+  --ds-sidebar-hover-bg: var(--color-midnight-800);
+  --ds-sidebar-active-bg: var(--color-midnight-700);
+  --ds-sidebar-indicator: var(--color-silver-200);
+  --ds-sidebar-border: var(--color-midnight-700);
+  --ds-sidebar-focus: var(--color-silver-200);
+  --ds-sidebar-badge-bg: var(--color-silver-200);
+  --ds-sidebar-badge-fg: var(--color-midnight-900);
+  --ds-sidebar-bg-top: var(--color-midnight-900);
+  --ds-sidebar-glow: color-mix(in srgb, var(--color-silver-200) 7%, transparent);
+
+  /* Page band, Home hero, plan hero, sign-in panel */
+  --ds-band-from: var(--color-midnight-900);
+  --ds-band-via: var(--color-midnight-800);
+  --ds-band-to: var(--color-midnight-700);
+  --ds-band-glow: color-mix(in srgb, var(--color-silver-200) 12%, transparent);
+  --ds-band-glow-accent: color-mix(in srgb, var(--color-midnight-400) 28%, transparent);
+  --ds-accent-on-dark: var(--color-silver-300);
+
+  /* Gradients: same recipes as navy-gold.css (README "Gradients") */
+  --ds-shade: var(--color-midnight-990);
+  --ds-gradient-hero: radial-gradient(60% 90% at 0% 0%, var(--ds-band-glow), transparent 60%),
+    radial-gradient(50% 80% at 100% 100%, var(--ds-band-glow-accent), transparent 60%),
+    linear-gradient(125deg, var(--ds-band-from) 0%, var(--ds-band-via) 55%, var(--ds-band-to) 100%);
+  --ds-gradient-sidebar: radial-gradient(120% 45% at 100% 0%, var(--ds-sidebar-glow), transparent 60%),
+    linear-gradient(180deg, var(--ds-sidebar-bg-top) 0%, var(--ds-sidebar-bg) 100%);
+  --ds-gradient-auth: radial-gradient(120% 80% at 85% 10%, var(--ds-band-glow), transparent 55%),
+    radial-gradient(90% 70% at 10% 100%, var(--ds-band-glow-accent), transparent 60%),
+    linear-gradient(160deg, var(--ds-band-via) 0%, var(--ds-band-from) 55%, var(--ds-shade) 100%);
+  --ds-gradient-avatar: linear-gradient(135deg, var(--color-midnight-700), var(--color-midnight-900));
+  --ds-gradient-progress: linear-gradient(90deg, var(--color-midnight-900), var(--color-midnight-600));
+  --ds-gradient-callout: linear-gradient(90deg, var(--color-midnight-50), var(--color-paper));
+  --ds-gradient-surface-subtle: linear-gradient(180deg, var(--color-midnight-25), var(--color-paper));
+  --ds-hatch-light: repeating-linear-gradient(135deg, var(--color-silver-100) 0 6px, var(--color-paper) 6px 12px);
+  --ds-hatch-muted: repeating-linear-gradient(135deg, var(--color-silver-500) 0 6px, var(--color-silver-300) 6px 12px);
+
+  /* ---- Audit tokens (README "Audit tokens") ---- */
+  /* on-dark */
+  --ds-on-dark-fg: var(--color-paper);
+  --ds-on-dark-body: var(--color-silver-200);
+  --ds-on-dark-muted: var(--color-silver-300);
+  --ds-on-dark-soft: var(--color-silver-300);
+  --ds-on-dark-code: var(--color-silver-100);
+  --ds-on-dark-ok: var(--color-app-green-290);
+  --ds-on-dark-warn: var(--color-app-amber-350);
+  --ds-on-dark-bad: var(--color-app-red-210);
+  --ds-on-dark-now: var(--color-silver-200);
+  --ds-on-dark-now-ink: var(--color-midnight-950);
+
+  /* auth */
+  --ds-auth-muted: var(--color-silver-300);
+  --ds-auth-body: var(--color-silver-200);
+  --ds-auth-faint: var(--color-silver-300);
+  --ds-auth-icon: var(--color-silver-200);
+  --ds-auth-icon-tint: var(--color-silver-300);
+  --ds-auth-page: var(--color-midnight-50);
+  --ds-auth-logo-shadow: var(--color-midnight-990);
+
+  /* shadow */
+  --ds-shadow-ink: var(--color-app-blue-890);
+  --ds-shadow-navy: var(--color-midnight-900);
+  --ds-shadow-band: var(--color-midnight-950);
+  --ds-shadow-mark: var(--color-app-grey-990);
+
+  /* status */
+  --ds-status-ok: var(--color-app-green-600);
+  --ds-status-ok-ink: var(--color-app-green-740);
+  --ds-status-ok-soft: var(--color-app-green-80);
+  --ds-status-ok-border: var(--color-app-green-250);
+  --ds-status-ok-tint: var(--color-app-green-40);
+  --ds-status-done-border: var(--color-app-green-270);
+  --ds-status-near: var(--color-app-amber-500);
+  --ds-status-near-ink: var(--color-app-orange-720);
+  --ds-status-near-soft: var(--color-app-amber-60);
+  --ds-status-near-border: var(--color-app-amber-250);
+  --ds-status-near-tint: var(--color-app-amber-40);
+  --ds-status-near-mark: var(--color-app-amber-590);
+  --ds-status-near-bar: var(--color-app-amber-510);
+  --ds-status-late: var(--color-app-red-530);
+  --ds-status-late-ink: var(--color-app-red-600);
+  --ds-status-late-soft: var(--color-app-red-50);
+  --ds-status-late-border: var(--color-app-red-200);
+  --ds-status-late-tint: var(--color-app-red-30);
+  --ds-status-late-bar: var(--color-app-red-470);
+  --ds-status-flag-bg: var(--color-app-red-20);
+  --ds-status-vacant-border: var(--color-app-red-230);
+  --ds-status-gap: var(--color-app-orange-510);
+  --ds-status-plan: var(--color-app-blue-330);
+  --ds-status-none: var(--color-app-blue-190);
+  --ds-status-none-ink: var(--color-app-slate-390);
+  --ds-status-draft: var(--color-app-blue-280);
+  --ds-status-progress: var(--color-app-blue-430);
+  --ds-status-info: var(--color-app-blue-620);
+  --ds-status-share: var(--color-app-blue-500);
+  --ds-status-caution: var(--color-app-amber-505);
+  --ds-status-zero-soft: var(--color-app-blue-50);
+  --ds-status-zero-ink: var(--color-app-blue-660);
+  --ds-status-exempt-soft: var(--color-app-indigo-40);
+  --ds-status-exempt-ink: var(--color-app-purple-560);
+
+  /* score */
+  --ds-score-full-soft: var(--color-app-green-110);
+  --ds-score-full-ink: var(--color-app-green-780);
+  --ds-score-full-mark: var(--color-app-green-470);
+  --ds-score-high-soft: var(--color-app-lime-90);
+  --ds-score-high-ink: var(--color-app-lime-750);
+  --ds-score-high-mark: var(--color-app-lime-400);
+  --ds-score-high-bar: var(--color-app-lime-520);
+  --ds-score-mid-soft: var(--color-app-amber-90);
+  --ds-score-mid-ink: var(--color-app-amber-760);
+  --ds-score-mid-mark: var(--color-app-amber-370);
+  --ds-score-low-soft: var(--color-app-red-70);
+  --ds-score-low-ink: var(--color-app-red-640);
+  --ds-score-low-mark: var(--color-app-red-350);
+
+  /* tier */
+  --ds-tier-1: var(--color-app-green-700);
+  --ds-tier-2: var(--color-app-green-580);
+  --ds-tier-3: var(--color-app-amber-480);
+  --ds-tier-4: var(--color-app-orange-510);
+  --ds-tier-5: var(--color-app-red-550);
+  --ds-tier-ink: var(--color-paper);
+
+  /* heat */
+  --ds-heat-1: var(--color-app-red-75);
+  --ds-heat-2: var(--color-app-amber-80);
+  --ds-heat-3: var(--color-app-green-115);
+  --ds-heat-4: var(--color-app-green-240);
+  --ds-heat-4-ink: var(--color-app-green-820);
+  --ds-heat-none: var(--color-silver-100);
+
+  /* neutral */
+  --ds-neutral-mark: var(--color-app-slate-410);
+  --ds-neutral-axis: var(--color-app-slate-360);
+  --ds-neutral-faint: var(--color-app-slate-350);
+  --ds-neutral-off: var(--color-app-blue-270);
+  --ds-neutral-na: var(--color-app-slate-250);
+  --ds-neutral-stopped: var(--color-app-slate-355);
+  --ds-neutral-lead: var(--color-app-slate-320);
+  --ds-neutral-base: var(--color-app-slate-470);
+  --ds-neutral-actual: var(--color-app-slate-590);
+  --ds-neutral-arrow: var(--color-app-blue-200);
+  --ds-neutral-dot: var(--color-app-blue-250);
+
+  /* chart */
+  --ds-chart-accent: var(--color-midnight-500);
+  --ds-chart-value: var(--color-midnight-900);
+  --ds-chart-track: var(--color-silver-100);
+  --ds-chart-ring-track: var(--color-silver-100);
+  --ds-chart-grid-soft: var(--color-silver-200);
+  --ds-chart-grid-faint: var(--color-silver-200);
+  --ds-chart-off: var(--color-silver-50);
+  --ds-chart-off-key: var(--color-silver-100);
+  --ds-chart-target-line: var(--color-silver-600);
+
+  /* unit */
+  --ds-unit-university: var(--color-app-blue-750);
+  --ds-unit-university-bg: var(--color-app-blue-60);
+  --ds-unit-sector: var(--color-app-purple-530);
+  --ds-unit-sector-bg: var(--color-app-purple-40);
+  --ds-unit-administration: var(--color-app-teal-630);
+  --ds-unit-center: var(--color-app-orange-570);
+  --ds-unit-college: var(--color-app-blue-550);
+  --ds-unit-college-bg: var(--color-app-blue-45);
+  --ds-unit-institute: var(--color-app-blue-505);
+  --ds-unit-department: var(--color-app-slate-400);
+
+  /* tag */
+  --ds-tag-pending-fg: var(--color-app-amber-760);
+  --ds-tag-pending-bg: var(--color-app-amber-50);
+  --ds-tag-pending-border: var(--color-app-amber-220);
+  --ds-tag-positive-fg: var(--color-app-lime-750);
+  --ds-tag-positive-bg: var(--color-app-lime-40);
+  --ds-tag-positive-border: var(--color-app-lime-260);
+  --ds-tag-negative-fg: var(--color-app-red-560);
+  --ds-tag-negative-bg: var(--color-app-red-35);
+  --ds-tag-negative-border: var(--color-app-red-190);
+  --ds-tag-caution-fg: var(--color-app-orange-720);
+  --ds-tag-caution-bg: var(--color-app-amber-55);
+  --ds-tag-caution-border: var(--color-app-orange-220);
+  --ds-tag-info-fg: var(--color-app-blue-560);
+  --ds-tag-info-bg: var(--color-app-blue-65);
+  --ds-tag-info-border: var(--color-app-blue-220);
+  --ds-tag-special-fg: var(--color-app-purple-610);
+  --ds-tag-special-bg: var(--color-app-purple-30);
+  --ds-tag-special-border: var(--color-app-purple-180);
+  --ds-tag-highlight-fg: var(--color-ink-teal-700);
+  --ds-tag-highlight-bg: var(--color-app-teal-50);
+  --ds-tag-highlight-border: var(--color-app-teal-280);
+  --ds-tag-category-fg: var(--color-app-indigo-560);
+  --ds-tag-category-bg: var(--color-app-blue-35);
+  --ds-tag-category-border: var(--color-app-blue-160);
+
+  /* app */
+  --ds-app-muted-bg: var(--color-silver-50);
+  --ds-app-faint-bg: var(--color-midnight-25);
+  --ds-app-row-hover: var(--color-midnight-25);
+  --ds-app-row-selected: var(--color-midnight-50);
+  --ds-app-table-group: var(--color-silver-100);
+  --ds-app-topbar: var(--color-midnight-50);
+  --ds-app-note-bg: var(--color-midnight-50);
+  --ds-app-partner-bg: var(--color-silver-50);
+  --ds-app-code-bg: var(--color-midnight-990);
+  --ds-app-code-fg: var(--color-silver-100);
+  --ds-app-print-desk: var(--color-silver-100);
+  --ds-app-print-ink: var(--color-app-grey-930);
+  --ds-app-pdf-icon: var(--color-app-red-540);
+  --ds-app-pdf-frame: var(--color-app-grey-660);
+
+  /* Navy fill under white text (legacy --navy as a background: table heads, active tabs and filters, selected
+     segments); = the light heading in a light palette. */
+  --ds-ink-fill: var(--color-midnight-900);
+
+  /* Pillar data colours (shared/pillars.tsx tint()): --pc = pillar colour keep% toward lift; --pt = the pillar's own
+     tint keep% , else the pillar colour mix% into the card. Light palettes: 100% / 100% (the data as is). */
+  --ds-pillar-keep: 100%;
+  --ds-pillar-lift: var(--color-paper);
+  --ds-pillar-tint-keep: 100%;
+  --ds-pillar-tint-mix: 0%;
+}
+
+/* ---------- Light scope (default; the page scope) ---------- */
+[data-theme="indigo-silver"],
+[data-theme="indigo-silver"] [data-section="light"] {
+  --ds-bg: var(--color-paper);
+  --ds-bg-cool: var(--color-midnight-50);
+  --ds-bg-warm: var(--color-silver-100);
+  --ds-fg: var(--color-midnight-900);
+  --ds-surface: var(--color-paper);
+  --ds-surface-hover: var(--color-midnight-25);
+  --ds-surface-hover-soft: var(--color-midnight-25);
+  --ds-surface-warm: var(--color-silver-50);
+  --ds-callout: var(--color-silver-50);
+  --ds-border: var(--color-silver-200);
+  --ds-line-soft: var(--color-midnight-900);
+  --ds-track: var(--color-silver-100);
+  --ds-accent: var(--color-silver-400);
+  --ds-accent-strong: var(--color-silver-500);
+  --ds-accent-border: color-mix(in oklab, var(--color-silver-400) 50%, transparent);
+  --ds-heading: var(--color-midnight-900);
+  --ds-highlight: var(--color-midnight-600);
+  --ds-highlight-display: var(--color-midnight-600);
+  --ds-body: var(--color-silver-700);
+  --ds-body-strong: var(--color-silver-800);
+  --ds-label: var(--color-silver-700);
+  --ds-faint: var(--color-silver-500);
+  --ds-index: var(--color-silver-300);
+  --ds-eyebrow: var(--color-midnight-600);
+  --ds-eyebrow-aa: var(--color-midnight-600);
+  --ds-icon: var(--color-midnight-500);
+  --ds-tile: var(--color-midnight-100);
+  --ds-tile-active: var(--color-silver-300);
+  --ds-tile-active-fg: var(--color-midnight-900);
+  --ds-tile-solid: var(--color-midnight-900);
+  --ds-tile-solid-fg: var(--color-silver-200);
+  --ds-live: var(--color-signal-green);
+  --ds-focus-ring: var(--color-midnight-900);
+  --ds-link: var(--color-midnight-600);
+  --ds-link-hover: var(--color-midnight-900);
+  --ds-destructive: var(--color-soft-danger-700);
+  --ds-btn-primary-bg: var(--color-midnight-900);
+  --ds-btn-primary-fg: var(--color-paper);
+  --ds-btn-primary-border: var(--color-midnight-900);
+  --ds-btn-primary-hover-bg: var(--color-midnight-700);
+  --ds-btn-primary-hover-fg: var(--color-paper);
+  --ds-btn-primary-hover-border: var(--color-midnight-700);
+  --ds-btn-ghost-bg: transparent;
+  --ds-btn-ghost-fg: var(--color-midnight-900);
+  --ds-btn-ghost-border: color-mix(in oklab, var(--color-midnight-900) 20%, transparent);
+  --ds-btn-ghost-hover-bg: var(--color-midnight-100);
+  --ds-btn-ghost-hover-fg: var(--color-midnight-900);
+  --ds-btn-ghost-hover-border: var(--color-midnight-400);
+}
+
+/* ---------- Dark scope (navy blocks) ---------- */
+[data-theme="indigo-silver"] [data-section="dark"],
+[data-theme="indigo-silver"][data-section="dark"] {
+  --ds-bg: var(--color-midnight-900);
+  --ds-bg-cool: var(--color-midnight-900);
+  --ds-bg-warm: var(--color-midnight-900);
+  --ds-fg: var(--color-paper);
+  --ds-surface: var(--color-midnight-800);
+  --ds-surface-hover: var(--color-midnight-700);
+  --ds-surface-hover-soft: var(--color-midnight-700);
+  --ds-surface-warm: var(--color-midnight-800);
+  --ds-callout: var(--color-midnight-800);
+  --ds-border: var(--color-midnight-600);
+  --ds-line-soft: var(--color-paper);
+  --ds-track: var(--color-midnight-700);
+  --ds-accent: var(--color-silver-300);
+  --ds-accent-strong: var(--color-silver-200);
+  --ds-accent-border: color-mix(in oklab, var(--color-silver-300) 30%, transparent);
+  --ds-heading: var(--color-paper);
+  --ds-highlight: var(--color-silver-200);
+  --ds-highlight-display: var(--color-silver-100);
+  --ds-body: var(--color-silver-300);
+  --ds-body-strong: var(--color-silver-100);
+  --ds-label: var(--color-silver-100);
+  --ds-faint: var(--color-silver-400);
+  --ds-index: color-mix(in oklab, var(--color-paper) 20%, transparent);
+  --ds-eyebrow: var(--color-silver-300);
+  --ds-eyebrow-aa: var(--color-silver-300);
+  --ds-icon: var(--color-silver-300);
+  --ds-tile: color-mix(in oklab, var(--color-silver-300) 12%, transparent);
+  --ds-tile-active: var(--color-silver-300);
+  --ds-tile-active-fg: var(--color-midnight-900);
+  --ds-tile-solid: var(--color-midnight-950);
+  --ds-tile-solid-fg: var(--color-silver-200);
+  --ds-live: var(--color-signal-green);
+  --ds-focus-ring: var(--color-silver-200);
+  --ds-link: var(--color-silver-200);
+  --ds-link-hover: var(--color-paper);
+  --ds-destructive: color-mix(in srgb, var(--color-soft-danger-400) 55%, var(--color-paper));
+  --ds-btn-primary-bg: var(--color-silver-200);
+  --ds-btn-primary-fg: var(--color-midnight-900);
+  --ds-btn-primary-border: var(--color-silver-200);
+  --ds-btn-primary-hover-bg: transparent;
+  --ds-btn-primary-hover-fg: var(--color-silver-200);
+  --ds-btn-primary-hover-border: var(--color-silver-200);
+  --ds-btn-ghost-bg: transparent;
+  --ds-btn-ghost-fg: var(--color-paper);
+  --ds-btn-ghost-border: color-mix(in oklab, var(--color-paper) 20%, transparent);
+  --ds-btn-ghost-hover-bg: var(--color-silver-200);
+  --ds-btn-ghost-hover-fg: var(--color-midnight-900);
+  --ds-btn-ghost-hover-border: var(--color-silver-200);
+}
