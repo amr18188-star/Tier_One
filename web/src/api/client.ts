@@ -80,7 +80,8 @@ export function createApiClient({ csrfUrl }: { csrfUrl: string }): ApiClient {
   }
 
   async function finish<T>(r: Response, retry: boolean, again: () => Promise<T>): Promise<T> {
-    if (r.status === 204) return undefined as T;
+    // 204 بلا جسم: null لا undefined، لأن react-query يرفض undefined بيانات استعلام (مثل /api/results قبل أول دورة).
+    if (r.status === 204) return null as T;
     const data = await readJson(r);
     if (!r.ok) {
       // رمز CSRF مرتبط بالجلسة؛ يجدد مرة واحدة ثم يعاد الطلب.
