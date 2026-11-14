@@ -27,12 +27,15 @@ export function paletteAt(index: number) {
  * متغيرا اللون على العنصر: --pc للون الركيزة و--pt لدرجتها الفاتحة. اللونان بيانات ثابتة، ولقاؤهما بلوحة الألوان من رموزها
  * (--ds-pillar-*، styles/design-system/themes): في اللوحات الفاتحة 100% فيبقيان كما هما بالضبط، وفي الداكنة يفتح اللون نحو
  * الأبيض قليلًا وتصبح الدرجة لون الركيزة ممزوجًا بلون البطاقة الداكن، فلا تظهر رقع فاتحة على صفحة داكنة.
+ * و--pf لون الركيزة خلفيةً تحت نص أبيض: هو --pc نفسه في اللوحات الفاتحة، ويغمق في الداكنة نحو --ds-shade بنسبة
+ * --ds-pillar-fill-mix، فيبقى النص الأبيض عليه 4.5:1 على الأقل.
  */
 export function tint(index: number): CSSProperties {
   const p = paletteAt(index);
   return {
     "--pc": `color-mix(in srgb, ${p.c} var(--ds-pillar-keep, 100%), var(--ds-pillar-lift, transparent))`,
     "--pt": `color-mix(in srgb, ${p.t} var(--ds-pillar-tint-keep, 100%), color-mix(in srgb, var(--pc) var(--ds-pillar-tint-mix, 0%), var(--ds-surface, transparent)))`,
+    "--pf": `color-mix(in srgb, var(--pc) calc(100% - var(--ds-pillar-fill-mix, 0%)), var(--ds-shade, transparent))`,
   } as CSSProperties;
 }
 

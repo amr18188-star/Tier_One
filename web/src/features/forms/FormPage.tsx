@@ -1,29 +1,37 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, App, Button, DatePicker, Form as AntForm, Input, Modal, Popover, Progress, Segmented, Space, Tag, Timeline, Tooltip } from "antd";
 import dayjs, { type Dayjs } from "dayjs";
 import {
   AimOutlined, CalendarOutlined, CheckOutlined, DownloadOutlined, FileExcelOutlined, HistoryOutlined, LoadingOutlined, RollbackOutlined, SendOutlined, UnlockOutlined,
   WarningOutlined,
 } from "@ant-design/icons";
-import { useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { api } from "../../api/client";
-import type { Form, FormItem, FormSection } from "../../api/collection";
+import type { Form, FormItem } from "../../api/collection";
 import { DecisionModal } from "../../shared/DecisionModal";
 import { errorText, formatDate, formatDateTime } from "../../shared/format";
-import { L } from "../../shared/i18n";
+import { L, useLang } from "../../shared/i18n";
 import { dueText, submissionStatus, unitKind } from "../../shared/labels";
-import { PillarBand, stdLabel, tint, usePillarMap } from "../../shared/pillars";
+import { stdLabel, tint, usePillarMap } from "../../shared/pillars";
 import { usePermissions } from "../../shared/session";
-import { PageHeader, Panel, Stepper } from "../../shared/ui";
+import { EmptyNote, PageHeader, Panel, Stepper } from "../../shared/ui";
+import { useSearchState } from "../../shared/usePeriodParams";
+import { PillarCards, PillarHeader, PillarMobileBar, PillarStep, type PillarGroup } from "./FormPillars";
 import { ImportModal } from "./ImportModal";
+import { NoteCard } from "./NoteCard";
+import { usePillarSwipe, useReducedMotion } from "./usePillarSwipe";
+import { AutosaveContext, useAutosaveRegistry } from "./useValueAutosave";
 import { savedAt, ValueRow, type ReturnMark } from "./ValueRow";
+import "./form-page.css";
 
 type Filter = "all" | "missing" | "issues" | "flagged";
 
 /**
  * نموذج الجهة: الإدخال والمراجعة في صفحة واحدة. المسار أعلاها يقول أين النموذج ومن عليه الإجراء،
- * وشريط الإجراء أسفلها ثابت (إرسال، أو اعتماد وإعادة)، والمرشحات تعرض الناقص أو ما به ملاحظات فقط.
+ * ثم بطاقات الركائز (ما أدخل وما يمنع الإرسال في كل ركيزة)، ونموذج ركيزة واحدة في عمود بزري السابقة والتالية على جانبيه
+ * (pillar= في الرابط). شريط الإجراء أسفلها ثابت (إرسال، أو اعتماد وإعادة)، والمرشحات تعرض الناقص أو ما به ملاحظات فقط.
+ * القيم تحفظ أثناء الكتابة (useValueAutosave)، وكل ما لم يحفظ يحفظ قبل التنقل بين الركائز وقبل الإرسال.
  */
 export default function FormPage() {
   const { id } = useParams<{ id: string }>();
@@ -35,8 +43,10 @@ export default function FormPage() {
   const [marks, setMarks] = useState<Record<string, ReturnMark>>({});
   const [dialog, setDialog] = useState<"submit" | "approve" | "return" | "reopen" | "import" | "extend" | null>(null);
   const canExtend = usePermissions().can("dc.cycles", "E");
-  // الحفظ التلقائي الجاري في أي صف، لشريط الحالة أسفل النموذج.
-  const saving = useIsMutating();
+  // الحفظ التلقائي في الصفوف: الجاري منه لشريط الحالة، وflushAll قبل التنقل والإرسال.
+  const autosave = useAutosaveRegistry();
+  const saving = autosave.saving;
+  const { params, update } = useSearchState();
 
   const refresh = () => qc.invalidateQueries({ queryKey: key });
   const onSaved = (item: FormItem) => {
@@ -59,15 +69,6 @@ export default function FormPage() {
   const f = form.data;
   const items = useMemo(() => f?.sections.flatMap((s) => s.items) ?? [], [f]);
   // المعايير بترتيبها من الخادم (الركيزة ثم المعيار)، مجمعة تحت ركائزها.
-  const pillars = useMemo(() => {
-    const list: { code: string | null; name: string | null; sections: FormSection[] }[] = [];
-    for (const s of f?.sections ?? []) {
-      const last = list.at(-1);
-      if (last && last.code === s.pillarCode) last.sections.push(s);
-      else list.push({ code: s.pillarCode, name: s.pillarName, sections: [s] });
-    }
-    return list;
-  }, [f]);
   // لون الركيزة: بترتيبها في الخطة إن أتيحت الخطة للمستخدم، وإلا برقم رمزها (P1 الأولى).
   const pillarMap = usePillarMap();
   const pillarIndex = (code: string | null) => {
@@ -77,25 +78,81 @@ export default function FormPage() {
     const n = Number(code.replace(/\D/g, ""));
     return Number.isFinite(n) && n > 0 ? n - 1 : -1;
   };
+  const pillars = useMemo(() => {
+    const list: PillarGroup[] = [];
+    for (const s of f?.sections ?? []) {
+      const last = list.at(-1);
+      if (last && last.code === s.pillarCode) last.sections.push(s);
+      else list.push({ key: s.pillarCode ?? "none", code: s.pillarCode, name: s.pillarName, index: pillarIndex(s.pillarCode), sections: [s] });
+    }
+    return list;
+  }, [f, pillarMap.pillars]);
+
+  // الركيزة المعروضة من الرابط (pillar=رمزها)، وإلا الأولى.
+  const position = Math.max(0, pillars.findIndex((p) => p.key === params.get("pillar")));
+  const pillar = pillars[position];
+  // الصفوف التي عدلت في هذا العرض تبقى ظاهرة ولو لم تعد تطابق المرشح (الناقص يختفي بمجرد حفظه).
+  const kept = useRef(new Set<string>());
+  const viewKey = `${filter}|${pillar?.key}`;
+  const lastView = useRef(viewKey);
+  if (lastView.current !== viewKey) {
+    lastView.current = viewKey;
+    kept.current = new Set();
+  }
+  for (const rowId of Object.keys(autosave.active)) kept.current.add(rowId);
+
+  // بعد الانتقال إلى ركيزة: أعلاها، أو معيار فيها، أو صف بعينه (التالي الناقص).
+  const scrollTo = useRef<{ id: string; focus?: boolean } | null>(null);
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const target = scrollTo.current;
+    if (!target) return;
+    scrollTo.current = null;
+    requestAnimationFrame(() => {
+      const el = document.getElementById(target.id);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: target.focus ? "center" : "start" });
+      if (target.focus) el.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true });
+      else if (target.id === "fp-pillar") el.focus({ preventScroll: true });
+    });
+  });
+  /** ينتقل إلى ركيزة (بالأزرار أو البطاقات أو السحب أو شريط الجوال) بعد حفظ ما لم يحفظ، ثم إلى أعلاها. */
+  const [enter, setEnter] = useState<"next" | "prev" | null>(null);
+  const goPillar = async (key: string, scrollId = "fp-pillar", focus = false) => {
+    await autosave.flushAll();
+    scrollTo.current = { id: scrollId, focus };
+    const to = pillars.findIndex((p) => p.key === key);
+    if (key !== pillar?.key) {
+      setEnter(to > position ? "next" : "prev");
+      update({ pillar: key });
+    } else setTick((t) => t + 1);
+  };
+  // السحب بين الركائز على العمود (usePillarSwipe): التالية جهة نهاية السطر، يسارًا في العربية.
+  const [stage, setStage] = useState<HTMLElement | null>(null);
+  const rtl = useLang() === "ar";
+  const reduced = useReducedMotion();
+  usePillarSwipe(stage, {
+    rtl, reduced, hasPrev: position > 0, hasNext: position < pillars.length - 1,
+    onPrev: () => void goPillar(pillars[position - 1].key),
+    onNext: () => void goPillar(pillars[position + 1].key),
+  });
   const flaggedCount = Object.values(marks).filter((m) => m.checked).length;
   const visible = (i: FormItem) =>
-    filter === "all" ? true
+    kept.current.has(i.indicatorId) ? true
+    : filter === "all" ? true
       : filter === "missing" ? !i.value
         : filter === "issues" ? i.issues.length > 0 || (!!i.evidenceRequired && i.evidence.every((e) => e.voided) && i.value?.kind === "Number")
           : !!i.value?.reviewNote || !!marks[i.indicatorId]?.checked;
 
   const missing = items.filter((i) => !i.value);
   const lastSaved = items.reduce<string | null>((m, i) => (i.value && (!m || i.value.editedAt > m) ? i.value.editedAt : m), null);
-  /** ينتقل إلى أول مؤشر بلا قيمة ويضع المؤشر في حقله. */
+  /** ينتقل إلى أول مؤشر بلا قيمة (في ركيزته) ويضع المؤشر في حقله. */
   const goToMissing = () => {
     const first = missing[0];
     if (!first) return;
     setFilter("all");
-    requestAnimationFrame(() => {
-      const row = document.getElementById(`i-${first.code}`);
-      row?.scrollIntoView({ behavior: "smooth", block: "center" });
-      row?.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true });
-    });
+    const home = pillars.find((p) => p.sections.some((s) => s.items.includes(first)));
+    if (home) void goPillar(home.key, `i-${first.code}`, true);
   };
 
   if (!f) return <Panel query={form}>{null}</Panel>;
@@ -103,8 +160,10 @@ export default function FormPage() {
   const reviewing = f.actions.canReview;
   const current = f.path.findIndex((p) => p.state === "current");
 
+  const noted = items.filter((i) => !!i.value?.reviewNote).length;
+
   return (
-    <>
+    <AutosaveContext.Provider value={autosave.registry}>
       <PageHeader back={{ to: "/forms", label: L("النماذج", "Forms") }}
         title={<>{f.unitName} <Tag color={submissionStatus[f.status].color}>{submissionStatus[f.status].text}</Tag>{f.trial && <Tag color="purple">{L("بروفة", "Rehearsal")}</Tag>}</>}
         subtitle={<>{unitKind[f.unitKind]} · {f.cycleName} · {L("الفترة", "Period")} <b className="ltr">{f.periodLabel}</b> · {L("الموعد النهائي", "Due")} <b className="ltr">{formatDate(f.dueOn)}</b>{f.overdue && <Tag color="error" className="ms">{L("متأخر", "Overdue")}</Tag>}</>}
@@ -128,11 +187,18 @@ export default function FormPage() {
         <Stepper current={current < 0 ? f.path.length : current} steps={f.path.map((p) => ({ title: p.name }))} />
       </Panel>
 
-      {f.status === "Returned" && f.returnNote && (
-        <Alert type="error" showIcon className="mb" icon={<RollbackOutlined />} message={L("أعيد النموذج للتصحيح", "The form was returned")} description={f.returnNote} />
+      {f.status === "Returned" && (f.returnNote || noted > 0) && (
+        <NoteCard notes={f.returnNote ? [f.returnNote] : []} title={L("أعيد النموذج للتصحيح · مطلوب التعديل:", "Returned for correction · changes requested:")}
+          extra={noted > 0 && (
+            <>
+              <RollbackOutlined aria-hidden /> {L(`وملاحظات على ${noted} مؤشرًا داخل الركائز.`, `Plus notes on ${noted} indicators.`)}{" "}
+              <Button size="small" type="link" onClick={() => setFilter("flagged")}>{L("اعرضها", "Show them")}</Button>
+            </>
+          )} />
       )}
       {f.status === "InProgress" && f.returnNote && f.events.at(-1)?.action === "Reopened" && (
-        <Alert type="warning" showIcon className="mb" icon={<UnlockOutlined />} message={L("أعيد فتح النموذج بعد اعتماده", "The form was reopened")} description={f.returnNote} />
+        <NoteCard tone="warn" notes={[f.returnNote]} title={L("أعيد فتح النموذج بعد اعتماده:", "Reopened after approval:")}
+          extra={<><UnlockOutlined aria-hidden /> {L("صحّح ما يلزم ثم أعد الإرسال.", "Correct what is needed, then send again.")}</>} />
       )}
       {f.cycleStatus === "Closed" && <Alert type="info" showIcon className="mb" message={L("الدورة مغلقة؛ النموذج للاطلاع فقط.", "The cycle is closed; read only.")} />}
       {reviewing && (
@@ -141,7 +207,7 @@ export default function FormPage() {
             "This form is waiting for your review.")} />
       )}
 
-      <Panel>
+      <Panel className="fp-summary">
         <div className="f-head">
           <div className="f-progress">
             <span>{L("أدخلت", "Entered")} <b className="ltr">{f.completed}/{f.required}</b></span>
@@ -155,48 +221,41 @@ export default function FormPage() {
               { value: "flagged", label: L("ملاحظات المراجعة", "Review notes") },
             ]} />
         </div>
-        <div className="f-navs">
-          {pillars.map((p) => (
-            <nav key={p.code ?? "-"} className="f-std-nav" style={tint(pillarIndex(p.code))} aria-label={p.name ?? L("المعايير", "Standards")}>
-              {p.name && <span className="f-pillar-label">{p.name}</span>}
-              {p.sections.map((s) => {
-                const done = s.items.filter((i) => i.value).length;
-                return (
-                  <a key={s.standardCode} href={`#s-${s.standardCode}`} className={done === s.items.length ? "done" : undefined} title={s.standardName}>
-                    <span>{stdLabel(s.standardCode)} <span className="ltr">{done}/{s.items.length}</span></span>
-                    <i style={{ width: `${(100 * done) / Math.max(1, s.items.length)}%` }} aria-hidden />
-                  </a>
-                );
-              })}
-            </nav>
-          ))}
-        </div>
+        {pillars.length > 0 && pillar && <PillarCards groups={pillars} selected={pillar.key} onSelect={(key) => void goPillar(key)} />}
       </Panel>
 
-      {/* الإدخال مصنفًا: الركيزة، ثم معاييرها، وفي كل معيار مؤشراته. */}
-      {pillars.map((p) => {
-        const shown = p.sections.map((s) => ({ s, rows: s.items.filter(visible) })).filter((x) => x.rows.length > 0);
-        if (shown.length === 0) return null;
-        return (
-          <div key={p.code ?? "-"} className="f-pillar" style={tint(pillarIndex(p.code))}>
-            {p.name && (
-              <PillarBand info={{ index: pillarIndex(p.code), id: p.code ?? "", code: p.code ?? "", name: p.name }}>
-                <span className="ltr">{p.sections.reduce((n, s) => n + s.items.filter((i) => i.value).length, 0)}/{p.sections.reduce((n, s) => n + s.items.length, 0)}</span> {L("مدخل", "entered")}
-              </PillarBand>
-            )}
-            {shown.map(({ s, rows }) => (
-              <Panel key={s.standardCode} id={`s-${s.standardCode}`} className="f-std"
-                title={<><code className="pill-code ltr">{stdLabel(s.standardCode)}</code> {s.standardName}</>}
-                extra={<span className="f-std-count ltr">{s.items.filter((i) => i.value).length}/{s.items.length}</span>}>
-                {rows.map((i) => (
-                  <ValueRow key={`${i.indicatorId}:${i.value?.version ?? 0}:${i.evidence.length}`} formId={f.id} item={i} editable={editable} reviewing={reviewing}
-                    mark={marks[i.indicatorId]} onMark={(m) => setMarks((x) => ({ ...x, [i.indicatorId]: m }))} onSaved={onSaved} />
-                ))}
-              </Panel>
-            ))}
+      {/* ركيزة واحدة في عمود: معاييرها، وفي كل معيار مؤشراته؛ وزرا السابقة والتالية على جانبيه في منتصف الشاشة. */}
+      {pillar && (
+        <div className="fp-stage" style={tint(pillar.index)}>
+          <div className="fp-side is-prev">
+            <PillarStep dir="prev" target={pillars[position - 1] ?? null} position={position - 1} onGo={() => void goPillar(pillars[position - 1].key)} />
           </div>
-        );
-      })}
+          <div id="fp-pillar" ref={setStage} className="fp-main" tabIndex={-1} role="region"
+            aria-label={pillar.name ?? L("معايير بلا ركيزة", "Standards without a pillar")}>
+            <div key={pillar.key} className="fp-slide f-pillar" data-enter={enter ?? undefined}>
+            <PillarHeader group={pillar} position={position} total={pillars.length} onStandard={(code) => void goPillar(pillar.key, `s-${code}`)} />
+            {(() => {
+              const shown = pillar.sections.map((s) => ({ s, rows: s.items.filter(visible) })).filter((x) => x.rows.length > 0);
+              if (shown.length === 0)
+                return <Panel><EmptyNote>{L("لا مؤشرات في هذه الركيزة بهذا المرشح. اختر ركيزة أخرى أو «الكل».", "No indicators in this pillar with this filter.")}</EmptyNote></Panel>;
+              return shown.map(({ s, rows }) => (
+                <Panel key={s.standardCode} id={`s-${s.standardCode}`} className="f-std"
+                  title={<><code className="pill-code ltr">{stdLabel(s.standardCode)}</code> {s.standardName}</>}
+                  extra={<span className="f-std-count ltr">{s.items.filter((i) => i.value).length}/{s.items.length}</span>}>
+                  {rows.map((i) => (
+                    <ValueRow key={`${f.id}:${i.indicatorId}`} formId={f.id} item={i} editable={editable} reviewing={reviewing}
+                      mark={marks[i.indicatorId]} onMark={(m) => setMarks((x) => ({ ...x, [i.indicatorId]: m }))} onSaved={onSaved} />
+                  ))}
+                </Panel>
+              ));
+            })()}
+            </div>
+          </div>
+          <div className="fp-side is-next">
+            <PillarStep dir="next" target={pillars[position + 1] ?? null} position={position + 1} onGo={() => void goPillar(pillars[position + 1].key)} />
+          </div>
+        </div>
+      )}
 
       {f.events.length > 0 && (
         <Panel title={L("سجل النموذج", "Form history")} icon={<HistoryOutlined />}>
@@ -212,8 +271,14 @@ export default function FormPage() {
         </Panel>
       )}
 
+      {(pillars.length > 1 || editable || reviewing || f.actions.canReopen) && (
+      <div className="fp-dock no-print">
+      {pillars.length > 1 && (
+        <PillarMobileBar position={position} total={pillars.length} hasPrev={position > 0} hasNext={position < pillars.length - 1}
+          onPrev={() => void goPillar(pillars[position - 1].key)} onNext={() => void goPillar(pillars[position + 1].key)} />
+      )}
       {(editable || reviewing || f.actions.canReopen) && (
-        <div className="f-actions no-print">
+        <div className="f-actions">
           <span className="grow">
             {editable && (
               <span className="f-summary" aria-live="polite">
@@ -238,7 +303,8 @@ export default function FormPage() {
           )}
           {editable && (
             <Tooltip title={!f.actions.canSubmit ? L("يتفعل حين يكتمل النموذج؛ اعرض «ما يمنع الإرسال».", "Enabled once the form is complete.") : undefined}>
-              <Button type="primary" size="large" icon={<SendOutlined />} disabled={!f.actions.canSubmit} loading={submit.isPending} onClick={() => setDialog("submit")}>
+              <Button type="primary" size="large" icon={<SendOutlined />} disabled={!f.actions.canSubmit} loading={submit.isPending}
+                onClick={async () => { await autosave.flushAll(); setDialog("submit"); }}>
                 {L("إرسال للمراجعة", "Send for review")}
               </Button>
             </Tooltip>
@@ -254,10 +320,12 @@ export default function FormPage() {
           {f.actions.canReopen && <Button icon={<UnlockOutlined />} onClick={() => setDialog("reopen")}>{L("إعادة فتح للتصحيح", "Reopen")}</Button>}
         </div>
       )}
+      </div>
+      )}
 
       {dialog === "submit" && (
         <SubmitModal form={f} items={items} pending={submit.isPending} error={submit.error} onClose={() => setDialog(null)}
-          onConfirm={async () => { await submit.mutateAsync(); setDialog(null); }} />
+          onConfirm={async () => { await autosave.flushAll(); await submit.mutateAsync(); setDialog(null); }} />
       )}
       {dialog === "approve" && (
         <ApproveModal form={f} onClose={() => setDialog(null)} onDone={(next) => { qc.setQueryData(key, next); void qc.invalidateQueries({ queryKey: ["forms"] }); }} />
@@ -287,7 +355,7 @@ export default function FormPage() {
       )}
       {dialog === "extend" && <ExtendModal form={f} onClose={() => setDialog(null)} onDone={(next) => { qc.setQueryData(key, next); void qc.invalidateQueries({ queryKey: ["forms"] }); }} />}
       {dialog === "import" && <ImportModal formId={f.id} onClose={() => setDialog(null)} onApplied={() => void refresh()} />}
-    </>
+    </AutosaveContext.Provider>
   );
 }
 

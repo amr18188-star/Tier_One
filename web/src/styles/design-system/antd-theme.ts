@@ -53,7 +53,9 @@ export function antdTheme(name: ThemeName, base: ThemeConfig = {}, { tone = "lig
       defaultActiveColor: s.btnGhost.hoverFg,
       defaultActiveBg: s.btnGhost.hoverBg,
       defaultActiveBorderColor: s.btnGhost.hoverBorder,
-      ...(pill !== undefined ? { borderRadius: pill, borderRadiusLG: pill, borderRadiusSM: pill } : {}),
+      // Square and rounded: LG / SM = the global lg / sm (no change here), so a nested Button `algorithm: true`
+      // (antdDarkBlockTheme) keeps them instead of re-deriving them from the seed (rounded: 10px large band buttons, not 12px).
+      ...(pill !== undefined ? { borderRadius: pill, borderRadiusLG: pill, borderRadiusSM: pill } : { borderRadiusLG: c.lg, borderRadiusSM: c.sm }),
     },
     Input: { ...field, activeShadow: `0 0 0 2px ${t.focus}` },
     InputNumber: { ...field, activeShadow: `0 0 0 2px ${t.focus}` },
@@ -120,13 +122,24 @@ export function antdTheme(name: ThemeName, base: ThemeConfig = {}, { tone = "lig
       colorInfo: s.heading,
       colorInfoBg: s.bgCool,
       colorInfoBorder: s.border,
-      // Success and warning: antd's defaults in navy-gold and app-soft (their pixels stay); a theme with statusToAntd seeds them
-      // from its status tokens, so antd's success / warning (Tag, Alert, Badge, Result, Timeline green) match the app's colours.
-      // The ink (text) tone of each state: antd writes Tag and Alert text in colorSuccess / colorWarning, so AA needs the ink.
-      ...(t.statusToAntd ? { colorSuccess: t.status.okInk, colorWarning: t.status.nearInk } : {}),
+      // Success and warning (Tag, Alert, Badge, Result, Progress, Timeline green): the status inks in every palette, since antd
+      // writes Tag and Progress text in colorSuccess / colorWarning (its defaults are 1.8–2.3:1). Fills: a theme with statusToAntd
+      // takes the app's chips (soft fill and border); the others keep antd's preset fills, which their green and gold Tag tokens
+      // hold (navy-gold, app-soft: the same pixels as before, only the ink changes).
+      colorSuccess: t.status.okInk,
+      colorSuccessText: t.status.okInk,
+      colorWarning: t.status.nearInk,
+      colorWarningText: t.status.nearInk,
+      ...(t.statusToAntd
+        ? { colorSuccessBg: t.status.okSoft, colorSuccessBorder: t.status.okBorder, colorWarningBg: t.status.nearSoft, colorWarningBorder: t.status.nearBorder }
+        : { colorSuccessBg: t.tag.positiveBg, colorSuccessBorder: t.tag.positiveBorder, colorWarningBg: t.tag.pendingBg, colorWarningBorder: t.tag.pendingBorder }),
       // Text antd puts on solid primary, danger and badge fills: a dark palette has a light primary, so its dark ink.
       // and hints (form extras, "optional", descriptions): antd's dark default (white 45%) is just under 4.5:1 on the cards.
-      ...(darkPage ? { colorTextLightSolid: s.btnPrimary.fg, colorTextDescription: s.body, colorTextTertiary: s.body } : {}),
+      // A light palette's hints take the label colour and placeholders the body colour (antd's black 45% / 25% are 3.4:1 /
+      // 1.8:1 on white); disabled text (colorTextQuaternary) stays antd's.
+      ...(darkPage
+        ? { colorTextLightSolid: s.btnPrimary.fg, colorTextDescription: s.body, colorTextTertiary: s.body }
+        : { colorTextDescription: s.label, colorTextTertiary: s.label, colorTextPlaceholder: s.body }),
       colorError: s.destructive,
       colorText: s.fg,
       colorTextHeading: s.heading,

@@ -28,11 +28,11 @@
 
 /* نقطة الحالة: مع اسمها دائمًا. */
 .rv-chip i, .rv-p-st i { flex: none; width: 8px; height: 8px; border-radius: var(--ds-radius-round); background: var(--rv-st, var(--ds-neutral-dot)); }
-[data-st="Ready"] { --rv-st: var(--ds-status-info); }
-[data-st="Changed"] { --rv-st: var(--ds-status-late); }
-[data-st="Incomplete"] { --rv-st: var(--ds-status-near); }
-[data-st="Transferred"] { --rv-st: var(--ds-status-ok); }
-[data-st="NoData"] { --rv-st: var(--ds-neutral-dot); }
+.rv-body :is(.rv-chip, .rv-p-st)[data-st="Ready"] { --rv-st: var(--ds-status-info); }
+.rv-body :is(.rv-chip, .rv-p-st)[data-st="Changed"] { --rv-st: var(--ds-status-late); }
+.rv-body :is(.rv-chip, .rv-p-st)[data-st="Incomplete"] { --rv-st: var(--ds-status-near); }
+.rv-body :is(.rv-chip, .rv-p-st)[data-st="Transferred"] { --rv-st: var(--ds-status-ok); }
+.rv-body :is(.rv-chip, .rv-p-st)[data-st="NoData"] { --rv-st: var(--ds-neutral-dot); }
 
 .rv-empty-actions { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--ds-space-sm) var(--ds-space-md); }
 

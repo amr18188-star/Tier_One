@@ -334,6 +334,46 @@ describe.each(Object.keys(themes) as ThemeName[])("AA for text on the gradients 
   });
 });
 
+// ---------- sidebar navigation (shared/ui.css + app/nav.css): the expanded sidebar, the rail and the mobile drawer use the same tokens ----------
+describe.each(Object.keys(themes) as ThemeName[])("sidebar navigation in %s: readable links, a distinct active link, a visible hover", (name) => {
+  const sb = themes[name].sidebar;
+  /** --ds-gradient-sidebar: top stop, bottom stop, and the glow over the top stop. */
+  const side = [sb.bgTop, sb.bg, over(sb.glow, sb.bgTop)];
+  const fills = [...side, sb.hoverBg, sb.activeBg];
+  const worst = (fg: string, bgs: string[]) => Math.min(...bgs.map((bg) => contrast(fg, bg)));
+  it("link text ≥ 7:1 on every stop, and quieter than the active / hovered text", () => {
+    expect(worst(sb.fg, side)).toBeGreaterThanOrEqual(7);
+    expect(contrast(sb.fgActive, sb.fg), "active text vs link text").toBeGreaterThanOrEqual(1.3);
+  });
+  it("active link text ≥ 7:1 on the active fill; hovered link and group header ≥ 7:1 on the hover fill", () => {
+    expect(contrast(sb.fgActive, sb.activeBg)).toBeGreaterThanOrEqual(7);
+    expect(contrast(sb.fgActive, sb.hoverBg)).toBeGreaterThanOrEqual(7);
+  });
+  it("group titles and the brand subtitle ≥ 4.5:1 on every stop, and quieter than the links", () => {
+    expect(worst(sb.muted, side)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(sb.fg, sb.muted), "link text vs group title").toBeGreaterThanOrEqual(1.2);
+  });
+  it("fills: hover shows on every stop (≥ 1.2:1); active stands apart from the sidebar (≥ 1.6:1) and from hover (≥ 1.3:1)", () => {
+    expect(worst(sb.hoverBg, side), "hover vs sidebar").toBeGreaterThanOrEqual(1.2);
+    expect(worst(sb.activeBg, side), "active vs sidebar").toBeGreaterThanOrEqual(1.6);
+    expect(contrast(sb.activeBg, sb.hoverBg), "active vs hover").toBeGreaterThanOrEqual(1.3);
+  });
+  it("active bar ≥ 3:1 against its neighbours: every stop, the active fill, the hover fill (rail group button)", () => {
+    expect(worst(sb.indicator, fills)).toBeGreaterThanOrEqual(3);
+  });
+  it("badge text ≥ 4.5:1; badge and rail dot ≥ 3:1 on the sidebar, hover and active fills", () => {
+    expect(contrast(sb.badgeFg, sb.badgeBg)).toBeGreaterThanOrEqual(4.5);
+    expect(worst(sb.badgeBg, fills)).toBeGreaterThanOrEqual(3);
+  });
+  it("focus ring ≥ 3:1 on the sidebar, hover and active fills", () => {
+    expect(worst(sb.focus, fills)).toBeGreaterThanOrEqual(3);
+  });
+  it("scrollbar thumb (scrollbar.css: 76% bg + 24% fg) ≥ 1.5:1 on the bg", () => {
+    const thumb = hex(rgbOf(sb.bg).map((x, i) => Math.round(x * 0.76 + rgbOf(sb.fg)[i] * 0.24)));
+    expect(contrast(thumb, sb.bg)).toBeGreaterThanOrEqual(1.5);
+  });
+});
+
 // ---------- palettes: scheme, the navy fill, pillar colours, status colours ----------
 /** OKLab (Björn Ottosson) of an 8-bit colour; Euclidean distance there ≈ perceived difference (0.02 ≈ just noticeable). */
 function oklab(c: string): number[] {
@@ -384,6 +424,29 @@ describe("pillar colours meet the palette through --ds-pillar-* (shared/pillars.
       expect(luminance(pt), `tint ${pt} stays dark`).toBeLessThan(0.05);
     }
   });
+  // --pf: the pillar colour as a fill under white text (pill bands, pillar heads, step numbers, board badges, timeline bars).
+  it.each(themeNames)("%s: white text on pillar fills (--pf) and the band chips (.lcp-head .pill-code)", (name) => {
+    const t = themes[name];
+    const bandStops = [t.band.from, t.band.via, t.band.to, t.sections.dark.bg];
+    for (const d of pillarData) {
+      const { pc, pt } = pillarOn(name, d);
+      const pf = mixHex(pc, 1 - pct(t.pillar.fillMix), t.shade);
+      if (t.scheme === "light") expect(pf, "a light palette fills with the data colour exactly").toBe(pc);
+      else {
+        // pillar heads: 80% white labels on a 13% white stats box, under the 7% white corner circle; 90% white names and numbers
+        const stats = over("rgba(255, 255, 255, 0.13)", over("rgba(255, 255, 255, 0.07)", pf));
+        expect(contrast(over("rgba(255, 255, 255, 0.8)", stats), stats), `80% white on the stats box over ${pf}`).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(over("rgba(255, 255, 255, 0.78)", pf), pf), `78% white on ${pf}`).toBeGreaterThanOrEqual(4.5);
+        expect(contrast("#ffffff", pf), `white on ${pf}`).toBeGreaterThanOrEqual(4.5);
+      }
+      // band chip: the tint where the palette keeps it, else a light one; text = the colour deepened with the navy ink
+      const chip = mixHex(pt, pct(t.pillar.tintKeep), mixHex(pc, 0.1, t.onDark.fg));
+      const ink = mixHex(pc, pct(t.pillar.keep) - 0.15, t.inkFill);
+      expect(contrast(ink, chip), `band chip text ${ink} on ${chip}`).toBeGreaterThanOrEqual(4.5);
+      for (const b of bandStops) expect(contrast(chip, b), `band chip ${chip} on the band ${b}`).toBeGreaterThanOrEqual(3);
+      if (t.scheme === "light") expect(chip, "a light palette keeps the chip fill").toBe(pt);
+    }
+  });
 });
 
 describe.each(themeNames)("palette rules in %s", (name) => {
@@ -411,10 +474,22 @@ describe.each(themeNames)("palette rules in %s", (name) => {
     const a = antdTheme(name, {}, { corners: "square" });
     expect(a.algorithm !== undefined, "algorithm").toBe(t.scheme === "dark");
     if (t.statusToAntd) {
-      expect(a.token).toMatchObject({ colorSuccess: t.status.okInk, colorWarning: t.status.nearInk });
-      for (const c of [t.status.okInk, t.status.nearInk]) expect(contrast(c, l.surface), `${c}: antd Tag / Alert text`).toBeGreaterThanOrEqual(4.5);
+      expect(a.token).toMatchObject({
+        colorSuccess: t.status.okInk, colorSuccessBg: t.status.okSoft, colorSuccessBorder: t.status.okBorder,
+        colorWarning: t.status.nearInk, colorWarningBg: t.status.nearSoft, colorWarningBorder: t.status.nearBorder,
+      });
+      for (const [fg, bg] of [[t.status.okInk, t.status.okSoft], [t.status.nearInk, t.status.nearSoft], [t.status.okInk, l.surface], [t.status.nearInk, l.surface]])
+        expect(contrast(fg, bg), `${fg} on ${bg}: antd success / warning Tag and text`).toBeGreaterThanOrEqual(4.5);
     }
-    else expect(Object.keys(a.token ?? {})).not.toEqual(expect.arrayContaining(["colorSuccess"]));
+    else {
+      // antd's preset fills, held by the green / gold Tag tokens; the text is the status ink
+      expect(a.token).toMatchObject({
+        colorSuccess: t.status.okInk, colorSuccessText: t.status.okInk, colorSuccessBg: t.tag.positiveBg, colorSuccessBorder: t.tag.positiveBorder,
+        colorWarning: t.status.nearInk, colorWarningText: t.status.nearInk, colorWarningBg: t.tag.pendingBg, colorWarningBorder: t.tag.pendingBorder,
+      });
+      for (const [fg, bg] of [[t.status.okInk, t.tag.positiveBg], [t.status.nearInk, t.tag.pendingBg], [t.status.okInk, l.surface], [t.status.nearInk, l.surface]])
+        expect(contrast(fg, bg), `${fg} on ${bg}: antd success / warning Tag and text`).toBeGreaterThanOrEqual(4.5);
+    }
     if (t.scheme === "dark") {
       expect(a.token?.colorTextLightSolid, "text on solid primary / danger fills").toBe(l.btnPrimary.fg);
       expect(contrast(l.btnPrimary.fg, l.destructive), "danger button text").toBeGreaterThanOrEqual(4.5);
@@ -424,22 +499,45 @@ describe.each(themeNames)("palette rules in %s", (name) => {
   });
 });
 
-describe.each(themeNames.filter((n) => n !== "navy-gold" && n !== "app-soft"))("new palette %s: AA text on every Tag fill", (name) => {
+describe.each(themeNames)("%s: AA text on every Tag fill", (name) => {
   const t = themes[name];
   it.each(["pending", "positive", "negative", "caution", "info", "special", "highlight", "category"] as const)("%s Tag ≥ 4.5:1", (r) => {
     expect(contrast(t.tag[`${r}Fg`], t.tag[`${r}Bg`])).toBeGreaterThanOrEqual(4.5);
   });
 });
 
-describe("navy-gold and app-soft keep antd's own success / warning and the light algorithm", () => {
-  it.each(["navy-gold", "app-soft"] as const)("%s", (name) => {
+describe("antd success / warning and hint text are AA in every palette", () => {
+  it.each(themeNames)("%s: success / warning text is the status ink (antd's defaults are 1.8–2.3:1 as text)", (name) => {
+    const t = themes[name];
+    expect(antdTheme(name).token).toMatchObject({ colorSuccess: t.status.okInk, colorSuccessText: t.status.okInk, colorWarning: t.status.nearInk, colorWarningText: t.status.nearInk });
+  });
+  it.each(["navy-gold", "app-soft"] as const)("%s keeps antd's success / warning fills (= its green / gold Tag fills)", (name) => {
     expect(themes[name].statusToAntd).toBe(false);
-    expect(themes[name].scheme).toBe("light");
+    expect(themes[name].tag).toMatchObject({ positiveBg: "#f6ffed", positiveBorder: "#b7eb8f", pendingBg: "#fffbe6", pendingBorder: "#ffe58f" });
+  });
+  it.each(themeNames.filter((n) => themes[n].scheme === "light"))("%s (light): hints in the label colour, light algorithm", (name) => {
+    const t = themes[name];
+    const l = t.sections.light;
     const a = antdTheme(name);
     expect(a.algorithm).toBeUndefined();
-    expect(a.token?.colorSuccess).toBeUndefined();
-    expect(a.token?.colorWarning).toBeUndefined();
     expect(a.token?.colorTextLightSolid).toBeUndefined();
+    expect(a.token).toMatchObject({ colorTextDescription: l.label, colorTextTertiary: l.label, colorTextPlaceholder: l.body });
+    expect(a.token?.colorTextQuaternary, "disabled text stays antd's").toBeUndefined();
+    // form extras, "optional", Typography secondary: on cards, the page, drawer sections and muted boxes
+    for (const bg of [l.surface, l.bgCool, l.track, t.app.mutedBg]) expect(contrast(l.label, bg), `hint ${l.label} on ${bg}`).toBeGreaterThanOrEqual(4.5);
+    // placeholders sit in fields (the card colour)
+    expect(contrast(l.body, l.surface), `placeholder ${l.body} on ${l.surface}`).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe.each(themeNames)("%s: chart labels", (name) => {
+  const t = themes[name];
+  const backs = [t.chart.bg, t.chart.off, ...stopsOf(t.gradient.surfaceSubtle)];
+  it("axis and year labels (--ds-neutral-axis) ≥ 4.5:1 on the chart panel, its off-plan area and the point fill", () => {
+    for (const b of backs) expect(contrast(t.neutral.axis, b), `axis ${t.neutral.axis} on ${b}`).toBeGreaterThanOrEqual(4.5);
+  });
+  it("the actual-value label: achieved / near in the status inks, behind in its mark, ≥ 4.5:1", () => {
+    for (const b of backs) for (const c of [t.status.okInk, t.status.nearInk, t.status.late]) expect(contrast(c, b), `${c} on ${b}`).toBeGreaterThanOrEqual(4.5);
   });
 });
 
@@ -571,7 +669,7 @@ describe("antdTheme", () => {
     expect(values).not.toContain("var(");
   });
 
-  it("smooth: the 8–24 scale, pill buttons (every size) and tags; square and rounded add no button or tag radius", () => {
+  it("smooth: the 8–24 scale, pill buttons (every size) and tags; square and rounded keep the global button and tag radius", () => {
     const s = corners.smooth;
     const smooth = antdTheme("navy-gold", {}, { corners: "smooth" });
     expect(smooth.token).toMatchObject({ borderRadius: s.md, borderRadiusLG: s.lg, borderRadiusSM: s.sm, borderRadiusXS: s.xs, borderRadiusOuter: s.xs });
@@ -580,7 +678,9 @@ describe("antdTheme", () => {
     expect(smooth.components?.Table?.headerBorderRadius).toBe(s.lg);
     for (const style of ["square", "rounded"] as const) {
       const t = antdTheme("app-soft", {}, { corners: style });
-      expect(Object.keys(t.components?.Button ?? {}).filter((k) => k.startsWith("borderRadius")), style).toEqual([]);
+      // Button LG / SM repeat the global lg / sm, so a nested `algorithm: true` (antdDarkBlockTheme) cannot re-derive them.
+      const btn = Object.fromEntries(Object.entries(t.components?.Button ?? {}).filter(([k]) => k.startsWith("borderRadius")));
+      expect(btn, style).toEqual({ borderRadiusLG: t.token?.borderRadiusLG, borderRadiusSM: t.token?.borderRadiusSM });
       expect(Object.keys(t.components?.Tag ?? {}).filter((k) => k.startsWith("borderRadius")), style).toEqual([]);
     }
   });

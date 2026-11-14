@@ -1,5 +1,5 @@
-import { memo, useId, useMemo, useState, type CSSProperties, type ReactNode } from "react";
-import { Alert, Button, Drawer, Tag, Tooltip } from "antd";
+import { memo, useEffect, useId, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { Alert, Button, Drawer, Input, Tag, Tooltip } from "antd";
 import {
   AimOutlined, ApartmentOutlined, DownloadOutlined, FundOutlined, GlobalOutlined, LineChartOutlined, SettingOutlined, TrophyOutlined, WarningOutlined,
 } from "@ant-design/icons";
@@ -272,8 +272,8 @@ function Furthest({ c, onPick }: { c: Scorecard; onPick: (i: IndicatorScore) => 
 
 /**
  * كل ركيزة لوحة تطوى (AccordionPanel المشتركة)، وركيزة واحدة مفتوحة، كما في الشريط الجانبي: كلها مطوية عند الدخول،
- * فتح ركيزة يطوي المفتوحة، والضغط على رأس المفتوحة يطويها. ?pillar=<رمز الركيزة> يحفظ المفتوحة بـ replace فيبقيها التحميل؛
- * رمز لا يطابق ركيزة يحذف بـ replace. المرشح (البحث والحالة) لا يخفي ركيزة: يعرض كل رأس عدد مؤشراته المطابقة،
+ * فتح ركيزة يطوي المفتوحة، والضغط على رأس المفتوحة يطويها. ?pillar=01…06 يحفظ المفتوحة بـ replace فيبقيها التحميل؛
+ * قيمة لا تطابق ركيزة تحذف بـ replace. المرشح (البحث والحالة) لا يخفي ركيزة: يعرض كل رأس عدد مؤشراته المطابقة،
  * والمفتوحة بلا مطابقة تقول ذلك في محتواها.
  */
 function PillarsView({ c, onPick }: { c: Scorecard; onPick: (i: IndicatorScore) => void }) {
@@ -285,12 +285,20 @@ function PillarsView({ c, onPick }: { c: Scorecard; onPick: (i: IndicatorScore) 
     const match = (i: IndicatorScore) => (level === "all" || i.level === level) && (!q || i.name.includes(q) || i.code.startsWith(q));
     return c.pillars.map((p) => p.standards.map((s) => ({ s, rows: s.indicators.filter(match) })).filter((x) => x.rows.length > 0));
   }, [c.pillars, q, level]);
+  // المفتاح في الرابط رقم الركيزة 01…06 كما في صفحة المراجعة (لا حروف في الرابط). رابط قديم برمز الركيزة (أ، ب …) مقبول:
+  // يفتح ركيزته من أول رسم، ثم يكتب رقمها مكانه بـ replace.
+  const nums = useMemo(() => c.pillars.map((_, index) => pillarNum(index)), [c.pillars]);
   const codes = useMemo(() => c.pillars.map((p) => p.code), [c.pillars]);
-  const { openKey, toggle } = useSingleOpen({ param: "pillar", keys: codes });
+  const keys = useMemo(() => [...nums, ...codes], [nums, codes]);
+  const { openKey, toggle, setOpenKey } = useSingleOpen({ param: "pillar", keys });
+  useEffect(() => {
+    const old = openKey === null ? -1 : codes.indexOf(openKey);
+    if (old >= 0) setOpenKey(nums[old]);
+  }, [openKey, codes, nums, setOpenKey]);
   return (
     <>
       <div className="sc-filter">
-        <input className="ant-input" placeholder={L("ابحث بكود المؤشر أو اسمه", "Search")} value={q} onChange={(e) => setQ(e.target.value)} aria-label={L("بحث", "Search")} />
+        <Input placeholder={L("ابحث بكود المؤشر أو اسمه", "Search")} value={q} onChange={(e) => setQ(e.target.value)} aria-label={L("بحث", "Search")} />
         {(["all", "InLevel", "Below", "NoData"] as const).map((k) => (
           <button key={k} type="button" className={level === k ? "on" : ""} onClick={() => setLevel(k)}>
             {k === "all" ? L("الكل", "All") : LEVEL_TEXT[k].ar}
@@ -299,7 +307,7 @@ function PillarsView({ c, onPick }: { c: Scorecard; onPick: (i: IndicatorScore) 
       </div>
       <div className="sc-acc">
         {c.pillars.map((p, index) => (
-          <PillarPanel key={p.id} p={p} index={index} open={openKey === p.code} onToggle={toggle} onPick={onPick} stds={stdsByPillar[index]} filtering={filtering} />
+          <PillarPanel key={p.id} p={p} index={index} open={openKey === nums[index] || openKey === p.code} onToggle={toggle} onPick={onPick} stds={stdsByPillar[index]} filtering={filtering} />
         ))}
       </div>
     </>
@@ -310,7 +318,7 @@ type StdRows = { s: PillarScore["standards"][number]; rows: IndicatorScore[] };
 
 /**
  * لوحة ركيزة على AccordionPanel: بطاقة بحد علوي بلون الركيزة، والرأس الرقم 01…06 (ترتيب الخطة) والاسم وملخصه ودرجة الركيزة.
- * رمز الركيزة (أ، ب …) لا يعرض؛ يبقى في المفاتيح والرابط ولقارئ الشاشة. مذكّرة: الفتح يعيد رسم لوحتين فقط.
+ * رمز الركيزة (أ، ب …) لا يعرض ولا يكتب في الرابط (الرابط بالرقم)؛ يبقى في المفاتيح ولقارئ الشاشة. مذكّرة: الفتح يعيد رسم لوحتين فقط.
  */
 const PillarPanel = memo(function PillarPanel({ p, index, open, onToggle, onPick, stds, filtering }: {
   p: PillarScore;
@@ -324,7 +332,7 @@ const PillarPanel = memo(function PillarPanel({ p, index, open, onToggle, onPick
   const uid = useId();
   const shown = stds.reduce((n, x) => n + x.rows.length, 0);
   return (
-    <AccordionPanel id={`sc-pillar${uid}`} open={open} onToggle={() => onToggle(p.code)} className="lcp-panel sc-pblock sc-acc-panel" style={tint(index)}
+    <AccordionPanel id={`sc-pillar${uid}`} open={open} onToggle={() => onToggle(pillarNum(index))} className="lcp-panel sc-pblock sc-acc-panel" style={tint(index)}
       header={(
         <span className="sc-pblock-head sc-acc-title">
           <span className="ltr sc-pillar-num" aria-hidden>{pillarNum(index)}</span>

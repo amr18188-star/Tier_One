@@ -16,6 +16,7 @@ disagrees with the CSS, the CSS wins: re-read the file.
 | `web/src/styles/design-system/primitives.css` | Raw palettes as `--color-<family>-<step>` | `:root` (the only global file) | `index.css` |
 | `web/src/styles/design-system/themes/navy-gold.css` | `--ds-*` tokens for the landing look (no shadcn variables: §7) | `[data-theme="navy-gold"]` | `index.css` |
 | `web/src/styles/design-system/themes/app-soft.css` | Same names, the old `/app` palette | `[data-theme="app-soft"]` | `index.css` |
+| `web/src/styles/design-system/themes/night-gold.css`, `indigo-silver.css`, `graphite-gold.css` | Same names: the dark Night navy & gold, Midnight indigo & silver, Graphite & gold (§4b) | `[data-theme="<name>"]` | `index.css` |
 | `web/src/styles/design-system/corners.css` | Corner scale `--ds-radius-xs … xl`, `-pill`, `-round`, aliases `--ds-radius`, shadcn `--radius` (section 2a) | `:root` + `[data-corners]` | `index.css` (last) |
 | `web/src/styles/design-system/config.ts` | `CORNERS = "square"`: the default corner style (`"square" \| "rounded" \| "smooth"`) | — | `theme.ts`, `antd-theme.ts` |
 | `web/src/styles/design-system/index.css` | Plain-CSS entry: primitives, then each theme, then `corners.css` (order matters) | — | a feature's Tailwind entry, or any CSS that wants `var(--ds-*)` |
@@ -205,6 +206,29 @@ group title 4.7:1, avatar initials 12.6:1, callout link 5.0:1, pillar head white
 A new theme copies the block of `app-soft.css`; hero, sidebar and auth read the band and sidebar tokens and need no
 change. Use: `background: var(--ds-gradient-hero)`, `style={{ background: "var(--ds-gradient-hero)" }}`, or
 `bg-[image:var(--ds-gradient-hero)]` (no Tailwind namespace).
+
+## 4b. The later palettes (night-gold, indigo-silver, graphite-gold)
+
+The tables in this file list navy-gold and app-soft. The later palettes use the same names; their files
+(`themes/<name>.css`) and `tokens.ts` hold every value, and the design-system README "Palettes" gives the choice and the
+contrast notes. Key values:
+
+| Role | night-gold (dark) | indigo-silver | graphite-gold |
+|---|---|---|---|
+| page `--ds-bg-cool` / card `--ds-surface` | night-925 #0a1424 / night-900 #0f1a2c | midnight-50 #f3f4fa / paper | graphite-50 #f5f6f7 / paper |
+| text `--ds-fg` / `--ds-label` | night-50 #eef2f8 / night-200 #c3cedc | midnight-900 #1b1f52 / silver-700 #545b6c | graphite-900 #1d2126 / graphite-600 #454c56 |
+| primary bg / fg | night-blue-300 #8fb4ec / night-950 | midnight-900 / paper | graphite-900 / paper |
+| link, focus ring | gold-400, gold-400 | midnight-600 #3e4696, midnight-900 | gold-700, graphite-900 |
+| sidebar bg / band | night-950 / navy-800 → navy-700 → night-760 | midnight-950 / midnight-900 → 700 | graphite-950 / graphite-900 → 700 |
+| `--ds-ink-fill` (= dark-section bg in night-gold) | night-760 #1d3152 | midnight-900 | graphite-900 |
+| status ok / near / late / gap marks | #45bd7f / #e8b542 / #ef5f5f / #e8883a | navy-gold's | navy-gold's |
+| `--ds-pillar-keep` / `-tint-keep` / `-tint-mix` | 80% / 0% / 10% | 100% / 100% / 0% | 100% / 100% / 0% |
+| `--ds-color-scheme` | dark | light | light |
+
+New tokens in every theme (navy-gold and app-soft values = what the rules painted before): `--ds-color-scheme` (light |
+dark; `<html>` `color-scheme`, index.css), `--ds-ink-fill` (navy fill under white text: table heads, active tabs and
+filters, selected segments; navy-gold navy-900, app-soft soft-navy-950), `--ds-tier-ink` (number on a tier colour; paper),
+`--ds-pillar-keep` / `-lift` / `-tint-keep` / `-tint-mix` (how `tint()` mixes the pillar data colours; 100% / paper / 100% / 0%).
 
 ## 5. Section tokens
 
@@ -423,7 +447,8 @@ const antdBase: ThemeConfig = { token: { fontFamily: '"IBM Plex Sans Arabic", "S
 | `colorPrimaryBorder` (antd's focus-visible outline) | `focusRing` |
 | `colorLink`, `colorLinkHover`, `colorLinkActive` | `link`, `linkHover`, `linkHover` |
 | `colorInfo`, `colorInfoBg`, `colorInfoBorder` | `heading`, `bgCool`, `border` |
-| `colorError` | `destructive`; `colorSuccess` / `colorWarning` stay antd defaults (no AA status token) |
+| `colorError` | `destructive`; `colorSuccess` / `colorWarning`: antd defaults when `statusToAntd` is false (navy-gold, app-soft), else `status.okInk` / `status.nearInk`, Bg / Border = `okSoft` / `okBorder`, `nearSoft` / `nearBorder` |
+| algorithm, `colorTextLightSolid`, `colorTextDescription` / `Tertiary`, Tooltip | `scheme: "dark"` only: `darkAlgorithm`, `btnPrimary.fg`, `body`, Tooltip text `sections.dark.heading` |
 | `colorText`, `colorTextHeading`, `colorTextSecondary` | `fg`, `heading`, `label` |
 | `colorBorder`, `colorBorderSecondary` | `border` |
 | `colorBgLayout`, `colorBgContainer`, `colorBgElevated`, `colorBgSpotlight` | `bgCool`, `surface`, `surface`, `sections.dark.bg` |

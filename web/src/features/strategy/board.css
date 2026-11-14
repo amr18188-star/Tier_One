@@ -58,7 +58,7 @@
 .pb-nav-btn { position: relative; width: 40px; height: 40px; padding: 0; }
 .pb-badge {
   position: absolute; inset-block-start: -8px; inset-inline-end: -8px; display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px;
-  border-radius: var(--ds-radius-pill); background: var(--pc); color: var(--ds-on-dark-fg); font-size: 11px; font-weight: 700; line-height: 1;
+  border-radius: var(--ds-radius-pill); background: var(--pf, var(--pc)); color: var(--ds-on-dark-fg); font-size: 11px; font-weight: 700; line-height: 1;
 }
 
 /* ----- الأعمدة (embla): عرض الشريحة من عدد المعايير --pb-n، فالعمود الوحيد يملأ العرض ----- */
@@ -85,7 +85,7 @@
 .pb-slide:only-child .pb-col-title > span { min-height: 0; }
 .pb-col-linked {
   margin-inline-start: auto; display: inline-flex; align-items: center; gap: 4px; padding: 0 8px;
-  border-radius: var(--ds-radius-pill); background: var(--pc); color: var(--ds-on-dark-fg); font-size: 12px; font-weight: 700; line-height: 1.75;
+  border-radius: var(--ds-radius-pill); background: var(--pf, var(--pc)); color: var(--ds-on-dark-fg); font-size: 12px; font-weight: 700; line-height: 1.75;
 }
 
 /* الزر المزدوج «المؤشرات (n) | المبادرات (n)»: المضغوط كحلي، وشارة المرتبط بلون الركيزة. */
@@ -102,7 +102,7 @@
 .pb-seg-sel { flex: none; color: var(--pc); }
 .pb-seg-badge {
   flex: none; display: inline-flex; align-items: center; gap: 3px; padding: 0 6px; border-radius: var(--ds-radius-pill);
-  background: var(--pc); color: var(--ds-on-dark-fg); font-size: 11.5px; font-weight: 700; line-height: 1.6;
+  background: var(--pf, var(--pc)); color: var(--ds-on-dark-fg); font-size: 11.5px; font-weight: 700; line-height: 1.6;
 }
 
 /* محتوى المعيار: قائمة النوع المختار، ثم «عرض الكل» و«جديد». */

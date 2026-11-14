@@ -1,78 +1,37 @@
 import { useRef, useState } from "react";
-import { Alert, Button, Checkbox, Input, InputNumber, Popover, Segmented, Tooltip, Upload } from "antd";
+import { Button, Checkbox, Input, InputNumber, Popover, Segmented, Tooltip, Upload } from "antd";
 import {
   CheckCircleOutlined, CloseCircleFilled, ExclamationCircleOutlined, InfoCircleOutlined, LoadingOutlined, MinusCircleOutlined, PaperClipOutlined, QuestionCircleOutlined,
   StopOutlined, UploadOutlined, WarningFilled,
 } from "@ant-design/icons";
-import { useMutation } from "@tanstack/react-query";
 import { api, uploadFile } from "../../api/client";
-import type { Doc, FormItem, SaveValue, ValueKind } from "../../api/collection";
+import type { Doc, FormItem, ValueKind } from "../../api/collection";
 import { errorText } from "../../shared/format";
 import { L } from "../../shared/i18n";
 import { direction as directionText, fileSize, num, withUnit } from "../../shared/labels";
-
-interface Draft { kind: ValueKind; value: number | null; numerator: number | null; denominator: number | null; reason: string; explanation: string }
-
-function draftOf(item: FormItem): Draft {
-  const v = item.value;
-  return {
-    kind: v?.kind ?? "Number", value: v?.value ?? null, numerator: v?.numerator ?? null, denominator: v?.denominator ?? null,
-    reason: v?.reason ?? "", explanation: v?.explanation ?? "",
-  };
-}
-
-function same(a: Draft, b: Draft) {
-  return a.kind === b.kind && a.value === b.value && a.numerator === b.numerator && a.denominator === b.denominator
-    && a.reason.trim() === b.reason.trim() && a.explanation.trim() === b.explanation.trim();
-}
-
-function empty(d: Draft) {
-  return d.kind === "Number" && d.value === null && d.numerator === null && d.denominator === null;
-}
+import { NoteCard } from "./NoteCard";
+import { useValueAutosave, type Draft, type SaveError, type SaveState } from "./useValueAutosave";
 
 export interface ReturnMark { checked: boolean; note: string }
 
 /**
- * صف مؤشر في النموذج. الحفظ تلقائي عند مغادرة الصف (لا زر حفظ)، والتحقق من الخادم يظهر تحت الحقل مباشرة.
+ * صف مؤشر في النموذج. الحفظ تلقائي أثناء الكتابة (بعد توقفها قليلًا، وفورًا عند مغادرة الصف أو Enter؛ useValueAutosave)،
+ * وحالته بجانب الحقل، والتحقق من الخادم تحته مباشرة.
  * للنسب يدخل البسط والمقام وتحسب النسبة، و«غير متاح» أو «لا ينطبق» يطلب سببًا. المراجع يرى القيمة ويعلّم ما يعاد بملاحظة.
  */
 export function ValueRow({ formId, item, editable, reviewing, mark, onMark, onSaved }: {
   formId: string; item: FormItem; editable: boolean; reviewing: boolean;
   mark?: ReturnMark; onMark?: (m: ReturnMark) => void; onSaved: (item: FormItem) => void;
 }) {
-  const saved = draftOf(item);
-  const [draft, setDraft] = useState<Draft>(saved);
-  const [error, setError] = useState<string | null>(null);
+  const auto = useValueAutosave({ formId, item, editable, onSaved });
+  const draft = auto.draft;
   const row = useRef<HTMLDivElement>(null);
   const pct = item.unit.trim() === "%";
   const weighted = item.aggregation === "WeightedAverage";
 
-  const save = useMutation({
-    mutationFn: (d: Draft) => {
-      const body: SaveValue = {
-        indicatorId: item.indicatorId, kind: d.kind,
-        value: d.kind === "Number" && !item.usesRatio ? d.value : null,
-        numerator: d.kind === "Number" && item.usesRatio ? d.numerator : null,
-        denominator: d.kind === "Number" && (item.usesRatio || weighted) ? d.denominator : null,
-        reason: d.kind === "Number" ? null : d.reason || null, explanation: d.explanation || null, version: item.value?.version ?? null,
-      };
-      return api.put<FormItem>(`/api/forms/${formId}/values`, body);
-    },
-    onSuccess: (next) => {
-      setError(null);
-      onSaved(next);
-    },
-    onError: (e) => setError(errorText(e)),
-  });
-
-  const commit = (d: Draft = draft) => {
-    if (!editable || same(d, saved) || (empty(d) && !item.value)) return;
-    if (item.usesRatio && d.kind === "Number" && (d.numerator === null || d.denominator === null)) return;
-    if (d.kind !== "Number" && d.reason.trim().length < 5) return;
-    save.mutate(d);
-  };
-  const update = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }));
-  // يحفظ حين يغادر التركيز الصف كله، فيكمل المستخدم البسط ثم المقام دون حفظ نصف قيمة.
+  const commit = () => void auto.flush();
+  const update = (patch: Partial<Draft>) => auto.change({ ...draft, ...patch });
+  // يحفظ فورًا حين يغادر التركيز الصف كله؛ وأثناء الكتابة بعد توقفها. النسبة لا تحفظ قبل البسط والمقام معًا.
   const onBlur = (e: React.FocusEvent) => {
     if (!row.current?.contains(e.relatedTarget as Node | null)) commit();
   };
@@ -96,7 +55,7 @@ export function ValueRow({ formId, item, editable, reviewing, mark, onMark, onSa
   );
 
   return (
-    <div ref={row} id={`i-${item.code}`} className={`f-row${flagged ? " flagged" : ""}${save.isPending ? " saving" : ""}`} onBlur={editable ? onBlur : undefined}>
+    <div ref={row} id={`i-${item.code}`} className={`f-row${flagged ? " flagged" : ""}`} onBlur={editable ? onBlur : undefined}>
       <div>
         <div className="f-name">
           <code className="ltr">{item.code}</code>
@@ -115,19 +74,14 @@ export function ValueRow({ formId, item, editable, reviewing, mark, onMark, onSa
           <span>{L("آخر قيمة معتمدة:", "Last approved:")} <b className="ltr">{withUnit(item.previous, item.unit)}</b></span>
         </div>
         {item.entryNote && <div className="t1-entry-note">{item.entryNote}</div>}
-        {item.value?.reviewNote && (
-          <Alert className="mt" type="error" showIcon message={L("ملاحظة المراجع", "Reviewer note")} description={item.value.reviewNote} />
-        )}
+        {item.value?.reviewNote && <NoteCard className="mt" notes={[item.value.reviewNote]} />}
       </div>
 
       <div className="f-input">
         {editable ? (
           <>
             <Segmented size="small" value={draft.kind}
-              onChange={(k) => {
-                const d = { ...draft, kind: k as ValueKind };
-                setDraft(d);
-              }}
+              onChange={(k) => update({ kind: k as ValueKind })}
               options={[
                 { value: "Number", label: <Tooltip title={L("رقم فعلي، والصفر قيمة صحيحة.", "An actual number; zero is valid.")}>{L("قيمة", "Value")}</Tooltip> },
                 { value: "NotAvailable", label: <Tooltip title={L("المؤشر ينطبق لكن الرقم لم يتوفر بعد؛ اكتب السبب.", "Applies but the number is not available yet.")}>{L("غير متاح", "Not available")}</Tooltip> },
@@ -171,9 +125,8 @@ export function ValueRow({ formId, item, editable, reviewing, mark, onMark, onSa
           <ReadValue item={item} />
         )}
 
-        {save.isPending && <span className="f-issue"><LoadingOutlined /> {L("جار الحفظ…", "Saving…")}</span>}
-        {error && <span className="f-issue err" role="alert"><CloseCircleFilled /> {error}</span>}
-        {!error && errors.map((i) => <span key={i.code} className="f-issue err"><CloseCircleFilled /> {i.messageAr}</span>)}
+        {editable && <SaveStatus state={auto.state} error={auto.error} onRetry={auto.retry} onDiscard={auto.discard} />}
+        {!auto.error && errors.map((i) => <span key={i.code} className="f-issue err"><CloseCircleFilled /> {i.messageAr}</span>)}
         {warnings.map((i) => <span key={i.code} className="f-issue warn"><WarningFilled /> {i.messageAr}</span>)}
 
         <Evidence formId={formId} item={item} editable={editable && !!item.value} docs={liveEvidence} onSaved={onSaved} />
@@ -191,6 +144,28 @@ export function ValueRow({ formId, item, editable, reviewing, mark, onMark, onSa
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * حالة الحفظ بجانب الحقل، في منطقة aria-live واحدة: جارٍ الحفظ، ثم «تم الحفظ» تختفي بعد ثانيتين، أو الخطأ بزر إعادة المحاولة.
+ * تعارض الإصدار يشرح ما حدث ويخير بين حفظ القيمة فوق الأحدث والعودة إليها.
+ */
+function SaveStatus({ state, error, onRetry, onDiscard }: { state: SaveState; error: SaveError | null; onRetry: () => void; onDiscard: () => void }) {
+  return (
+    <span className="fp-save" data-state={state} role="status" aria-live="polite">
+      {state === "saving" && <><LoadingOutlined aria-hidden /> {L("جارٍ الحفظ…", "Saving…")}</>}
+      {state === "saved" && <><CheckCircleOutlined aria-hidden /> {L("تم الحفظ ✓", "Saved ✓")}</>}
+      {state === "error" && error && (
+        <span className="fp-save-err">
+          <span><CloseCircleFilled aria-hidden /> {L("لم يحفظ:", "Not saved:")} {error.text}</span>
+          <span className="fp-save-actions">
+            <Button size="small" onClick={onRetry}>{error.conflict ? L("احفظ قيمتي فوقها", "Save mine over it") : L("أعد المحاولة", "Retry")}</Button>
+            {error.conflict && <Button size="small" type="link" onClick={onDiscard}>{L("اعرض القيمة الأحدث", "Show the latest value")}</Button>}
+          </span>
+        </span>
+      )}
+    </span>
   );
 }
 

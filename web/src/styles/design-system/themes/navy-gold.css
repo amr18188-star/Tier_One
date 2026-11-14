@@ -68,12 +68,12 @@
 
   /* App sidebar: the dark chrome of the signed-in shell (navy, whatever the section). Contrast in tokens.test.ts. */
   --ds-sidebar-bg: var(--color-navy-950);
-  --ds-sidebar-fg: var(--color-mist-300); /* link text, 9:1 on the bg */
+  --ds-sidebar-fg: color-mix(in srgb, var(--color-mist-100) 45%, var(--color-mist-300)); /* link text, 9.4:1 on every gradient stop */
   --ds-sidebar-fg-active: var(--color-paper); /* hovered and active link */
-  --ds-sidebar-muted: var(--color-steel-400); /* group titles, 5.5:1 */
-  --ds-sidebar-hover-bg: var(--color-navy-800);
-  --ds-sidebar-active-bg: var(--color-navy-700);
-  --ds-sidebar-indicator: var(--color-gold-400); /* active-link bar, 6:1 on the active bg */
+  --ds-sidebar-muted: color-mix(in srgb, var(--color-mist-300) 55%, var(--color-steel-400)); /* group titles, 6.2:1 */
+  --ds-sidebar-hover-bg: var(--color-navy-700); /* 1.2:1 on the gradient, so the hover shows at the top too */
+  --ds-sidebar-active-bg: color-mix(in srgb, var(--color-navy-700) 70%, var(--color-steel-400)); /* 1.8:1 on the gradient, 1.5:1 on hover; white 8.3:1 */
+  --ds-sidebar-indicator: var(--color-gold-200); /* active-link bar, 5:1 on the active bg, 9:1 on the sidebar */
   --ds-sidebar-border: var(--color-navy-500); /* dividers */
   --ds-sidebar-focus: var(--color-gold-400); /* keyboard focus outline */
   --ds-sidebar-badge-bg: var(--color-gold-400);
@@ -203,7 +203,7 @@
   --ds-heat-none: var(--color-app-blue-55);
   /* neutral */
   --ds-neutral-mark: var(--color-app-slate-410);
-  --ds-neutral-axis: var(--color-app-slate-360);
+  --ds-neutral-axis: var(--color-soft-neutral-600); /* chart axis and year labels: 4.5:1 on the off-plan area too */
   --ds-neutral-faint: var(--color-app-slate-350);
   --ds-neutral-off: var(--color-app-blue-270);
   --ds-neutral-na: var(--color-app-slate-250);
@@ -235,16 +235,16 @@
   --ds-unit-institute: var(--color-app-blue-505);
   --ds-unit-department: var(--color-app-slate-400);
   /* tag */
-  --ds-tag-pending-fg: var(--color-app-orange-575);
+  --ds-tag-pending-fg: var(--color-app-amber-760); /* AA on the gold fill (was orange-575, 2.8:1) */
   --ds-tag-pending-bg: var(--color-app-amber-50);
   --ds-tag-pending-border: var(--color-app-amber-220);
-  --ds-tag-positive-fg: var(--color-app-lime-660);
+  --ds-tag-positive-fg: var(--color-app-lime-750); /* AA (was lime-660, 3.4:1) */
   --ds-tag-positive-bg: var(--color-app-lime-40);
   --ds-tag-positive-border: var(--color-app-lime-260);
   --ds-tag-negative-fg: var(--color-app-red-560);
   --ds-tag-negative-bg: var(--color-app-red-35);
   --ds-tag-negative-border: var(--color-app-red-190);
-  --ds-tag-caution-fg: var(--color-app-orange-580);
+  --ds-tag-caution-fg: var(--color-app-orange-720); /* AA (was orange-580, 3.3:1) */
   --ds-tag-caution-bg: var(--color-app-amber-55);
   --ds-tag-caution-border: var(--color-app-orange-220);
   --ds-tag-info-fg: var(--color-app-blue-560);
@@ -253,7 +253,7 @@
   --ds-tag-special-fg: var(--color-app-purple-610);
   --ds-tag-special-bg: var(--color-app-purple-30);
   --ds-tag-special-border: var(--color-app-purple-180);
-  --ds-tag-highlight-fg: var(--color-app-teal-680);
+  --ds-tag-highlight-fg: var(--color-ink-teal-700); /* AA (was teal-680, 3.4:1) */
   --ds-tag-highlight-bg: var(--color-app-teal-50);
   --ds-tag-highlight-border: var(--color-app-teal-280);
   --ds-tag-category-fg: var(--color-app-indigo-560);
@@ -284,6 +284,7 @@
   --ds-pillar-lift: var(--color-paper);
   --ds-pillar-tint-keep: 100%;
   --ds-pillar-tint-mix: 0%;
+  --ds-pillar-fill-mix: 0%; /* --ds-shade mixed into pillar fills under white text (--pf): none, the data colour exactly */
 }
 
 /* ---------- Light scope (default) ---------- */

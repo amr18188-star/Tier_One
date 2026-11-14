@@ -13,9 +13,12 @@ the defaults are `ACTIVE_THEME` (theme.ts) and `CORNERS` (config.ts). The public
 | `primitives.css` | Raw palettes on `:root` (`--color-navy-900`, `--color-gold-400`, `--color-soft-*` …). |
 | `themes/navy-gold.css` | `[data-theme="navy-gold"]`: the landing look, Cairo. Pixel-identical to the old `Home.jsx` with square corners. |
 | `themes/app-soft.css` | `[data-theme="app-soft"]`: the old `/app` palette (navy #0d2440, gold #c9a227). |
+| `themes/night-gold.css` | `[data-theme="night-gold"]`: Night navy & gold, the dark palette (see "Palettes"). |
+| `themes/indigo-silver.css` | `[data-theme="indigo-silver"]`: Midnight indigo & silver, cool and sober. |
+| `themes/graphite-gold.css` | `[data-theme="graphite-gold"]`: Graphite & gold, the neutral executive palette. |
 | `corners.css` | The corner scale `--ds-radius-xs … xl`, `-pill`, `-round` for `data-corners="square" \| "rounded" \| "smooth"`. |
 | `config.ts` | `CORNERS`: the default corner style (square). |
-| `index.css` | Plain-CSS entry: primitives, both themes, then `corners.css`. Imported globally by `theme.ts`. |
+| `index.css` | Plain-CSS entry: primitives, every theme, then `corners.css`, and `<html>` `color-scheme` from `--ds-color-scheme`. Imported globally by `theme.ts`. |
 | `tailwind-theme.css` | Tailwind v4 `@theme inline reference` mapping, for a Tailwind entry. |
 | `scrollbar.css` | Site-wide scrollbar in the colours of the surface it sits on: tokens per context (light, dark section, sidebar, modal mask), Firefox fallback. Imported once in `main.tsx`. |
 | `theme.ts` | The appearance store: the viewer's `{ theme, corners }` (localStorage `t1.appearance`, defaults `ACTIVE_THEME` + `CORNERS`) on `<html data-theme / data-corners>` before the first render; `setAppearance()`, `resetAppearance()`, `pinAppearance()`, `BRAND_APPEARANCE`; `useDsTheme()` / `useDsCorners()` read what `<html>` shows. |
@@ -191,6 +194,69 @@ changes at once, with no reload.
 - **A new palette appears by itself**: add the theme (steps at the end) and its name in `themeLabels` (the `satisfies`
   check fails without one). Nothing in the panel names a theme.
 
+## Palettes
+
+Five palettes, all in the Appearance panel (in `themeLabels` order). Picked with the ui-ux-pro-max colour data (queries
+"government university dashboard KPI", "institutional performance dashboard dark", "university academic serious",
+"finance enterprise navy"): every institutional match is a deep navy or slate base with one restrained accent, and the
+dark dashboards use a near-black navy page, slightly lighter cards and green / amber / red status marks.
+
+| `data-theme` | Panel name (ar / en) | `scheme` | Base · accent · primary action | For |
+|---|---|---|---|---|
+| `navy-gold` (default) | كحلي وذهبي / Navy & gold | light | navy-900 · gold-400 · navy button | the landing identity |
+| `app-soft` | كحلي هادئ / Soft navy | light | soft navy · soft gold · soft navy button | the old `/app` look |
+| `night-gold` | كحلي ليلي وذهبي (داكن) / Night navy & gold (dark) | dark | page #0a1424, cards #0f1a2c, band navy-800 → #1d3152 · gold-400 · light navy-blue #8fb4ec with navy text | long sessions, dim rooms, wall screens |
+| `indigo-silver` | نيلي وفضي / Midnight indigo & silver | light | indigo #1b1f52 · silver #c8cdd7 on navy, #a9b0bd lines on light · indigo button | cool and sober: no warm accent, so the status colours are the only warm colours on a KPI page |
+| `graphite-gold` | فحمي وذهبي / Graphite & gold | light | graphite #1d2126 · gold-400 · graphite button | a neutral executive look that keeps the logo's gold |
+
+Not chosen: Deep green & gold (a green brand puts the primary action in the "achieved" hue, محقق, and blurs it) and
+Charcoal & copper (copper sits between the "near" amber and the "gap" orange, and the gold-series charts would compete with
+gap marks). Graphite & gold keeps the charcoal idea with the university gold.
+
+What every palette keeps (tokens.test.ts): every token of every other theme; the AA pairs of "Site theme and antd" and
+"shadcn"; the four achievement states ok / near / late / gap (محقق / قريب / متأخر / ناقص) at least 0.09 apart in OKLab and
+0.07 from every pillar colour as shown; `--ds-ink-fill` = the light heading in a light palette. The light palettes reuse
+navy-gold's data colours (status, score, tier, heat, unit). Every palette gives gold, green, orange and cyan Tags an AA text
+ink (light palettes: `--color-app-amber-760`, `-lime-750`, `-orange-720`, `--color-ink-teal-700`; fills and borders unchanged),
+writes antd success / warning text in the status inks (fills: see `statusToAntd` below), and draws chart axis labels (`--ds-neutral-axis`) at
+4.5:1 on the chart panel and its off-plan area (light palettes: `--color-soft-neutral-600`).
+
+**The dark palette (night-gold).**
+- `scheme: "dark"` (tokens.ts) and `--ds-color-scheme: dark`: `index.css` sets `<html>` `color-scheme` from it, so browser
+  defaults turn dark too (a `<button>` without a colour of its own keeps the UA ButtonText; native scrollbars; autofill).
+- The light scope is the page scope and holds the dark surfaces; `data-section="dark"` is the navy band scope (bg #1d3152,
+  surface #263c5e), which is also `--ds-ink-fill` and the antd table header.
+- antd: `darkAlgorithm` for the whole app; `colorTextLightSolid` = the primary text colour (navy ink on the light primary,
+  on danger buttons and badges); Tooltip keeps light text on the navy spotlight; `colorTextDescription` / `Tertiary` = body
+  (antd's white 45% is 4.4:1 on the cards).
+- Primary is a light navy-blue with navy text, not gold: the app draws its own series and progress bars in `--teal`
+  (= the primary) next to the gold `--ds-chart-accent` series, so the two must differ. Gold stays the accent: links,
+  eyebrows, focus rings, sidebar indicator, active tab ink, the band glow.
+- Status, score, tier, heat, unit and Tag colours keep their hue; marks are lighter (≥ 3:1 on the cards), text inks are
+  light, soft fills are the mark mixed into the card colour (text ≥ 4.5:1). Tier numbers use `--ds-tier-ink` (navy ink).
+- Shadows: black-based and soft (`--ds-shadow-sm` / `-md` night-990 at 35% / 50%, the legacy mixes on black).
+- Pillar data colours stay data. `--ds-pillar-keep: 80%` lifts each one toward white, and `--pt` becomes the pillar colour
+  mixed 10% into the card (`--ds-pillar-tint-keep: 0%`, `-tint-mix: 10%`), so no pastel box sits on the dark page.
+  Measured: pillar-coloured text ≥ 3.9:1 on cards and ≥ 3.5:1 on its tint. The small pillar codes of the blue, purple and
+  rose pillars stay under 4.5:1. Fills under white text (pill bands, pillar heads, step numbers, board badges, timeline bars)
+  use `--pf` = `--pc` deepened 60% toward `--ds-shade` (`--ds-pillar-fill-mix`, 0% in the light palettes, so `--pf` = `--pc`
+  there): white, 80% and 78% white ≥ 4.5:1, also on the pillar heads' white stats box.
+- Pillar chips on the page band (`.lcp-head .pill-code`, `shared/theme.css`): the light tint stays the chip (night-gold gets
+  a light one through `--ds-pillar-tint-keep: 0%`) and the text is the pillar colour mixed with `--ds-ink-fill`
+  (`keep − 15%`: 85% light, 65% night), ≥ 4.5:1 on the chip, chip ≥ 3:1 on the band (tested).
+- UN SDG colours are unchanged. The print sheet is dark on screen with light ink; browsers drop backgrounds when printing,
+  so print from a light palette (an `@media print` reset is a follow-up).
+
+**Tokens added for the palettes (every theme).** `--ds-color-scheme`, `--ds-ink-fill`, `--ds-tier-ink`,
+`--ds-pillar-keep`, `-lift`, `-tint-keep`, `-tint-mix`, `-fill-mix` (tokens.ts: `scheme`, `inkFill`, `tier.ink`, `pillar`; plus
+`statusToAntd`). In navy-gold and app-soft each equals what the rules painted before. Rules switched to them:
+`background: var(--navy)` under white text → `var(--ds-ink-fill)` (table heads, active tabs and filters, selected
+segments in `shared/theme.css`, `progress.css`, `review.css`, `scorecard.css`, `strategy.css`, `app.css`; `--navy` is the
+heading colour, light in a dark palette, and a test now rejects that pair); white text on `--teal` fills (done step dot,
+matrix and diff heads) → `--ds-btn-primary-fg`; badges on pillar fills in `board.css` → `--ds-on-dark-fg` (was
+`--ds-surface`); scorecard ladder numbers → `--ds-tier-ink`; `shared/pillars.tsx` `tint()` mixes `--pc` / `--pt` through
+`--ds-pillar-*`.
+
 ## Site theme and antd
 
 - **One switch, per viewer.** The theme on `<html data-theme>` is the viewer's choice (above), `ACTIVE_THEME` by default.
@@ -198,7 +264,8 @@ changes at once, with no reload.
   scrollbar follow it. `useDsTheme()` watches the attribute (MutationObserver), so a change from devtools re-themes antd too.
 - **Mapper.** `antdTheme(name, base, { tone })` in `antd-theme.ts`. Colours and radius only, every value from `tokens.ts`;
   `base` carries App.tsx's fonts (IBM Plex Sans Arabic, 14px) unchanged. A new theme re-themes antd as soon as it has its
-  entry in `tokens.ts`; nothing in the mapper names a theme. `tone: "dark"` builds a full dark theme for a nested
+  entry in `tokens.ts`; nothing in the mapper names a theme. A theme with `scheme: "dark"` (night-gold) gets antd's
+  `darkAlgorithm` for the whole app (see "Palettes"). `tone: "dark"` builds a full dark theme for a nested
   `ConfigProvider` (dark-section tokens + `darkAlgorithm`); nothing uses it yet.
 - **Navy blocks on light pages.** The page band (`PageHeader`, `.lcp-head`) and the home hero (`Hero`, `.lcp-hero`) in
   `shared/ui.tsx` carry `data-section="dark"`, and their actions sit in `DarkBlock`: a nested `ConfigProvider` with
@@ -209,7 +276,9 @@ changes at once, with no reload.
   `borderRadiusLG` = lg, `SM` = sm, `XS` = xs, `Outer` = xs; Table `headerBorderRadius` = lg, `stickyScrollBarBorderRadius`
   and Progress `lineBorderRadius` = pill. Square: all 0. Rounded: 8 / 12 / 6 / 4 / 4, pill 999. Smooth: 16 / 20 / 12 / 8 / 8,
   pill 999, and (`pillButtons.smooth`) Button `borderRadius` / `LG` / `SM` and Tag `borderRadiusSM` = pill, so every
-  button and tag is a pill; square and rounded set no Button or Tag radius.
+  button and tag is a pill; square and rounded repeat the global `LG` / `SM` on Button (no visible change; a nested
+  `algorithm: true`, as in `antdDarkBlockTheme`, would re-derive them from the seed: 10px large band buttons in rounded) and
+  set no Tag radius.
 
 | antd token | From `themes[name]` (light section unless noted) | navy-gold |
 |---|---|---|
@@ -218,7 +287,8 @@ changes at once, with no reload.
 | `colorLink`, `colorLinkHover` / `Active` | `link`, `linkHover` | gold-700, navy-900 |
 | `colorInfo`, `colorInfoBg`, `colorInfoBorder` | `heading`, `bgCool`, `border` | navy-900, cloud, ash-200 |
 | `colorError` | `destructive` (`--ds-destructive`, also shadcn `--destructive`) | soft-danger-700 |
-| `colorSuccess`, `colorWarning` | antd defaults (no AA status token yet) | — |
+| `colorSuccess`, `colorWarning` | every palette: `status.okInk` / `nearInk` (+ `…Text`; antd's defaults are 1.8–2.3:1 as text). Fills: without `statusToAntd` (navy-gold, app-soft) antd's preset fills, held by `tag.positiveBg` / `Border` and `tag.pendingBg` / `Border`; with it `colorSuccessBg` / `Border` and `colorWarningBg` / `Border` = `status.okSoft` / `okBorder`, `nearSoft` / `nearBorder` (antd Tags and Alerts then match the app's chips, AA) | — |
+| `colorTextLightSolid`, `colorTextDescription` / `Tertiary`, Tooltip text | dark `scheme`: `btnPrimary.fg`, `body`, `sections.dark.heading`; light: `colorTextDescription` / `Tertiary` = `label` (antd's black 45% is 3.4:1), `colorTextPlaceholder` = `body` (25%: 1.8:1); disabled text stays antd's | label, body |
 | `colorText`, `colorTextHeading`, `colorTextSecondary` | `fg`, `heading`, `label` | navy-900, navy-900, ash-600 |
 | `colorBorder`, `colorBorderSecondary` | `border` | ash-200 |
 | `colorBgLayout`, `colorBgContainer`, `colorBgElevated` | `bgCool`, `surface`, `surface` | cloud, paper, paper |
@@ -241,7 +311,7 @@ The app does not use antd Menu or Layout (the shell is custom), so they have no 
 
 | Legacy variable | Token | navy-gold |
 |---|---|---|
-| `--navy` (app.css) | `--ds-heading` | navy-900 |
+| `--navy` (app.css) | `--ds-heading` (a text colour; as a fill under white text use `--ds-ink-fill`) | navy-900 |
 | `--navy-2` | `--ds-chrome` | navy-950 |
 | `--teal` | `--ds-btn-primary-bg` | navy-900 |
 | `--teal-ink` | `--ds-link` | gold-700 |
@@ -262,7 +332,7 @@ The app does not use antd Menu or Layout (the shell is custom), so they have no 
 | `--hair` | `--ds-border` | ash-200 |
 | `--teal`, `--teal-100`, `--gold` inside `.lcp-side` / `.lcp-drawer .ant-drawer-body` | `--ds-sidebar-indicator`, `-focus`, `-badge-bg` | gold-400 |
 
-Status colours are per-theme tokens too (same values in both themes today): `--ok` / `--ok-bg` → `--ds-status-ok-ink` /
+Status colours are per-theme tokens too (navy-gold, app-soft and the light palettes share the values; night-gold has its own): `--ok` / `--ok-bg` → `--ds-status-ok-ink` /
 `-ok-soft`, `--warn` / `--warn-bg` → `--ds-status-near-ink` / `-near-soft`, `--crit` / `--crit-bg` → `--ds-status-late-ink` /
 `-late-soft`; the graph palette `--g-ok`, `--g-near`, `--g-bad`, `--g-plan`, `--g-gap` → `--ds-status-ok`, `-near`, `-late`,
 `-plan`, `-gap`. `--shadow` / `--shadow-up` mix `--ds-shadow-ink`. Unchanged: fonts, `--space-*`, `--side-w`.
@@ -437,7 +507,8 @@ extra fields of `chart` and `shadow`); `tokens.test.ts` checks them both ways an
   `color`) take a `var()` string the same way; antd status presets (`success`, `processing`, `error`, `warning`, `default`)
   follow the antd theme.
 - Data colours stay data: pillar `--pc` / `--pt` (`shared/pillars.tsx`, the `:root` default in `strategy.css`) and the 17 official
-  UN SDG colours (`ScorecardPage.tsx`). Whatever mixes with them comes from tokens.
+  UN SDG colours (`ScorecardPage.tsx`). Whatever mixes with them comes from tokens: `tint()` builds `--pc` / `--pt` with
+  `--ds-pillar-*` (100% / 100% = the data exactly in the light palettes; see "Palettes" for the dark one).
 - A new palette defines every token above; keep the hue meaning of status, score, tier, heat, unit and Tag colours and keep
   `on-dark` / `auth` text AA on its navy fill (tested).
 
@@ -459,16 +530,23 @@ the redesigned footer, and the analytics section (القيادة bar removed, ho
 ## Add a theme in ~5 steps
 
 1. Add any new raw colours to `primitives.css` as `--color-<family>-<step>`. Avoid names Tailwind already uses (`slate`, `white`, `mist` …).
-2. Copy `themes/app-soft.css` to `themes/<name>.css` and replace `app-soft` in its three selectors.
+2. Copy the theme of the same scheme (`themes/navy-gold.css` or `indigo-silver.css` for light, `night-gold.css` for dark)
+   to `themes/<name>.css` and replace the name in its three selectors.
 3. Give every `--ds-*` token a value in the theme-level, light and dark blocks. Keep every name; a missing token falls back to nothing.
    No shadcn variables: `styles/shadcn.css` maps them to these tokens for every theme (the test fails on any other name).
    No radius: corners come from `corners.css` whatever the theme. Gradients: keep the recipes, change the colours ("Gradients").
 4. Import it in `index.css`, after the other themes and before `corners.css`.
-5. Add `<name>` to `ThemeName` and `themes` in `tokens.ts`, and its panel name to `themeLabels` (`{ ar, en }`; the
-   `satisfies` check fails without it), then run `npx vitest run src/styles/design-system`: it fails on any value that
+5. Add `<name>` to `ThemeName` and `themes` in `tokens.ts` (with `scheme`, `statusToAntd`, `inkFill`, `pillar`), and its panel
+   name to `themeLabels` (`{ ar, en }`; the `satisfies` check fails without it), then run `npx vitest run src/styles/design-system`: it fails on any value that
    differs from the CSS and on any AA pair below 4.5:1 (text) or 3:1 (UI). antd needs nothing else: `antdTheme` reads
    the new entry. The Appearance panel lists it with a live preview at once (viewers pick it there); to make it the
    default for everyone, set `ACTIVE_THEME` in `theme.ts`.
+
+A dark palette also needs: `--ds-color-scheme: dark` and `scheme: "dark"`; dark values for every surface-like token (the
+`app` group, the soft status / score / heat / unit / Tag fills, `chart.bg` = the card, hatches, callout and chart-panel
+gradients), light text inks, data marks ≥ 3:1 on the card, `--ds-ink-fill` = the dark-section bg, a dark `--ds-tier-ink`,
+and pillar tokens that lift the data colours (tested in the "dark palette …" and "pillar colours …" blocks of
+tokens.test.ts). A light primary needs a dark `btnPrimary.fg` (antd's `colorTextLightSolid` follows it).
 
 New semantic roles: add `--ds-<role>` to every theme, then `--color-ds-<role>: var(--ds-<role>);` to `tailwind-theme.css`,
 and the field to `tokens.ts` (the test checks both ways).

@@ -62,12 +62,12 @@
 
   /* App sidebar (theme level). Contrast in tokens.test.ts. */
   --ds-sidebar-bg: var(--color-night-950);
-  --ds-sidebar-fg: var(--color-night-300);
+  --ds-sidebar-fg: color-mix(in srgb, var(--color-night-200) 50%, var(--color-night-300));
   --ds-sidebar-fg-active: var(--color-paper);
-  --ds-sidebar-muted: var(--color-night-400);
-  --ds-sidebar-hover-bg: var(--color-night-850);
-  --ds-sidebar-active-bg: var(--color-night-700);
-  --ds-sidebar-indicator: var(--color-gold-400);
+  --ds-sidebar-muted: color-mix(in srgb, var(--color-night-300) 50%, var(--color-night-400));
+  --ds-sidebar-hover-bg: var(--color-night-760);
+  --ds-sidebar-active-bg: var(--color-night-600);
+  --ds-sidebar-indicator: var(--color-gold-200);
   --ds-sidebar-border: var(--color-night-800);
   --ds-sidebar-focus: var(--color-gold-400);
   --ds-sidebar-badge-bg: var(--color-gold-400);
@@ -283,6 +283,7 @@
   --ds-pillar-lift: var(--color-paper);
   --ds-pillar-tint-keep: 0%;
   --ds-pillar-tint-mix: 10%;
+  --ds-pillar-fill-mix: 60%; /* pillar fills under white text (--pf) deepened toward --ds-shade: white and 80% white ≥ 4.5:1 */
 }
 
 /* ---------- Light scope (default; the page scope) ---------- */

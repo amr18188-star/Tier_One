@@ -7,9 +7,10 @@ description: "Navy & Gold design system and multi-theme CSS tokens for the Tier1
 
 Tier1's frontend has one set of semantic colour tokens (`--ds-*`) and several themes that fill them. A page turns a
 theme on with `data-theme`, and marks its dark blocks with `data-section="dark"`. Components name roles only
-(`text-ds-heading`, `bg-ds-surface`), so the same JSX renders as **navy-gold** (the landing look: Cairo, navy
-and antique gold) or **app-soft** (the old `/app` palette: softer navy). A new style system is one more
-theme file, with no component changes. Corners are a separate axis on `<html data-corners>`: `"square"` (the default,
+(`text-ds-heading`, `bg-ds-surface`), so the same JSX renders in any of five palettes: **navy-gold** (the default and
+the landing look: Cairo, navy and antique gold), **app-soft** (the old `/app` palette: softer navy), **night-gold** (Night
+navy & gold, the dark palette), **indigo-silver** (Midnight indigo & silver, cool and sober) and **graphite-gold** (Graphite
+& gold, neutral executive). A new style system is one more theme file, with no component changes (section "Palettes"). Corners are a separate axis on `<html data-corners>`: `"square"` (the default,
 `CORNERS` in `config.ts`, the navy-gold choice), `"rounded"` or `"smooth"`; any theme works with any style (section
 "Corners"). Each viewer picks the theme and the corner style at run time in the Appearance panel (gear in the top bar), saved
 in the browser; the public landing always keeps navy-gold + square (section "Runtime appearance").
@@ -24,6 +25,7 @@ Paths are relative to the Tier1 root: `F:\Projects\angular\Indecators\Context\Ti
 | `web/src/styles/design-system/primitives.css` | Raw palettes on `:root` (`--color-navy-900` …). The only global file |
 | `web/src/styles/design-system/themes/navy-gold.css` | `[data-theme="navy-gold"]`: `--ds-*` tokens only, light and dark scopes |
 | `web/src/styles/design-system/themes/app-soft.css` | `[data-theme="app-soft"]`: same names, the softer palette |
+| `web/src/styles/design-system/themes/night-gold.css`, `indigo-silver.css`, `graphite-gold.css` | The later palettes: dark Night navy & gold, Midnight indigo & silver, Graphite & gold (same names) |
 | `web/src/styles/design-system/corners.css` | The corner scale `--ds-radius-xs … xl`, `-pill`, `-round` for `data-corners="square" \| "rounded" \| "smooth"` |
 | `web/src/styles/design-system/config.ts` | `CORNERS`: the default corner style (square) |
 | `web/src/styles/design-system/index.css` | Plain-CSS entry: primitives, every theme, then `corners.css` |
@@ -207,7 +209,10 @@ MutationObserver in `useDsTheme()`, also for a change made in devtools.
 - **Legacy variables** (`--navy`, `--teal`, `--teal-ink`, `--bg`, `--ink`, `--muted`, `--line`, `--hair`, `--gold` …
   in the `:root` blocks of `app.css` and `shared/ui.css`) are aliases of `--ds-*` with the old hex as fallback, so the
   antd app's own CSS follows the theme. `--r` (ui.css, theme.css) is `var(--ds-radius-xl)`, and every radius in the
-  app CSS is a scale token (map: `corners-map.md` in the session notes). Status colours (`--warn*`, `--ok*`, `--crit*`) are fixed. Inside the sidebar
+  app CSS is a scale token (map: `corners-map.md` in the session notes). Status colours (`--warn*`, `--ok*`, `--crit*`, `--g-*`)
+  are per-theme tokens (`--ds-status-*`): the light palettes share navy-gold's values, night-gold has its own lighter
+  marks and inks; keep the hue meaning (green achieved, amber near, red late, orange gap). `--navy` is a text colour (the
+  heading, light in a dark palette): a navy fill under white text is `var(--ds-ink-fill)`. Inside the sidebar
   (`.lcp-side`, drawer body) `--teal`, `--teal-100`, `--gold` map to `--ds-sidebar-*`.
 - **Sidebar tokens** (theme level): `--ds-sidebar-bg`, `-fg`, `-fg-active`, `-muted`, `-hover-bg`, `-active-bg`,
   `-indicator`, `-border`, `-focus`, `-badge-bg`, `-badge-fg`, and `-bg-top` / `-glow` for its gradient.
@@ -298,24 +303,51 @@ Import them as Vite assets, never copy them into `public/`:
 uses the `-dark` file: it is byte-identical to the logo of the original page. A component that can sit in either scope
 takes the tone as a prop; don't recolour the artwork with CSS filters. More in `references/design-system.md` §14.
 
+## Palettes
+
+| `data-theme` | Panel name (ar / en) | scheme | Look |
+|---|---|---|---|
+| `navy-gold` (default) | كحلي وذهبي / Navy & gold | light | navy-900, gold-400, navy primary |
+| `app-soft` | كحلي هادئ / Soft navy | light | soft navy, soft gold |
+| `night-gold` | كحلي ليلي وذهبي (داكن) / Night navy & gold (dark) | dark | page #0a1424, cards #0f1a2c, navy band, gold accent, light navy-blue primary with navy text |
+| `indigo-silver` | نيلي وفضي / Midnight indigo & silver | light | indigo #1b1f52, silver accents, no warm accent (status colours carry the meaning) |
+| `graphite-gold` | فحمي وذهبي / Graphite & gold | light | graphite #1d2126, gold accent |
+
+- Dark palette rules: `scheme: "dark"` in `tokens.ts` gives antd `darkAlgorithm` (plus `colorTextLightSolid` = the primary
+  text colour, light Tooltip text, `colorTextDescription` = body); `--ds-color-scheme: dark` sets `<html>` `color-scheme`
+  (index.css). Its light scope is the page scope (dark surfaces); `data-section="dark"` is the navy band scope. Every
+  surface-like token is dark, text inks are light, marks ≥ 3:1 on the card.
+- Pillar data colours stay data; `tint()` (`shared/pillars.tsx`) mixes them through `--ds-pillar-keep` / `-lift` /
+  `-tint-keep` / `-tint-mix` (100% / 100% in the light palettes = the data exactly; night-gold lifts `--pc` 20% toward white
+  and makes `--pt` the pillar colour 10% into the card). Use `--pc` / `--pt` as they are; never a pastel literal.
+- Palette tokens in every theme: `--ds-color-scheme`, `--ds-ink-fill` (navy fill under white text), `--ds-tier-ink`
+  (number on a tier colour), `--ds-pillar-*`. antd `colorSuccess` / `colorWarning`: antd defaults in navy-gold and app-soft;
+  the three later palettes (`statusToAntd`) seed them from `status.okInk` / `status.nearInk`, with Bg / Border from the soft fills and borders.
+- Choice and contrast notes: design-system README "Palettes".
+
 ## Add a theme
 
 1. Add new raw colours to `primitives.css` as `--color-<family>-<step>` with a family prefix of your own (like `soft-*`).
    Avoid names that Tailwind, `app.css` or an existing family here already use (`slate`, `white`, `gray`, `navy` …).
-2. Copy `themes/app-soft.css` to `themes/<name>.css` and replace `app-soft` in its three selectors (theme level, light
-   scope, dark scope).
+2. Copy the theme of the same scheme (`navy-gold.css` or `indigo-silver.css` for light, `night-gold.css` for dark) to
+   `themes/<name>.css` and replace the name in its three selectors (theme level, light scope, dark scope).
 3. Give every `--ds-*` token a value in all three blocks. Keep every name: a missing token is unset, so its
    utility paints nothing. No radius: corners come from `corners.css` for every theme. No shadcn variables: `shadcn.css`
    maps them for every theme. Gradients: keep the recipes, change only the colours (section "Gradients").
 4. Import the file in `index.css`, after the other themes and before `corners.css`.
-5. Add `<name>` to `ThemeName` and to `themes` in `tokens.ts` (the `satisfies` check lists missing fields), and its panel
-   name to `themeLabels` (`{ ar, en }`), then run `npx vitest run src/styles/design-system` in `web/` (fails on any
+5. Add `<name>` to `ThemeName` and to `themes` in `tokens.ts` (the `satisfies` check lists missing fields: also `scheme`,
+   `statusToAntd`, `inkFill`, `pillar`), and its panel name to `themeLabels` (`{ ar, en }`), then run `npx vitest run src/styles/design-system` in `web/` (fails on any
    CSS ≠ TS value and on the AA pairs). antd follows automatically, and the Appearance panel lists the theme with a live
    preview. To make it everyone's default, set `ACTIVE_THEME` in `theme.ts`.
 
 Contrast check: per scope, every text token on every background it sits on, 4.5:1 for small text and 3:1 for large text
 (≥ 24px, or ≥ 18.7px bold), UI borders and chart marks. Composite alpha tokens over their background first. The pair
 list and a small WCAG function are in `references/token-files.md` §8.
+
+A dark palette: `scheme: "dark"` and `--ds-color-scheme: dark`, dark values for every surface-like token (app group, soft
+status / score / heat / unit / Tag fills, `chart.bg`, hatches, callout and chart-panel gradients), light inks, marks ≥ 3:1
+on the card, `--ds-ink-fill` = the dark-section bg, a dark `--ds-tier-ink`, pillar tokens that lift the data colours, and a
+dark `btnPrimary.fg` if the primary is light. tokens.test.ts checks all of it.
 
 New semantic role: add `--ds-<role>` to every theme (theme level, or both scopes), `--color-ds-<role>: var(--ds-<role>);`
 to `tailwind-theme.css`, and the field to `tokens.ts`.

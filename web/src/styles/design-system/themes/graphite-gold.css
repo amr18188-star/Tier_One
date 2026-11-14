@@ -57,12 +57,12 @@
 
   /* App sidebar (theme level). Contrast in tokens.test.ts. */
   --ds-sidebar-bg: var(--color-graphite-950);
-  --ds-sidebar-fg: var(--color-graphite-300);
+  --ds-sidebar-fg: color-mix(in srgb, var(--color-graphite-200) 50%, var(--color-graphite-300));
   --ds-sidebar-fg-active: var(--color-paper);
-  --ds-sidebar-muted: var(--color-graphite-350);
-  --ds-sidebar-hover-bg: var(--color-graphite-800);
-  --ds-sidebar-active-bg: var(--color-graphite-700);
-  --ds-sidebar-indicator: var(--color-gold-400);
+  --ds-sidebar-muted: color-mix(in srgb, var(--color-graphite-300) 40%, var(--color-graphite-350));
+  --ds-sidebar-hover-bg: var(--color-graphite-700);
+  --ds-sidebar-active-bg: var(--color-graphite-600);
+  --ds-sidebar-indicator: var(--color-gold-200);
   --ds-sidebar-border: var(--color-graphite-700);
   --ds-sidebar-focus: var(--color-gold-400);
   --ds-sidebar-badge-bg: var(--color-gold-400);
@@ -192,7 +192,7 @@
 
   /* neutral */
   --ds-neutral-mark: var(--color-app-slate-410);
-  --ds-neutral-axis: var(--color-app-slate-360);
+  --ds-neutral-axis: var(--color-soft-neutral-600); /* chart axis and year labels: 4.5:1 on the off-plan area too */
   --ds-neutral-faint: var(--color-app-slate-350);
   --ds-neutral-off: var(--color-app-blue-270);
   --ds-neutral-na: var(--color-app-slate-250);
@@ -278,6 +278,7 @@
   --ds-pillar-lift: var(--color-paper);
   --ds-pillar-tint-keep: 100%;
   --ds-pillar-tint-mix: 0%;
+  --ds-pillar-fill-mix: 0%; /* --ds-shade mixed into pillar fills under white text (--pf): none, the data colour exactly */
 }
 
 /* ---------- Light scope (default; the page scope) ---------- */

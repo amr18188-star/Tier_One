@@ -137,7 +137,7 @@
 .sp-pillar { display: flex; flex-direction: column; background: var(--ds-surface); border-radius: var(--ds-radius-xl); overflow: hidden; border: 1px solid var(--hair); box-shadow: var(--shadow); min-width: 0; }
 .sp-pillar > header {
   position: relative; overflow: hidden; color: var(--ds-on-dark-fg); padding: 18px 18px 14px;
-  background: linear-gradient(140deg, var(--pc) 0%, color-mix(in srgb, var(--pc) 72%, var(--ds-shade)) 100%);
+  background: linear-gradient(140deg, var(--pf, var(--pc)) 0%, color-mix(in srgb, var(--pf, var(--pc)) 72%, var(--ds-shade)) 100%);
 }
 .sp-pillar > header::after { content: ""; position: absolute; inset-inline-start: -40px; bottom: -70px; width: 170px; height: 170px; border-radius: var(--ds-radius-round); background: color-mix(in srgb, var(--ds-on-dark-fg) 7%, transparent); }
 .sp-pillar-head { position: relative; z-index: 1; display: flex; align-items: center; gap: 14px; width: 100%; padding: 0; border: 0; background: none; color: inherit; text-align: start; font: inherit; cursor: pointer; }
@@ -156,7 +156,7 @@ div.sp-pillar-head { cursor: default; }
 .sp-pillar-stats dd { margin: 0; font-family: var(--font-display); font-size: 18px; font-weight: 700; line-height: 1.4; }
 .sp-pillar-stats dt { font-size: 11.5px; color: color-mix(in srgb, var(--ds-on-dark-fg) 80%, transparent); }
 .sp-pillar-body { flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 14px 16px 14px; }
-.sp-pillar.loose > header { background: linear-gradient(140deg, var(--pc), color-mix(in srgb, var(--pc) 60%, var(--ds-shade))); }
+.sp-pillar.loose > header { background: linear-gradient(140deg, var(--pf, var(--pc)), color-mix(in srgb, var(--pf, var(--pc)) 60%, var(--ds-shade))); }
 
 .sp-stds { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .sp-stds button, .sp-scard {
@@ -246,11 +246,11 @@ div.sp-pillar-head { cursor: default; }
 .sp-road-span { align-self: end; z-index: 0; height: 4px; margin: 0 10px 5px; border-radius: var(--ds-radius-pill); background: var(--pc); opacity: 0.35; }
 .sp-road-initbar {
   align-self: center; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 28px; margin: 6px 6px; padding: 0 12px;
-  border-radius: var(--ds-radius-md); background: var(--pc); color: var(--ds-on-dark-fg); font-size: 12px; overflow: hidden; white-space: nowrap;
+  border-radius: var(--ds-radius-md); background: var(--pf, var(--pc)); color: var(--ds-on-dark-fg); font-size: 12px; overflow: hidden; white-space: nowrap;
 }
 .sp-road-initbar small { opacity: 0.85; }
 .st-Planned .sp-road-initbar { background: var(--pt); color: var(--pc); box-shadow: inset 0 0 0 1.5px var(--pc); }
-.st-Completed .sp-road-initbar { background: linear-gradient(90deg, var(--pc), color-mix(in srgb, var(--pc) 70%, var(--ds-shade))); }
+.st-Completed .sp-road-initbar { background: linear-gradient(90deg, var(--pf, var(--pc)), color-mix(in srgb, var(--pf, var(--pc)) 70%, var(--ds-shade))); }
 .st-Stopped .sp-road-initbar { background: var(--ds-neutral-stopped); }
 .sp-road-note { margin: 12px 0 0; }
 .sp-road-note .anticon { color: var(--teal); }
@@ -274,7 +274,7 @@ div.sp-pillar-head { cursor: default; }
   border-radius: var(--r); box-shadow: var(--shadow); padding: 18px 22px 20px; min-width: 0;
 }
 .sp-dhead-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 14px; }
-.sp-dhead-icon { flex: none; width: 48px; height: 48px; border-radius: var(--ds-radius-xl); display: grid; place-items: center; background: var(--pc); color: var(--ds-on-dark-fg); font-size: 22px; box-shadow: 0 6px 14px color-mix(in srgb, var(--pc) 35%, transparent); }
+.sp-dhead-icon { flex: none; width: 48px; height: 48px; border-radius: var(--ds-radius-xl); display: grid; place-items: center; background: var(--pf, var(--pc)); color: var(--ds-on-dark-fg); font-size: 22px; box-shadow: 0 6px 14px color-mix(in srgb, var(--pc) 35%, transparent); }
 .sp-dhead-text { flex: 1 1 280px; min-width: 0; }
 .sp-dhead-text > small { color: var(--pc); font-weight: 600; font-size: 12.5px; }
 .sp-dhead-text > small code { font-size: 12px; background: var(--ds-surface); border: 1px solid color-mix(in srgb, var(--pc) 35%, transparent); color: var(--pc); border-radius: var(--ds-radius-sm); padding: 0 6px; margin-inline-start: 4px; }
@@ -372,7 +372,7 @@ div.sp-pillar-head { cursor: default; }
   content: "←"; position: absolute; top: 50%; inset-inline-end: -19px; transform: translateY(-50%); color: var(--pc); font-weight: 700; font-size: 16px;
 }
 :root[dir="ltr"] .sp-flow li:not(:last-child)::after { content: "→"; }
-.sp-flow-n { display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--ds-radius-round); background: var(--pc); color: var(--ds-on-dark-fg); font-weight: 700; font-size: 13px; }
+.sp-flow-n { display: grid; place-items: center; width: 28px; height: 28px; border-radius: var(--ds-radius-round); background: var(--pf, var(--pc)); color: var(--ds-on-dark-fg); font-weight: 700; font-size: 13px; }
 .sp-flow b { display: block; margin: 8px 0 4px; color: var(--navy); font-size: 14px; }
 .sp-flow p { margin: 0; line-height: 1.85; font-size: 13.5px; }
 .sp-flow small { display: block; margin-top: 8px; color: var(--muted); font-size: 12px; }
@@ -404,8 +404,11 @@ div.sp-pillar-head { cursor: default; }
 .sp-chart-pt.goal text { fill: var(--pc); font-size: 14px; }
 .sp-chart-actual rect { stroke: var(--ds-chart-bg); stroke-width: 2; fill: var(--ds-neutral-actual); }
 .sp-chart-actual text { font-size: 12px; font-weight: 700; fill: var(--ds-neutral-actual); }
-.sp-chart-actual.perf-Achieved rect, .sp-chart-actual.perf-Achieved text { fill: var(--g-ok); }
-.sp-chart-actual.perf-Near rect, .sp-chart-actual.perf-Near text { fill: var(--ds-status-near-mark); }
+.sp-chart-actual.perf-Achieved rect { fill: var(--g-ok); }
+.sp-chart-actual.perf-Near rect { fill: var(--ds-status-near-mark); }
+/* the label under the diamond is text: the status inks (the marks are 3.3–3.4:1 as text on white; Behind's mark is ≥ 4.6:1) */
+.sp-chart-actual.perf-Achieved text { fill: var(--ds-status-ok-ink); }
+.sp-chart-actual.perf-Near text { fill: var(--ds-status-near-ink); }
 .sp-chart-actual.perf-Behind rect, .sp-chart-actual.perf-Behind text { fill: var(--g-bad); }
 .sp-chart-actual.perf-Achieved rect, .sp-chart-actual.perf-Near rect, .sp-chart-actual.perf-Behind rect { stroke: var(--ds-chart-bg); }
 .sp-chart-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 6px; font-size: 12px; color: var(--muted); }

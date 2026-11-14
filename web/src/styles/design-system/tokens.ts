@@ -193,13 +193,14 @@ export type NeutralKey = "mark" | "axis" | "faint" | "off" | "na" | "stopped" | 
 export type ChartKey = "accent" | "value" | "track" | "ringTrack" | "gridSoft" | "gridFaint" | "off" | "offKey" | "targetLine";
 export type UnitKey = "university" | "universityBg" | "sector" | "sectorBg" | "administration" | "center" | "college" | "collegeBg" | "institute" | "department";
 export type TagKey = "pendingFg" | "pendingBg" | "pendingBorder" | "positiveFg" | "positiveBg" | "positiveBorder" | "negativeFg" | "negativeBg" | "negativeBorder" | "cautionFg" | "cautionBg" | "cautionBorder" | "infoFg" | "infoBg" | "infoBorder" | "specialFg" | "specialBg" | "specialBorder" | "highlightFg" | "highlightBg" | "highlightBorder" | "categoryFg" | "categoryBg" | "categoryBorder";
-export type PillarKey = "keep" | "lift" | "tintKeep" | "tintMix";
+export type PillarKey = "keep" | "lift" | "tintKeep" | "tintMix" | "fillMix";
 export type AppKey = "mutedBg" | "faintBg" | "rowHover" | "rowSelected" | "tableGroup" | "topbar" | "noteBg" | "partnerBg" | "codeBg" | "codeFg" | "printDesk" | "printInk" | "pdfIcon" | "pdfFrame";
 
 export interface ThemeTokens {
   /** Page scheme. "dark": the default (light) scope holds dark surfaces, and antd runs its darkAlgorithm (antd-theme.ts). */
   scheme: "light" | "dark";
-  /** antd colorSuccess / colorWarning from status.ok / status.near (antd-theme.ts). false keeps antd's defaults (navy-gold, app-soft). */
+  /** antd success / warning fills (antd-theme.ts): true = the status chips (okSoft / okBorder, nearSoft / nearBorder); false = antd's
+   *  preset fills, held by the green / gold Tag tokens (navy-gold, app-soft). The text is the status ink (okInk / nearInk) in both. */
   statusToAntd: boolean;
   fontFamily: string;
   chrome: string;
@@ -247,7 +248,8 @@ export interface ThemeTokens {
   tag: Record<TagKey, string>;
   app: Record<AppKey, string>;
   /** --ds-pillar-*: how pillar data colours meet this palette (shared/pillars.tsx tint()): --pc = colour keep% toward lift,
-   *  --pt = own tint tintKeep%, else the colour tintMix% into --ds-surface. Percentages as CSS strings; lift is a colour. */
+   *  --pt = own tint tintKeep%, else the colour tintMix% into --ds-surface; --pf (fills under white text) = --pc with fillMix%
+   *  of --ds-shade. Percentages as CSS strings; lift is a colour. */
   pillar: Record<PillarKey, string>;
   sections: Record<SectionTone, SectionTokens>;
 }
@@ -276,12 +278,12 @@ const ngSidebar: SidebarTokens = {
   bg: p.navy[950],
   bgTop: p.navy[900],
   glow: "rgba(214, 180, 106, 0.08)",
-  fg: p.mist[300],
+  fg: "#c1ccdb", // color-mix(in srgb, mist-100 45%, mist-300)
   fgActive: p.paper,
-  muted: p.steel[400],
-  hoverBg: p.navy[800],
-  activeBg: p.navy[700],
-  indicator: p.gold[400],
+  muted: "#94a6bd", // color-mix(in srgb, mist-300 55%, steel-400)
+  hoverBg: p.navy[700],
+  activeBg: "#315073", // color-mix(in srgb, navy-700 70%, steel-400)
+  indicator: p.gold[200],
   border: p.navy[500],
   focus: p.gold[400],
   badgeBg: p.gold[400],
@@ -294,24 +296,24 @@ const softSidebar: SidebarTokens = {
   glow: "rgba(201, 162, 39, 0.08)",
   fg: p.soft.neutral[200],
   fgActive: p.paper,
-  muted: p.soft.neutral[400],
-  hoverBg: p.soft.navy[800],
-  activeBg: p.soft.navy[700],
-  indicator: p.soft.gold[500],
+  muted: "#b4c1d0", // color-mix(in srgb, soft-neutral-200 35%, soft-neutral-300)
+  hoverBg: "#204576", // color-mix(in srgb, soft-navy-700 80%, soft-navy-900)
+  activeBg: "#2b5795", // color-mix(in srgb, soft-navy-500 45%, soft-navy-700)
+  indicator: p.soft.gold[300],
   border: "rgba(255, 255, 255, 0.14)",
   focus: p.soft.gold[300],
-  badgeBg: p.soft.gold[500],
+  badgeBg: p.soft.gold[300],
   badgeFg: p.soft.navy[950],
 };
 /** night-gold, indigo-silver, graphite-gold: sidebar and band (themes/<name>.css, theme level). */
 const nightSidebar: SidebarTokens = {
   bg: p.night[950],
-  fg: p.night[300],
+  fg: "#b3c0d0", // color-mix(in srgb, night-200 50%, night-300)
   fgActive: p.paper,
-  muted: p.night[400],
-  hoverBg: p.night[850],
-  activeBg: p.night[700],
-  indicator: p.gold[400],
+  muted: "#94a2b7", // color-mix(in srgb, night-300 50%, night-400)
+  hoverBg: p.night[760],
+  activeBg: p.night[600],
+  indicator: p.gold[200],
   border: p.night[800],
   focus: p.gold[400],
   badgeBg: p.gold[400],
@@ -328,11 +330,11 @@ const nightBand: BandTokens = {
 };
 const indigoSidebar: SidebarTokens = {
   bg: p.midnight[950],
-  fg: p.silver[300],
+  fg: "#d3d7df", // color-mix(in srgb, silver-200 50%, silver-300)
   fgActive: p.paper,
-  muted: p.silver[400],
-  hoverBg: p.midnight[800],
-  activeBg: p.midnight[700],
+  muted: "#b5bcc7", // color-mix(in srgb, silver-300 40%, silver-400)
+  hoverBg: p.midnight[700],
+  activeBg: "#454e9e", // color-mix(in srgb, midnight-500 30%, midnight-600)
   indicator: p.silver[200],
   border: p.midnight[700],
   focus: p.silver[200],
@@ -350,12 +352,12 @@ const indigoBand: BandTokens = {
 };
 const graphiteSidebar: SidebarTokens = {
   bg: p.graphite[950],
-  fg: p.graphite[300],
+  fg: "#c8ccd1", // color-mix(in srgb, graphite-200 50%, graphite-300)
   fgActive: p.paper,
-  muted: p.graphite[350],
-  hoverBg: p.graphite[800],
-  activeBg: p.graphite[700],
-  indicator: p.gold[400],
+  muted: "#a8aeb6", // color-mix(in srgb, graphite-300 40%, graphite-350)
+  hoverBg: p.graphite[700],
+  activeBg: p.graphite[600],
+  indicator: p.gold[200],
   border: p.graphite[700],
   focus: p.gold[400],
   badgeBg: p.gold[400],
@@ -428,7 +430,7 @@ const ngAudit = {
   },
   neutral: {
     mark: p.app["slate-410"],
-    axis: p.app["slate-360"],
+    axis: p.soft.neutral[600],
     faint: p.app["slate-350"],
     off: p.app["blue-270"],
     na: p.app["slate-250"],
@@ -452,16 +454,16 @@ const ngAudit = {
     department: p.app["slate-400"],
   },
   tag: {
-    pendingFg: p.app["orange-575"],
+    pendingFg: p.app["amber-760"],
     pendingBg: p.app["amber-50"],
     pendingBorder: p.app["amber-220"],
-    positiveFg: p.app["lime-660"],
+    positiveFg: p.app["lime-750"],
     positiveBg: p.app["lime-40"],
     positiveBorder: p.app["lime-260"],
     negativeFg: p.app["red-560"],
     negativeBg: p.app["red-35"],
     negativeBorder: p.app["red-190"],
-    cautionFg: p.app["orange-580"],
+    cautionFg: p.app["orange-720"],
     cautionBg: p.app["amber-55"],
     cautionBorder: p.app["orange-220"],
     infoFg: p.app["blue-560"],
@@ -470,7 +472,7 @@ const ngAudit = {
     specialFg: p.app["purple-610"],
     specialBg: p.app["purple-30"],
     specialBorder: p.app["purple-180"],
-    highlightFg: p.app["teal-680"],
+    highlightFg: p.ink["teal-700"],
     highlightBg: p.app["teal-50"],
     highlightBorder: p.app["teal-280"],
     categoryFg: p.app["indigo-560"],
@@ -607,7 +609,7 @@ const softAudit = {
   },
   neutral: {
     mark: p.soft.neutral[500],
-    axis: p.soft.neutral[400],
+    axis: p.soft.neutral[600],
     faint: p.soft.neutral[400],
     off: p.soft.neutral[300],
     na: p.soft.neutral[300],
@@ -631,16 +633,16 @@ const softAudit = {
     department: p.app["slate-400"],
   },
   tag: {
-    pendingFg: p.app["orange-575"],
+    pendingFg: p.app["amber-760"],
     pendingBg: p.app["amber-50"],
     pendingBorder: p.app["amber-220"],
-    positiveFg: p.app["lime-660"],
+    positiveFg: p.app["lime-750"],
     positiveBg: p.app["lime-40"],
     positiveBorder: p.app["lime-260"],
     negativeFg: p.app["red-560"],
     negativeBg: p.app["red-35"],
     negativeBorder: p.app["red-190"],
-    cautionFg: p.app["orange-580"],
+    cautionFg: p.app["orange-720"],
     cautionBg: p.app["amber-55"],
     cautionBorder: p.app["orange-220"],
     infoFg: p.app["blue-560"],
@@ -649,7 +651,7 @@ const softAudit = {
     specialFg: p.app["purple-610"],
     specialBg: p.app["purple-30"],
     specialBorder: p.app["purple-180"],
-    highlightFg: p.app["teal-680"],
+    highlightFg: p.ink["teal-700"],
     highlightBg: p.app["teal-50"],
     highlightBorder: p.app["teal-280"],
     categoryFg: p.app["indigo-560"],
@@ -769,7 +771,7 @@ export const themes = {
     }),
     hatch: { light: hatch(p.ash[100], p.paper), muted: hatch(p.steel[400], p.mist[300]) },
     ...ngAudit,
-    pillar: { keep: "100%", lift: p.paper, tintKeep: "100%", tintMix: "0%" },
+    pillar: { keep: "100%", lift: p.paper, tintKeep: "100%", tintMix: "0%", fillMix: "0%" },
     sections: {
       light: {
         bg: p.paper,
@@ -891,7 +893,7 @@ export const themes = {
     }),
     hatch: { light: hatch(p.soft.neutral[75], p.paper), muted: hatch(p.soft.neutral[500], p.soft.neutral[300]) },
     ...softAudit,
-    pillar: { keep: "100%", lift: p.paper, tintKeep: "100%", tintMix: "0%" },
+    pillar: { keep: "100%", lift: p.paper, tintKeep: "100%", tintMix: "0%", fillMix: "0%" },
     sections: {
       light: {
         bg: p.paper,
@@ -1180,6 +1182,7 @@ export const themes = {
       lift: p.paper,
       tintKeep: "0%",
       tintMix: "10%",
+      fillMix: "60%",
     },
     sections: {
       light: {
@@ -1399,7 +1402,7 @@ export const themes = {
     },
     neutral: {
       mark: p.app["slate-410"],
-      axis: p.app["slate-360"],
+      axis: p.soft.neutral[600],
       faint: p.app["slate-350"],
       off: p.app["blue-270"],
       na: p.app["slate-250"],
@@ -1469,6 +1472,7 @@ export const themes = {
       lift: p.paper,
       tintKeep: "100%",
       tintMix: "0%",
+      fillMix: "0%",
     },
     sections: {
       light: {
@@ -1688,7 +1692,7 @@ export const themes = {
     },
     neutral: {
       mark: p.app["slate-410"],
-      axis: p.app["slate-360"],
+      axis: p.soft.neutral[600],
       faint: p.app["slate-350"],
       off: p.app["blue-270"],
       na: p.app["slate-250"],
@@ -1758,6 +1762,7 @@ export const themes = {
       lift: p.paper,
       tintKeep: "100%",
       tintMix: "0%",
+      fillMix: "0%",
     },
     sections: {
       light: {

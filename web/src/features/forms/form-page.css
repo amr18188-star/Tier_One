@@ -1,0 +1,183 @@
+/*
+ * نموذج الجهة (FormPage): بطاقات الركائز، والعمود الواحد بزري السابقة والتالية، وشريط الجوال، وحالة الحفظ، وبطاقة الملاحظات.
+ * الألوان من رموز نظام التصميم وحدها (--ds-* وألوان الحالة --ds-status-*)، ولون الركيزة بيانات (--pc / --pt من tint())،
+ * والزوايا من --ds-radius-*، والخصائص منطقية فتنقلب مع اللغة. قواعد .f-* القديمة في shared/tier1.css وtheme.css كما هي.
+ */
+
+/* ===== بطاقات الركائز الصغيرة: 6 في الصف على الشاشة العريضة، ثم 4 و3 و2، وشريط أفقي على الجوال ===== */
+.fp-cards {
+  list-style: none; margin: 12px 0 0; padding: 0;
+  display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--ds-space-sm, 8px); align-items: stretch;
+}
+.fp-card {
+  display: flex; min-width: 0; overflow: hidden;
+  background: var(--ds-surface); color: var(--ds-fg);
+  border: 1px solid var(--ds-border); border-top: 3px solid var(--pc, var(--ds-accent)); border-radius: var(--ds-radius-md);
+}
+.fp-card[data-selected="true"] { background: var(--pt, var(--ds-surface)); border-color: var(--pc, var(--ds-accent)); box-shadow: inset 0 0 0 1px var(--pc, var(--ds-accent)); }
+.fp-card-main {
+  flex: 1 1 auto; min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "num name" "bar bar" "meta meta";
+  gap: 4px 8px; align-content: start; padding: 8px 10px; border: 0; background: transparent; color: inherit;
+  font: inherit; text-align: start; cursor: pointer;
+}
+.fp-card-main:hover { background: color-mix(in srgb, var(--pc, var(--ds-accent)) 6%, transparent); }
+.fp-card-main:focus-visible { outline-offset: -2px; }
+.fp-card-num { grid-area: num; font-family: var(--font-display); font-size: 15px; font-weight: 700; line-height: 1.4; color: var(--pc, var(--ds-heading)); }
+.fp-card-name {
+  grid-area: name; align-self: center; min-width: 0; font-weight: 700; font-size: 12.5px; line-height: 1.45; color: var(--ds-heading);
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
+}
+.fp-card-bar { grid-area: bar; display: block; height: 3px; overflow: hidden; background: var(--ds-track); border-radius: var(--ds-radius-pill); }
+.fp-card-bar i { display: block; height: 100%; background: var(--pc, var(--ds-accent)); border-radius: var(--ds-radius-pill); }
+.fp-card-meta { grid-area: meta; display: flex; flex-wrap: wrap; align-items: center; gap: 3px 4px; }
+.fp-card-count { font-size: 11.5px; font-weight: 600; color: var(--ds-body-strong); margin-inline-end: 2px; }
+.fp-card .fp-badge { padding: 0 6px; font-size: 11px; }
+.fp-badge { display: inline-flex; align-items: center; gap: 4px; padding: 1px 8px; font-size: 12px; font-weight: 600; line-height: 1.6; border-radius: var(--ds-radius-pill); white-space: nowrap; }
+.fp-badge.tone-warn { background: var(--ds-status-near-soft); color: var(--ds-status-near-ink); }
+.fp-badge.tone-bad { background: var(--ds-status-late-soft); color: var(--ds-status-late-ink); }
+.fp-badge.tone-ok { background: var(--ds-status-ok-soft); color: var(--ds-status-ok-ink); }
+.fp-std {
+  min-height: 28px; padding: 0 8px; font: inherit; font-size: 12px; color: var(--ds-fg); cursor: pointer;
+  background: var(--ds-surface); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-sm);
+}
+.fp-std:hover { border-color: var(--pc, var(--ds-accent)); }
+.fp-std.is-done { border-color: var(--ds-status-ok-border); background: var(--ds-status-ok-soft); color: var(--ds-status-ok-ink); }
+
+/* ===== الركيزة المفتوحة: عمود عريض (حتى 1200px) بزري السابقة والتالية على جانبيه في منتصف الشاشة ===== */
+.fp-stage {
+  display: grid; grid-template-columns: minmax(56px, 112px) minmax(0, 1200px) minmax(56px, 112px); justify-content: center;
+  gap: var(--ds-space-sm, 8px); min-width: 0;
+  /* السحب لا يخرج من منطقة الركيزة إلى القائمة الجانبية: قص أفقي (clip لا ينشئ حاوية تمرير، فيبقى الزران ثابتين)، وحشوة 6px تحفظ حلقة التركيز. */
+  overflow-x: clip; overflow-y: visible; isolation: isolate; padding-inline: 6px; margin-inline: -6px;
+}
+/* سطح السحب: العمود كله يتبع الإصبع أفقيًا، والتمرير العمودي واللمس بإصبعين يبقيان للمتصفح. */
+.fp-main { min-width: 0; touch-action: pan-y pinch-zoom; }
+.fp-main:focus { outline: none; }
+.fp-main[data-dragging] { cursor: grabbing; user-select: none; }
+.fp-main[data-dragging] * { cursor: grabbing; }
+.fp-slide { min-width: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  /* الركيزة الجديدة تدخل من جهة زرها: التالية من نهاية السطر (اليسار في العربية). */
+  .fp-slide[data-enter] { animation: fp-enter 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .fp-slide[data-enter="next"] { --fp-from: 32px; }
+  .fp-slide[data-enter="prev"] { --fp-from: -32px; }
+  html[dir="rtl"] .fp-slide[data-enter="next"] { --fp-from: -32px; }
+  html[dir="rtl"] .fp-slide[data-enter="prev"] { --fp-from: 32px; }
+}
+@keyframes fp-enter { from { opacity: 0.4; transform: translateX(var(--fp-from, 0)); } to { opacity: 1; transform: none; } }
+
+/* رأس الركيزة وتحليلها؛ وهو سطح السحب (عدا أزراره). */
+.fp-head {
+  display: grid; gap: 10px; padding: 12px var(--ds-space-md, 16px); color: var(--ds-fg); user-select: none; cursor: grab;
+  background: var(--pt, var(--ds-surface)); border: 1px solid var(--ds-border); border-inline-start: 4px solid var(--pc, var(--ds-accent));
+  border-radius: var(--ds-radius-lg);
+}
+.fp-head-title { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.fp-head-num { font-family: var(--font-display); font-size: 22px; font-weight: 700; line-height: 1.2; color: var(--pc, var(--ds-heading)); }
+.fp-head-title h2 { flex: 1 1 auto; min-width: 0; margin: 0; font-family: var(--font-display); font-size: 17px; line-height: 1.5; color: var(--ds-heading); }
+.fp-head-pos { flex: none; font-size: 12px; font-weight: 600; color: var(--ds-body-strong); }
+.fp-head-stats { display: flex; flex-wrap: wrap; gap: 8px 24px; margin: 0; }
+.fp-head-stats > div { display: grid; gap: 2px; min-width: 0; }
+.fp-head-stats dt { font-size: 12px; color: var(--ds-body); }
+.fp-head-stats dd { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 15px; font-weight: 700; color: var(--ds-heading); }
+.fp-head-stats .is-progress { flex: 1 1 180px; max-width: 320px; }
+.fp-head-stats .is-progress dd { flex-wrap: nowrap; }
+.fp-head-bar { flex: 1 1 auto; display: block; min-width: 60px; height: 4px; overflow: hidden; background: var(--ds-track); border-radius: var(--ds-radius-pill); }
+.fp-head-bar i { display: block; height: 100%; background: var(--pc, var(--ds-accent)); border-radius: var(--ds-radius-pill); }
+.fp-head-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; }
+.fp-head-stds { display: flex; flex-wrap: wrap; gap: 6px; }
+.fp-head-hint { font-size: 12px; color: var(--ds-body); }
+
+/* زرا السابقة والتالية: ثابتان في منتصف الشاشة بجانب العمود. */
+.fp-side { display: flex; flex-direction: column; min-width: 0; }
+.fp-side.is-prev { align-items: flex-end; }
+.fp-side.is-next { align-items: flex-start; }
+.fp-step {
+  position: sticky; top: calc(50vh - 44px);
+  display: grid; justify-items: center; gap: 2px; width: 100%; max-width: 112px; min-height: 88px; padding: 10px 6px;
+  background: var(--ds-surface); color: var(--ds-heading); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-lg);
+  font: inherit; text-align: center; cursor: pointer; box-shadow: var(--ds-shadow-sm);
+}
+.fp-step:hover:not(:disabled) { border-color: var(--pc, var(--ds-accent)); }
+.fp-step:focus-visible { border-radius: var(--ds-radius-lg); }
+.fp-step b { font-size: 13px; line-height: 1.4; }
+.fp-step small {
+  font-size: 11.5px; line-height: 1.5; color: var(--ds-body);
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
+}
+.fp-step-icon { font-size: 18px; color: var(--pc, var(--ds-heading)); }
+.fp-step:disabled { background: transparent; border-style: dashed; box-shadow: none; color: var(--ds-faint); cursor: not-allowed; }
+.fp-step:disabled .fp-step-icon, .fp-step:disabled small { color: var(--ds-faint); }
+
+/* ===== الشريط الثابت أسفل الصفحة: تنقل الجوال بين الركائز، ثم شريط الإجراء كما كان ===== */
+.fp-dock { position: sticky; bottom: 0; z-index: 5; display: grid; gap: var(--ds-space-sm, 8px); margin-top: 16px; min-width: 0; }
+.fp-dock > .f-actions { position: static; margin: 0; }
+.fp-mbar { display: none; }
+
+/* ===== حالة الحفظ بجانب الحقل: سطر محجوز فلا يقفز التخطيط حين تظهر ===== */
+.fp-save { display: flex; align-items: center; gap: 6px; min-height: 18px; font-size: 12px; line-height: 1.5; color: var(--ds-body); }
+.fp-save[data-state="saved"] { color: var(--ds-status-ok-ink); }
+.fp-save-err { display: grid; gap: 4px; color: var(--ds-status-late-ink); }
+.fp-save-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+@media (prefers-reduced-motion: no-preference) {
+  .fp-save[data-state="saved"] { animation: fp-fade 2s ease-in forwards; }
+}
+@keyframes fp-fade { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
+
+/* ===== ملاحظات المراجعة: بطاقة صغيرة واحدة، والنص في سطرين ===== */
+.fp-note {
+  display: grid; gap: 4px; padding: 8px 12px; font-size: 12.5px; line-height: 1.75; color: var(--ds-fg);
+  background: var(--ds-status-late-soft); border: 1px solid var(--ds-status-late-border); border-inline-start: 3px solid var(--ds-status-late);
+  border-radius: var(--ds-radius-md);
+}
+.fp-note.tone-warn { background: var(--ds-status-near-soft); border-color: var(--ds-status-near-border); border-inline-start-color: var(--ds-status-near); }
+.fp-note-label { font-size: 12.5px; color: var(--ds-status-late-ink); }
+.fp-note.tone-warn .fp-note-label { color: var(--ds-status-near-ink); }
+.fp-note-item { display: grid; justify-items: start; }
+.fp-note-text { margin: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; white-space: pre-line; }
+.fp-note-text.is-open { display: block; -webkit-line-clamp: unset; line-clamp: unset; overflow: visible; }
+.fp-note-more {
+  padding: 0; border: 0; background: transparent; font: inherit; font-size: 12px; font-weight: 600;
+  color: var(--ds-link); text-decoration: underline; cursor: pointer;
+}
+.fp-note-more:hover { color: var(--ds-link-hover); }
+.fp-note-extra { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; color: var(--ds-body-strong); }
+.fp-note-extra .ant-btn-link { padding-inline: 0; height: auto; }
+
+/* ===== الأحجام ===== */
+@media (max-width: 1399px) {
+  .fp-cards { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 1099px) {
+  .fp-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 899px) {
+  .fp-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 960px) {
+  .fp-dock { bottom: calc(66px + env(safe-area-inset-bottom)); }
+}
+@media (max-width: 760px) {
+  .fp-cards {
+    grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(168px, 46%);
+    overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; scrollbar-width: thin;
+  }
+  .fp-card { scroll-snap-align: start; }
+  .fp-stage { grid-template-columns: minmax(0, 1fr); }
+  .fp-side { display: none; }
+  .fp-head { padding: 10px 12px; }
+  .fp-head-stats { gap: 6px 16px; }
+  .fp-head-hint { display: none; }
+  .fp-mbar {
+    display: flex; align-items: center; justify-content: space-between; gap: var(--ds-space-sm, 8px);
+    padding: 6px 8px; background: var(--ds-surface); color: var(--ds-fg);
+    border: 1px solid var(--ds-border); border-radius: var(--ds-radius-lg); box-shadow: var(--ds-shadow-sm);
+  }
+  .fp-mbar > span { font-weight: 700; color: var(--ds-heading); }
+  .fp-mbar button {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px;
+    background: var(--ds-surface); color: var(--ds-heading); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-md);
+    font: inherit; font-weight: 600; cursor: pointer;
+  }
+  .fp-mbar button:disabled { color: var(--ds-faint); border-style: dashed; cursor: not-allowed; }
+}
