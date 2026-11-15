@@ -42,3 +42,5 @@ Each future task gets its own Codex chat, a self-contained brief, a clear file s
 - [done] `01a1ded4-c295-7df3-bf8c-9ca24c24ce68` — Tier 1 — Logout to login — hard navigation to /login; typecheck and diff check passed — 2026-11-15.
 - [done] `01a1ded4-bdc1-7c70-b061-b87fdd620e8e` — Tier 1 — Transparent hero logo — removed white card, white-on-dark transparent logo; desktop/mobile/short viewport review and typecheck passed — 2026-11-15.
 - [done] `01a1ded5-da3e-78e1-9aef-1df01ae219b8` — Tier 1 — University and brand sidebar logos — logos side by side expanded/mobile, brand mark collapsed; typecheck passed; authenticated visual review outstanding — 2026-11-15.
+- [done] `01a1def0-a930-79d2-9594-4b2200735903` — Tier 1 — Admin home dashboard redesign — real API metrics, task cards, searchable/filterable/paginated forms; desktop/mobile review and tests passed; no official overall completion rate or creation date — 2026-11-15.
+- [done] `01a1def0-a41f-73f1-bd2f-8e1b8f33f38f` — Tier 1 — Header and sidebar brand placement — brand only in sidebar, university at header end, visible user name; Arabic/English/mobile review and typecheck passed — 2026-11-15.

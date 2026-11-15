@@ -68,12 +68,9 @@ html[dir="rtl"] .lcp-nav-panel[data-open="false"] .lcp-nav-chev { transform: rot
 }
 .lcp-brand, .lcp-brand:hover { color: var(--ds-sidebar-fg-active, #fff); }
 .lcp-brand { border-bottom-color: var(--ds-sidebar-border, rgba(255, 255, 255, 0.1)); }
-/* الشعاران في صف واحد داخل عرض القائمة والدرج؛ علامة الإدارة وحدها للشريط المطوي. */
-.lcp-brand { gap: 10px; }
-.lcp-brand-wordmark { display: block; flex: 1 1 auto; min-width: 0; max-width: 164px; }
+/* شعار الخطة وحده في القائمة والدرج؛ علامته وحدها للشريط المطوي. */
+.lcp-brand-wordmark { display: block; flex: 1 1 auto; min-width: 0; max-width: 190px; }
 .lcp-brand .lcp-brand-wordmark img { display: block; width: 100%; height: auto; }
-.lcp-brand-university { display: block; flex: none; width: 58px; }
-.lcp-brand .lcp-brand-university img { display: block; width: 100%; height: auto; }
 .lcp-brand-mark { display: none; position: relative; width: 42px; height: 42px; overflow: hidden; flex: none; }
 .lcp-brand-mark img { position: absolute; top: -1px; left: 50%; width: 92px; max-width: none; transform: translateX(-50%); }
 .lcp-brand:focus-visible { outline-color: var(--ds-sidebar-focus, #7fd1d5); }
@@ -133,7 +130,7 @@ html[dir="rtl"] .lcp-nav-panel[data-open="false"] .lcp-nav-chev { transform: rot
     flex-direction: column; align-items: center; align-self: flex-start; width: min(48px, 100%); gap: 6px; padding-bottom: 10px;
   }
   .lcp.is-rail > .lcp-side .lcp-side-head > .lcp-brand { flex: none; align-self: stretch; justify-content: center; padding: 0; }
-  .lcp.is-rail > .lcp-side :is(.lcp-brand-wordmark, .lcp-brand-university) { display: none; }
+  .lcp.is-rail > .lcp-side .lcp-brand-wordmark { display: none; }
   .lcp.is-rail > .lcp-side .lcp-brand-mark { display: block; }
   .lcp.is-rail > .lcp-side .lcp-brand-mark img { height: auto; }
   .lcp.is-rail > .lcp-side .lcp-rail-toggle { position: static; }
@@ -211,16 +208,26 @@ html[dir="rtl"] .lcp-nav-panel[data-open="false"] .lcp-nav-chev { transform: rot
 }
 
 /*
- * الشريط العلوي على الجوال والجهاز اللوحي: القائمة واللغة والمظهر بحجمها الكامل (هدف لمس 32px أو أكثر)، والبحث وحده يتقلص
- * ويملأ ما بقي (بلا الفاصل)، فلا يخرج شيء عن الشاشة عند 375px.
+ * الشريط العلوي على اللوحي: البحث يملأ المساحة الباقية مع ظهور اسم الحساب وشعار الجامعة.
  */
 @media (max-width: 960px) {
   .lcp-top > .lcp-burger, .lcp-top > .lcp-lang, .lcp-top .lcp-look { flex: none; }
   .lcp-top > .lcp-top-space { display: none; }
   .lcp-top .t1-search { flex: 1 1 auto; min-width: 0; }
 }
-@media (max-width: 480px) {
-  .lcp-top { gap: 4px; }
+/* الهاتف: البحث في الصف الأول، وأدوات الحساب في الثاني بترتيب لوحة المفاتيح نفسه. */
+@media (max-width: 640px) {
+  .lcp-top {
+    display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; grid-template-rows: 40px 42px;
+    gap: 6px; height: auto; padding-block: 8px;
+  }
+  .lcp-top > .lcp-burger { grid-column: 1; grid-row: 1; }
+  .lcp-top .t1-search { grid-column: 2 / -1; grid-row: 1; width: 100% !important; }
+  .lcp-top > .lcp-lang { grid-column: 1; grid-row: 2; }
+  .lcp-top > :is(.lcp-look, .lcp-look-anchor) { grid-column: 2; grid-row: 2; }
+  .lcp-top > .lcp-user { grid-column: 3; grid-row: 2; justify-self: end; width: 100%; max-width: 240px; }
+  .lcp-top > .lcp-top-university { grid-column: 4; grid-row: 2; margin-inline-start: 0; }
+  .lcp-top-university img { height: 42px; }
 }
 
 /* الحركة: العرض والحشوة ~220ms، والنصوص تتلاشى عند الطي وتظهر عند التوسيع. بتقليل الحركة كل ذلك فوري (ولا .is-railing). */

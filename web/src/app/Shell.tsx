@@ -13,9 +13,8 @@ import { L, setLang, useLang } from "../shared/i18n";
 import { usePermissions, useSession } from "../shared/session";
 import { initials } from "../shared/ui";
 import { AppearanceButton } from "./AppearanceMenu";
-// الشعار الكحلي للشريط العلوي الفاتح، والشعاران ذوا الحروف البيضاء للقائمة الكحلية.
+// شعار الجامعة للترويسة الفاتحة، وشعار الخطة للشريط الجانبي الكحلي.
 import logoOnWhite from "../assets/brand/capital-university-logo-light.png";
-import logoOnNavy from "../assets/brand/capital-university-logo-dark.png";
 import strategyBrandOnNavy from "../assets/brand/strategy-performance-dark.png";
 import "../shared/ui.css";
 import "../shared/tier1.css";
@@ -208,15 +207,12 @@ export function Shell({ children }: { children: ReactNode }) {
 
   const tipSide: TipSide = lang === "ar" ? "left" : "right";
   const logoutText = L("تسجيل الخروج", "Sign out");
-  // شعار الإدارة وشعار الجامعة جنبًا إلى جنب؛ علامة الإدارة وحدها تظهر في الشريط المطوي.
+  // شعار الخطة وحده في القائمة؛ علامته المختصرة تظهر في الشريط المطوي.
   const brand = (
     <Link to="/" className="lcp-brand" onClick={() => setDrawer(false)}
-      aria-label={L("الرئيسية — الخطة الاستراتيجية وتقييم الأداء، جامعة العاصمة", "Home — Strategy and Performance, Capital University")}>
+      aria-label={L("الرئيسية — الخطة الاستراتيجية وتقييم الأداء", "Home — Strategy and Performance")}>
       <span className="lcp-brand-wordmark">
         <img src={strategyBrandOnNavy} alt="" />
-      </span>
-      <span className="lcp-brand-university">
-        <img src={logoOnNavy} alt="" />
       </span>
       <span className="lcp-brand-mark" aria-hidden="true">
         <img src={strategyBrandOnNavy} alt="" />
@@ -259,10 +255,6 @@ export function Shell({ children }: { children: ReactNode }) {
       <div className="lcp-main">
         <header className="lcp-top">
           <Button className="lcp-burger" type="text" icon={<MenuOutlined aria-hidden />} onClick={() => setDrawer(true)} aria-label={L("القائمة", "Menu")} />
-          <Link to="/" className="lcp-top-brand">
-            <img src={logoOnWhite} alt={L("جامعة العاصمة", "Capital University")} />
-            <b>Tier 1</b>
-          </Link>
           <GlobalSearch />
           <span className="lcp-top-space" />
           <Button type="text" className="lcp-lang" onClick={toggleLang}>{lang === "ar" ? "EN" : "ع"}</Button>
@@ -284,11 +276,14 @@ export function Shell({ children }: { children: ReactNode }) {
               { key: "logout", icon: <LogoutOutlined aria-hidden />, label: L("تسجيل الخروج", "Sign out"), onClick: logout },
             ],
           }}>
-            <button type="button" className="lcp-user" aria-label={L("حسابي", "My account")}>
+            <button type="button" className="lcp-user" aria-label={`${L("حسابي", "My account")}: ${me?.name ?? ""}`} title={me?.name}>
               <span className="lcp-avatar" aria-hidden>{initials(me?.name)}</span>
-              <span className="lcp-user-name">{me?.name}</span>
+              <span className="lcp-user-name">{me?.name || L("حسابي", "My account")}</span>
             </button>
           </Dropdown>
+          <Link to="/" className="lcp-top-university" aria-label={L("جامعة العاصمة — الرئيسية", "Capital University — Home")}>
+            <img src={logoOnWhite} alt="" />
+          </Link>
         </header>
         <main className="lcp-content">
           <div className="lcp-page">{children}</div>

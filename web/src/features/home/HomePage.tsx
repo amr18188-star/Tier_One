@@ -1,20 +1,25 @@
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Progress, Tag } from "antd";
 import {
   BarChartOutlined, CheckCircleOutlined, ClockCircleOutlined, ClusterOutlined, FileDoneOutlined, FormOutlined, TrophyOutlined, UnorderedListOutlined,
+  SearchOutlined, WarningOutlined, EditOutlined, ArrowLeftOutlined, ArrowRightOutlined, CalendarOutlined,
 } from "@ant-design/icons";
 import { api } from "../../api/client";
-import type { FormRow, Results } from "../../api/collection";
+import type { Cycle, FormRow, Results } from "../../api/collection";
 import type { Home } from "../../api/tier1";
 import { ProgressToTarget, SegmentBar } from "../../shared/charts";
 import { formatDate } from "../../shared/format";
-import { L } from "../../shared/i18n";
+import { L, useLang } from "../../shared/i18n";
 import { dueText, submissionStatus } from "../../shared/labels";
+import { dueLabel, daysLeft } from "../../shared/period";
 import { StdCode, tint, usePillarMap } from "../../shared/pillars";
 import { usePermissions } from "../../shared/session";
 import { PlanGlance } from "../strategy/PlanGlance";
 import type { Scorecard } from "../../api/scorecard";
+import { filterWork, featuredCycle, type DueSort, type WorkFilter } from "./adminModel";
+import "./home.css";
 
 /** الدرجة الكلية والفئة ودرجة كل ركيزة، بربط إلى بطاقة الأداء. */
 function ScoreGlance() {
@@ -51,7 +56,7 @@ import { EmptyNote, firstName, greeting, Hero, Panel, StatTile } from "../../sha
  * «مطلوب منك» لكل الأدوار؛ ثم نماذج المستخدم بمواعيدها لمدخل البيانات والمراجع؛ ثم أداء آخر دورة لمن يرى النتائج (القيادة والعميد)؛
  * ثم صورة القاموس والتعارضات لمن يعد الخطة أو يعتمدها فقط، فلا يرى مدخل البيانات ما لا يخص عمله.
  */
-export default function HomePage() {
+function GeneralHome({ supplementalOnly = false }: { supplementalOnly?: boolean }) {
   const perms = usePermissions();
   const home = useQuery({ queryKey: ["home"], queryFn: () => api.get<Home>("/api/home") });
   const planning = perms.can("kpi.dictionary", "E") || perms.can("kpi.dictionary", "approve");
@@ -78,7 +83,7 @@ export default function HomePage() {
 
   return (
     <>
-      <Hero kicker={greeting()} title={`${L("أهلًا", "Welcome")} ${firstName(d?.displayName)}`}>
+      {!supplementalOnly && <><Hero kicker={greeting()} title={`${L("أهلًا", "Welcome")} ${firstName(d?.displayName)}`}>
         {home.isLoading ? L("جار تحميل ما يخصك…", "Loading…") : summary}
       </Hero>
 
@@ -116,7 +121,7 @@ export default function HomePage() {
             ))}
           </ul>
         </Panel>
-      )}
+      )}</>}
 
       {seesResults && r && (
         <Panel title={L(`الأداء — ${r.cycle.name}`, `Performance — ${r.cycle.name}`)} icon={<BarChartOutlined aria-hidden />}
@@ -184,4 +189,142 @@ export default function HomePage() {
       )}
     </>
   );
+}
+
+const PAGE_SIZE = 8;
+
+/** The administrator's work counts come from /api/home; cycle totals come only from /api/cycles. */
+function AdminHome() {
+  const lang = useLang();
+  const Forward = lang === "ar" ? ArrowLeftOutlined : ArrowRightOutlined;
+  const home = useQuery({ queryKey: ["home"], queryFn: () => api.get<Home>("/api/home") });
+  const mine = useQuery({ queryKey: ["forms", "mine"], queryFn: () => api.get<FormRow[]>("/api/forms?awaitingMe=true") });
+  const cycles = useQuery({ queryKey: ["cycles"], queryFn: () => api.get<Cycle[]>("/api/cycles") });
+  const [filter, setFilter] = useState<WorkFilter>("all");
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<DueSort>("nearest");
+  const [page, setPage] = useState(1);
+  const rows = mine.data ?? [];
+  const shown = useMemo(() => filterWork(rows, filter, search, sort), [rows, filter, search, sort]);
+  const pageCount = Math.max(1, Math.ceil(shown.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const pageRows = shown.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const cycle = featuredCycle(cycles.data ?? []);
+  const task = (key: string) => home.data?.tasks.find((t) => t.key === key);
+  const cards = [
+    { key: "forms_returned", title: L("نماذج تتطلب تصحيحًا", "Forms to correct"), hint: L("أُعيدت لك بملاحظات المراجع", "Returned with review notes"), icon: <WarningOutlined />, tone: "bad", link: "/forms?view=Returned" },
+    { key: "forms_review", title: L("نماذج بانتظار المراجعة", "Forms to review"), hint: L("تنتظر قرارك في مسار الاعتماد", "Waiting for your review"), icon: <ClockCircleOutlined />, tone: "review", link: "/forms" },
+    { key: "forms_fill", title: L("نماذج بانتظار إدخال البيانات", "Forms to complete"), hint: L("ابدأ الإدخال أو استكمل القيم", "Enter or complete values"), icon: <EditOutlined />, tone: "entry", link: "/forms" },
+    { key: "structure_incomplete", title: L("هياكل غير مكتملة", "Incomplete structures"), hint: L("كليات تحتاج استكمال هيكلها", "Colleges needing structure updates"), icon: <ClusterOutlined />, tone: "structure", link: "/structure" },
+  ];
+  const filters: { key: WorkFilter; text: string; count: number }[] = [
+    { key: "all", text: L("الكل", "All"), count: rows.length },
+    { key: "returned", text: L("تحتاج تصحيحًا", "To correct"), count: rows.filter((r) => r.status === "Returned").length },
+    { key: "review", text: L("بانتظار المراجعة", "To review"), count: rows.filter((r) => r.status === "InReview").length },
+    { key: "entry", text: L("بانتظار إدخال البيانات", "To complete"), count: rows.filter((r) => r.status === "NotStarted" || r.status === "InProgress").length },
+  ];
+  const changeFilter = (next: WorkFilter) => { setFilter(next); setPage(1); };
+  const changeSearch = (next: string) => { setSearch(next); setPage(1); };
+  const changeSort = (next: DueSort) => { setSort(next); setPage(1); };
+
+  return (
+    <div className="home-admin">
+      <header className="home-admin-hero" data-section="dark">
+        <div className="home-admin-welcome">
+          <span className="home-admin-eyebrow">{greeting()}</span>
+          <h1>{L("أهلًا", "Welcome")} {firstName(home.data?.displayName)}</h1>
+          <p>{cycle ? L(`متابعة ${cycle.periodLabel || cycle.name}`, `Overview of ${cycle.periodLabel || cycle.name}`)
+            : cycles.isLoading ? L("جار تحميل الدورة…", "Loading cycle…")
+              : cycles.isError ? L("تعذر تحميل ملخص الدورات.", "Could not load cycle summary.")
+                : L("لا توجد دورة جمع بيانات متاحة بعد.", "No collection cycle is available yet.")}</p>
+        </div>
+        <dl className="home-admin-hero-stats" aria-label={L("ملخص الدورة", "Cycle summary")}>
+          <div><dt>{L("نماذج الدورة", "Cycle forms")}</dt><dd>{cycle ? cycle.forms : "—"}</dd></div>
+          <div><dt>{L("متأخر عن الموعد", "Overdue")}</dt><dd className={cycle && cycle.overdue > 0 ? "is-late" : undefined}>{cycle ? cycle.overdue : "—"}</dd></div>
+          <div><dt>{L("نماذج معتمدة", "Approved forms")}</dt><dd>{cycle ? <span className="ltr">{cycle.formsByStatus.Approved ?? 0}/{cycle.forms}</span> : "—"}</dd></div>
+          <div><dt>{L("قيد المراجعة", "In review")}</dt><dd>{cycle ? cycle.formsByStatus.InReview ?? 0 : "—"}</dd></div>
+        </dl>
+      </header>
+
+      <section className="home-admin-priorities" aria-label={L("أولوياتك", "Your priorities")}>
+        {cards.map((card) => {
+          const item = task(card.key);
+          return <Link key={card.key} to={item?.link ?? card.link} className={`home-admin-kpi tone-${card.tone}`}>
+            <span className="home-admin-kpi-icon" aria-hidden>{card.icon}</span>
+            <strong>{card.title}</strong>
+            <b className="ltr">{home.isLoading || home.isError ? "—" : item?.count ?? 0}</b>
+            <small>{card.hint}</small>
+            <Forward className="home-admin-kpi-arrow" aria-hidden />
+          </Link>;
+        })}
+      </section>
+      {home.isError && <p className="home-admin-error" role="alert">{L("تعذر تحميل مؤشرات المهام.", "Could not load task counts.")} <button type="button" onClick={() => void home.refetch()}>{L("إعادة المحاولة", "Retry")}</button></p>}
+
+      <section className="home-admin-work" aria-labelledby="home-work-title">
+        <div className="home-admin-work-head">
+          <div><span className="home-admin-section-icon" aria-hidden><FileDoneOutlined /></span><h2 id="home-work-title">{L("نماذج تنتظرك", "Forms waiting for you")}</h2><p>{L("النماذج التي تتطلب إجراءً منك الآن", "Forms that need your action now")}</p></div>
+          <Link to="/forms">{L("كل النماذج", "All forms")} <Forward aria-hidden /></Link>
+        </div>
+        <div className="home-admin-toolbar">
+          <div className="home-admin-filters" role="group" aria-label={L("تصفية حسب الإجراء", "Filter by action")}>
+            {filters.map((option) => <button type="button" key={option.key} className={filter === option.key ? "is-active" : undefined}
+              aria-pressed={filter === option.key} onClick={() => changeFilter(option.key)}>{option.text} <span className="ltr">{mine.isSuccess ? option.count : "—"}</span></button>)}
+          </div>
+          <div className="home-admin-tools">
+            <label className="home-admin-search"><SearchOutlined aria-hidden /><span className="sr-only">{L("ابحث في النماذج", "Search forms")}</span>
+              <input type="search" value={search} onChange={(event) => changeSearch(event.target.value)} placeholder={L("ابحث عن جهة أو دورة…", "Search unit or cycle…")} /></label>
+            <label className="home-admin-sort"><span className="sr-only">{L("ترتيب النماذج", "Sort forms")}</span>
+              <select value={sort} onChange={(event) => changeSort(event.target.value as DueSort)}>
+                <option value="nearest">{L("الأقرب موعدًا", "Nearest due")}</option><option value="farthest">{L("الأبعد موعدًا", "Farthest due")}</option>
+              </select></label>
+          </div>
+        </div>
+        {mine.isLoading ? <div className="home-admin-state" role="status">{L("جار تحميل النماذج…", "Loading forms…")}</div>
+          : mine.isError ? <div className="home-admin-state" role="alert">{L("تعذر تحميل النماذج التي تنتظرك.", "Could not load forms waiting for you.")} <button type="button" onClick={() => void mine.refetch()}>{L("إعادة المحاولة", "Retry")}</button></div>
+            : rows.length === 0 ? <div className="home-admin-state"><CheckCircleOutlined aria-hidden /> {L("لا توجد نماذج تنتظر إجراءك الآن.", "No forms need your action now.")}</div>
+              : shown.length === 0 ? <div className="home-admin-state">{L("لا توجد نماذج تطابق البحث أو التصفية.", "No forms match your search or filter.")} <button type="button" onClick={() => { changeFilter("all"); changeSearch(""); }}>{L("مسح التصفية", "Clear filters")}</button></div>
+                : <>
+                  <div className="home-admin-table-head" aria-hidden>
+                    <span>{L("الجهة", "Unit")}</span><span>{L("الدورة", "Cycle")}</span><span>{L("الحالة", "Status")}</span><span>{L("التقدم", "Progress")}</span><span>{L("الموعد", "Due")}</span><span>{L("الإجراء", "Action")}</span>
+                  </div>
+                  <ul className="home-admin-rows">
+                    {pageRows.map((row) => {
+                      const action = row.status === "Returned" ? L("تصحيح", "Correct") : row.status === "InReview" ? L("مراجعة", "Review") : row.status === "NotStarted" ? L("بدء الإدخال", "Start entry") : L("استكمال الإدخال", "Continue entry");
+                      const days = daysLeft(row.dueOn);
+                      return <li key={row.id}>
+                        <div className="home-admin-unit"><b title={row.unitName}>{row.unitName}</b><small title={row.parentName ?? undefined}>{row.parentName || L("جهة مركزية", "Central unit")}</small></div>
+                        <div className="home-admin-cycle"><CalendarOutlined aria-hidden /><span>{row.cycleName}</span></div>
+                        <div className="home-admin-status"><Tag color={submissionStatus[row.status].color}>{submissionStatus[row.status].text}</Tag></div>
+                        <div className="home-admin-progress"><span className="ltr">{row.completed}/{row.required}</span><Progress percent={row.required ? Math.min(100, Math.round(100 * row.completed / row.required)) : 0} showInfo={false} size="small" /></div>
+                        <div className={`home-admin-due${row.overdue ? " is-late" : days <= 3 ? " is-near" : ""}`}><ClockCircleOutlined aria-hidden /><span>{dueLabel(row.dueOn)}<small className="ltr">{formatDate(row.dueOn)}</small></span></div>
+                        <Link className="home-admin-action" to={`/forms/${row.id}`}>{action}<Forward aria-hidden /></Link>
+                      </li>;
+                    })}
+                  </ul>
+                  {pageCount > 1 && <nav className="home-admin-pager" aria-label={L("صفحات النماذج", "Form pages")}>
+                    <button type="button" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)}>{L("السابق", "Previous")}</button>
+                    <span>{L(`صفحة ${currentPage} من ${pageCount}`, `Page ${currentPage} of ${pageCount}`)}</span>
+                    <button type="button" disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)}>{L("التالي", "Next")}</button>
+                  </nav>}
+                </>}
+      </section>
+      {home.data?.tasks.some((item) => !cards.some((card) => card.key === item.key)) && (
+        <Panel title={L("مهام أخرى", "Other tasks")} icon={<CheckCircleOutlined aria-hidden />}>
+          <div className="t1-tasks">
+            {home.data.tasks.filter((item) => !cards.some((card) => card.key === item.key)).map((item) => (
+              <Link key={item.key} to={item.link} className={`t1-task tone-${item.tone}`}>
+                <b className="ltr">{item.count}</b><span><strong>{item.titleAr}</strong><small>{item.hintAr}</small></span>
+              </Link>
+            ))}
+          </div>
+        </Panel>
+      )}
+      <GeneralHome supplementalOnly />
+    </div>
+  );
+}
+
+export default function HomePage() {
+  const perms = usePermissions();
+  return perms.isSuperAdmin ? <AdminHome /> : <GeneralHome />;
 }
