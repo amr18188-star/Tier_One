@@ -250,9 +250,9 @@ export function Hero({ kicker, title, children, actions }: { kicker?: ReactNode;
   );
 }
 
-/** أول اسم من الاسم الكامل للتحية. */
+/** أول اسمين من الاسم الكامل للتحية. */
 export function firstName(full: string | null | undefined): string {
-  return (full ?? "").trim().split(/\s+/)[0] ?? "";
+  return (full ?? "").trim().split(/\s+/).slice(0, 2).join(" ");
 }
 
 export function initials(full: string | null | undefined): string {

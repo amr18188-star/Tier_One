@@ -19,6 +19,7 @@ import { usePermissions } from "../../shared/session";
 import { PlanGlance } from "../strategy/PlanGlance";
 import type { Scorecard } from "../../api/scorecard";
 import { filterWork, featuredCycle, type DueSort, type WorkFilter } from "./adminModel";
+import { AdminAnalytics } from "./AdminAnalytics";
 import "./home.css";
 
 /** الدرجة الكلية والفئة ودرجة كل ركيزة، بربط إلى بطاقة الأداء. */
@@ -56,7 +57,7 @@ import { EmptyNote, firstName, greeting, Hero, Panel, StatTile } from "../../sha
  * «مطلوب منك» لكل الأدوار؛ ثم نماذج المستخدم بمواعيدها لمدخل البيانات والمراجع؛ ثم أداء آخر دورة لمن يرى النتائج (القيادة والعميد)؛
  * ثم صورة القاموس والتعارضات لمن يعد الخطة أو يعتمدها فقط، فلا يرى مدخل البيانات ما لا يخص عمله.
  */
-function GeneralHome({ supplementalOnly = false }: { supplementalOnly?: boolean }) {
+function GeneralHome() {
   const perms = usePermissions();
   const home = useQuery({ queryKey: ["home"], queryFn: () => api.get<Home>("/api/home") });
   const planning = perms.can("kpi.dictionary", "E") || perms.can("kpi.dictionary", "approve");
@@ -83,7 +84,7 @@ function GeneralHome({ supplementalOnly = false }: { supplementalOnly?: boolean 
 
   return (
     <>
-      {!supplementalOnly && <><Hero kicker={greeting()} title={`${L("أهلًا", "Welcome")} ${firstName(d?.displayName)}`}>
+      <Hero kicker={greeting()} title={`${L("أهلًا", "Welcome")} ${firstName(d?.displayName)}`}>
         {home.isLoading ? L("جار تحميل ما يخصك…", "Loading…") : summary}
       </Hero>
 
@@ -121,7 +122,7 @@ function GeneralHome({ supplementalOnly = false }: { supplementalOnly?: boolean 
             ))}
           </ul>
         </Panel>
-      )}</>}
+      )}
 
       {seesResults && r && (
         <Panel title={L(`الأداء — ${r.cycle.name}`, `Performance — ${r.cycle.name}`)} icon={<BarChartOutlined aria-hidden />}
@@ -319,7 +320,7 @@ function AdminHome() {
           </div>
         </Panel>
       )}
-      <GeneralHome supplementalOnly />
+      <AdminAnalytics />
     </div>
   );
 }

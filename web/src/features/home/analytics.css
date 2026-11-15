@@ -1,0 +1,143 @@
+/* Admin home: analytics & performance block (AdminAnalytics.tsx). Tokens and app aliases only; sits inside .home-admin (inline-size container). */
+.han { display: grid; gap: 14px; min-width: 0; }
+.han :where(h2, p, ol, ul) { margin: 0; }
+.han :where(ol, ul) { list-style: none; padding: 0; }
+.han-card { min-width: 0; padding: 16px 18px; background: var(--ds-surface); border: 1px solid var(--hair); border-radius: var(--ds-radius-xl); box-shadow: var(--shadow); transition: opacity .15s ease; }
+.han-card.is-refreshing { opacity: .7; }
+.han-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 12px; margin-bottom: 14px; }
+.han-head-title { display: grid; grid-template-columns: 32px minmax(0, 1fr); align-items: center; column-gap: 10px; min-width: 0; }
+.han-head-icon { grid-row: span 2; width: 32px; height: 32px; display: grid; place-items: center; color: var(--gold-ink); background: var(--gold-50); border-radius: var(--ds-radius-md); }
+.han-head h2 { color: var(--navy); font-family: var(--font-display); font-size: 16px; font-weight: 800; line-height: 1.5; }
+.han-head p { color: var(--muted); font-size: 11px; line-height: 1.5; }
+.han-head-action { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.han-link { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; color: var(--teal-ink); font-size: 12px; font-weight: 700; white-space: nowrap; }
+.han-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 4px 12px; border-radius: var(--ds-radius-md); background: var(--ds-ink-fill); color: var(--ds-on-dark-fg); font-size: 12px; font-weight: 700; white-space: nowrap; }
+.han-btn:hover { background: var(--teal-ink); color: var(--ds-on-dark-fg); }
+.han-period { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding-inline-start: 10px; color: var(--muted); border: 1px solid var(--hair); border-radius: var(--ds-radius-md); background: var(--ds-surface); }
+.han-period:focus-within { outline: 2px solid var(--ds-focus); outline-offset: 1px; }
+.han-period select { min-height: 32px; max-width: 230px; padding: 0 8px; background: transparent; color: var(--ink); border: 0; outline: 0; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.han-meta { display: inline-flex; align-items: center; min-height: 26px; padding: 2px 10px; border-radius: var(--ds-radius-pill); background: var(--ds-app-muted-bg); color: var(--muted); font-size: 11.5px; font-weight: 700; }
+.han-meta.is-warn { background: var(--warn-bg); color: var(--warn); }
+.han-empty { padding: 12px 0; color: var(--muted); font-size: 13px; line-height: 1.8; }
+.han .han-note { margin-top: 10px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+
+/* stacked bar + legend (results, definitions) */
+.han-stack { display: grid; gap: 10px; min-width: 0; }
+.han-stack-track { display: flex; gap: 2px; height: 12px; overflow: hidden; border-radius: var(--ds-radius-pill); background: var(--sunk); }
+.han-stack-track span { min-width: 6px; }
+.han-legend { display: flex; flex-wrap: wrap; gap: 6px 20px; font-size: 12px; color: var(--ink); }
+.han-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.han-legend i { width: 10px; height: 10px; flex: none; border-radius: var(--ds-radius-round); }
+.han-legend b { font-weight: 800; font-variant-numeric: tabular-nums; }
+.han-legend small { color: var(--muted); font-size: 11px; }
+.han-legend li.is-zero { color: var(--muted); }
+
+/* 1. results */
+.han-results { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 18px; align-items: center; }
+.han-summary { display: grid; justify-items: center; gap: 2px; padding: 12px; text-align: center; border: 1px solid var(--hair); border-radius: var(--ds-radius-lg); background: var(--ds-app-muted-bg); }
+.han-summary b { color: var(--navy); font-size: 28px; font-weight: 800; line-height: 1.3; font-variant-numeric: tabular-nums; }
+.han-summary span { color: var(--ink); font-size: 12px; font-weight: 700; }
+.han-summary small { color: var(--muted); font-size: 11px; }
+.han-results-main { min-width: 0; }
+
+/* 2. score + calculator */
+.han-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; min-width: 0; }
+.han-pair > .han-card { display: flex; flex-direction: column; }
+.han-score { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 16px; align-items: center; }
+.han-score-main { display: grid; justify-items: center; gap: 2px; padding: 16px 12px; text-align: center; border: 1px solid color-mix(in srgb, var(--teal) 22%, var(--hair)); border-radius: var(--ds-radius-lg); background: color-mix(in srgb, var(--teal) 7%, var(--ds-surface)); }
+.han-score-main b { color: var(--navy); font-size: 38px; font-weight: 800; line-height: 1.25; font-variant-numeric: tabular-nums; }
+.han-score-main span { color: var(--navy); font-size: 12.5px; font-weight: 700; line-height: 1.6; }
+.han-score-main small { color: var(--muted); font-size: 11px; }
+.han-score-pillars { display: grid; gap: 7px; min-width: 0; }
+.han-score-pillars li { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--ink); font-size: 12px; line-height: 1.5; }
+.han-score-pillars i { width: 4px; height: 16px; flex: none; border-radius: var(--ds-radius-pill); background: var(--pc); }
+.han-score-pillars li > span, .han-calc-name > span { flex: none; color: var(--muted); font-size: 11px; font-weight: 700; }
+.han-calc { display: grid; gap: 11px; align-content: center; flex: 1; }
+.han-calc li { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(90px, 2fr) 42px; gap: 12px; align-items: center; }
+.han-calc-name { display: flex; gap: 6px; min-width: 0; overflow: hidden; color: var(--ink); font-size: 12px; white-space: nowrap; text-overflow: ellipsis; }
+.han-calc-bar { height: 8px; overflow: hidden; border-radius: var(--ds-radius-pill); background: var(--sunk); }
+.han-calc-bar i { display: block; height: 100%; border-radius: var(--ds-radius-pill); background: var(--pc); }
+.han-calc b { color: var(--navy); font-size: 13px; font-weight: 800; text-align: end; font-variant-numeric: tabular-nums; }
+
+/* 3. strategic plan */
+.han-plan-legend { margin-bottom: 12px; padding: 8px 12px; border-radius: var(--ds-radius-md); background: var(--ds-app-muted-bg); }
+.han-plan-legend .sp-legend { gap: 6px 16px; font-size: 12px; }
+.han-axes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.han-axis {
+  display: grid; grid-template-rows: auto 1fr auto auto; gap: 8px; min-width: 0; padding: 14px; text-align: start;
+  font: inherit; color: var(--ink); background: var(--ds-surface); border: 1px solid var(--hair); border-radius: var(--ds-radius-lg);
+  box-shadow: inset 0 3px 0 var(--pc); cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+.han-axis:hover { border-color: var(--pc); box-shadow: inset 0 3px 0 var(--pc), var(--shadow-up); transform: translateY(-2px); }
+.han-axis:focus-visible { outline: 2px solid var(--ds-focus); outline-offset: 2px; }
+.han-axis-top { display: flex; justify-content: space-between; align-items: center; }
+.han-axis-num { color: var(--pc); font-size: 22px; font-weight: 800; line-height: 1.2; }
+.han-axis-icon { width: 34px; height: 34px; display: grid; place-items: center; color: var(--pc); background: var(--pt); border-radius: var(--ds-radius-md); font-size: 16px; }
+.han-axis-name { color: var(--navy); font-size: 13.5px; font-weight: 700; line-height: 1.6; }
+.han-axis-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; color: var(--muted); font-size: 11.5px; }
+.han-axis-go { color: var(--pc); transition: transform .15s ease; }
+.han-axis:hover .han-axis-go:dir(rtl) { transform: translateX(-3px); }
+.han-axis:hover .han-axis-go:dir(ltr) { transform: translateX(3px); }
+.han-axis .sp-statebar { height: 7px; }
+
+/* 4. KPI cards */
+.han-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.han-kpi {
+  display: flex; align-items: center; gap: 14px; min-width: 0; padding: 14px 16px; color: var(--ink); background: var(--ds-surface);
+  border: 1px solid var(--hair); border-radius: var(--ds-radius-xl); box-shadow: var(--shadow); transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+a.han-kpi:hover { color: var(--ink); border-color: var(--teal); box-shadow: var(--shadow-up); transform: translateY(-2px); }
+.han-kpi-icon { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border-radius: var(--ds-radius-lg); font-size: 19px; }
+.han-kpi-text { display: grid; min-width: 0; }
+.han-kpi-text b { font-size: 24px; font-weight: 800; line-height: 1.3; font-variant-numeric: tabular-nums; }
+.han-kpi-text span { font-size: 12.5px; font-weight: 700; line-height: 1.5; }
+.han-kpi-text small { color: var(--muted); font-size: 11px; line-height: 1.5; }
+.han-kpi.tone-ok .han-kpi-icon { color: var(--ok); background: var(--ok-bg); }
+.han-kpi.tone-ok b { color: var(--ok); }
+.han-kpi.tone-review .han-kpi-icon { color: var(--teal-ink); background: var(--teal-50); }
+.han-kpi.tone-review b { color: var(--navy); }
+.han-kpi.tone-gold .han-kpi-icon { color: var(--gold-ink); background: var(--gold-50); }
+.han-kpi.tone-gold b { color: var(--gold-ink); }
+
+/* 6. approval by standard */
+.han-std-head, .han-std { display: grid; grid-template-columns: 52px minmax(0, 1fr) 96px minmax(80px, 170px) 56px; gap: 12px; align-items: center; }
+.han-std-head { padding: 7px 10px; color: var(--muted); background: var(--ds-app-muted-bg); border-radius: var(--ds-radius-md); font-size: 11px; font-weight: 700; }
+.han-std-head > :first-child { grid-column: span 2; }
+.han-std-head > :last-child { text-align: end; }
+.han-stds li + li { border-top: 1px solid var(--hair); }
+.han-std { min-height: 50px; padding: 8px 10px; color: var(--ink); transition: background .15s ease; }
+.han-std:hover { background: var(--ds-app-muted-bg); color: var(--ink); }
+.han-std:focus-visible { outline: 2px solid var(--ds-focus); outline-offset: -2px; }
+.han-std .pill-code { justify-self: start; }
+.han-std-name { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: var(--navy); font-size: 12.5px; font-weight: 600; line-height: 1.6; }
+.han-badge { display: inline-flex; align-items: center; justify-self: start; gap: 4px; padding: 1px 9px; border-radius: var(--ds-radius-pill); font-size: 11px; font-weight: 700; line-height: 1.8; white-space: nowrap; }
+.han-badge.is-complete { color: var(--ok); background: var(--ok-bg); }
+.han-badge.is-partial { color: var(--warn); background: var(--warn-bg); }
+.han-badge.is-none { color: var(--muted); background: var(--ds-app-muted-bg); }
+.han-std-bar { height: 6px; overflow: hidden; border-radius: var(--ds-radius-pill); background: var(--sunk); }
+.han-std-bar i { display: block; height: 100%; border-radius: var(--ds-radius-pill); background: var(--ds-status-ok-ink); }
+.han-std.is-partial .han-std-bar i { background: var(--ds-status-near); }
+.han-std-count { color: var(--navy); font-size: 12.5px; font-weight: 800; text-align: end; font-variant-numeric: tabular-nums; }
+.han-more { display: block; margin: 8px auto 0; min-height: 34px; padding: 4px 14px; border: 1px solid var(--hair); border-radius: var(--ds-radius-md); background: var(--ds-surface); color: var(--teal-ink); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.han-more:hover { background: var(--ds-app-muted-bg); }
+
+@container (max-width: 1050px) {
+  .han-pair { grid-template-columns: 1fr; }
+  .han-axes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container (max-width: 640px) {
+  .han-card { padding: 14px; }
+  .han-results, .han-score { grid-template-columns: 1fr; }
+  .han-axes { grid-template-columns: 1fr; }
+  .han-calc li { grid-template-columns: minmax(0, 1fr) 42px; gap: 4px 10px; }
+  .han-calc-name { grid-column: 1 / -1; }
+  .han-std-head { display: none; }
+  .han-std { grid-template-columns: 52px minmax(0, 1fr) 48px; grid-template-areas: "code name name" "code badge count" "bar bar bar"; gap: 6px 10px; padding: 10px 4px; }
+  .han-std .pill-code { grid-area: code; align-self: start; }
+  .han-std-name { grid-area: name; }
+  .han-badge { grid-area: badge; }
+  .han-std-count { grid-area: count; }
+  .han-std-bar { grid-area: bar; }
+  .han-period select { max-width: 170px; }
+}
+@media (prefers-reduced-motion: reduce) { .han-axis, .han-kpi, .han-axis-go, .han-std { transition: none; } }

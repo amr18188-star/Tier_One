@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Cycle, FormRow } from "../../api/collection";
-import { featuredCycle, filterWork } from "./adminModel";
+import { approvalState, featuredCycle, filterWork, resultPeriods, shareOf } from "./adminModel";
 
 const row = (id: string, status: FormRow["status"], dueOn: string, unitName: string): FormRow => ({
   id, status, dueOn, unitName, cycleId: "c", cycleName: "الربع الأول", unitId: id, unitKind: "College",
@@ -28,5 +28,26 @@ describe("featured cycle", () => {
   });
   it("uses the open cycle even when a newer draft exists", () => {
     expect(featuredCycle([cycle("draft", "Draft", 2028), cycle("open", "Open", 2027), cycle("closed", "Closed", 2026)])?.id).toBe("open");
+  });
+});
+
+describe("analytics helpers", () => {
+  it("computes shares within the segments' own total", () => {
+    expect(shareOf(26, 92)).toBe(28);
+    expect(shareOf(49, 92)).toBe(53);
+    expect(shareOf(0, 0)).toBe(0);
+  });
+  it("classifies a standard's approval without inventing indicator states", () => {
+    expect(approvalState(8, 8)).toBe("complete");
+    expect(approvalState(3, 8)).toBe("partial");
+    expect(approvalState(0, 8)).toBe("none");
+    expect(approvalState(0, 0)).toBe("none");
+  });
+  it("lists non-draft periods newest first", () => {
+    const c = (id: string, status: Cycle["status"], targetYear: number, quarter: number): Cycle => ({
+      id, status, targetYear, quarter, name: id, periodLabel: id, opensOn: `${targetYear}-0${quarter}-01`, dueOn: `${targetYear}-12-30`,
+      trial: false, indicators: 0, forms: 0, formsByStatus: {}, overdue: 0, version: 1,
+    });
+    expect(resultPeriods([c("a", "Closed", 2027, 1), c("d", "Draft", 2028, 1), c("b", "Open", 2027, 3)]).map((x) => x.id)).toEqual(["b", "a"]);
   });
 });
