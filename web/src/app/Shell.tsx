@@ -16,6 +16,7 @@ import { AppearanceButton } from "./AppearanceMenu";
 // شعار الجامعة للترويسة الفاتحة، وشعار الخطة للشريط الجانبي الكحلي.
 import logoOnWhite from "../assets/brand/capital-university-logo-light.png";
 import strategyBrandOnNavy from "../assets/brand/strategy-performance-dark.png";
+import sidebarLogo from "../assets/brand/sidebarLogo.png";
 import "../shared/ui.css";
 import "../shared/tier1.css";
 import "../shared/theme.css";
@@ -212,7 +213,7 @@ export function Shell({ children }: { children: ReactNode }) {
     <Link to="/" className="lcp-brand" onClick={() => setDrawer(false)}
       aria-label={L("الرئيسية — الخطة الاستراتيجية وتقييم الأداء", "Home — Strategy and Performance")}>
       <span className="lcp-brand-wordmark">
-        <img src={strategyBrandOnNavy} alt="" />
+        <img src={sidebarLogo} alt="" />
       </span>
       <span className="lcp-brand-mark" aria-hidden="true">
         <img src={strategyBrandOnNavy} alt="" />
