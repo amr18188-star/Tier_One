@@ -146,6 +146,56 @@
    the underlying data grid in all three corner modes without changing the card radius scale. */
 [data-landing] .landing-hero { background: var(--ds-gradient-auth); }
 [data-landing] .landing-footer { background: var(--ds-gradient-sidebar); }
+[data-landing] .landing-hero {
+  display: flex;
+  min-height: 100vh;
+  min-height: 100svh;
+  padding-block: clamp(1rem, 3vh, 2rem) clamp(2rem, 5vh, 3rem);
+}
+[data-landing] .landing-hero-content {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+[data-landing] .landing-hero-university { align-self: flex-start; }
+[data-landing] .landing-hero-university img {
+  height: clamp(4.5rem, 12vh, 7rem);
+  width: auto;
+}
+[data-landing] .landing-hero-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(.7rem, 2vh, 1.25rem);
+  padding-block: 1rem;
+  text-align: center;
+}
+[data-landing] .landing-hero-brand {
+  width: min(100%, 28rem);
+}
+[data-landing] .landing-hero-brand img {
+  width: 100%;
+  height: auto;
+}
+[data-landing] .landing-hero-title {
+  width: 100%;
+  max-width: 52rem;
+  font-size: clamp(1.875rem, 4vw, 3.5rem);
+  font-weight: 700;
+  line-height: 1.35;
+}
+[data-landing] .landing-hero-description {
+  width: 100%;
+  max-width: 39rem;
+  font-size: clamp(1rem, 1.5vw, 1.125rem);
+  line-height: 1.8;
+}
+[data-landing] .landing-hero-cta {
+  min-height: 3rem;
+  margin-top: .25rem;
+}
 [data-landing] .landing-hero-orbit {
   width: min(66vw, 760px);
   aspect-ratio: 1;
@@ -167,6 +217,21 @@
   transform: scaleX(1.4);
 }
 @media (max-width: 640px) {
+  [data-landing] .landing-hero-brand { width: min(100%, 21rem); }
   [data-landing] .landing-hero-orbit { width: 115vw; inset-inline-end: -65%; top: 14%; }
   [data-landing] .landing-footer-orbit { width: 80vw; inset-inline-end: -45%; top: -25%; }
+}
+@media (max-height: 760px) {
+  [data-landing] .landing-hero-brand { width: min(100%, 20rem); }
+  [data-landing] .landing-hero-university img { height: 4.25rem; }
+  [data-landing] .landing-hero-main { gap: .6rem; }
+}
+@media (max-height: 560px) {
+  [data-landing] .landing-hero { padding-block: .75rem 1.5rem; }
+  [data-landing] .landing-hero-brand { width: min(100%, 13.75rem); }
+  [data-landing] .landing-hero-university img { height: 3rem; }
+  [data-landing] .landing-hero-main { gap: .4rem; padding-block: .5rem; }
+  [data-landing] .landing-hero-title { font-size: clamp(1.4rem, 3.5vw, 2rem); }
+  [data-landing] .landing-hero-description { font-size: .875rem; line-height: 1.5; }
+  [data-landing] .landing-hero-cta { min-height: 2.75rem; padding-block: .5rem; }
 }

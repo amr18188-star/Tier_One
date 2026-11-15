@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Icon } from "./Icon";
-// Light artwork for the dark hero (the footer uses the same file).
-import logo from "../../assets/brand/capital-university-logo-dark.png";
+import universityLogo from "../../assets/brand/capital-university-logo-dark.png";
+import strategyLogoDark from "../../assets/brand/strategy-performance-dark.png";
 
 /** Two decorative signal lines (rising and falling) behind the hero text. */
 function HeroChart() {
@@ -86,7 +86,7 @@ export function HeroSection() {
   return (
     <section
       data-section="dark"
-      className="landing-hero relative isolate flex h-screen items-center overflow-hidden px-5 pb-24 pt-24 text-ds-fg supports-[height:100svh]:h-svh sm:px-10 sm:pt-32 lg:pt-40 short:pb-12 short:pt-24 tiny:pb-6 tiny:pt-16"
+      className="landing-hero relative isolate overflow-hidden px-5 text-ds-fg sm:px-10"
     >
       {/* Grid */}
       <div
@@ -101,49 +101,33 @@ export function HeroSection() {
       {/* Overlay */}
       <div className="pointer-events-none absolute inset-0" style={{ background: "var(--ds-hero-vignette)" }} />
 
-      {/* Brand at the hero's top edge. */}
-      <div className="pointer-events-none absolute inset-x-0 top-6 z-10 px-5 sm:top-8 sm:px-10 short:top-6 tiny:top-4">
-        <div className="mx-auto max-w-7xl">
-          <img src={logo} alt="جامعة العاصمة" className="h-24 w-auto max-w-[60%] object-contain sm:h-32 lg:h-40 short:h-20 tiny:h-14" />
+      <div className="landing-hero-content relative z-10 mx-auto w-full max-w-7xl">
+        <div className="landing-hero-university">
+          <img src={universityLogo} alt="جامعة العاصمة" />
         </div>
-      </div>
 
-      <div className="relative z-10 mx-auto w-full max-w-7xl text-center">
-        <div aria-hidden="true" className="landing-hero-marker mx-auto mb-5 flex items-center justify-center gap-3 short:mb-3 tiny:mb-2">
-          <span className="h-px w-9 bg-ds-accent" />
-          <span className="h-2 w-2 rounded-ds-round bg-ds-accent" />
-          <span className="h-px w-9 bg-ds-accent" />
-        </div>
-        {/* Title */}
-        <h1 className="mx-auto max-w-5xl text-4xl font-bold leading-[1.5] tracking-tight sm:text-5xl md:text-6xl lg:text-7xl short:text-3xl short:sm:text-4xl short:md:text-5xl short:lg:text-6xl tiny:text-2xl tiny:md:text-3xl tiny:lg:text-4xl">
-          <span className="block text-ds-heading">
-            نحو أداء جامعي
-          </span>
+        <div className="landing-hero-main">
+          <div className="landing-hero-brand">
+            <img
+              src={strategyLogoDark}
+              alt="الخطة الاستراتيجية وتقييم الأداء، جامعة العاصمة"
+              width={1536}
+              height={1024}
+              fetchPriority="high"
+            />
+          </div>
 
-          <span className="block text-ds-highlight-display">
-            أكثر تميزًا واستدامة
-          </span>
-        </h1>
+          <h1 className="landing-hero-title text-ds-heading">
+            من الرؤية إلى <span className="text-ds-highlight-display">أثر قابل للقياس</span>
+          </h1>
 
-        {/* Subtitle */}
-        <h2 className="mx-auto mt-5 max-w-3xl text-lg font-semibold leading-8 text-ds-body-strong sm:text-xl short:mt-3 tiny:mt-2 tiny:text-base tiny:leading-7">
-          منظومة متكاملة لقياس وتطوير الأداء المؤسسي في جامعة العاصمة
-        </h2>
+          <p className="landing-hero-description text-ds-body-strong">
+            نربط أهداف جامعة العاصمة بمؤشرات الأداء والمبادرات، لنرى التقدم بوضوح ونطوّر أثره باستمرار.
+          </p>
 
-        {/* Description */}
-        <p className="mx-auto mt-4 max-w-3xl text-sm leading-8 text-ds-body sm:text-base short:mt-3 short:leading-7 tiny:mt-2 tiny:text-sm tiny:leading-6">
-          إطار استراتيجي متكامل لتخطيط وقياس ومتابعة الأداء الجامعي،
-          يربط الأهداف المؤسسية بمؤشرات الأداء والمبادرات عبر مختلف
-          الركائز والمعايير، ويوفر رؤية موحدة لمتابعة الإنجاز وتعزيز
-          كفاءة الأداء، بما يتماشى مع أطر التميز المؤسسي وأهداف
-          التنمية المستدامة.
-        </p>
-
-        {/* CTA */}
-        <div className="mt-8 flex justify-center short:mt-6 tiny:mt-4">
           <Link
             to="/login"
-            className="group flex items-center gap-4 rounded-ds-md border border-ds-btn-primary-border bg-ds-btn-primary-bg px-8 py-4 text-sm font-bold text-ds-btn-primary-fg transition-all hover:border-ds-btn-primary-hover-border hover:bg-ds-btn-primary-hover-bg hover:text-ds-btn-primary-hover-fg tiny:py-3"
+            className="landing-hero-cta group flex items-center gap-4 rounded-ds-md border border-ds-btn-primary-border bg-ds-btn-primary-bg px-8 py-3 text-sm font-bold text-ds-btn-primary-fg transition-all hover:border-ds-btn-primary-hover-border hover:bg-ds-btn-primary-hover-bg hover:text-ds-btn-primary-hover-fg"
           >
             <span>الدخول إلى المنظومة</span>
             <Icon name="arrow" size={19} className="transition-transform rtl:group-hover:-translate-x-1 ltr:group-hover:translate-x-1" />

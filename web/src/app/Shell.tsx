@@ -13,9 +13,10 @@ import { L, setLang, useLang } from "../shared/i18n";
 import { usePermissions, useSession } from "../shared/session";
 import { initials } from "../shared/ui";
 import { AppearanceButton } from "./AppearanceMenu";
-// شعار الجامعة الرسمي. أسماء الملفات بلون الخلفية: «-dark» حروفه بيضاء للقائمة الكحلية، و«-light» حروفه كحلية للشريط الأبيض.
-import logoOnNavy from "../assets/brand/capital-university-logo-dark.png";
+// الشعار الكحلي للشريط العلوي الفاتح، والشعاران ذوا الحروف البيضاء للقائمة الكحلية.
 import logoOnWhite from "../assets/brand/capital-university-logo-light.png";
+import logoOnNavy from "../assets/brand/capital-university-logo-dark.png";
+import strategyBrandOnNavy from "../assets/brand/strategy-performance-dark.png";
 import "../shared/ui.css";
 import "../shared/tier1.css";
 import "../shared/theme.css";
@@ -200,20 +201,25 @@ export function Shell({ children }: { children: ReactNode }) {
       await api.post("/api/auth/logout");
     } finally {
       // تحميل جديد يفرغ ما خزنته الواجهة من بيانات الجلسة.
-      window.location.replace("/");
+      window.location.replace("/login");
     }
   }
   const toggleLang = () => setLang(lang === "ar" ? "en" : "ar");
 
   const tipSide: TipSide = lang === "ar" ? "left" : "right";
   const logoutText = L("تسجيل الخروج", "Sign out");
-  // في الشريط المطوي يبقى نص الشعار في الصفحة مخفيًا بصريًا (nav.css)، فاسم الرابط لقارئ الشاشة لا يتغير.
+  // شعار الإدارة وشعار الجامعة جنبًا إلى جنب؛ علامة الإدارة وحدها تظهر في الشريط المطوي.
   const brand = (
-    <Link to="/" className="lcp-brand" onClick={() => setDrawer(false)}>
-      <img src={logoOnNavy} alt={L("جامعة العاصمة", "Capital University")} />
-      <span className="lcp-brand-text">
-        <b>{L("منظومة Tier 1", "Tier 1 system")}</b>
-        <small>{L("جامعة العاصمة · الأداء الاستراتيجي", "Capital University · Strategic performance")}</small>
+    <Link to="/" className="lcp-brand" onClick={() => setDrawer(false)}
+      aria-label={L("الرئيسية — الخطة الاستراتيجية وتقييم الأداء، جامعة العاصمة", "Home — Strategy and Performance, Capital University")}>
+      <span className="lcp-brand-wordmark">
+        <img src={strategyBrandOnNavy} alt="" />
+      </span>
+      <span className="lcp-brand-university">
+        <img src={logoOnNavy} alt="" />
+      </span>
+      <span className="lcp-brand-mark" aria-hidden="true">
+        <img src={strategyBrandOnNavy} alt="" />
       </span>
     </Link>
   );
