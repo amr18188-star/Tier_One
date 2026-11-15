@@ -88,10 +88,10 @@
 .sc-row:not(.head) { cursor: pointer; }
 .sc-row:not(.head):hover, .sc-row:not(.head):focus-visible { background: var(--ds-app-row-hover); }
 .sc-name code { color: var(--pc); font-weight: 700; }
-.sc-ach { display: flex; align-items: center; gap: 6px; }
+.sc-ach { display: flex; align-items: center; justify-content: center; gap: 6px; }
 .sc-ach .sc-bar { width: 70px; }
 .sc-raw { color: var(--ok); }
-.sc-years { display: flex; gap: 3px; }
+.sc-years { display: flex; justify-content: center; gap: 3px; }
 .sc-years i { width: 18px; height: 14px; border-radius: var(--ds-radius-xs); background: var(--sunk); }
 .sc-years i.c100 { background: var(--ds-score-full-mark); }
 .sc-years i.c90 { background: var(--ds-score-high-mark); }
@@ -148,7 +148,7 @@
 .sc-trend { display: grid; border: 1px solid var(--hair); border-radius: var(--ds-radius-lg); overflow: hidden; font-size: 13px; }
 .sc-trow { display: grid; grid-template-columns: minmax(220px, 2fr) repeat(5, minmax(70px, 1fr)) 140px; align-items: center; border-bottom: 1px solid var(--hair); }
 .sc-trow > span { padding: 8px 10px; text-align: center; }
-.sc-trow > span:first-child { text-align: start; border-inline-start: 4px solid var(--pc, transparent); }
+.sc-trow > span:first-child { border-inline-start: 4px solid var(--pc, transparent); }
 .sc-trow.head { background: var(--ds-ink-fill); color: var(--ds-on-dark-fg); font-weight: 600; font-size: 12px; }
 .sc-trow.head small { display: block; font-weight: 400; color: var(--ds-on-dark-muted); }
 .sc-trow.total { background: var(--navy-50); font-weight: 700; }
@@ -167,7 +167,6 @@
 .sc-qgrid { display: grid; border: 1px solid var(--hair); border-radius: var(--ds-radius-lg); overflow: hidden; font-size: 13px; margin-bottom: 8px; }
 .sc-qrow { display: grid; grid-template-columns: 110px repeat(4, minmax(0, 1fr)) 100px 100px 80px; border-bottom: 1px solid var(--hair); }
 .sc-qrow > span { padding: 8px 6px; text-align: center; }
-.sc-qrow > span:first-child { text-align: start; }
 .sc-qrow.head { background: var(--ds-ink-fill); color: var(--ds-on-dark-fg); font-weight: 600; font-size: 12px; }
 .sc-rag-note { margin-inline-start: 12px; }
 

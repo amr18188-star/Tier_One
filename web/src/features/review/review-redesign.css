@@ -132,11 +132,9 @@
   .rv-pillar .rv-tr.head { display: none; }
   .rv-pillar .rv-tr.total { background: var(--ds-app-muted-bg); }
   .rv-pillar .rv-tr > .rv-td-name { grid-column: 1 / -1; padding-block-end: 6px; border-bottom: 1px solid var(--ds-border); }
-  .rv-pillar .rv-tr > [data-label] { display: grid; align-content: start; justify-items: start; gap: 2px; min-width: 0; }
+  .rv-pillar .rv-tr > [data-label] { display: grid; align-content: start; justify-items: center; gap: 2px; min-width: 0; }
   .rv-pillar .rv-tr > [data-label]::before { content: attr(data-label); color: var(--ds-body); font-size: 12px; font-weight: 400; line-height: 1.5; }
-  /* الخلايا الرقمية اتجاهها LTR: «البداية» فيها يسار، فتحاذى إلى اليمين في العربية مثل باقي البطاقة. */
-  html[dir="rtl"] .rv-pillar .rv-tr > .ltr[data-label] { justify-items: end; text-align: end; }
-  .rv-pillar .rv-tr > .rv-td-target { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 12px; }
+  .rv-pillar .rv-tr > .rv-td-target { grid-column: 1 / -1; display: flex; justify-content: center; gap: 12px; }
 
   .rv-pillar .rv-transfer { padding: 12px; }
   .rv-pillar .rv-transfer label, .rv-pillar .rv-transfer label.grow { flex: 1 1 100%; min-width: 0; }
