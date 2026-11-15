@@ -168,7 +168,7 @@ changes at once, with no reload.
   `useAppearance()` → `{ theme, corners, shown, isDefault, setTheme, setCorners, reset }` (`theme` / `corners` = the saved
   choice; `shown` = what `<html>` shows, which differs only while a page pins its look).
 - **The public landing follows the viewer.** It inherits `<html data-theme / data-corners>` without pinning a brand look.
-  Its hero exposes the same Appearance control to signed-out visitors. Navy-gold + rounded is the default.
+  The saved choice remains applied there. Navy-gold + rounded is the default.
 - **The panel** (`app/AppearanceMenu.tsx`, `app/appearance.css`). A gear button in the top bar (`app/Shell.tsx`), between
   the language toggle and the account menu, the same size and style as the language button, with a tooltip and
   `aria-label` "المظهر / Appearance"; visible at every width. It opens the panel as a Popover under the button from `md`

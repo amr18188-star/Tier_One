@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Icon } from "./Icon";
-import { AppearanceButton } from "../../app/AppearanceMenu";
 // Light artwork for the dark hero (the footer uses the same file).
 import logo from "../../assets/brand/capital-university-logo-dark.png";
 
@@ -102,13 +101,10 @@ export function HeroSection() {
       {/* Overlay */}
       <div className="pointer-events-none absolute inset-0" style={{ background: "var(--ds-hero-vignette)" }} />
 
-      {/* Brand and public appearance access share the hero's top edge. */}
+      {/* Brand at the hero's top edge. */}
       <div className="pointer-events-none absolute inset-x-0 top-6 z-10 px-5 sm:top-8 sm:px-10 short:top-6 tiny:top-4">
-        <div className="landing-hero-top mx-auto flex max-w-7xl items-start justify-between gap-4">
+        <div className="mx-auto max-w-7xl">
           <img src={logo} alt="جامعة العاصمة" className="h-24 w-auto max-w-[60%] object-contain sm:h-32 lg:h-40 short:h-20 tiny:h-14" />
-          <div className="landing-hero-appearance pointer-events-auto">
-            <AppearanceButton tooltip={false} />
-          </div>
         </div>
       </div>
 

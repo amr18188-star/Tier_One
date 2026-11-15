@@ -166,33 +166,6 @@
   opacity: .14;
   transform: scaleX(1.4);
 }
-[data-landing] .landing-hero-appearance .ant-btn.lcp-look {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-  color: var(--ds-heading);
-  border-radius: var(--ds-radius-sm);
-  opacity: .62;
-}
-[data-landing] .landing-hero-appearance .ant-btn.lcp-look:is(:hover, :active, :focus-visible) {
-  background: transparent;
-  box-shadow: none;
-  color: var(--ds-heading);
-}
-[data-landing] .landing-hero-appearance .ant-btn.lcp-look:focus-visible {
-  opacity: 1;
-  outline: 2px solid var(--ds-focus-ring);
-  outline-offset: 3px;
-}
-@media (forced-colors: active) {
-  [data-landing] .landing-hero-appearance .ant-btn.lcp-look { opacity: 1; }
-}
 @media (max-width: 640px) {
   [data-landing] .landing-hero-orbit { width: 115vw; inset-inline-end: -65%; top: 14%; }
   [data-landing] .landing-footer-orbit { width: 80vw; inset-inline-end: -45%; top: -25%; }
