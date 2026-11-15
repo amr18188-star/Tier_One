@@ -44,6 +44,14 @@ code { font-family: var(--font-mono); font-size: 0.86em; direction: ltr; unicode
 /* الخلية المعرّفة للصف رابط يصل إليه لوحة المفاتيح ويفتح ما يفتحه النقر على الصف. */
 .cell-link.ant-btn { padding: 0; height: auto; text-align: start; white-space: normal; }
 
+/* يسري التوسيط أيضًا على أعمدة Ant Design التي تضبط محاذاتها ضمن خصائص الخلية. */
+table :is(th, td) {
+  text-align: center !important;
+  vertical-align: middle;
+}
+table :is(th, td) :is(.cell-link.ant-btn, .t1-link) { text-align: inherit; }
+[role="table"] :is([role="columnheader"], [role="rowheader"], [role="cell"]) { text-align: center; }
+
 /* الدخول: لوحة الهوية الداكنة (الجامعة والمركز) والنموذج على خلفية فاتحة */
 .auth-page { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); background: var(--ds-auth-page); }
 .auth-side {
@@ -157,7 +165,7 @@ code { font-family: var(--font-mono); font-size: 0.86em; direction: ltr; unicode
 .editor-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .matrix-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--ds-radius-lg); }
 .matrix { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-.matrix th, .matrix td { padding: 6px 10px; border-bottom: 1px solid var(--line); text-align: start; vertical-align: middle; }
+.matrix th, .matrix td { padding: 6px 10px; border-bottom: 1px solid var(--line); }
 /* رأس المصفوفة تركوازي كبقية جداول المنظومة. */
 .matrix thead th { background: var(--teal); color: var(--ds-btn-primary-fg); font-weight: 600; font-size: 12px; position: sticky; top: 0; z-index: 1; }
 .matrix .col-feature { min-width: 230px; }
@@ -184,7 +192,7 @@ code { font-family: var(--font-mono); font-size: 0.86em; direction: ltr; unicode
 .special.on { color: var(--teal-ink); font-weight: 600; }
 .scope-pill { font-size: 12px; background: var(--sunk); padding: 1px 8px; border-radius: var(--ds-radius-pill); color: var(--muted); }
 .diff-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-.diff-table th, .diff-table td { padding: 6px 10px; border-bottom: 1px solid var(--line); text-align: start; }
+.diff-table th, .diff-table td { padding: 6px 10px; border-bottom: 1px solid var(--line); }
 .diff-table th { background: var(--teal); color: var(--ds-btn-primary-fg); font-weight: 600; font-size: 12px; }
 .diff-table .before { color: var(--crit); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--ds-status-late-ink) 40%, transparent); }
 .diff-table .after { color: var(--ok); font-weight: 600; }
@@ -246,7 +254,7 @@ code { font-family: var(--font-mono); font-size: 0.86em; direction: ltr; unicode
 .paper-rules { white-space: pre-line; font-size: 12.5px; margin: 0; }
 .paper-note { background: var(--ds-app-muted-bg); padding: 6px 10px; border-radius: var(--ds-radius-sm); margin: 8px 0; }
 .paper-table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; }
-.paper-table th, .paper-table td { border: 1px solid var(--ds-border); padding: 6px 8px; text-align: start; }
+.paper-table th, .paper-table td { border: 1px solid var(--ds-border); padding: 6px 8px; }
 .paper-table th { background: var(--ds-app-muted-bg); font-size: 12.5px; }
 .paper-table td:last-child { min-width: 120px; }
 .paper-scores td:last-child, .paper-scores th:last-child { min-width: 0; }
