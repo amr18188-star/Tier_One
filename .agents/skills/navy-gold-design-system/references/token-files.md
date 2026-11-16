@@ -1,0 +1,554 @@
+# Token files, tokens and utilities
+
+Everything lives in `web/src/styles/design-system/` (paths relative to the Tier1 root). The CSS files are the source of
+truth; `tokens.ts` mirrors them by hand. Tables below were generated from the theme files on 2026-11-13. If a value here
+disagrees with the CSS, the CSS wins: re-read the file.
+
+## Contents
+
+1. File map · 2. How scoping works · 2a. Corners · 3. Primitives · 4. Theme-level tokens · 4a. Gradients ·
+5. Section tokens · 6. Utilities · 7. shadcn variable mapping · 8. `tokens.ts` and antd · 9. Scrollbar tokens
+
+## 1. File map
+
+| File | Holds | Scope | Imported by |
+|---|---|---|---|
+| `web/src/styles/design-system/primitives.css` | Raw palettes as `--color-<family>-<step>` | `:root` (the only global file) | `index.css` |
+| `web/src/styles/design-system/themes/navy-gold.css` | `--ds-*` tokens for the landing look (no shadcn variables: §7) | `[data-theme="navy-gold"]` | `index.css` |
+| `web/src/styles/design-system/themes/app-soft.css` | Same names, the old `/app` palette | `[data-theme="app-soft"]` | `index.css` |
+| `web/src/styles/design-system/themes/night-gold.css`, `indigo-silver.css`, `graphite-gold.css` | Same names: the dark Night navy & gold, Midnight indigo & silver, Graphite & gold (§4b) | `[data-theme="<name>"]` | `index.css` |
+| `web/src/styles/design-system/corners.css` | Corner scale `--ds-radius-xs … xl`, `-pill`, `-round`, aliases `--ds-radius`, shadcn `--radius` (section 2a) | `:root` + `[data-corners]` | `index.css` (last) |
+| `web/src/styles/design-system/config.ts` | `CORNERS = "square"`: the default corner style (`"square" \| "rounded" \| "smooth"`) | — | `theme.ts`, `antd-theme.ts` |
+| `web/src/styles/design-system/index.css` | Plain-CSS entry: primitives, then each theme, then `corners.css` (order matters) | — | a feature's Tailwind entry, or any CSS that wants `var(--ds-*)` |
+| `web/src/styles/design-system/tailwind-theme.css` | `@theme inline reference`: `--color-ds-*`, primitives, `--radius-ds*`, `--font-ds`, `--shadow-ds-*` | emits nothing on `:root` | a feature's Tailwind entry, after `index.css` |
+| `web/src/styles/design-system/tokens.ts` | The same values as typed TS constants (real colours for antd) | — | `antd-theme.ts`, `tokens.test.ts`, `LandingPage.tsx` (type) |
+| `web/src/styles/design-system/antd-theme.ts` | `antdTheme(name, base, { tone, corners })`: tokens → antd `ThemeConfig` (section 8) | — | `web/src/app/App.tsx` |
+| `web/src/styles/design-system/theme.ts` | Appearance store: localStorage `t1.appearance` → `<html data-theme>` / `<html data-corners>` (defaults `ACTIVE_THEME`, `CORNERS`); `setAppearance()`, `resetAppearance()`, `pinAppearance()`, `BRAND_APPEARANCE`, `useDsTheme()`, `useDsCorners()`, `setDsTheme()`, `setDsCorners()`; imports `index.css` | `<html>` | `appearance.tsx`, `web/src/app/App.tsx` |
+| `web/src/styles/design-system/appearance.tsx` | `AppearanceProvider` (antd `ConfigProvider` from the look on `<html>`), `useAppearance()`, `usePinnedAppearance()`, `<PinnedAppearance>` | — | `web/src/app/App.tsx`, `web/src/app/AppearanceMenu.tsx` |
+| `web/src/styles/design-system/appearance.test.ts` | The store: load, validation, set / reset, pins, blocked storage | — | vitest |
+| `web/src/styles/design-system/tokens.test.ts` | Parses the CSS; fails if `tokens.ts` differs or an AA pair fails | — | vitest |
+| `web/src/styles/design-system/scrollbar.css` | Scrollbar tokens and drawing (section 9) | `:root`, `[data-theme]` scopes, element selectors | `web/src/main.tsx`, once, after `app.css` |
+| `web/src/styles/design-system/README.md` | Short usage and the add-a-theme steps | — | — |
+
+Each theme file has three blocks: theme level (`[data-theme="x"]`), light scope (`[data-theme="x"]` and
+`[data-theme="x"] [data-section="light"]`), dark scope (`[data-theme="x"] [data-section="dark"]` and
+`[data-theme="x"][data-section="dark"]`). Only custom properties, no element rules.
+
+`theme.ts` (imported by `App.tsx`) loads `index.css` globally and sets `<html data-theme>`, so every `--ds-*` token
+exists on every page, including antd portals under `<body>`. A feature that uses Tailwind utilities imports the tokens
+again through its own Tailwind entry (see SKILL.md); the values are the same.
+
+## 2. How scoping works
+
+- `data-theme="<name>"` on a container turns a theme on for its subtree. Default scope inside it: light.
+- `data-section="dark"` on any descendant re-scopes the section tokens (backgrounds, surfaces, text, lines, accent,
+  tiles, buttons, destructive; shadcn's core variables through `shadcn.css`) for that subtree. `data-section="light"`
+  flips back inside a dark block. Put `data-section="dark"` on the theme root itself for an all-dark page.
+- Theme-level tokens (font, chrome, textures, charts, shadows, focus, selection, sidebar; shadcn's `--chart-*` and
+  `--sidebar-*` through `shadcn.css`) are the same in both scopes. Radius is not a theme token: see §2a (corners).
+- The Tailwind mapping is `inline`: `bg-ds-surface` compiles to `background-color: var(--ds-surface)`, so the value
+  resolves on the element itself and follows the nearest scope at any depth. A dark card in a light section is just
+  `<div data-section="dark" className="bg-ds-surface">`.
+- `ds-bg-cool` and `ds-bg-warm` are navy in a dark scope, so a section keeps its classes when flipped.
+- Don't nest two different `data-theme` values. The section selectors of both themes would match the same element and
+  the later file (app-soft) would win on some properties only.
+- A token missing from a theme is unset there: its utility paints nothing (transparent background, inherited text).
+  Every theme must define every name.
+
+## 2a. Corners
+
+Corners are their own axis, set on `<html data-corners>`: the viewer's Appearance choice (localStorage `t1.appearance`),
+or `CORNERS` in `config.ts` (default `"square"`). The landing pins square. Theme files declare no radius, so every theme
+works with any style. CSS-only override: `:root[data-corners="rounded"]`. No attribute = square.
+
+| Token | Utility | square | rounded | smooth | Use |
+|---|---|---|---|---|---|
+| `--ds-radius-xs` | `rounded-ds-xs` | 0 | 4px | 8px | bars, swatches, small codes, active-link bars, scrollbar thumb |
+| `--ds-radius-sm` | `rounded-ds-sm` | 0 | 6px | 12px | code pills, focus rings, inner boxes |
+| `--ds-radius-md` | `rounded-ds-md` | 0 | 8px | 16px | buttons, inputs, icon tiles, list rows |
+| `--ds-radius-lg` | `rounded-ds-lg` | 0 | 12px | 20px | cards, panels, tables, modals |
+| `--ds-radius-xl` | `rounded-ds-xl` | 0 | 16px | 24px | page bands, hero, large panels |
+| `--ds-radius-pill` | `rounded-ds-pill` | 0 | 999px | 999px | chips, count badges, progress bars, status dots |
+| `--ds-radius-round` | `rounded-ds-round` | 50% | 50% | 50% | real circles only |
+| `--ds-radius` | `rounded-ds` | = md | = md | = md | alias |
+| `--radius` (shadcn) | `rounded-lg` in shadcn parts | = lg | = lg | = lg | alias |
+| `--r` (legacy app CSS) | — | = xl | = xl | = xl | alias in `shared/ui.css`, `shared/theme.css` |
+
+Smooth also makes antd buttons and tags pills (`pillButtons` in `tokens.ts`, §8) and the scrollbar thumb fully round (§9).
+
+The px values are mirrored in `tokens.ts` (`corners`) for antd; `tokens.test.ts` checks both ways and checks that no
+theme file declares a radius. A subtree with its own `data-corners` re-resolves the tokens, `rounded-ds*` and the
+scrollbar; antd and `--r` follow `<html>`.
+
+## 3. Primitives
+
+`primitives.css`, on `:root`. Use them only inside theme files. `@N%` elsewhere in this file means
+`color-mix(in oklab|srgb, <colour> N%, transparent)`.
+
+| Family | Steps (value) |
+|---|---|
+| navy | 950 `#06152a` · 900 `#071a33` · 800 `#0c2545` · 700 `#12345b` · 600 `#18304d` · 500 `#29415f` · `navy-900-rgb` = `7, 26, 51` (comma form, used as `rgba(var(--color-navy-900-rgb), a)`) |
+| steel | 400 `#7890ac` |
+| mist | 100 `#dce5f0` · 300 `#aab8ca` (replace Tailwind's mist-100/300 where loaded; the rest of Tailwind's mist is cleared in the Tailwind mapping) |
+| gold | 200 `#e5c47e` · 400 `#d6b46a` · 500 `#b9944d` · 600 `#a7833d` · 700 `#82652b` (AA small text, not used by the landing) |
+| paper | `#ffffff` (the doc's "white"; named so it never overrides Tailwind's `--color-white`) |
+| cloud | `#f8f9fb` |
+| sand | 50 `#f8f4ea` · 100 `#f8f3e9` · 200 `#f4ebd8` |
+| ivory | `#f8f6f1` · 50 `#fcfbf8` |
+| ash (Tailwind v4 slate, exact OKLCH) | 100 ≈ `#f1f5f9` · 200 ≈ `#e2e8f0` · 300 ≈ `#cad5e2` · 400 ≈ `#90a1b9` · 500 ≈ `#62748e` · 600 ≈ `#45556c` |
+| haze (Tailwind v3 slate hex, chart greys) | 200 `#e2e8f0` · 300 `#cbd5e1` · 400 `#94a3b8` |
+| signal | green `#22c55e` · red `#ef4444` |
+| soft-navy | 950 `#0d2440` · 900 `#123055` · 800 `#19355a` · 700 `#234a7e` · 500 `#3567b0` · 100 `#e8eef7` · `soft-navy-900-rgb` = `18, 48, 85` (same use) |
+| soft-gold | 700 `#8a6d00` · 600 `#ad8700` · 500 `#c9a227` · 300 `#e6c25a` · 100 `#f0dfa8` · 50 `#fffdf4` |
+| soft-neutral | 900 `#1b2733` · 700 `#475569` · 600 `#5c6b7a` · 500 `#7d8ea6` · 400 `#9aa8b6` · 300 `#a7b3c0` · 200 `#cddbee` · 150 `#e2e8f0` · 100 `#e3e9f1` · 75 `#edf2f7` · 50 `#f4f7fb` · 25 `#f8fafc` |
+| soft-success / danger / info | success 700 `#1c7c3d` · 400 `#64c783`; danger 700 `#b3261e` · 600 `#d0453e` · 400 `#ef6a63`; info 700 `#1e40af` |
+
+The channel triples use the comma `rgba()` form on purpose: only it keeps Chrome's legacy gradient interpolation (the
+space form `rgb(7 26 51 / a)` and `color-mix()` shift pixels by one unit). navy-gold also uses three soft primitives so it stays pixel-identical to the old app: `soft-navy-800` (shadows),
+`soft-gold-500` (focus outline, selection) and `soft-navy-950` (selection text).
+
+## 4. Theme-level tokens
+
+Same in light and dark scopes.
+
+| Token | navy-gold | app-soft | Use |
+|---|---|---|---|
+| `--ds-font` | Cairo, Geist Variable, Segoe UI, sans-serif | same | `font-ds` on the page root |
+| `--ds-font-heading` | same as `--ds-font` | same | `font-ds-heading` (lets a theme split heading type) |
+| `--ds-chrome` | navy-950 | soft-navy-950 | header and footer (`bg-ds-chrome/95` + blur in the header) |
+| `--ds-grid-hero` | navy-600 | soft-navy-800 | colour of the hero grid lines |
+| `--ds-grid-dark` | steel-400 | soft-neutral-500 | colour of the dark-section grid lines |
+| `--ds-texture-hero` | 1px grid of navy-600 | 1px grid of soft-navy-800 | `backgroundImage` + `backgroundSize: 40px 40px` + `opacity-40` |
+| `--ds-texture-dark` | 1px grid of steel-400 | 1px grid of soft-neutral-500 | `backgroundImage` + `backgroundSize: 48px 48px` + `opacity-[0.08]` |
+| `--ds-hero-vignette` | radial `rgba(var(--color-navy-900-rgb), a)`, a = .96 / .88 / .65 / .4 | same with `soft-navy-900-rgb` | `background` of the hero overlay |
+| `--ds-chart-1` | navy-800 | soft-navy-500 | first series |
+| `--ds-chart-2` | gold-400 | soft-gold-600 | second series, highlighted bars |
+| `--ds-chart-3` | steel-400 | soft-success-700 | third series |
+| `--ds-chart-4` | haze-300 | soft-info-700 | fourth series ("other") |
+| `--ds-chart-5` | gold-500 | soft-danger-600 | fifth series (shadcn `--chart-5`; app-soft = the old `/app` fifth series) |
+| `--ds-chart-actual` | gold-500 | soft-gold-600 | actual line |
+| `--ds-chart-target` | steel-400 | soft-neutral-500 | target line (dashed) |
+| `--ds-chart-area` | gold-400 | soft-gold-500 | gradient stop under the actual line (30% → 1%) |
+| `--ds-chart-current` | gold-400 | soft-gold-500 | current point fill |
+| `--ds-chart-bg` | paper | paper | point fill and halo |
+| `--ds-chart-grid` | haze-200 | soft-neutral-150 | gridlines |
+| `--ds-chart-axis` | haze-400 | soft-neutral-600 | axis labels |
+| `--ds-chart-up` | signal-green | soft-success-400 | rising line (hero) |
+| `--ds-chart-down` | signal-red | soft-danger-400 | falling line (hero only) |
+| `--ds-shadow-sm` | `0 8px 24px` soft-navy-800 @8% | same | `shadow-ds-sm` |
+| `--ds-shadow-md` | `0 16px 40px` soft-navy-800 @14% | same | `shadow-ds-md` |
+| `--ds-focus` | soft-gold-500 @50% | same | `outline-color` on the feature root |
+| `--ds-selection-bg` | soft-gold-500 | same | `::selection` background |
+| `--ds-selection-fg` | soft-navy-950 | same | `::selection` text |
+
+App sidebar (the navy chrome of the signed-in shell; theme level, not per section). Utilities `bg-ds-sidebar-bg`,
+`text-ds-sidebar-fg` …; `shared/ui.css` maps the sidebar's legacy `--teal`, `--teal-100`, `--gold` to them.
+
+| Token | navy-gold | app-soft | Use (contrast in navy-gold) |
+|---|---|---|---|
+| `--ds-sidebar-bg` | navy-950 | soft-navy-950 | sidebar and mobile menu background |
+| `--ds-sidebar-fg` | mist-300 | soft-neutral-200 | link text (9.1:1) |
+| `--ds-sidebar-fg-active` | paper | paper | hovered / active link (12.6:1 on active bg) |
+| `--ds-sidebar-muted` | steel-400 | soft-neutral-400 | group titles (5.6:1) |
+| `--ds-sidebar-hover-bg` | navy-800 | soft-navy-800 | link hover |
+| `--ds-sidebar-active-bg` | navy-700 | soft-navy-700 | active link |
+| `--ds-sidebar-indicator` | gold-400 | soft-gold-500 | active-link bar (6.3:1 on active bg) |
+| `--ds-sidebar-border` | navy-500 | paper @14% | dividers |
+| `--ds-sidebar-focus` | gold-400 | soft-gold-300 | keyboard focus outline (9.2:1) |
+| `--ds-sidebar-badge-bg` / `-fg` | gold-400 / navy-900 | soft-gold-500 / soft-navy-950 | count badges (8.8:1) |
+| `--ds-sidebar-bg-top` | navy-900 | soft-navy-900 | top stop of `--ds-gradient-sidebar` (bottom = `-bg`); keep it darker than `-hover-bg` |
+| `--ds-sidebar-glow` | gold-400 @8% | soft-gold-500 @8% | top-right light of `--ds-gradient-sidebar` (group titles 4.7:1 under it) |
+
+Page band (the navy header strip of antd pages, the Home hero and the plan hero, through `--ds-gradient-hero`). Theme
+level; `band` in `tokens.ts`. Text on the band is white or a dark-section token (the band has `data-section="dark"`).
+
+| Token | navy-gold | app-soft | Use |
+|---|---|---|---|
+| `--ds-band-from` / `-via` / `-to` | navy-900 / navy-800 / navy-700 | soft-navy-900 / 800 / 700 | 125° linear gradient stops |
+| `--ds-band-glow` | gold-400 @14% | soft-navy-500 @38% | radial light at the top start (top left) |
+| `--ds-band-glow-accent` | gold-400 @18% | soft-gold-500 @18% | radial warm light at the bottom end (bottom right) |
+
+## 4a. Gradients
+
+Theme level. Every gradient in the app CSS reads one of these, as a full `background` value, so the theme or one token
+re-colours all its rules. `tokens.ts`: `gradient` (camelCase), `hatch`, `shade`, built by `gradients()` / `hatch()` with
+the same recipe; `tokens.test.ts` resolves every `var()` and compares both ways, rejects a raw colour inside a gradient
+token, and checks AA for text on every stop (glows composited over the stop under them).
+
+| Token | Recipe | navy-gold | app-soft | Used by |
+|---|---|---|---|---|
+| `--ds-gradient-hero` | radial 60% 90% at 0 0 `--ds-band-glow` → transparent 60%; radial 50% 80% at 100% 100% `-glow-accent`; linear 125° from 0%, via 55%, to 100% | navy-900 → 800 → 700, gold-400 @14% / @18% | soft-navy-900 → 800 → 700, soft-navy-500 @38%, soft-gold-500 @18% | `.lcp-head` (`--band`), `.lcp-hero`, `.sp-hero` |
+| `--ds-gradient-sidebar` | radial 120% 45% at 100% 0 `--ds-sidebar-glow` → transparent 60%; linear 180° `-bg-top` → `-bg` | navy-900 → 950, gold-400 @8% | soft-navy-900 → 950, soft-gold-500 @8% | `.lcp-side`, `.lcp-drawer .ant-drawer-body`, `.verify-head` |
+| `--ds-gradient-auth` | radial 120% 80% at 85% 10% band glow → 55%; radial 90% 70% at 10% 100% accent → 60%; linear 160° band via 0%, from 55%, `--ds-shade` 100% | navy-800 → 900 → 950 | soft-navy-800 → 900 → 950 | `.auth-side` (sign-in panel) |
+| `--ds-gradient-avatar` | linear 135° | navy-700 → navy-900 | soft-navy-700 → soft-navy-950 | `.lcp-avatar` |
+| `--ds-gradient-progress` | linear 90° | navy-900 → navy-700 | soft-navy-800 → soft-navy-500 | `.lcp-prog-bar i` |
+| `--ds-gradient-callout` | linear 90° | sand-50 → ivory-50 | soft-gold-50 → paper | `.lcp-next` |
+| `--ds-gradient-surface-subtle` | linear 180° | cloud → paper | soft-neutral-25 → paper | `.sp-chart` |
+| `--ds-hatch-light` | repeating-linear 135°, 6px stripes | ash-100 / paper | soft-neutral-75 / paper | `.sp-road-cell.off` |
+| `--ds-hatch-muted` | repeating-linear 135°, 6px stripes | steel-400 / mist-300 | soft-neutral-500 / soft-neutral-300 | `.cy-bar.time i` |
+| `--ds-shade` | a colour | navy-950 | soft-navy-950 | dark stop of pillar gradients and of the sign-in panel |
+
+Pillar colours (`--pc`, `--pt`) are set per element by `tint()` in `shared/pillars.tsx`. A token on `[data-theme]` resolves
+its `var()` there and can't read them, so pillar gradients keep their recipe in the rule and take the other stop from a
+token: `.sp-pillar > header`, `.pill-band` `color-mix(in srgb, var(--pc) 72%, var(--ds-shade))`; `.sp-pillar.loose > header`
+60%; `.st-Completed .sp-road-initbar` 70%; `.sp-dhead` `var(--pt) 0 → var(--ds-surface) 150px`; hover `.sp-irow`
+`color-mix(var(--pt) 45%, var(--ds-surface))`. Status hatch `.sp-statebar .d-gap`: `--g-gap` stripes with
+`color-mix(in srgb, var(--g-gap) 30%, var(--ds-surface))`.
+
+Related theme-level colours: `--ds-accent-on-dark` (gold-400 / soft-gold-300, = dark `--ds-eyebrow`): text and marks on navy
+blocks without `data-section="dark"` (plan hero kicker, rings, rail dots; active navy tab icon), 4.6:1 or more on every band
+stop. `--ds-chart-college` (navy-900 / soft-navy-800, = light `--ds-btn-primary-bg`): "college's own target" legend key.
+`--ds-status-review` (gold-600 / soft-gold-700): "under review" status segment, 3.5:1 on white and 3.2:1 on the track
+(navy-gold). `tokens.ts`: `accentOnDark`, `chart.college`, `status.review`.
+
+Contrast (navy-gold, lowest stop): hero heading 9.1:1, kicker gold-400 4.6:1, sign-in heading 11.8:1, sidebar link 7.6:1,
+group title 4.7:1, avatar initials 12.6:1, callout link 5.0:1, pillar head white 4.8:1 (pillar 1 itself).
+A new theme copies the block of `app-soft.css`; hero, sidebar and auth read the band and sidebar tokens and need no
+change. Use: `background: var(--ds-gradient-hero)`, `style={{ background: "var(--ds-gradient-hero)" }}`, or
+`bg-[image:var(--ds-gradient-hero)]` (no Tailwind namespace).
+
+## 4b. The later palettes (night-gold, indigo-silver, graphite-gold)
+
+The tables in this file list navy-gold and app-soft. The later palettes use the same names; their files
+(`themes/<name>.css`) and `tokens.ts` hold every value, and the design-system README "Palettes" gives the choice and the
+contrast notes. Key values:
+
+| Role | night-gold (dark) | indigo-silver | graphite-gold |
+|---|---|---|---|
+| page `--ds-bg-cool` / card `--ds-surface` | night-925 #0a1424 / night-900 #0f1a2c | midnight-50 #f3f4fa / paper | graphite-50 #f5f6f7 / paper |
+| text `--ds-fg` / `--ds-label` | night-50 #eef2f8 / night-200 #c3cedc | midnight-900 #1b1f52 / silver-700 #545b6c | graphite-900 #1d2126 / graphite-600 #454c56 |
+| primary bg / fg | night-blue-300 #8fb4ec / night-950 | midnight-900 / paper | graphite-900 / paper |
+| link, focus ring | gold-400, gold-400 | midnight-600 #3e4696, midnight-900 | gold-700, graphite-900 |
+| sidebar bg / band | night-950 / navy-800 → navy-700 → night-760 | midnight-950 / midnight-900 → 700 | graphite-950 / graphite-900 → 700 |
+| `--ds-ink-fill` (= dark-section bg in night-gold) | night-760 #1d3152 | midnight-900 | graphite-900 |
+| status ok / near / late / gap marks | #45bd7f / #e8b542 / #ef5f5f / #e8883a | navy-gold's | navy-gold's |
+| `--ds-pillar-keep` / `-tint-keep` / `-tint-mix` | 80% / 0% / 10% | 100% / 100% / 0% | 100% / 100% / 0% |
+| `--ds-color-scheme` | dark | light | light |
+
+New tokens in every theme (navy-gold and app-soft values = what the rules painted before): `--ds-color-scheme` (light |
+dark; `<html>` `color-scheme`, index.css), `--ds-ink-fill` (navy fill under white text: table heads, active tabs and
+filters, selected segments; navy-gold navy-900, app-soft soft-navy-950), `--ds-tier-ink` (number on a tier colour; paper),
+`--ds-pillar-keep` / `-lift` / `-tint-keep` / `-tint-mix` (how `tint()` mixes the pillar data colours; 100% / paper / 100% / 0%).
+
+## 5. Section tokens
+
+These change with `data-section`. Utility = any colour prefix + the name without `--`: `--ds-body` → `text-ds-body`,
+`--ds-border` → `border-ds-border`, `--ds-chart-1` → `stroke-ds-chart-1`.
+
+#### Backgrounds and surfaces
+
+| Token | navy-gold light | navy-gold dark | app-soft light | app-soft dark | Use |
+|---|---|---|---|---|---|
+| `--ds-bg` | paper | navy-900 | paper | soft-navy-900 | section / page background |
+| `--ds-bg-cool` | cloud | navy-900 | soft-neutral-50 | soft-navy-900 | cool section (data), inner info panel |
+| `--ds-bg-warm` | sand-200 | navy-900 | soft-gold-50 | soft-navy-900 | warm section (story, final CTA) |
+| `--ds-fg` | navy-900 | paper | soft-neutral-900 | paper | inherited text colour of a section |
+| `--ds-surface` | paper | navy-800 | paper | soft-navy-800 | card, panel, dashboard |
+| `--ds-surface-hover` | ivory | navy-700 | soft-neutral-25 | soft-navy-700 | hover on cards and cells |
+| `--ds-surface-hover-soft` | ivory-50 | navy-700 | soft-neutral-25 | soft-navy-700 | lighter hover (feature rows) |
+| `--ds-surface-warm` | sand-100 | navy-800 | paper | soft-navy-800 | cell sitting on a warm section |
+| `--ds-callout` | ivory | navy-800 | soft-neutral-75 | soft-navy-800 | inline note fill |
+
+#### Lines and accent
+
+| Token | navy-gold light | navy-gold dark | app-soft light | app-soft dark | Use |
+|---|---|---|---|---|---|
+| `--ds-border` | ash-200 | navy-500 | soft-neutral-100 | paper @14% | 1px borders, hairline-grid parent |
+| `--ds-line-soft` | navy-900 | paper | soft-navy-800 | paper | translucent lines: always with `/10`, `/15`, `/20` |
+| `--ds-track` | ash-100 | navy-700 | soft-neutral-75 | soft-navy-700 | progress-bar track |
+| `--ds-accent` | gold-400 | gold-400 | soft-gold-500 | soft-gold-500 | accent lines, rules, highlighted bars; never text on light |
+| `--ds-accent-strong` | gold-500 | gold-400 | soft-gold-600 | soft-gold-300 | thick rules, connectors, hover border |
+| `--ds-accent-border` | gold-400 @40% | gold-400 @30% | soft-gold-500 @40% | soft-gold-500 @30% | accent border of tiles and notes (alpha built in) |
+
+#### Text
+
+| Token | navy-gold light | navy-gold dark | app-soft light | app-soft dark | Use |
+|---|---|---|---|---|---|
+| `--ds-heading` | navy-900 | paper | soft-navy-950 | paper | headings, numbers, KPI values |
+| `--ds-highlight` | gold-500 | gold-400 | soft-gold-700 | soft-gold-300 | the highlighted words of a heading, code labels |
+| `--ds-highlight-display` | gold-500 | gold-200 | soft-gold-700 | soft-gold-100 | stacked display highlight (hero H1, CTA line 2) |
+| `--ds-body` | ash-500 | mist-300 | soft-neutral-700 | soft-neutral-200 | body and descriptions |
+| `--ds-body-strong` | ash-600 | mist-100 | soft-neutral-900 | soft-navy-100 | subtitles, emphasised body, badge text |
+| `--ds-label` | ash-600 | mist-100 | soft-neutral-700 | soft-navy-100 | legend and bar labels |
+| `--ds-faint` | ash-400 | steel-400 | soft-neutral-600 | soft-neutral-400 | captions, axis (decorative on light in navy-gold) |
+| `--ds-index` | ash-300 | paper @20% | soft-neutral-300 | paper @20% | big decorative index numbers ("01") |
+| `--ds-eyebrow` | gold-600 | gold-400 | soft-gold-700 | soft-gold-300 | eyebrows, suffixes, English sub-labels |
+| `--ds-eyebrow-aa` | gold-700 | gold-400 | soft-gold-700 | soft-gold-300 | small gold text that must pass AA (changes pixels vs the landing) |
+
+#### Icons, tiles, status
+
+| Token | navy-gold light | navy-gold dark | app-soft light | app-soft dark | Use |
+|---|---|---|---|---|---|
+| `--ds-icon` | gold-600 | gold-400 | soft-gold-600 | soft-gold-300 | icon colour (`text-ds-icon`, icons use `currentColor`) |
+| `--ds-tile` | sand-50 | gold-400 @10% | soft-gold-50 | soft-gold-500 @14% | icon-tile fill (alpha built in on dark) |
+| `--ds-tile-active` | gold-400 | gold-400 | soft-gold-500 | soft-gold-500 | tile fill when its `group` card is hovered |
+| `--ds-tile-active-fg` | navy-900 | navy-900 | soft-navy-950 | soft-navy-950 | icon on the active tile |
+| `--ds-tile-solid` | navy-900 | navy-900 | soft-navy-950 | soft-navy-950 | solid tile fill |
+| `--ds-tile-solid-fg` | gold-400 | gold-400 | soft-gold-300 | soft-gold-300 | icon on the solid tile |
+| `--ds-live` | signal-green | signal-green | soft-success-700 | soft-success-400 | "live / on track" square dot |
+| `--ds-focus-ring` | navy-900 | gold-400 | soft-navy-950 | soft-gold-300 | keyboard focus outline (2px solid); antd `colorPrimaryBorder` |
+| `--ds-link` | gold-700 | gold-400 | soft-navy-700 | soft-gold-300 | text links and codes; antd `colorLink`; legacy `--teal-ink` (5.5:1 on white) |
+| `--ds-link-hover` | navy-900 | paper | soft-navy-950 | paper | link hover / active |
+| `--ds-destructive` | soft-danger-700 | soft-danger-400 + 45% paper | soft-danger-700 | soft-danger-400 + 45% paper | error text; antd `colorError`, shadcn `--destructive`. Dark = `color-mix(in srgb, soft-danger-400 55%, paper)`, so text and shadcn's 20% red tint stay AA on navy |
+
+#### Primary button
+
+On light it is navy and inverts to gold; on dark it is gold and inverts to an outline.
+
+| Token | navy-gold light | navy-gold dark | app-soft light | app-soft dark |
+|---|---|---|---|---|
+| `--ds-btn-primary-bg` | navy-900 | gold-400 | soft-navy-800 | soft-gold-500 |
+| `--ds-btn-primary-fg` | paper | navy-900 | paper | soft-navy-950 |
+| `--ds-btn-primary-border` | navy-900 | gold-400 | soft-navy-800 | soft-gold-500 |
+| `--ds-btn-primary-hover-bg` | gold-400 | transparent | soft-gold-500 | transparent |
+| `--ds-btn-primary-hover-fg` | navy-900 | gold-400 | soft-navy-950 | soft-gold-300 |
+| `--ds-btn-primary-hover-border` | gold-400 | gold-400 | soft-gold-500 | soft-gold-500 |
+
+#### Ghost button
+
+| Token | navy-gold light | navy-gold dark | app-soft light | app-soft dark |
+|---|---|---|---|---|
+| `--ds-btn-ghost-bg` | transparent | transparent | transparent | transparent |
+| `--ds-btn-ghost-fg` | navy-900 | paper | soft-navy-800 | paper |
+| `--ds-btn-ghost-border` | navy-900 @20% | paper @20% | soft-navy-800 @20% | paper @20% |
+| `--ds-btn-ghost-hover-bg` | gold-400 | gold-400 | soft-gold-500 | soft-gold-500 |
+| `--ds-btn-ghost-hover-fg` | navy-900 | navy-900 | soft-navy-950 | soft-navy-950 |
+| `--ds-btn-ghost-hover-border` | gold-400 | gold-400 | soft-gold-500 | soft-gold-500 |
+
+## 6. Utilities
+
+Available in a Tailwind entry that imports `tailwind-theme.css` (see SKILL.md for the entry).
+
+**Semantic colours** (follow `data-theme` and `data-section`). Every Tailwind colour prefix works with every
+`ds-<role>`: `bg-`, `text-`, `border-` (and `border-s-`, `border-e-`, `border-t-`, `border-b-` …), `divide-`,
+`outline-`, `ring-`, `fill-`, `stroke-`, `decoration-`, `caret-`, `accent-`, `placeholder-`, `from-` / `via-` / `to-`,
+`shadow-` (shadow colour). Roles: every section token above, plus the theme-level `ds-chrome`, `ds-chart-1` … `ds-chart-4`,
+`ds-chart-actual`, `ds-chart-target`, `ds-chart-area`, `ds-chart-current`, `ds-chart-bg`, `ds-chart-grid`, `ds-chart-axis`,
+`ds-chart-up`, `ds-chart-down`, `ds-focus`, `ds-selection-bg`, `ds-selection-fg`, `ds-grid-hero`, `ds-grid-dark`, the
+thirteen `ds-sidebar-*` tokens (with `-bg-top` and `-glow`), the five `ds-band-*` tokens and `ds-shade`.
+`--ds-chart-5` and `--ds-destructive` (added for shadcn) have no utility yet: use `var()` until `tailwind-theme.css` maps them.
+
+**Opacity modifiers** work: `bg-ds-accent/10` → `color-mix(in oklab, var(--ds-accent) 10%, transparent)`;
+`border-ds-line-soft/15`, `bg-ds-surface/90`, `bg-ds-chrome/95`. Don't add a modifier to a token that already carries alpha
+(`ds-accent-border`, `ds-btn-ghost-border`, `ds-focus`, and in dark scopes `ds-tile`, `ds-index`, app-soft `ds-border`):
+the alphas multiply.
+
+**Primitives** (fixed colours, do not re-theme; for theme files and rare fixed-brand needs): `navy-950/900/800/700/600/500`,
+`steel-400`, `mist-100/300`, `gold-200/400/500/600/700`, `paper`, `cloud`, `sand-50/100/200`, `ivory`, `ivory-50`,
+`ash-100…600`, `haze-200/300/400`, `signal-green`, `signal-red`, `soft-navy-950/900/800/700/500/100`,
+`soft-gold-700/600/500/300/100/50`. The `soft-neutral`, `soft-success`, `soft-danger` and `soft-info` primitives have no
+utilities (CSS variables only).
+
+**Shape, type, elevation:** `rounded-ds-xs|sm|md|lg|xl|pill|round`, `rounded-ds` (= md) and every side or corner form
+(`rounded-s-ds-lg`, `rounded-t-ds-md`, `rounded-ss-ds` …), `font-ds`, `font-ds-heading`, `shadow-ds-sm`, `shadow-ds-md`.
+Radius values: §2a.
+
+**Composite tokens** (no utility; use in `style`): `var(--ds-texture-hero)`, `var(--ds-texture-dark)`, `var(--ds-hero-vignette)`,
+and the gradients `var(--ds-gradient-*)` / `var(--ds-hatch-*)` (§4a; in Tailwind `bg-[image:var(--ds-gradient-hero)]`).
+
+**Tailwind's own scale still exists** in the entry (`tailwindcss/theme.css`): `slate-*`, `white`, `rounded-lg`, `shadow-sm`,
+`font-sans` … They do not follow the theme. Don't use them for themed colour, shape or elevation. Spacing, sizing,
+layout, typography sizes and breakpoints are Tailwind defaults and fine to use.
+
+## 7. shadcn variable mapping
+
+shadcn components (`web/src/components/ui/`) read these variables. `web/src/styles/shadcn.css` is the one place that
+maps them to `--ds-*` tokens, for every theme; the theme files declare no shadcn variable (`tokens.test.ts` fails if one
+does). The file also holds the `@theme inline` map (`--color-primary: var(--primary)`, `--color-muted: var(--ui-muted)` …)
+and the radius steps (`--radius-xs … xl` = `var(--ds-radius-xs … xl)`, `--radius-lg` = `--radius`, 2xl–4xl = xl × 1.25 /
+1.5 / 1.75), so `CORNERS = "square"` squares every shadcn part, never with a negative value. `--radius` itself comes from
+`corners.css` (= `--ds-radius-lg`).
+
+How the mapping is written:
+- On `:where([data-theme], [data-section])`, inside `@layer base`. A custom property resolves its `var()` where it is
+  declared, so it is declared on every element that re-scopes the tokens; inside `data-section="dark"` it resolves to
+  the dark-section tokens. Specificity 0 in a layer: it never overrides a theme or page rule, whatever the import order
+  (a scratch harness computed the same values with shadcn.css before and after the tokens).
+- shadcn's `dark:` variant = inside the nearest `data-section="dark"`, unless a `data-section="light"` inside it flips back
+  (no `.dark` class). Three levels deep (dark › light › dark) only those `dark:` tweaks are skipped; colours stay right.
+- A small preflight for shadcn parts only (`[data-slot]`): box model, UA borders, font, colour and fill of form controls.
+  Without it outline, ghost and link buttons are UA grey with black Arial text, also on a navy band. Text colour is
+  inherited, so a dark band sets its own (`text-ds-fg`).
+
+| shadcn variable | Token | navy-gold light | navy-gold dark | app-soft light | app-soft dark |
+|---|---|---|---|---|---|
+| `--background` | `--ds-bg` | paper | navy-900 | paper | soft-navy-900 |
+| `--foreground`, `--card-foreground`, `--popover-foreground` | `--ds-fg` | navy-900 | paper | soft-neutral-900 | paper |
+| `--card`, `--popover` | `--ds-surface` | paper | navy-800 | paper | soft-navy-800 |
+| `--primary` | `--ds-btn-primary-bg` | navy-900 | gold-400 | soft-navy-800 | soft-gold-500 |
+| `--primary-foreground` | `--ds-btn-primary-fg` | paper | navy-900 | paper | soft-navy-950 |
+| `--secondary`, `--ui-muted` | `--ds-track` | ash-100 | navy-700 | soft-neutral-75 | soft-navy-700 |
+| `--secondary-foreground`, `--accent-foreground` | `--ds-heading` | navy-900 | paper | soft-navy-950 | paper |
+| `--muted-foreground` | `--ds-label` | ash-600 | mist-100 | soft-neutral-700 | soft-navy-100 |
+| `--accent` (item focus) | `--ds-surface-hover` | ivory | navy-700 | soft-neutral-25 | soft-navy-700 |
+| `--destructive` | `--ds-destructive` | soft-danger-700 | soft-danger-400 + 45% paper | soft-danger-700 | soft-danger-400 + 45% paper |
+| `--border`, `--input` | `--ds-border` | ash-200 | navy-500 | soft-neutral-100 | paper @14% |
+| `--ring` | `--ds-focus-ring` | navy-900 | gold-400 | soft-navy-950 | soft-gold-300 |
+
+| shadcn variable (theme level) | Token | navy-gold | app-soft |
+|---|---|---|---|
+| `--chart-1` … `--chart-5` | `--ds-chart-1` … `--ds-chart-5` | navy-800, gold-400, steel-400, haze-300, gold-500 | soft-navy-500, soft-gold-600, soft-success-700, soft-info-700, soft-danger-600 |
+| `--sidebar` | `--ds-sidebar-bg` | navy-950 | soft-navy-950 |
+| `--sidebar-foreground` | `--ds-sidebar-fg` | mist-300 | soft-neutral-200 |
+| `--sidebar-primary` / `-primary-foreground` | `--ds-sidebar-badge-bg` / `-badge-fg` | gold-400 / navy-900 | soft-gold-500 / soft-navy-950 |
+| `--sidebar-accent` / `-accent-foreground` | `--ds-sidebar-active-bg` / `-fg-active` | navy-700 / paper | soft-navy-700 / paper |
+| `--sidebar-border` | `--ds-sidebar-border` | navy-500 | paper @14% |
+| `--sidebar-ring` | `--ds-sidebar-focus` | gold-400 | soft-gold-300 |
+
+Notes:
+- The muted surface is `--ui-muted` because `web/src/styles/app.css` owns `--muted` (a text colour on antd pages).
+  `--muted-foreground` is `--ds-label`, not `--ds-body`: ash-500 is only 4.35:1 on the muted surface.
+- `--accent` and `--input` match antd (`optionActiveBg`, `colorBorder`), so shadcn and antd fields look alike.
+- `--ds-destructive` is a soft danger red: navy-gold's `signal-red` fails AA as text (3.8:1). Dark sections mix
+  soft-danger-400 55% with paper, so the text and shadcn's destructive Button / Badge (20% red tint) stay ≥ 4.5:1 on
+  navy-900 and navy-800 (soft-danger-400 alone is 4.4:1 on app-soft's dark bg).
+- Charts are theme level and made for light surfaces: on a navy card navy-gold's `--chart-1` is the card colour.
+- Portalled content (dialogs, popovers, select lists) gets the `<html>` theme in its light scope; pass
+  `data-section="dark"` to the content element for a dark block.
+- `tokens.test.ts` checks `shadcn.css`: no hex (comments included), only `var(--ds-*)` values, the exact variable set its
+  `@theme inline` reads, every target present in every theme (section variables in both scopes), five distinct chart
+  series, radius steps never negative, and AA in both sections of both themes (text on background, card, popover,
+  primary, secondary, muted, accent; destructive and outline button recipes; ring 3:1; sidebar pairs).
+
+## 8. `tokens.ts` and antd
+
+`web/src/styles/design-system/tokens.ts` exports:
+- `palette`: every primitive as a plain colour string (ash in 8-bit hex).
+- `corners`: per corner style (`square`, `rounded`, `smooth`) the px steps `xs`, `sm`, `md`, `lg`, `xl`, `pill`
+  (= corners.css); `CornerStyle`, `isCornerStyle()`, `cornerStyles`; `pillButtons` (smooth: antd Button and Tag are pills).
+- Appearance panel registry: `themeLabels` (`{ ar, en }` per theme, required by `satisfies`) and `cornerLabels`.
+- `themes`: per theme `fontFamily`, `chrome`, `gridHero`, `gridDark`, `chart` (`series`, `actual`,
+  `target`, `area`, `current`, `bg`, `grid`, `axis`, `up`, `down`), `shadow`, `focus`, `selection`,
+  `sidebar` (the `--ds-sidebar-*` tokens), `band` (`--ds-band-*`), `shade` (`--ds-shade`), `gradient`
+  (`--ds-gradient-*`, the resolved CSS value) and `hatch` (`--ds-hatch-*`), `sections.light` / `sections.dark` (every
+  section token, camelCase, buttons as `btnPrimary` / `btnGhost`, plus `focusRing`, `link`, `linkHover` and `destructive`
+  from `--ds-destructive`). `chart.series` holds the five categorical series (`--ds-chart-1` … `--ds-chart-5`).
+- `themeNames`, `isThemeName()`, and the types `ThemeName`, `SectionTone`, `ThemeTokens`, `SectionTokens`,
+  `SidebarTokens`, `BandTokens`, `GradientTokens`, `HatchTokens`, `ButtonTokens`.
+- `color-mix(…, X n%, transparent)` is written as `rgba(X, n/100)`. `tokens.test.ts` parses the CSS and fails on any
+  difference in either direction (a CSS token without a field, a field without a CSS token, a different value); the
+  `satisfies Record<ThemeName, ThemeTokens>` check makes TypeScript report a missing field.
+
+Use it where CSS variables can't reach: antd (below), canvas charts, print/PDF, values computed in JS.
+
+**antd is wired to the tokens.** `antd-theme.ts` → `antdTheme(name, base = {}, { tone = "light", corners } = {})` returns
+a `ThemeConfig`; `AppearanceProvider` (`appearance.tsx`) calls it with the look on `<html>` and `App.tsx`'s fonts:
+
+```tsx
+const antdBase: ThemeConfig = { token: { fontFamily: '"IBM Plex Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif', fontSize: 14 } };
+<AppearanceProvider base={antdBase}>                             {/* antdTheme(useDsTheme(), base, { corners: useDsCorners() }) */}
+  <ConfigProvider direction={…} locale={…}>…</ConfigProvider>    {/* inherits the theme */}
+</AppearanceProvider>
+```
+
+| antd | From `themes[name]` (light section unless noted) |
+|---|---|
+| `colorPrimary`, Button `primaryColor` | `btnPrimary.bg`, `btnPrimary.fg` |
+| `colorPrimaryBorder` (antd's focus-visible outline) | `focusRing` |
+| `colorLink`, `colorLinkHover`, `colorLinkActive` | `link`, `linkHover`, `linkHover` |
+| `colorInfo`, `colorInfoBg`, `colorInfoBorder` | `heading`, `bgCool`, `border` |
+| `colorError` | `destructive`; `colorSuccess` / `colorWarning`: antd defaults when `statusToAntd` is false (navy-gold, app-soft), else `status.okInk` / `status.nearInk`, Bg / Border = `okSoft` / `okBorder`, `nearSoft` / `nearBorder` |
+| algorithm, `colorTextLightSolid`, `colorTextDescription` / `Tertiary`, Tooltip | `scheme: "dark"` only: `darkAlgorithm`, `btnPrimary.fg`, `body`, Tooltip text `sections.dark.heading` |
+| `colorText`, `colorTextHeading`, `colorTextSecondary` | `fg`, `heading`, `label` |
+| `colorBorder`, `colorBorderSecondary` | `border` |
+| `colorBgLayout`, `colorBgContainer`, `colorBgElevated`, `colorBgSpotlight` | `bgCool`, `surface`, `surface`, `sections.dark.bg` |
+| `borderRadius` / `borderRadiusLG` / `SM` / `XS` / `Outer` | `antdRadii(corners[style])`: md, lg, sm, xs, xs (square: all 0) |
+| Button `borderRadius` / `LG` / `SM`, Tag `borderRadiusSM` | `pill` in smooth only (`pillButtons`); square and rounded set none |
+| Progress `lineBorderRadius`, Table `stickyScrollBarBorderRadius` | `pill` |
+| Button default (colour, bg, border, hover and active) | `btnGhost.fg`, `surface`, `btnGhost.border`, `btnGhost.hoverFg` / `hoverBg` / `hoverBorder` |
+| Input, InputNumber, DatePicker: `hoverBorderColor`, `activeBorderColor`, `activeShadow` | `accentStrong`, `focusRing`, `0 0 0 2px` + `focus` |
+| Select: same borders, `activeOutlineColor`, `optionSelectedBg` / `Color`, `optionActiveBg` | `focus`, `tile` / `heading`, `surfaceHover` |
+| Table: `headerBg`, `headerColor`, sort / filter bg, `headerSplitColor` | `sections.dark`: `bg`, `heading`, `surface` / `surfaceHover`, `border` |
+| Table: `rowHoverBg`, `bodySortBg`, `borderColor`, `headerBorderRadius` | `surfaceHover`, `bgCool`, `border`, corner `lg` |
+| Tag `defaultBg`, `defaultColor` | `bgCool`, `fg` |
+| Modal `contentBg`, `headerBg`, `titleColor`; Drawer `colorBgElevated` | `surface`, `surface`, `heading`; `surface` |
+| Tabs `itemColor`, hover / selected / active, `inkBarColor` | `label`, `heading`, `icon` (≥ 3:1) |
+| Segmented `trackBg`, `itemColor`, `itemHoverColor`, `itemSelectedBg` / `Color` | `track`, `label`, `heading`, `btnPrimary.bg` / `.fg` |
+
+- A new theme re-themes antd as soon as it has its `tokens.ts` entry; the mapper never names a theme.
+- `tone: "dark"` reads `sections.dark` and adds antd's `darkAlgorithm`: a full dark theme for a nested `ConfigProvider`.
+  Nothing uses it yet.
+- `antdDarkBlockTheme(name)`: Button colours only, from `sections.dark` (`colorPrimary` btnPrimary.bg, `primaryColor`
+  btnPrimary.fg, `colorLink` / hover link / linkHover, `colorText` fg, component `algorithm: true` for hover and focus
+  shades). No radius, so corners come from the parent. Used by `DarkBlock` in `shared/ui.tsx` around the actions of
+  `PageHeader` (`.lcp-head`) and `Hero` (`.lcp-hero`), which also carry `data-section="dark"`.
+- Fonts, sizes, spacing: not touched (`base` wins for anything it sets).
+- The app has no antd Menu or Layout, so neither has tokens.
+
+**Legacy variables.** The `:root` blocks of `web/src/styles/app.css` and `web/src/shared/ui.css` alias the brand
+variables to light-section tokens (old hex as `var()` fallback): `--navy` → `--ds-heading`, `--navy-2` → `--ds-chrome`,
+`--teal` → `--ds-btn-primary-bg`, `--teal-ink` → `--ds-link`, `--bg` → `--ds-bg-cool`, `--surface` → `--ds-surface`,
+`--sunk` → `--ds-track`, `--ink` → `--ds-fg`, `--muted` → `--ds-label`, `--line` → `--ds-border`, `--r` → `--ds-radius-xl` (also in `shared/theme.css`),
+`--teal-50` → `--ds-tile`, `--teal-100` → `--ds-accent`, `--navy-50` → `--ds-track`, `--gold` → `--ds-accent`,
+`--gold-50` → `--ds-bg-warm`, `--gold-ink` → `--ds-eyebrow-aa`, `--row-alt` → `--ds-bg-cool`, `--hair` → `--ds-border`.
+Inside `.lcp-side` and `.lcp-drawer .ant-drawer-body`: `--teal` → `--ds-sidebar-indicator`, `--teal-100` →
+`--ds-sidebar-focus`, `--gold` → `--ds-sidebar-badge-bg`. Status (`--warn*`, `--ok*`, `--crit*`), fonts, shadows and
+spacing are fixed. `shared/theme.css`: `--band` is `var(--ds-gradient-hero)` (§4a); on the band the kicker and `code` use
+`--ds-eyebrow`, links `--ds-link`, and the primary glow `--ds-btn-primary-bg` @45%. The open-cycle card glow is `--teal` @10%.
+
+Contrast check for a new theme (WCAG 2; take the hex values from `palette`; composite alpha colours over their background
+first):
+
+```js
+// node -e "…" or a scratch .mjs file
+const lum = (hex) => {
+  const [r, g, b] = hex.replace("#", "").match(/../g).map((h) => {
+    const c = parseInt(h, 16) / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+const ratio = (fg, bg) => {
+  const [hi, lo] = [lum(fg), lum(bg)].sort((a, b) => b - a);
+  return (hi + 0.05) / (lo + 0.05);
+};
+// needs ≥ 4.5 small text, ≥ 3 large text (≥ 24px, or ≥ 18.7px bold) and UI / chart marks
+console.log(ratio("#475569", "#ffffff").toFixed(2)); // app-soft light ds-body on ds-bg
+```
+
+Pairs to check per scope: `heading`, `body`, `body-strong`, `label`, `eyebrow`, `eyebrow-aa`, `highlight`, `icon` on
+`bg`, `bg-cool`, `bg-warm`, `surface`, `surface-warm`, `callout`; each button `fg` on its `bg` (and hover pair);
+`tile-active-fg` on `tile-active`; `tile-solid-fg` on `tile-solid`; `chart-*` on `chart-bg` (3:1); `border` around inputs (3:1).
+
+## 9. Scrollbar tokens
+
+`web/src/styles/design-system/scrollbar.css`, imported once in `web/src/main.tsx` after `app.css`. Plain CSS, no
+Tailwind. The top comment of the file is the source of truth.
+
+A scrollbar takes the colours of the surface it sits on. The track is that surface: it is transparent, so the
+scroller's own background shows through (the sidebar gradient included). The thumb is a quiet tone of the same surface,
+`color-mix(in srgb, SURFACE p%, INK)` with the surface's own text colour, one step stronger on hover and while dragged. It
+fills the whole track width (no inset, no floating pill, no sheen) and its corner follows `<html data-corners>`
+(`--ds-radius-xs`: square, or 4px when rounded; smooth sets `--scrollbar-radius: var(--ds-radius-pill)`, a round end).
+
+Tokens: `--scrollbar-size` 10px (= thumb width), `--scrollbar-radius` `var(--ds-radius-xs)`, `--scrollbar-min-thumb`
+40px, `--scrollbar-track` transparent, `--scrollbar-thumb` / `-thumb-hover` / `-thumb-active`, the sidebar palette
+`--scrollbar-sidebar-thumb` / `-hover` / `-active`, and `--scrollbar-overlay-thumb` / `-hover` / `-active` (modal mask).
+
+| Context | Selectors | SURFACE + INK | p rest / hover / active | navy-gold rest / hover | app-soft rest / hover |
+|---|---|---|---|---|---|
+| Light: the page, cards, tables, modal content, drawers, dropdowns | `:root`, `[data-theme]`, `[data-theme] [data-section="light"]` | `--ds-bg-cool` + `--ds-body` | 65 / 50 / 38 | `#c4cad5` / `#adb6c4` | `#b7bec8` / `#9ea6b2` |
+| Dark sections: landing hero, navy bands | `[data-theme] [data-section="dark"]` | `--ds-bg` + `--ds-body` | 74 / 62 / 52 | `#31435a` / `#45566c` | `#435c7d` / `#59718f` |
+| Sidebar, rail, mobile menu drawer, `.json` | `.lcp-side`, `.lcp-drawer .ant-drawer-body`, `.json` (tokens `--scrollbar-sidebar-thumb`, `-hover`, `-active`) | `--ds-sidebar-bg` + `--ds-sidebar-fg` | 76 / 66 / 58 | `#2d3c50` / `#3e4c60` | `#3b506a` / `#4e627b` |
+| Page bar beside the sidebar (Arabic desktop, width > 960px) | `html[dir="rtl"]:has(.lcp > .lcp-side) > body` (WebKit), `html` (Firefox) | the sidebar palette; track = `--ds-gradient-sidebar` | 76 / 66 / 58 | as sidebar | as sidebar |
+| Modal mask (`.ant-modal-wrap`, its own bar only) | tokens `--scrollbar-overlay-thumb`, `-hover`, `-active` | white over the mask | 35% / 55% / 70% | `#b2b2b3` / `#c9caca` | same |
+
+Thumb vs track, measured in Chromium (rest / hover): navy-gold light 1.57 / 1.94 on the page, 1.65 / 2.05 on white;
+dark 1.73 / 2.33 on `--ds-bg`, 1.52 / 2.05 on a dark card; sidebar 1.61-1.63 / 2.06-2.10 (also the page bar beside it);
+app-soft light 1.74 / 2.29, dark 1.94 / 2.65, sidebar 1.86-1.89 / 2.46-2.49; modal mask 1.65 / 2.13. Target: about 1.5:1 at
+rest (non-text UI that is present but quiet), stronger on hover.
+
+Rules:
+- A new theme needs nothing here: every rule reads the theme's own tokens. A new dark container that is not a
+  `[data-section="dark"]` block: add its selector to the sidebar rule, or give it its own SURFACE/INK pair.
+- Override per container: `.my-list { --scrollbar-size: 6px; }` (the collapsed rail uses 6px, in `app/nav.css`).
+- Chromium draws the page (viewport) scrollbar from `body`'s `::-webkit-scrollbar` parts, not `html`'s; tokens on `html`
+  reach it by inheritance, a page-only override goes on `body`'s parts.
+- Chrome 121+ ignores `::-webkit-scrollbar` on elements whose `scrollbar-color` / `scrollbar-width` is not `auto`, so the
+  file resets them on `.ant-table`, `.ant-segmented` and the date-picker time column (Chromium branch only). Select,
+  Cascader and TreeSelect virtual lists draw their own thumb: coloured through `--rc-virtual-list-scrollbar-bg`, corner
+  forced over its inline 99px radius.
+- Firefox: `scrollbar-width: thin` + `scrollbar-color` with the same colours (no hover state, no corner), only inside
+  `@supports not selector(::-webkit-scrollbar)`. Browsers do not animate scrollbar parts: state changes are instant.
+- `forced-colors: active`: no custom styling; the browser draws system-coloured scrollbars. Hidden scrollers stay hidden
+  (`.lcp-seg`, `.f-pipe`, `.sp-tabs`, `.sp-rail`, antd Anchor, Tailwind `no-scrollbar`).

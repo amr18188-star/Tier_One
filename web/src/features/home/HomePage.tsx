@@ -16,6 +16,7 @@ import { dueText, submissionStatus } from "../../shared/labels";
 import { dueLabel, daysLeft } from "../../shared/period";
 import { StdCode, tint, usePillarMap } from "../../shared/pillars";
 import { usePermissions } from "../../shared/session";
+import { CountUp } from "../../shared/useCountUp";
 import { PlanGlance } from "../strategy/PlanGlance";
 import type { Scorecard } from "../../api/scorecard";
 import { filterWork, featuredCycle, type DueSort, type WorkFilter } from "./adminModel";
@@ -240,10 +241,10 @@ function AdminHome() {
                 : L("لا توجد دورة جمع بيانات متاحة بعد.", "No collection cycle is available yet.")}</p>
         </div>
         <dl className="home-admin-hero-stats" aria-label={L("ملخص الدورة", "Cycle summary")}>
-          <div><dt>{L("نماذج الدورة", "Cycle forms")}</dt><dd>{cycle ? cycle.forms : "—"}</dd></div>
-          <div><dt>{L("متأخر عن الموعد", "Overdue")}</dt><dd className={cycle && cycle.overdue > 0 ? "is-late" : undefined}>{cycle ? cycle.overdue : "—"}</dd></div>
-          <div><dt>{L("نماذج معتمدة", "Approved forms")}</dt><dd>{cycle ? <span className="ltr">{cycle.formsByStatus.Approved ?? 0}/{cycle.forms}</span> : "—"}</dd></div>
-          <div><dt>{L("قيد المراجعة", "In review")}</dt><dd>{cycle ? cycle.formsByStatus.InReview ?? 0 : "—"}</dd></div>
+          <div><dt>{L("نماذج الدورة", "Cycle forms")}</dt><dd>{cycle ? <CountUp value={cycle.forms} /> : "—"}</dd></div>
+          <div><dt>{L("متأخر عن الموعد", "Overdue")}</dt><dd className={cycle && cycle.overdue > 0 ? "is-late" : undefined}>{cycle ? <CountUp value={cycle.overdue} /> : "—"}</dd></div>
+          <div><dt>{L("نماذج معتمدة", "Approved forms")}</dt><dd>{cycle ? <span className="ltr"><CountUp value={cycle.formsByStatus.Approved ?? 0} />/{cycle.forms}</span> : "—"}</dd></div>
+          <div><dt>{L("قيد المراجعة", "In review")}</dt><dd>{cycle ? <CountUp value={cycle.formsByStatus.InReview ?? 0} /> : "—"}</dd></div>
         </dl>
       </header>
 
@@ -253,7 +254,7 @@ function AdminHome() {
           return <Link key={card.key} to={item?.link ?? card.link} className={`home-admin-kpi tone-${card.tone}`}>
             <span className="home-admin-kpi-icon" aria-hidden>{card.icon}</span>
             <strong>{card.title}</strong>
-            <b className="ltr">{home.isLoading || home.isError ? "—" : item?.count ?? 0}</b>
+            <b className="ltr">{home.isLoading || home.isError ? "—" : <CountUp value={item?.count ?? 0} />}</b>
             <small>{card.hint}</small>
             <Forward className="home-admin-kpi-arrow" aria-hidden />
           </Link>;

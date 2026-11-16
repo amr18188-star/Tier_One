@@ -18,6 +18,7 @@
 /* الحلقة داخل الزر، فلا يقصها إطار اللوحة. */
 .ds-acc-head:focus-visible { outline-offset: -3px; border-radius: 0; }
 .ds-acc-title { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: var(--ds-space-sm); }
+.ds-acc-state { padding: var(--ds-space-md); }
 .ds-acc-chev { flex: none; font-size: 12px; color: var(--ds-body); }
 
 /* السهم: لأسفل واللوحة مفتوحة، ونحو نهاية السطر وهي مطوية (يمين في الإنجليزية، يسار في العربية). */

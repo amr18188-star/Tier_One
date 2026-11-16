@@ -42,7 +42,7 @@
   font-style: normal;
   line-height: 1.7;
   letter-spacing: normal;
-  text-align: right; /* the old body is rtl, so its `[dir] { text-align: match-parent }` rule gave right */
+  text-align: start;
   color: var(--ds-fg);
   font-feature-settings: normal;
   font-variation-settings: normal;
@@ -142,60 +142,16 @@
   @tailwind utilities source(none);
 }
 
-/* The public first and last impressions share each palette's own gradient and accent. The circles soften
-   the underlying data grid in all three corner modes without changing the card radius scale. */
-[data-landing] .landing-hero { background: var(--ds-gradient-auth); }
-[data-landing] .landing-footer { background: var(--ds-gradient-sidebar); }
-[data-landing] .landing-hero {
-  display: flex;
-  min-height: 100vh;
-  min-height: 100svh;
-  padding-block: clamp(1rem, 3vh, 2rem) clamp(2rem, 5vh, 3rem);
+/* ---------- One-screen hero ---------- */
+[data-landing] .landing-hero { background: var(--ds-gradient-auth); min-height: 100vh; min-height: 100svh; }
+@media (min-width: 1024px) {
+  [data-landing] .landing-hero { height: 100svh; }
 }
-[data-landing] .landing-hero-content {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-}
-[data-landing] .landing-hero-university { align-self: flex-start; }
-[data-landing] .landing-hero-university img {
-  height: clamp(4.5rem, 12vh, 7rem);
-  width: auto;
-}
-[data-landing] .landing-hero-main {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: clamp(.7rem, 2vh, 1.25rem);
-  padding-block: 1rem;
-  text-align: center;
-}
-[data-landing] .landing-hero-brand {
-  width: min(100%, 28rem);
-}
-[data-landing] .landing-hero-brand img {
-  width: 100%;
-  height: auto;
-}
-[data-landing] .landing-hero-title {
-  width: 100%;
-  max-width: 52rem;
-  font-size: clamp(1.875rem, 4vw, 3.5rem);
-  font-weight: 700;
-  line-height: 1.35;
-}
-[data-landing] .landing-hero-description {
-  width: 100%;
-  max-width: 39rem;
-  font-size: clamp(1rem, 1.5vw, 1.125rem);
-  line-height: 1.8;
-}
-[data-landing] .landing-hero-cta {
-  min-height: 3rem;
-  margin-top: .25rem;
-}
+[data-landing] .landing-hero-chart { height: 34%; min-height: 110px; }
+[data-landing] .landing-hero-tier { max-width: 11rem; object-fit: contain; }
+[data-landing] .landing-hero-logo { height: clamp(9rem, 38vh, 22rem); }
+[data-landing] .landing-hero-logo-wide { width: clamp(7.5rem, 15vw, 16rem); height: auto; }
+[data-landing] .landing-hero-divider { height: clamp(6rem, 24vh, 14rem); }
 [data-landing] .landing-hero-orbit {
   width: min(66vw, 760px);
   aspect-ratio: 1;
@@ -206,32 +162,31 @@
   opacity: .18;
   transform: rotate(-18deg) scaleX(1.22);
 }
-[data-landing] .landing-footer-orbit {
-  width: min(45vw, 520px);
-  aspect-ratio: 1;
-  inset-inline-end: -12%;
-  top: -70%;
-  border: 1px solid var(--ds-accent);
-  border-radius: var(--ds-radius-round);
-  opacity: .14;
-  transform: scaleX(1.4);
+[data-landing] .landing-chart-dot {
+  width: .75rem;
+  height: .75rem;
+  box-shadow: 0 0 0 .4rem color-mix(in srgb, var(--ds-chart-current) 25%, transparent);
 }
 @media (max-width: 640px) {
-  [data-landing] .landing-hero-brand { width: min(100%, 21rem); }
   [data-landing] .landing-hero-orbit { width: 115vw; inset-inline-end: -65%; top: 14%; }
-  [data-landing] .landing-footer-orbit { width: 80vw; inset-inline-end: -45%; top: -25%; }
+  [data-landing] .landing-hero-chart { height: 22%; }
+  [data-landing] .landing-hero-logo { height: 11rem; }
+  [data-landing] .landing-hero-logo-wide { width: 8rem; }
 }
-@media (max-height: 760px) {
-  [data-landing] .landing-hero-brand { width: min(100%, 20rem); }
-  [data-landing] .landing-hero-university img { height: 4.25rem; }
-  [data-landing] .landing-hero-main { gap: .6rem; }
+/* Short desktop windows: shrink the logos and spacing so the hero still fits in one screen. */
+@media (min-width: 1024px) and (max-height: 760px) {
+  [data-landing] .landing-hero-logo { height: 10rem; }
+  [data-landing] .landing-hero-divider { height: 7rem; }
 }
-@media (max-height: 560px) {
-  [data-landing] .landing-hero { padding-block: .75rem 1.5rem; }
-  [data-landing] .landing-hero-brand { width: min(100%, 13.75rem); }
-  [data-landing] .landing-hero-university img { height: 3rem; }
-  [data-landing] .landing-hero-main { gap: .4rem; padding-block: .5rem; }
-  [data-landing] .landing-hero-title { font-size: clamp(1.4rem, 3.5vw, 2rem); }
-  [data-landing] .landing-hero-description { font-size: .875rem; line-height: 1.5; }
-  [data-landing] .landing-hero-cta { min-height: 2.75rem; padding-block: .5rem; }
+
+/* Entrance and chart draw-in; reduced motion shows the final state at once. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-landing] .landing-rise { animation: landing-rise .7s cubic-bezier(.2, .7, .2, 1) both; }
+  [data-landing] .landing-rise-2 { animation-delay: .15s; }
+  [data-landing] .landing-chart-line { stroke-dasharray: 1; stroke-dashoffset: 1; animation: landing-draw 1.8s .3s ease-out forwards; }
+  [data-landing] .landing-chart-area { animation: landing-fade 1.2s .9s ease-out both; }
+  [data-landing] .landing-chart-dot { animation: landing-fade .6s 1.9s ease-out both; }
 }
+@keyframes landing-rise { from { opacity: 0; transform: translateY(14px); } }
+@keyframes landing-draw { to { stroke-dashoffset: 0; } }
+@keyframes landing-fade { from { opacity: 0; } }

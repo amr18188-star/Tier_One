@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Badge, Button, Input, Segmented, Select, Switch, Tag, Tooltip } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, query } from "../../api/client";
 import type { DefinitionStatus, IndicatorRow, Standard } from "../../api/tier1";
@@ -11,6 +11,7 @@ import { StdCode, stdLabel, tint, usePillarMap } from "../../shared/pillars";
 import { usePermissions } from "../../shared/session";
 import { DataTable, FilterMeta, oneOf, PageHeader, Panel } from "../../shared/ui";
 import { AccordionPanel } from "../../shared/AccordionPanel";
+import { PanelSkeleton } from "../../shared/PanelSkeleton";
 import { NewIndicatorModal } from "./NewIndicatorModal";
 import "./indicators.css";
 
@@ -38,6 +39,8 @@ export default function IndicatorsPage() {
 
   const standards = useQuery({ queryKey: ["standards"], queryFn: () => api.get<Standard[]>("/api/kpi/standards") });
   const rows = useQuery({
+    // المرشحات تغير المفتاح: تبقى الصفوف السابقة ظاهرة حتى تصل الجديدة، فلا تختفي اللوحات المفتوحة وتعود.
+    placeholderData: keepPreviousData,
     queryKey: ["indicators", standard, status, q, withConflicts],
     queryFn: () => api.get<IndicatorRow[]>(`/api/kpi/indicators${query({ standard, status, q, withConflicts: withConflicts ? "true" : undefined })}`),
   });
@@ -106,12 +109,12 @@ export default function IndicatorsPage() {
         <section className="ix-standards" aria-label={L("المعايير ومؤشراتها", "Standards and their indicators")}>
         {groups.map(({ standard: s, indicators }) => <AccordionPanel key={s.code} id={`ix-standard-${s.code}`}
           className="ix-standard" style={tint(pillarMap.map.get(s.code)?.index ?? -1)}
+          query={rows} skeleton={<PanelSkeleton rows={Math.min(Math.max(s.indicatorCount, 3), 6)} variant="table" />}
           open={openStandard === s.code} onToggle={() => setOpenStandard((current) => current === s.code ? null : s.code)}
           header={<><code className="pill-code ltr">{stdLabel(s.code)}</code><b>{s.nameAr}</b><small>{L(`${indicators.length} مؤشر`, `${indicators.length} indicators`)}</small></>}>
         <DataTable<IndicatorRow>
           rowKey={(r) => r.code}
           data={indicators}
-          loading={rows.isLoading}
           resetKey={`${s.code}|${standard}|${status}|${q}|${withConflicts}|${pillar}`}
           onRowClick={(r) => navigate(`/indicators/${r.code}`)}
           pageSizes={[20, 50, 120]}
