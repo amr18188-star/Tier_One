@@ -83,15 +83,17 @@
   background: color-mix(in srgb, var(--ds-app-topbar) 86%, transparent); backdrop-filter: blur(10px);
 }
 .lcp-top-space { flex: 1; }
-.lcp-burger, .lcp-top-brand { display: none !important; }
-.lcp-top-brand { align-items: center; gap: 8px; color: var(--navy); font-family: var(--font-display); font-size: 14px; white-space: nowrap; flex: none; }
-.lcp-top-brand img { height: 40px; width: auto; flex: none; object-fit: contain; }
+.lcp-burger { display: none !important; }
+.lcp-top-university { display: inline-flex; align-items: center; justify-content: center; flex: none; margin-inline-start: 8px; border-radius: var(--ds-radius-md); }
+.lcp-top-university img { display: block; height: 50px; width: auto; object-fit: contain; }
+.lcp-top-university:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
 .lcp-lang { font-weight: 600; color: var(--navy); }
 .lcp-user {
-  display: flex; align-items: center; gap: 10px; padding: 4px; padding-inline-end: 14px; border: 0; border-radius: var(--ds-radius-pill);
+  display: flex; align-items: center; gap: 10px; min-width: 0; padding: 4px; padding-inline-end: 14px; border: 0; border-radius: var(--ds-radius-pill);
   background: var(--ds-surface); box-shadow: var(--shadow); cursor: pointer; font: inherit; color: var(--ink); max-width: 260px;
 }
-.lcp-user-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13.5px; }
+.lcp-user-name { display: block; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; font-weight: 600; }
+.lcp-user:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
 .lcp-avatar {
   width: 34px; height: 34px; border-radius: var(--ds-radius-round); flex: none; display: grid; place-items: center;
   background: var(--ds-gradient-avatar); color: var(--ds-on-dark-fg); font-weight: 700; font-size: 13px;
@@ -289,10 +291,11 @@ a.lcp-list-item:hover { background: var(--teal-50); color: var(--ink); }
 @media (max-width: 960px) {
   .lcp { grid-template-columns: minmax(0, 1fr); }
   .lcp-side { display: none; }
-  .lcp-burger, .lcp-top-brand { display: inline-flex !important; }
+  .lcp-burger { display: inline-flex !important; }
   .lcp-top { padding: 0 12px; background: var(--ds-surface); border-bottom: 1px solid var(--line); height: 58px; }
-  .lcp-user { padding-inline-end: 4px; }
-  .lcp-user-name { display: none; }
+  .lcp-user { padding-inline-end: 10px; max-width: 190px; }
+  .lcp-top-university { margin-inline-start: 2px; }
+  .lcp-top-university img { height: 46px; }
   .lcp-content { padding: 14px 14px 100px; }
   .lcp-grid-2 { grid-template-columns: minmax(0, 1fr); }
   .lcp-tabbar {

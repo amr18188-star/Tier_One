@@ -24,6 +24,10 @@ export function TasksView({ rows, loading, periodName, cycleOpen }: { rows: Form
 
   return (
     <>
+      <header className="fm-tasks-intro">
+        <h2>{L("مهامي", "My tasks")}</h2>
+        <p>{L("النماذج التي تنتظر إجراءك، وما أرسلته أو اعتُمد في هذه الدورة.", "Forms waiting for your action, plus those sent or approved in this cycle.")}</p>
+      </header>
       <Panel title={loading ? L("مطلوب منك الآن", "Waiting for you") : L(`مطلوب منك الآن (${tasks.length})`, `Waiting for you (${tasks.length})`)}
         icon={<InboxOutlined aria-hidden />} loading={loading}>
         {tasks.length === 0 ? (

@@ -3,7 +3,10 @@ import { Button } from "antd";
 import { CheckOutlined } from "@ant-design/icons";
 import { DevRoleTabs } from "./DevRoleTabs";
 import { L, setLang, useLang } from "./i18n";
-// شعار الجامعة الرسمي؛ «-dark» حروفه بيضاء للوحة الكحلية. شعار واحد في الشاشة، فلا علامة للمنظومة فوق النموذج.
+import { useDsTheme } from "../styles/design-system/theme";
+import brandOnLight from "../assets/brand/strategy-performance-light.png";
+import brandOnDark from "../assets/brand/strategy-performance-dark.png";
+// شعار الجامعة بحروف فاتحة على لوحة الهوية الداكنة.
 import uniLogo from "../assets/brand/capital-university-logo-dark.png";
 import "./auth-logo.css";
 
@@ -23,6 +26,7 @@ function GrowthDecor() {
  */
 export function AuthLayout({ wide = false, title, subtitle, children }: { wide?: boolean; title?: string; subtitle?: ReactNode; children: ReactNode }) {
   const lang = useLang();
+  const theme = useDsTheme();
   const features = [
     L("قاموس المؤشرات ومستهدفات 2027–2031", "Indicator dictionary and 2027–2031 targets"),
     L("توزيع المستهدفات على الكليات", "Targets distributed to colleges"),
@@ -37,13 +41,9 @@ export function AuthLayout({ wide = false, title, subtitle, children }: { wide?:
         <div className="auth-side-inner">
           <div className="auth-uni">
             <img src={uniLogo} alt={L("جامعة العاصمة", "Capital University")} />
-            <span>
-              <b>{L("جامعة العاصمة", "Capital University")}</b>
-              <small>{L("نموذج الجامعات المصرية الرائدة", "Leading Egyptian Universities model")}</small>
-            </span>
           </div>
           <div className="auth-pitch">
-            <h1>{L("منظومة الأداء الاستراتيجي Tier 1", "Tier 1 strategic performance system")}</h1>
+            <h1>{L("أداء استراتيجي يبدأ بمؤشر واضح", "Strategic performance starts with a clear indicator")}</h1>
             <p>{L("من المؤشر إلى القرار: تعريفات معتمدة، ومستهدفات موزعة، ومتابعة واضحة لكل جهة.",
               "From indicator to decision: approved definitions, distributed targets and clear follow-up for every unit.")}</p>
           </div>
@@ -59,6 +59,11 @@ export function AuthLayout({ wide = false, title, subtitle, children }: { wide?:
           <Button type="link" onClick={() => setLang(lang === "ar" ? "en" : "ar")}>{lang === "ar" ? "English" : "العربية"}</Button>
         </div>
         <div className="auth-card">
+          <img
+            className="auth-brand"
+            src={theme === "night-gold" ? brandOnDark : brandOnLight}
+            alt={L("الخطة الاستراتيجية وتقييم الأداء — جامعة العاصمة", "Strategy and Performance — Capital University")}
+          />
           {title ? (
             <header className="auth-head">
               <div>

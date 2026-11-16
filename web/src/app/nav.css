@@ -68,7 +68,12 @@ html[dir="rtl"] .lcp-nav-panel[data-open="false"] .lcp-nav-chev { transform: rot
 }
 .lcp-brand, .lcp-brand:hover { color: var(--ds-sidebar-fg-active, #fff); }
 .lcp-brand { border-bottom-color: var(--ds-sidebar-border, rgba(255, 255, 255, 0.1)); }
-.lcp-brand small { color: var(--ds-sidebar-muted, #b7c5da); }
+/* شعار الخطة وحده في القائمة والدرج؛ علامته وحدها للشريط المطوي. */
+.lcp-brand-wordmark { display: block; flex: 1 1 auto; min-width: 0; max-width: 240px; }
+.lcp-brand .lcp-brand-wordmark img { display: block; width: 100%; height: auto; }
+.lcp-brand-mark { display: none; position: relative; width: 42px; height: 42px; overflow: hidden; flex: none; }
+.lcp-brand-mark img { position: absolute; top: -1px; left: 50%; width: 92px; max-width: none; transform: translateX(-50%); }
+.lcp-brand:focus-visible { outline-color: var(--ds-sidebar-focus, #7fd1d5); }
 .lcp-nav a { color: var(--ds-sidebar-fg, #c9d4e5); }
 .lcp-nav a:hover { background: var(--ds-sidebar-hover-bg, rgba(255, 255, 255, 0.06)); color: var(--ds-sidebar-fg-active, #fff); }
 .lcp-nav a.active { background: var(--ds-sidebar-active-bg, rgba(255, 255, 255, 0.11)); color: var(--ds-sidebar-fg-active, #fff); }
@@ -83,16 +88,16 @@ html[dir="rtl"] .lcp-nav-panel[data-open="false"] .lcp-nav-chev { transform: rot
 
 /* ===== الشريط المطوي على الحاسوب: عمود أيقونات 72px بتلميحات (Shell: .lcp.is-rail، و.is-railing طوال تغير العرض) ===== */
 /*
- * رأس الشريط على الحاسوب وحده (الدرج بلا زر): الشعار وزر الطي في صف، والخط تحت الصف كله بدل الشعار وحده؛
- * الحشوة نفسها (4 فوق الشعار و16 تحته)، فالموسع كما كان عدا الزر بجانب الشعار.
+ * رأس الشريط على الحاسوب: زر الطي في زاوية مستقلة فوق الشعار لكي يظهر الاسم كاملًا.
  */
 .lcp-side-head {
-  display: flex; align-items: center; gap: 8px; padding-bottom: 16px;
+  position: relative; display: flex; align-items: center; justify-content: center; padding-bottom: 16px;
   border-bottom: 1px solid var(--ds-sidebar-border, rgba(255, 255, 255, 0.1));
 }
-.lcp-side-head > .lcp-brand { flex: 1 1 auto; min-width: 0; padding-bottom: 0; border-bottom: 0; }
+.lcp-side-head > .lcp-brand { flex: 1 1 auto; min-width: 0; justify-content: center; padding: 38px 0 0; border-bottom: 0; }
+.lcp-drawer .lcp-brand { justify-content: center; padding-inline: 0; }
 .lcp-rail-toggle {
-  flex: none; display: inline-grid; place-items: center; width: 40px; height: 40px; margin: 0; padding: 0;
+  position: absolute; top: 0; inset-inline-end: 0; display: inline-grid; place-items: center; width: 40px; height: 40px; margin: 0; padding: 0;
   border: 0; border-radius: var(--ds-radius-md); background: transparent; cursor: pointer;
   color: var(--ds-sidebar-fg, #c9d4e5); font-size: 16px;
 }
@@ -118,23 +123,25 @@ html[dir="rtl"] .lcp-nav-panel[data-open="false"] .lcp-nav-chev { transform: rot
   }
 
   /*
-   * الرأس (36 شعار + 6 + 40 زر + 10 + 1 خط = 93): الشعار في الوسط، والزر سطر وحده تحته.
+   * الرأس: العلامة في الوسط، وزر الطي في سطر مستقل تحتها.
    * عرض الرأس 48px من البداية، فلا يقفز الشعار إلى منتصف الشريط العريض ثم يعود.
    */
   .lcp.is-rail > .lcp-side .lcp-side-head {
     flex-direction: column; align-items: center; align-self: flex-start; width: min(48px, 100%); gap: 6px; padding-bottom: 10px;
   }
   .lcp.is-rail > .lcp-side .lcp-side-head > .lcp-brand { flex: none; align-self: stretch; justify-content: center; padding: 0; }
-  .lcp.is-rail > .lcp-side .lcp-brand img { height: 36px; }
+  .lcp.is-rail > .lcp-side .lcp-brand-wordmark { display: none; }
+  .lcp.is-rail > .lcp-side .lcp-brand-mark { display: block; }
+  .lcp.is-rail > .lcp-side .lcp-brand-mark img { height: auto; }
+  .lcp.is-rail > .lcp-side .lcp-rail-toggle { position: static; }
 
-  /* نصوص مخفية بصريًا تبقى اسمًا لقارئ الشاشة: نص الشعار فورًا، وأسماء الروابط وزر الخروج بعد أن تتلاشى. */
-  .lcp.is-rail > .lcp-side .lcp-brand-text,
+  /* أسماء الروابط وزر الخروج مخفية بصريًا في الشريط المطوي. اسم رابط الشعار من aria-label. */
   .lcp.is-rail:not(.is-railing) > .lcp-side :is(.lcp-nav-label, .lcp-side-foot-label) {
     position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0;
     overflow: hidden; clip-path: inset(50%); white-space: nowrap;
   }
   /* أثناء تغير العرض في الاتجاهين: كل نص سطر واحد يقص داخل مكانه، لا يلتف. */
-  .lcp.is-railing > .lcp-side :is(.lcp-brand-text, .lcp-nav-label, .lcp-nav-title, .lcp-side-foot-label) {
+  .lcp.is-railing > .lcp-side :is(.lcp-nav-label, .lcp-nav-title, .lcp-side-foot-label) {
     min-width: 0; overflow: hidden; white-space: nowrap;
   }
   .lcp.is-railing:not(.is-rail) > .lcp-side .lcp-side-head > .lcp-brand { overflow: hidden; }
@@ -201,26 +208,35 @@ html[dir="rtl"] .lcp-nav-panel[data-open="false"] .lcp-nav-chev { transform: rot
 }
 
 /*
- * الشريط العلوي على الجوال والجهاز اللوحي: القائمة واللغة والمظهر بحجمها الكامل (هدف لمس 32px أو أكثر)، والبحث وحده يتقلص
- * ويملأ ما بقي (بلا الفاصل)، فلا يخرج شيء عن الشاشة عند 375px.
+ * الشريط العلوي على اللوحي: البحث يملأ المساحة الباقية مع ظهور اسم الحساب وشعار الجامعة.
  */
 @media (max-width: 960px) {
   .lcp-top > .lcp-burger, .lcp-top > .lcp-lang, .lcp-top .lcp-look { flex: none; }
   .lcp-top > .lcp-top-space { display: none; }
   .lcp-top .t1-search { flex: 1 1 auto; min-width: 0; }
 }
-@media (max-width: 480px) {
-  .lcp-top { gap: 4px; }
+/* الهاتف: البحث في الصف الأول، وأدوات الحساب في الثاني بترتيب لوحة المفاتيح نفسه. */
+@media (max-width: 640px) {
+  .lcp-top {
+    display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; grid-template-rows: 40px 42px;
+    gap: 6px; height: auto; padding-block: 8px;
+  }
+  .lcp-top > .lcp-burger { grid-column: 1; grid-row: 1; }
+  .lcp-top .t1-search { grid-column: 2 / -1; grid-row: 1; width: 100% !important; }
+  .lcp-top > .lcp-lang { grid-column: 1; grid-row: 2; }
+  .lcp-top > :is(.lcp-look, .lcp-look-anchor) { grid-column: 2; grid-row: 2; }
+  .lcp-top > .lcp-user { grid-column: 3; grid-row: 2; justify-self: end; width: 100%; max-width: 240px; }
+  .lcp-top > .lcp-top-university { grid-column: 4; grid-row: 2; margin-inline-start: 0; }
+  .lcp-top-university img { height: 42px; }
 }
 
 /* الحركة: العرض والحشوة ~220ms، والنصوص تتلاشى عند الطي وتظهر عند التوسيع. بتقليل الحركة كل ذلك فوري (ولا .is-railing). */
 @media (width > 960px) and (prefers-reduced-motion: no-preference) {
   .lcp { transition: grid-template-columns 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
   .lcp > .lcp-side { transition: padding 220ms cubic-bezier(0.2, 0.8, 0.2, 1), gap 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
-  .lcp > .lcp-side .lcp-brand img { transition: height 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
   .lcp.is-rail > .lcp-side .lcp-nav-cat { transition: background 0.15s, color 0.15s; }
   .lcp.is-rail.is-railing > .lcp-side :is(.lcp-nav-label, .lcp-side-foot-label) { animation: lcp-rail-fade-out 120ms ease-out both; }
-  .lcp.is-railing:not(.is-rail) > .lcp-side :is(.lcp-brand-text, .lcp-nav-label, .lcp-nav-title, .lcp-nav .lcp-badge, .lcp-side-foot-label) {
+  .lcp.is-railing:not(.is-rail) > .lcp-side :is(.lcp-nav-label, .lcp-nav-title, .lcp-nav .lcp-badge, .lcp-side-foot-label) {
     animation: lcp-rail-fade-in 200ms ease-in both;
   }
 }

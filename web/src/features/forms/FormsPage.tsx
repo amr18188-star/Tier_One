@@ -1,5 +1,6 @@
 import { useMemo, type KeyboardEvent, type ReactNode } from "react";
 import { Skeleton } from "antd";
+import { ApartmentOutlined, InboxOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { api, query } from "../../api/client";
 import type { Cycle, FormRow, SubmissionStatus } from "../../api/collection";
@@ -126,7 +127,7 @@ export default function FormsPage() {
         : !cycles.isError && <div className="fq is-loading" aria-hidden><Skeleton.Input active size="small" /></div>}
 
       {modes.length > 1 && ready && slot && slot.state !== "future"
-        ? <ModeTabs modes={modes} mode={mode} onMode={setMode}>{body}</ModeTabs>
+        ? <ModeTabs modes={modes} mode={mode} onMode={setMode} taskCount={all.data ? waiting : undefined}>{body}</ModeTabs>
         : body}
     </>
   );
@@ -138,7 +139,7 @@ const MODE_TEXT: Record<Mode, () => string> = {
 };
 
 /** تبويبا «متابعة الجهات / مهامي» لمن له الوضعان (العميد، اللجنة، الجودة، المدير الأعلى). الأسهم تنقل بين التبويبين. */
-function ModeTabs({ modes, mode, onMode, children }: { modes: Mode[]; mode: Mode; onMode: (m: Mode) => void; children: ReactNode }) {
+function ModeTabs({ modes, mode, onMode, taskCount, children }: { modes: Mode[]; mode: Mode; onMode: (m: Mode) => void; taskCount?: number; children: ReactNode }) {
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== "ArrowLeft" && e.key !== "ArrowRight" && e.key !== "Home" && e.key !== "End") return;
     e.preventDefault();
@@ -154,8 +155,13 @@ function ModeTabs({ modes, mode, onMode, children }: { modes: Mode[]; mode: Mode
       <div className="fm-tabs" role="tablist" aria-label={L("طريقة العرض", "View")} onKeyDown={onKey}>
         {modes.map((m) => (
           <button key={m} id={`fm-tab-${m}`} type="button" role="tab" className="fm-tab" aria-selected={m === mode} aria-controls="fm-tabpanel"
+            aria-label={m === "tasks" && taskCount !== undefined ? L(`مهامي، ${taskCount} مطلوب مني الآن`, `My tasks, ${taskCount} waiting for me`) : undefined}
             tabIndex={m === mode ? 0 : -1} onClick={() => onMode(m)}>
-            {MODE_TEXT[m]()}
+            {m === "tasks" ? <InboxOutlined aria-hidden /> : <ApartmentOutlined aria-hidden />}
+            <span>{MODE_TEXT[m]()}</span>
+            {m === "tasks" && taskCount !== undefined && (
+              <span className="fm-tab-count" aria-hidden="true">{taskCount}</span>
+            )}
           </button>
         ))}
       </div>

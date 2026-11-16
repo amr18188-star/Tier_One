@@ -14,9 +14,10 @@ import { L, setLang, useLang } from "../shared/i18n";
 import { usePermissions, useSession } from "../shared/session";
 import { initials } from "../shared/ui";
 import { AppearanceButton } from "./AppearanceMenu";
-// شعار الجامعة الرسمي. أسماء الملفات بلون الخلفية: «-dark» حروفه بيضاء للقائمة الكحلية، و«-light» حروفه كحلية للشريط الأبيض.
-import logoOnNavy from "../assets/brand/capital-university-logo-dark.png";
+// شعار الجامعة للترويسة الفاتحة، وشعار الخطة للشريط الجانبي الكحلي.
 import logoOnWhite from "../assets/brand/capital-university-logo-light.png";
+import strategyBrandOnNavy from "../assets/brand/strategy-performance-dark.png";
+import sidebarLogo from "../assets/brand/sidebarLogo.png";
 import "../shared/ui.css";
 import "../shared/tier1.css";
 import "../shared/theme.css";
@@ -201,20 +202,22 @@ export function Shell({ children }: { children: ReactNode }) {
       await api.post("/api/auth/logout");
     } finally {
       // تحميل جديد يفرغ ما خزنته الواجهة من بيانات الجلسة.
-      window.location.replace("/");
+      window.location.replace("/login");
     }
   }
   const toggleLang = () => setLang(lang === "ar" ? "en" : "ar");
 
   const tipSide: TipSide = lang === "ar" ? "left" : "right";
   const logoutText = L("تسجيل الخروج", "Sign out");
-  // في الشريط المطوي يبقى نص الشعار في الصفحة مخفيًا بصريًا (nav.css)، فاسم الرابط لقارئ الشاشة لا يتغير.
+  // شعار الخطة وحده في القائمة؛ علامته المختصرة تظهر في الشريط المطوي.
   const brand = (
-    <Link to="/" className="lcp-brand" onClick={() => setDrawer(false)}>
-      <img src={logoOnNavy} alt={L("جامعة العاصمة", "Capital University")} />
-      <span className="lcp-brand-text">
-        <b>{L("منظومة Tier 1", "Tier 1 system")}</b>
-        <small>{L("جامعة العاصمة · الأداء الاستراتيجي", "Capital University · Strategic performance")}</small>
+    <Link to="/" className="lcp-brand" onClick={() => setDrawer(false)}
+      aria-label={L("الرئيسية — الخطة الاستراتيجية وتقييم الأداء", "Home — Strategy and Performance")}>
+      <span className="lcp-brand-wordmark">
+        <img src={sidebarLogo} alt="" />
+      </span>
+      <span className="lcp-brand-mark" aria-hidden="true">
+        <img src={strategyBrandOnNavy} alt="" />
       </span>
     </Link>
   );
@@ -254,10 +257,6 @@ export function Shell({ children }: { children: ReactNode }) {
       <div className="lcp-main">
         <header className="lcp-top">
           <Button className="lcp-burger" type="text" icon={<MenuOutlined aria-hidden />} onClick={() => setDrawer(true)} aria-label={L("القائمة", "Menu")} />
-          <Link to="/" className="lcp-top-brand">
-            <img src={logoOnWhite} alt={L("جامعة العاصمة", "Capital University")} />
-            <b>Tier 1</b>
-          </Link>
           <GlobalSearch />
           <span className="lcp-top-space" />
           <DevRoleTabs />
@@ -280,11 +279,14 @@ export function Shell({ children }: { children: ReactNode }) {
               { key: "logout", icon: <LogoutOutlined aria-hidden />, label: L("تسجيل الخروج", "Sign out"), onClick: logout },
             ],
           }}>
-            <button type="button" className="lcp-user" aria-label={L("حسابي", "My account")}>
+            <button type="button" className="lcp-user" aria-label={`${L("حسابي", "My account")}: ${me?.name ?? ""}`} title={me?.name}>
               <span className="lcp-avatar" aria-hidden>{initials(me?.name)}</span>
-              <span className="lcp-user-name">{me?.name}</span>
+              <span className="lcp-user-name">{me?.name || L("حسابي", "My account")}</span>
             </button>
           </Dropdown>
+          <Link to="/" className="lcp-top-university" aria-label={L("جامعة العاصمة — الرئيسية", "Capital University — Home")}>
+            <img src={logoOnWhite} alt="" />
+          </Link>
         </header>
         <main className="lcp-content">
           <div className="lcp-page">{children}</div>

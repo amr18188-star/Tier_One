@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Alert, App, Button, DatePicker, Drawer, Form, Input, Modal, Space, Switch, Tag } from "antd";
+import { useState, type ComponentProps } from "react";
+import { Alert, App, Button, ConfigProvider, DatePicker, Drawer, Form, Input, Modal, Space, Switch, Tag } from "antd";
 import { CalendarOutlined, EditOutlined, LockOutlined, PlayCircleOutlined, PlusOutlined, UnorderedListOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs, { type Dayjs } from "dayjs";
@@ -15,6 +15,18 @@ import { cycleStatus, submissionStatus } from "../../shared/labels";
 import { PeriodNav } from "../../shared/PeriodNav";
 import { usePermissions } from "../../shared/session";
 import { EmptyNote, PageHeader, Panel } from "../../shared/ui";
+import enUS from "antd/locale/en_US";
+import "./cycles.css";
+
+// Range picker forced to LTR with English day/month names, whatever the app's language.
+// Wrapped in a component so Form.Item still injects value/onChange into the picker itself.
+function LtrRangePicker(props: ComponentProps<typeof DatePicker.RangePicker>) {
+  return (
+    <ConfigProvider direction="ltr" locale={enUS}>
+      <DatePicker.RangePicker popupClassName="t1-single-month" {...props} />
+    </ConfigProvider>
+  );
+}
 
 const STATUS_COLORS: Record<SubmissionStatus, string> = {
   NotStarted: "var(--ds-status-none)", InProgress: "var(--ds-status-progress)", InReview: "var(--ds-status-near)", Returned: "var(--ds-status-late-ink)", Approved: "var(--ds-status-ok)",
@@ -218,7 +230,7 @@ function CycleDrawer({ cycle, onClose }: { cycle: Cycle | null; onClose: () => v
           </Form.Item>
           <Form.Item name="dates" label={L("فتح الإدخال والموعد النهائي", "Opens and due")} rules={[{ required: true, message: L("حدد التاريخين", "Pick both dates") }]}
             extra={L("المقترح: يفتح الإدخال بعد انتهاء الربع ويستمر شهرًا.", "Suggested: opens after the quarter ends, for a month.")}>
-            <DatePicker.RangePicker style={{ width: "100%" }} />
+            <LtrRangePicker style={{ width: "100%" }} />
           </Form.Item>
           <Form.Item name="trial" valuePropName="checked" label={L("بروفة داخلية", "Internal rehearsal")}
             extra={L("البروفة لاختبار النماذج ومسار الاعتماد، ولا تدخل قيمها بطاقة الأداء ولا ملف المجلس.", "Rehearsal values never enter the scorecard.")}>

@@ -6,17 +6,44 @@
  */
 
 /* ===== تبويبا الوضعين ===== */
-.fm-tabs { display: flex; gap: var(--ds-space-xs); border-bottom: 1px solid var(--ds-border); overflow-x: auto; scrollbar-width: none; }
-.fm-tab {
-  flex: none; min-height: 42px; padding: 8px var(--ds-space-md); margin-bottom: -1px;
-  border: 0; background: transparent; color: var(--ds-body); box-shadow: inset 0 -3px 0 transparent;
-  font: inherit; font-size: 14.5px; font-weight: 600; cursor: pointer;
+.fm-tabs {
+  display: flex; gap: var(--ds-space-xs); padding: var(--ds-space-xs);
+  border: 1px solid var(--ds-border); border-radius: var(--ds-radius-lg);
+  background: var(--ds-surface); overflow-x: auto; scrollbar-width: none;
 }
-.fm-tab:hover { color: var(--ds-heading); }
-.fm-tab[aria-selected="true"] { color: var(--ds-heading); box-shadow: inset 0 -3px 0 var(--ds-heading); }
+.fm-tab {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--ds-space-sm);
+  flex: none; min-height: 48px; padding: 8px var(--ds-space-md);
+  border: 1px solid transparent; border-radius: var(--ds-radius-md);
+  background: transparent; color: var(--ds-body-strong);
+  font: inherit; font-size: 15px; font-weight: 600; white-space: nowrap; cursor: pointer;
+}
+.fm-tab:hover { color: var(--ds-heading); background: var(--ds-surface-hover-soft); }
+.fm-tab[aria-selected="true"], .fm-tab[aria-selected="true"]:hover {
+  color: var(--ds-heading); background: var(--ds-callout); border-color: var(--ds-accent-border);
+  box-shadow: inset 3px 0 0 var(--ds-accent);
+}
+html[dir="rtl"] .fm-tab[aria-selected="true"], html[dir="rtl"] .fm-tab[aria-selected="true"]:hover {
+  box-shadow: inset -3px 0 0 var(--ds-accent);
+}
+.fm-tab .anticon { color: var(--ds-icon); font-size: 17px; }
+.fm-tab-count {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px;
+  padding: 0 6px; border: 1px solid var(--ds-border); border-radius: var(--ds-radius-pill);
+  background: var(--ds-surface); color: var(--ds-heading); font-size: 12px; font-weight: 700;
+}
+.fm-tab:focus-visible { outline-offset: 2px; }
 /* اللوحة في شبكة الصفحة نفسها: فجوة .lcp-page بين أجزائها كما لو لم تكن ملفوفة. */
 .fm-tabpanel { display: grid; grid-template-columns: minmax(0, 1fr); gap: inherit; min-width: 0; }
 .fm-tabpanel > * { min-width: 0; }
+
+.fm-tasks-intro {
+  padding: var(--ds-space-md); border: 1px solid var(--ds-accent-border);
+  border-inline-start: 3px solid var(--ds-accent); border-radius: var(--ds-radius-lg);
+  background: var(--ds-callout);
+}
+.fm-tasks-intro h2 { margin: 0; color: var(--ds-heading); font-size: 20px; line-height: 1.5; }
+.fm-tasks-intro p { margin: 4px 0 0; color: var(--ds-body-strong); line-height: 1.7; }
 
 /* ===== مطلوب مني: شريط صغير في المتابعة، ومفتاح «مطلوب مني فقط» ===== */
 .fm-pending {

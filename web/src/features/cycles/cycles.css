@@ -1,0 +1,17 @@
+/* The popup is portaled to <body>, which inherits dir="rtl" from <html>; force LTR so
+   the week order, range highlight shapes and header arrows render correctly. */
+.t1-single-month,
+.t1-single-month * {
+  direction: ltr;
+}
+
+/* Range picker popup showing a single month instead of two side by side. */
+.t1-single-month .ant-picker-panels > *:last-child {
+  display: none;
+}
+
+/* antd hides the "next" arrows on the first panel; show them since it is the only one. */
+.t1-single-month .ant-picker-panels > *:first-child .ant-picker-header-next-btn,
+.t1-single-month .ant-picker-panels > *:first-child .ant-picker-header-super-next-btn {
+  visibility: visible !important;
+}
