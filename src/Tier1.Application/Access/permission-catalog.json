@@ -435,9 +435,25 @@
           ]
         },
         {
+          "key": "approve_department_directly",
+          "ar": "اعتماد مباشر لنموذج القسم من لجنة الكلية",
+          "en": "Direct department approval by the college committee",
+          "roles": [
+            "CTC"
+          ]
+        },
+        {
           "key": "approve_college",
           "ar": "اعتماد العميد",
           "en": "Dean approval",
+          "roles": [
+            "DEAN"
+          ]
+        },
+        {
+          "key": "approve_as_dean_directly",
+          "ar": "اعتماد مباشر من العميد وإحالة للجودة المركزية",
+          "en": "Direct dean approval and referral to central quality",
           "roles": [
             "DEAN"
           ]

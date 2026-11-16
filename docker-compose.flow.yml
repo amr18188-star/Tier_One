@@ -1,0 +1,50 @@
+# docker compose -p tier1-flow -f docker-compose.flow.yml up -d
+services:
+  postgres:
+    extends:
+      file: docker-compose.yml
+      service: postgres
+    container_name: tier1-flow-postgres
+    ports: !reset []
+
+  mongo:
+    extends:
+      file: docker-compose.yml
+      service: mongo
+    container_name: tier1-flow-mongo
+    ports: !reset []
+
+  api:
+    extends:
+      file: docker-compose.dev.yml
+      service: api
+    container_name: tier1-flow-api
+    ports: !override
+      - "127.0.0.1:5151:5150"
+    environment:
+      Seed__Flow: "true"
+      Seed__Demo: "false"
+      Seed__Structure: "false"
+      Seed__DemoData: "false"
+      App__PublicUrl: http://127.0.0.1:5189
+      Cookies__Session: t1_flow_session
+      Cookies__Antiforgery: t1_flow_af
+      Email__PickupDirectory: /data/mail
+
+  web:
+    extends:
+      file: docker-compose.dev.yml
+      service: web
+    container_name: tier1-flow-web
+    ports: !override
+      - "127.0.0.1:5189:5188"
+    environment:
+      VITE_DEV_ROLE_TABS: "${FLOW_ROLE_TABS:-true}"
+
+volumes:
+  tier1_pgdata:
+  tier1_mongodata:
+  tier1_api_out:
+  tier1_api_nuget:
+  tier1_api_data:
+  tier1_web_node_modules:

@@ -3,6 +3,7 @@ import { Alert, Button, Form, Image, Input, Typography } from "antd";
 import { LockOutlined, MailOutlined, SafetyOutlined } from "@ant-design/icons";
 import { api } from "../../api/client";
 import { AuthLayout } from "../../shared/AuthLayout";
+import { devRoleEmail } from "../../shared/DevRoleTabs";
 import { errorText } from "../../shared/format";
 import { L } from "../../shared/i18n";
 import { useReloadSession, useSession } from "../../shared/session";
@@ -49,7 +50,7 @@ function PasswordStep() {
       <Typography.Title level={3}>{L("مرحبًا بك", "Welcome")}</Typography.Title>
       <Typography.Paragraph type="secondary">{L("سجّل دخولك بحساب الجامعة للمتابعة.", "Sign in with your university account to continue.")}</Typography.Paragraph>
       {error && <Alert type="error" showIcon message={error} className="mb" />}
-      <Form layout="vertical" onFinish={submit} requiredMark={false}>
+      <Form layout="vertical" onFinish={submit} requiredMark={false} initialValues={{ email: devRoleEmail() }}>
         <Form.Item name="email" label={L("البريد الإلكتروني", "Email")} rules={[{ required: true, message: L("اكتب البريد", "Enter your email") }]}>
           <Input prefix={<MailOutlined />} autoComplete="username" dir="ltr" size="large" />
         </Form.Item>

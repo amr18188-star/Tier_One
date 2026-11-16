@@ -58,8 +58,8 @@ public static class CollectionEndpoints
         g.MapPost("/{id:guid}/submit", async (Guid id, FormsService svc, CancellationToken ct) => Results.Ok(await svc.SubmitAsync(id, ct)))
             .RequirePermission(Features.Forms, Cap.Edit);
         // المراجعة والاعتماد: الخدمة تفحص الإجراء الخاص لخطوة النموذج الحالية وفصل المهام.
-        g.MapPost("/{id:guid}/approve", async (Guid id, NoteRequest req, FormsService svc, CancellationToken ct) => Results.Ok(await svc.ApproveAsync(id, req, ct)))
-            .RequireAnyPermission(ReviewSpecials);
+        g.MapPost("/{id:guid}/approve", async (Guid id, ApproveFormRequest req, FormsService svc, CancellationToken ct) => Results.Ok(await svc.ApproveAsync(id, req, ct)))
+            .RequireAnyPermission([.. ReviewSpecials, $"{Features.Forms}:{ApprovalRules.ApproveDepartmentDirectly}", $"{Features.Forms}:{ApprovalRules.ApproveAsDeanDirectly}"]);
         g.MapPost("/{id:guid}/return", async (Guid id, ReturnRequest req, FormsService svc, CancellationToken ct) => Results.Ok(await svc.ReturnAsync(id, req, ct)))
             .RequireAnyPermission(ReviewSpecials);
         g.MapPost("/{id:guid}/reopen", async (Guid id, NoteRequest req, FormsService svc, CancellationToken ct) => Results.Ok(await svc.ReopenAsync(id, req, ct)))

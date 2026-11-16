@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Button } from "antd";
 import { CheckOutlined } from "@ant-design/icons";
+import { DevRoleTabs } from "./DevRoleTabs";
 import { L, setLang, useLang } from "./i18n";
 // شعار الجامعة الرسمي؛ «-dark» حروفه بيضاء للوحة الكحلية. شعار واحد في الشاشة، فلا علامة للمنظومة فوق النموذج.
 import uniLogo from "../assets/brand/capital-university-logo-dark.png";
@@ -54,7 +55,7 @@ export function AuthLayout({ wide = false, title, subtitle, children }: { wide?:
       </aside>
       <main className="auth-main">
         <div className="auth-topbar">
-          <span />
+          <span><DevRoleTabs /></span>
           <Button type="link" onClick={() => setLang(lang === "ar" ? "en" : "ar")}>{lang === "ar" ? "English" : "العربية"}</Button>
         </div>
         <div className="auth-card">

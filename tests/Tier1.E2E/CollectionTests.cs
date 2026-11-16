@@ -131,8 +131,8 @@ public sealed class CollectionTests(ITestOutputHelper output)
         t.Step("3. Return with notes, then the approval path with separation of duties");
         (status, _) = await entry.Call("POST", $"/api/forms/{form["id"].Str()}/approve", Scenario.O(("note", null)));
         t.Check(status == 403, "The entry user cannot approve");
-        (status, _) = await dean.Call("POST", $"/api/forms/{form["id"].Str()}/approve", Scenario.O(("note", null)));
-        t.Check(status == 403, "The dean cannot approve before their turn (college committee step)");
+        (status, _) = await quality.Call("POST", $"/api/forms/{form["id"].Str()}/approve", Scenario.O(("note", null)));
+        t.Check(status == 403, "Central quality cannot approve before its turn");
         t.Check((await college.Get($"/api/forms?cycleId={cycleId}&awaitingMe=true")).Items().Any(f => f["id"].Str() == form["id"].Str()), "The form is in 'required from me' for the college committee");
         (status, _) = await college.Call("POST", $"/api/forms/{form["id"].Str()}/return", Scenario.O(("note", ""), ("items", new JsonArray())));
         t.Check(status == 400, "Returning asks for a note");
@@ -169,6 +169,34 @@ public sealed class CollectionTests(ITestOutputHelper output)
             cf = await deptrep.Ok("POST", $"/api/forms/{cf["id"].Str()}/submit");
             (status, err) = await deptrep.Call("POST", $"/api/forms/{cf["id"].Str()}/approve", Scenario.O(("note", null)));
             t.Check(status == 403 && err.Code().StartsWith("sod_", StringComparison.Ordinal), $"Whoever entered does not review their own form ({err.Code()})");
+
+            var departmentPath = $"/api/forms/{cf["id"].Str()}";
+            var committeeForm = (await college.Get(departmentPath))!;
+            t.Check(committeeForm["actions"]!["directDepartmentApproval"].Truthy(), "The college committee can approve while the department review is pending");
+            t.Check((await college.Get($"/api/forms?cycleId={cycleId}&awaitingMe=true")).Items().Any(f => f["id"].Str() == cf["id"].Str()),
+                "The department form appears in the committee's queue");
+            var version = committeeForm["version"];
+            cf = await college.Ok("POST", departmentPath + "/approve", Scenario.O(("note", null), ("version", version)));
+            t.Check(cf["step"].Str() == "Dean" && cf["path"].Items().Any(p => p["step"].Str() == "DepartmentReview" && p["state"].Str() == "skipped"),
+                "Direct approval skips department review and advances to the dean");
+            t.Check(cf["events"].Items().Any(e => e["action"].Str() == "Approved" && e["fromStep"].Str() == "DepartmentReview" && e["toStep"].Str() == "Dean"),
+                "The form history records direct approval");
+            (status, _) = await deptrep.Call("POST", departmentPath + "/approve", Scenario.O(("note", null), ("version", version)));
+            t.Check(status == 409, "An approval from a stale form version cannot move the form again");
+        }
+
+        if (units.TryGetValue("ENG-ELE", out var ele)
+            && (await entry.Get($"/api/forms?cycleId={cycleId}")).Items().FirstOrDefault(f => f["unitId"].Str() == ele["id"].Str()) is { } eleRow)
+        {
+            var path = $"/api/forms/{eleRow["id"].Str()}";
+            await entry.Fill((await entry.Get(path))!);
+            var ef = await entry.Ok("POST", path + "/submit");
+            var deanForm = (await dean.Get(path))!;
+            t.Check(deanForm["actions"]!["directDeanApproval"].Truthy(), "The dean can approve a department form directly");
+            ef = await dean.Ok("POST", path + "/approve", Scenario.O(("version", ef["version"])));
+            t.Check(ef["step"].Str() == "Quality"
+                && ef["path"].Items().Count(p => p["state"].Str() == "skipped") == 2,
+                "Direct dean approval skips department and college review and advances to central quality");
         }
 
         t.Step("5. Excel import: preview, then all-or-nothing apply");

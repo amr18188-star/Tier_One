@@ -1,6 +1,7 @@
 using Tier1.Domain.Collection;
 using Tier1.Domain.Common;
 using Tier1.Domain.Organization;
+using Tier1.Application.Access;
 
 namespace Tier1.Application.Collection;
 
@@ -13,6 +14,8 @@ public static class ApprovalRules
 {
     public const string ReviewDepartment = "review_department";
     public const string ReviewCollege = "review_college";
+    public const string ApproveDepartmentDirectly = "approve_department_directly";
+    public const string ApproveAsDeanDirectly = "approve_as_dean_directly";
     public const string ApproveCollege = "approve_college";
     public const string ApproveFinal = "approve_final";
     public const string Reopen = "reopen";
@@ -40,6 +43,32 @@ public static class ApprovalRules
         ApprovalStep.Dean => ApproveCollege,
         ApprovalStep.Quality => ApproveFinal,
         _ => throw new InvalidOperationException($"{step} has no reviewer."),
+    };
+
+    public static ApprovalStep? DirectApprovalTo(EffectiveAccess access, OrgUnitKind kind, ApprovalStep step)
+    {
+        var departmentReview = kind == OrgUnitKind.Department && step == ApprovalStep.DepartmentReview;
+        var collegeReview = kind is OrgUnitKind.Department or OrgUnitKind.College or OrgUnitKind.Institute
+            && step == ApprovalStep.CollegeCommittee;
+        if (!departmentReview && !collegeReview) return null;
+
+        var canReviewNormally = access.HasSpecial(Features.Forms, SpecialFor(step));
+        // Preserve ordinary approvals for the super admin, who holds every review permission.
+        if (access.IsSuperAdmin && canReviewNormally) return null;
+        if (access.HasSpecial(Features.Forms, ApproveAsDeanDirectly)) return ApprovalStep.Quality;
+        return departmentReview && !canReviewNormally && access.HasSpecial(Features.Forms, ApproveDepartmentDirectly)
+            ? ApprovalStep.Dean : null;
+    }
+
+    public static bool MayReview(EffectiveAccess access, OrgUnitKind kind, ApprovalStep step, bool allowDirect = true) =>
+        access.HasSpecial(Features.Forms, SpecialFor(step)) || (allowDirect && DirectApprovalTo(access, kind, step) is not null);
+
+    public static bool SkippedBy(SubmissionEvent e, ApprovalStep step) => (e.Action, e.FromStep, e.ToStep, step) switch
+    {
+        (SubmissionAction.Approved, ApprovalStep.DepartmentReview, ApprovalStep.Dean, ApprovalStep.DepartmentReview) => true,
+        (SubmissionAction.Approved, ApprovalStep.DepartmentReview, ApprovalStep.Quality, ApprovalStep.DepartmentReview or ApprovalStep.CollegeCommittee) => true,
+        (SubmissionAction.Approved, ApprovalStep.CollegeCommittee, ApprovalStep.Quality, ApprovalStep.CollegeCommittee) => true,
+        _ => false,
     };
 
     public static string StepName(ApprovalStep step) => step switch

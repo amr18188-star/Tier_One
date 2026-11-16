@@ -128,17 +128,17 @@ export function EmptyNote({ children, action }: { children: ReactNode; action?: 
   return <Empty className="lcp-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description={<>{children}{action && <div className="mt">{action}</div>}</>} />;
 }
 
-export interface Step { title: string; note?: ReactNode }
+export interface Step { title: string; note?: ReactNode; skipped?: boolean }
 
 /** شريط مراحل أفقي: المنجز بعلامة صح، والحالي بإطار، والقادم رمادي. */
 export function Stepper({ steps, current }: { steps: Step[]; current: number }) {
   return (
     <ol className="lcp-steps" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
       {steps.map((s, i) => {
-        const state = i < current ? "done" : i === current ? "current" : "";
+        const state = s.skipped ? "skipped" : i < current ? "done" : i === current ? "current" : "";
         return (
           <li key={s.title} className={`lcp-step ${state}`} aria-current={i === current ? "step" : undefined}>
-            <span className="lcp-step-dot">{i < current ? <CheckOutlined /> : i + 1}</span>
+            <span className="lcp-step-dot">{s.skipped ? "—" : i < current ? <CheckOutlined /> : i + 1}</span>
             <b>{s.title}</b>
             {s.note && <small>{s.note}</small>}
           </li>
