@@ -8,7 +8,21 @@ import type { PlanQuarter } from "../../api/scorecard";
 import {
   chipLabel, cycleTimeline as buildTimeline, planState, quarterTimeline, resolveCycle as resolveSelection, resolveQuarter, stateLine, stepSlot,
 } from "../../shared/period";
-import { formModes, groupByCollege, type Access } from "./model";
+import { formEventText, formModes, groupByCollege, type Access } from "./model";
+
+describe("form history", () => {
+  it("labels direct approvals by the college committee and dean", () => {
+    expect(formEventText({ action: "Approved", fromStep: "DepartmentReview", toStep: "Dean" })).toBe("اعتماد مباشر");
+    expect(formEventText({ action: "Approved", fromStep: "DepartmentReview", toStep: "Quality" })).toBe("اعتماد مباشر");
+    expect(formEventText({ action: "Approved", fromStep: "CollegeCommittee", toStep: "Quality" })).toBe("اعتماد مباشر");
+  });
+
+  it("keeps ordinary and final approvals labeled as approved", () => {
+    expect(formEventText({ action: "Approved", fromStep: "CollegeCommittee", toStep: "Dean" })).toBe("اعتمد");
+    expect(formEventText({ action: "Approved", fromStep: "Dean", toStep: "Quality" })).toBe("اعتمد");
+    expect(formEventText({ action: "Approved", fromStep: "Quality", toStep: "Done" })).toBe("اعتمد");
+  });
+});
 
 const calendar: PlanQuarter[] = [2027, 2028, 2029, 2030, 2031].flatMap((year, y) => [1, 2, 3, 4].map((quarter) => ({
   year, yearIndex: y + 1, quarter, index: y * 4 + quarter, start: `${year}-01-01`, end: `${year}-03-31`, label: "", current: false,

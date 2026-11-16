@@ -20,6 +20,7 @@ import { useSearchState } from "../../shared/usePeriodParams";
 import { PillarCards, PillarHeader, PillarMobileBar, PillarStep, type PillarGroup } from "./FormPillars";
 import { ImportModal } from "./ImportModal";
 import { NoteCard } from "./NoteCard";
+import { formEventText } from "./model";
 import { usePillarSwipe, useReducedMotion } from "./usePillarSwipe";
 import { AutosaveContext, useAutosaveRegistry } from "./useValueAutosave";
 import { savedAt, ValueRow, type ReturnMark } from "./ValueRow";
@@ -279,7 +280,7 @@ export default function FormPage() {
             color: e.action === "Returned" ? "red" : e.action === "Approved" ? "green" : e.action === "Reopened" ? "var(--ds-status-caution)" : "blue",
             children: (
               <>
-                <b>{eventText(e.action)}</b> — {e.byName} <small className="muted ltr">{formatDateTime(e.at)}</small>
+                <b>{formEventText(e)}</b> — {e.byName} <small className="muted ltr">{formatDateTime(e.at)}</small>
                 {e.note && <div className="muted">{e.note}</div>}
               </>
             ),
@@ -441,8 +442,4 @@ function ExtendModal({ form, onClose, onDone }: { form: Form; onClose: () => voi
       </AntForm>
     </Modal>
   );
-}
-
-function eventText(a: Form["events"][number]["action"]) {
-  return a === "Submitted" ? L("أرسل للمراجعة", "Submitted") : a === "Approved" ? L("اعتمد", "Approved") : a === "Returned" ? L("أعيد للتصحيح", "Returned") : L("أعيد فتحه", "Reopened");
 }
