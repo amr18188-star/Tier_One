@@ -170,6 +170,7 @@ public sealed class Seeder(Tier1DbContext db, IPasswordHasher hasher, ISecretPro
         await db.SaveChangesAsync(ct);
         await SeedNewFeatureGrantsAsync(now, ct);
         await ScopeUnitDirectoryOnceAsync(now, ct);
+        await GrantHomeToAllRolesOnceAsync(now, ct);
         await SeedFormApprovalSpecialAsync("CTC", ApprovalRules.ReviewCollege, ApprovalRules.ApproveDepartmentDirectly, now, ct);
         await SeedFormApprovalSpecialAsync("DEAN", ApprovalRules.ApproveCollege, ApprovalRules.ApproveAsDeanDirectly, now, ct);
     }
@@ -210,6 +211,32 @@ public sealed class Seeder(Tier1DbContext db, IPasswordHasher hasher, ISecretPro
         {
             await db.AccessStates.Where(s => s.Id == 1).ExecuteUpdateAsync(s => s.SetProperty(x => x.Version, x => x.Version + 1), ct);
             log.LogInformation("Unit-bound roles now see only their own units in the unit directory ({Count} grants).", grants.Count);
+        }
+    }
+
+    /// <summary>
+    /// الصفحة الرئيسية هي نقطة دخول كل مستخدم، ومهامها تُرشَّح بصلاحياته هو، فتمنح لكل الأدوار.
+    /// كان مسؤول ملف Tier 1 ومسؤول النظام بلا «الصفحة الرئيسية» فتفتح لهما صفحة «لا تملك صلاحية».
+    /// يمنحان الخاصية مرة واحدة في القواعد القائمة (القواعد الجديدة تأخذها من الكتالوج)؛ ما يغيره المدير بعدها من المصفوفة يبقى.
+    /// </summary>
+    private async Task GrantHomeToAllRolesOnceAsync(DateTimeOffset now, CancellationToken ct)
+    {
+        const string key = "catalog-fix:dash.home-all-roles";
+        if (await db.Settings.AnyAsync(s => s.Key == key, ct)) return;
+        string[] roleCodes = ["T1O", "SYS"];
+        var roles = await db.Roles.Include(r => r.Grants).Where(r => r.IsSystem && roleCodes.Contains(r.Code)).ToListAsync(ct);
+        var added = 0;
+        foreach (var role in roles.Where(r => r.Grants.All(g => g.Feature != Features.Dashboard)))
+        {
+            db.RoleGrants.Add(new RoleGrant { RoleId = role.Id, Feature = Features.Dashboard, Caps = Cap.View, Scope = AccessScope.All, Specials = [] });
+            added++;
+        }
+        db.Settings.Add(new SystemSetting { Key = key, Value = "1", UpdatedAt = now });
+        await db.SaveChangesAsync(ct);
+        if (added > 0)
+        {
+            await db.AccessStates.Where(s => s.Id == 1).ExecuteUpdateAsync(s => s.SetProperty(x => x.Version, x => x.Version + 1), ct);
+            log.LogInformation("Granted the home page to {Count} existing role(s).", added);
         }
     }
 

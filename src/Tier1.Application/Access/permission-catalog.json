@@ -162,7 +162,9 @@
         "DE": "V:U",
         "INIT": "V:U",
         "VIEW": "V:U",
-        "AUD": "VP:A"
+        "AUD": "VP:A",
+        "T1O": "V:A",
+        "SYS": "V:A"
       }
     },
     {

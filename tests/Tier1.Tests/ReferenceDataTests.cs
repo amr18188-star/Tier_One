@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Tier1.Application.Access;
+using Tier1.Domain.Access;
 
 namespace Tier1.Tests;
 
@@ -47,5 +48,18 @@ public class ReferenceDataTests
         Assert.Equal(["HC"], PermissionCatalog.Get(Features.Conflicts).Specials.Single(s => s.Key == Specials.Decide).DefaultRoles);
         // مسؤول النظام لا يعتمد ولا يحسم.
         Assert.DoesNotContain(PermissionCatalog.Features.SelectMany(f => f.Specials), s => s.DefaultRoles.Contains("SYS"));
+    }
+
+    [Fact]
+    public void Every_role_can_open_the_home_page_because_it_is_everyones_entry_point()
+    {
+        // الصفحة الرئيسية تنادي /api/home لكل مستخدم؛ دور بلا هذه الخاصية يرى «لا تملك صلاحية» في أول صفحة.
+        // المدير الأعلى يأخذ كل الخصائص من RoleRules.FullGrants لا من الافتراضيات.
+        var home = PermissionCatalog.Get(Features.Dashboard);
+        foreach (var role in PermissionCatalog.Roles.Select(r => r.Code).Where(c => c != PermissionCatalog.SuperAdminRole))
+        {
+            Assert.True(home.Defaults.TryGetValue(role, out var grant), $"{role} has no home page grant");
+            Assert.True(grant!.Caps.HasFlag(Cap.View), $"{role} cannot view the home page");
+        }
     }
 }

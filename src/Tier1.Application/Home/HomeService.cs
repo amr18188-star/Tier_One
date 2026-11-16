@@ -107,21 +107,27 @@ public sealed class HomeService(IAppDb db, ICurrentUser current, IAccessService 
 
         var standards = me.Has(Features.Dictionary, Cap.View) ? await dictionary.StandardsAsync(ct) : [];
 
+        // الأرقام العامة لمن يملك صلاحية القاموس أو التعارضات فقط؛ الصفحة الرئيسية لكل الأدوار، ومن لا يرى محتوى المعاملات (مسؤول النظام) لا تصله أرقامه.
+        var seesDictionary = me.Has(Features.Dictionary, Cap.View) || me.Has(Features.Dictionary, Cap.Edit) || me.HasSpecial(Features.Dictionary, Specials.Approve);
+        var seesConflicts = me.Has(Features.Conflicts, Cap.View) || me.Has(Features.Conflicts, Cap.Edit) || me.HasSpecial(Features.Conflicts, Specials.Decide);
+
         return new HomeDto(
             current.DisplayName ?? "",
             tasks,
+            !seesDictionary ? [] :
             [
                 new("Draft", "مسودة", byIndicator.Count(s => s == DefinitionStatus.Draft)),
                 new("UnderReview", "قيد الاعتماد", byIndicator.Count(s => s == DefinitionStatus.UnderReview)),
                 new("Approved", "معتمد", byIndicator.Count(s => s == DefinitionStatus.Approved)),
             ],
+            !seesConflicts ? [] :
             [
                 new("High", "عالية", conflicts.Count(c => c.Severity == ConflictSeverity.High && c.Status != ConflictStatus.Resolved)),
                 new("Medium", "متوسطة", conflicts.Count(c => c.Severity == ConflictSeverity.Medium && c.Status != ConflictStatus.Resolved)),
                 new("Low", "منخفضة", conflicts.Count(c => c.Severity == ConflictSeverity.Low && c.Status != ConflictStatus.Resolved)),
             ],
-            conflicts.Count(c => c.Status != ConflictStatus.Resolved),
-            conflicts.Count(c => c.Status == ConflictStatus.Resolved),
+            seesConflicts ? conflicts.Count(c => c.Status != ConflictStatus.Resolved) : 0,
+            seesConflicts ? conflicts.Count(c => c.Status == ConflictStatus.Resolved) : 0,
             standards.Select(s => new StandardProgress(s.Code, s.NameAr, s.IndicatorCount, s.ApprovedCount, s.OpenConflicts)).ToList(),
             structurePercent,
             collegeCount);
