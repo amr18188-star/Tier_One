@@ -1,6 +1,6 @@
 // منطق صفحة النماذج بلا واجهة: أوضاع الصفحة بحسب الصلاحية، والمرشحات، وتجميع النماذج بالكلية.
 // خط السنوات والأرباع وتحديد الدورة في shared/period.ts (شريط PeriodNav المشترك).
-import type { FormRow, SubmissionStatus } from "../../api/collection";
+import type { FormEvent, FormRow, SubmissionStatus } from "../../api/collection";
 import type { CapLetter, ScopeCode } from "../../api/types";
 import { L } from "../../shared/i18n";
 import { submissionStatus } from "../../shared/labels";
@@ -15,6 +15,19 @@ const STATUS_EN: Record<SubmissionStatus, string> = {
 
 export function statusText(s: SubmissionStatus): string {
   return L(submissionStatus[s].text, STATUS_EN[s]);
+}
+
+export function formEventText({ action, fromStep, toStep }: Pick<FormEvent, "action" | "fromStep" | "toStep">): string {
+  switch (action) {
+    case "Submitted": return L("أرسل للمراجعة", "Submitted");
+    case "Approved": {
+      const direct = (fromStep === "DepartmentReview" && toStep === "Dean")
+        || ((fromStep === "DepartmentReview" || fromStep === "CollegeCommittee") && toStep === "Quality");
+      return direct ? L("اعتماد مباشر", "Direct approval") : L("اعتمد", "Approved");
+    }
+    case "Returned": return L("أعيد للتصحيح", "Returned");
+    case "Reopened": return L("أعيد فتحه", "Reopened");
+  }
 }
 
 /** الأولوية في كل القوائم: المعاد للتصحيح، ثم ما ينتظرني، ثم الأقرب موعدًا. */

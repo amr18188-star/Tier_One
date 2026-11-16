@@ -452,7 +452,7 @@
   },
   {
    "code": "F01-D04",
-   "nameAr": "قسم الهستولوجي",
+   "nameAr": "قسم الهستولوجيا",
    "kind": "Department",
    "parent": "F01",
    "sortOrder": 4,
@@ -476,7 +476,7 @@
   },
   {
    "code": "F01-D07",
-   "nameAr": "قسم جراحة المسالك البولية",
+   "nameAr": "قسم جراحة المسالك البولية والتناسلية",
    "kind": "Department",
    "parent": "F01",
    "sortOrder": 7,
@@ -484,7 +484,7 @@
   },
   {
    "code": "F01-D08",
-   "nameAr": "قسم جراحة التجميل",
+   "nameAr": "قسم جراحة التجميل والإصلاح وعلاج الحروق",
    "kind": "Department",
    "parent": "F01",
    "sortOrder": 8,
@@ -492,7 +492,7 @@
   },
   {
    "code": "F01-D09",
-   "nameAr": "قسم طب الحالات الحرجة والطوارئ",
+   "nameAr": "قسم طب الحالات الحرجة",
    "kind": "Department",
    "parent": "F01",
    "sortOrder": 9,
@@ -580,7 +580,7 @@
   },
   {
    "code": "F01-D20",
-   "nameAr": "قسم أمراض الباطنة العامة",
+   "nameAr": "قسم الأمراض الباطنة",
    "kind": "Department",
    "parent": "F01",
    "sortOrder": 20,
@@ -612,7 +612,7 @@
   },
   {
    "code": "F01-D24",
-   "nameAr": "قسم الأشعة التشخيصية والعلاجية",
+   "nameAr": "قسم الأشعة التشخيصية والتداخلية",
    "kind": "Department",
    "parent": "F01",
    "sortOrder": 24,
@@ -676,7 +676,7 @@
   },
   {
    "code": "F01-D32",
-   "nameAr": "قسم الطب الطبيعي والروماتيزم والتأهيل",
+   "nameAr": "قسم الروماتيزم والتأهيل والطب الطبيعي",
    "kind": "Department",
    "parent": "F01",
    "sortOrder": 32,
@@ -1067,14 +1067,6 @@
    "viewsWholeUniversity": false
   },
   {
-   "code": "F09-D06",
-   "nameAr": "قسم العلوم الأساسية",
-   "kind": "Department",
-   "parent": "F09",
-   "sortOrder": 6,
-   "viewsWholeUniversity": false
-  },
-  {
    "code": "F10-D01",
    "nameAr": "قسم الفوتوغرافيا والسينما والتليفزيون",
    "kind": "Department",
@@ -1364,7 +1356,7 @@
   },
   {
    "code": "F14-D06",
-   "nameAr": "قسم التعليم الصناعي",
+   "nameAr": "قسم الفنون الصناعية",
    "kind": "Department",
    "parent": "F14",
    "sortOrder": 6,
@@ -1388,7 +1380,7 @@
   },
   {
    "code": "F14-D09",
-   "nameAr": "قسم الطفولة المبكرة",
+   "nameAr": "قسم التربية للطفولة المبكرة",
    "kind": "Department",
    "parent": "F14",
    "sortOrder": 9,

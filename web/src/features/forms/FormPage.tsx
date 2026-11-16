@@ -20,6 +20,7 @@ import { useSearchState } from "../../shared/usePeriodParams";
 import { PillarCards, PillarHeader, PillarMobileBar, PillarStep, type PillarGroup } from "./FormPillars";
 import { ImportModal } from "./ImportModal";
 import { NoteCard } from "./NoteCard";
+import { formEventText } from "./model";
 import { usePillarSwipe, useReducedMotion } from "./usePillarSwipe";
 import { AutosaveContext, useAutosaveRegistry } from "./useValueAutosave";
 import { savedAt, ValueRow, type ReturnMark } from "./ValueRow";
@@ -158,6 +159,13 @@ export default function FormPage() {
   if (!f) return <Panel query={form}>{null}</Panel>;
   const editable = f.actions.canEdit;
   const reviewing = f.actions.canReview;
+  const directDeanApproval = f.actions.directDeanApproval;
+  const directApproval = f.actions.directDepartmentApproval || directDeanApproval;
+  const canReturn = reviewing && !directApproval;
+  const directLabel = directDeanApproval
+    ? L("اعتماد مباشر وإحالة للجودة المركزية", "Approve directly and forward to central quality")
+    : L("اعتماد مباشر وإحالة للعميد", "Approve directly and forward to the dean");
+  const skippedByDean = f.path.some((p) => p.step === "CollegeCommittee" && p.state === "skipped");
   const current = f.path.findIndex((p) => p.state === "current");
 
   const noted = items.filter((i) => !!i.value?.reviewNote).length;
@@ -184,7 +192,13 @@ export default function FormPage() {
         } />
 
       <Panel>
-        <Stepper current={current < 0 ? f.path.length : current} steps={f.path.map((p) => ({ title: p.name }))} />
+        <Stepper current={current < 0 ? f.path.length : current} steps={f.path.map((p) => ({
+          title: p.name,
+          skipped: p.state === "skipped",
+          note: p.state === "skipped"
+            ? skippedByDean ? L("اعتمد العميد مباشرةً", "Approved directly by the dean") : L("اعتمدت لجنة الكلية مباشرةً", "Approved directly by the college committee")
+            : undefined,
+        }))} />
       </Panel>
 
       {f.status === "Returned" && (f.returnNote || noted > 0) && (
@@ -203,8 +217,11 @@ export default function FormPage() {
       {f.cycleStatus === "Closed" && <Alert type="info" showIcon className="mb" message={L("الدورة مغلقة؛ النموذج للاطلاع فقط.", "The cycle is closed; read only.")} />}
       {reviewing && (
         <Alert type="info" showIcon className="mb"
-          message={L(`النموذج ينتظر مراجعتك (${f.path[current]?.name}). اعتمده لينتقل إلى ${f.nextStepName ?? "الاعتماد النهائي"}، أو علّم المؤشرات التي تحتاج تصحيحًا وأعده.`,
-            "This form is waiting for your review.")} />
+          message={directApproval
+            ? L(`النموذج عند «${f.path[current]?.name}». يمكنك مراجعته واعتماده وإحالته مباشرة إلى «${f.nextStepName}».`,
+                `The form is at “${f.path[current]?.name}”. You can review it and forward it directly to “${f.nextStepName}”.`)
+            : L(`النموذج ينتظر مراجعتك (${f.path[current]?.name}). اعتمده لينتقل إلى ${f.nextStepName ?? "الاعتماد النهائي"}، أو علّم المؤشرات التي تحتاج تصحيحًا وأعده.`,
+                "This form is waiting for your review.")} />
       )}
 
       <Panel className="fp-summary">
@@ -243,7 +260,7 @@ export default function FormPage() {
                   title={<><code className="pill-code ltr">{stdLabel(s.standardCode)}</code> {s.standardName}</>}
                   extra={<span className="f-std-count ltr">{s.items.filter((i) => i.value).length}/{s.items.length}</span>}>
                   {rows.map((i) => (
-                    <ValueRow key={`${f.id}:${i.indicatorId}`} formId={f.id} item={i} editable={editable} reviewing={reviewing}
+                    <ValueRow key={`${f.id}:${i.indicatorId}`} formId={f.id} item={i} editable={editable} reviewing={canReturn}
                       mark={marks[i.indicatorId]} onMark={(m) => setMarks((x) => ({ ...x, [i.indicatorId]: m }))} onSaved={onSaved} />
                   ))}
                 </Panel>
@@ -263,7 +280,7 @@ export default function FormPage() {
             color: e.action === "Returned" ? "red" : e.action === "Approved" ? "green" : e.action === "Reopened" ? "var(--ds-status-caution)" : "blue",
             children: (
               <>
-                <b>{eventText(e.action)}</b> — {e.byName} <small className="muted ltr">{formatDateTime(e.at)}</small>
+                <b>{formEventText(e)}</b> — {e.byName} <small className="muted ltr">{formatDateTime(e.at)}</small>
                 {e.note && <div className="muted">{e.note}</div>}
               </>
             ),
@@ -293,7 +310,8 @@ export default function FormPage() {
                     </Popover>}
               </span>
             )}
-            {reviewing && (flaggedCount > 0
+            {directApproval && L("راجع القيم والأدلة قبل الاعتماد المباشر.", "Review values and evidence before direct approval.")}
+            {canReturn && (flaggedCount > 0
               ? L(`علّمت ${flaggedCount} مؤشرًا للتصحيح.`, `${flaggedCount} marked for correction.`)
               : L("راجع القيم والأدلة، ثم اعتمد أو أعد.", "Review values and evidence, then approve or return."))}
           </span>
@@ -311,9 +329,9 @@ export default function FormPage() {
           )}
           {reviewing && (
             <>
-              <Button danger size="large" icon={<RollbackOutlined />} onClick={() => setDialog("return")}>{L("إعادة للتصحيح", "Return")}</Button>
-              <Button type="primary" size="large" icon={<CheckOutlined />} disabled={flaggedCount > 0} onClick={() => setDialog("approve")}>
-                {f.nextStepName ? L("اعتماد وإحالة", "Approve") : L("اعتماد نهائي", "Final approval")}
+              {canReturn && <Button danger size="large" icon={<RollbackOutlined />} onClick={() => setDialog("return")}>{L("إعادة للتصحيح", "Return")}</Button>}
+              <Button type="primary" size="large" icon={<CheckOutlined />} disabled={canReturn && flaggedCount > 0} onClick={() => setDialog("approve")}>
+                {directApproval ? directLabel : f.nextStepName ? L("اعتماد وإحالة", "Approve") : L("اعتماد نهائي", "Final approval")}
               </Button>
             </>
           )}
@@ -386,10 +404,14 @@ function SubmitModal({ form, items, pending, error, onConfirm, onClose }: {
 }
 
 function ApproveModal({ form, onClose, onDone }: { form: Form; onClose: () => void; onDone: (f: Form) => void }) {
-  const run = useMutation({ mutationFn: () => api.post<Form>(`/api/forms/${form.id}/approve`, { note: null }), onSuccess: (f) => { onDone(f); onClose(); } });
+  const [version] = useState(form.version);
+  const run = useMutation({ mutationFn: () => api.post<Form>(`/api/forms/${form.id}/approve`, { note: null, version }), onSuccess: (f) => { onDone(f); onClose(); } });
   const final = !form.nextStepName;
+  const title = form.actions.directDeanApproval ? L("اعتماد مباشر من العميد", "Direct dean approval")
+    : form.actions.directDepartmentApproval ? L("اعتماد مباشر لنموذج القسم", "Direct approval of the department form")
+    : final ? L("الاعتماد النهائي", "Final approval") : L("اعتماد وإحالة", "Approve and forward");
   return (
-    <Modal open title={final ? L("الاعتماد النهائي", "Final approval") : L("اعتماد وإحالة", "Approve and forward")} onCancel={onClose} onOk={() => run.mutate()} confirmLoading={run.isPending}
+    <Modal open title={title} onCancel={onClose} onOk={() => run.mutate()} confirmLoading={run.isPending}
       okText={L("اعتماد", "Approve")} cancelText={L("إلغاء", "Cancel")}>
       {run.error && <Alert type="error" showIcon message={errorText(run.error)} className="mb" />}
       <p>{final
@@ -420,8 +442,4 @@ function ExtendModal({ form, onClose, onDone }: { form: Form; onClose: () => voi
       </AntForm>
     </Modal>
   );
-}
-
-function eventText(a: Form["events"][number]["action"]) {
-  return a === "Submitted" ? L("أرسل للمراجعة", "Submitted") : a === "Approved" ? L("اعتمد", "Approved") : a === "Returned" ? L("أعيد للتصحيح", "Returned") : L("أعيد فتحه", "Reopened");
 }

@@ -33,7 +33,7 @@ public sealed record FormSection(string? PillarCode, string? PillarName, string 
 
 public sealed record FormEventDto(SubmissionAction Action, ApprovalStep FromStep, ApprovalStep ToStep, string? ByName, DateTimeOffset At, string? Note);
 
-public sealed record FormActions(bool CanEdit, bool CanSubmit, bool CanReview, bool CanReopen);
+public sealed record FormActions(bool CanEdit, bool CanSubmit, bool CanReview, bool CanReopen, bool DirectDepartmentApproval, bool DirectDeanApproval);
 
 public sealed record FormDto(
     Guid Id, Guid CycleId, string CycleName, string PeriodLabel, CycleStatus CycleStatus, bool Trial, int TargetYear,
@@ -49,6 +49,8 @@ public sealed record ReturnItem(Guid IndicatorId, string Note);
 public sealed record ReturnRequest(string? Note, IReadOnlyList<ReturnItem>? Items);
 
 public sealed record NoteRequest(string? Note);
+
+public sealed record ApproveFormRequest(string? Note, uint? Version);
 
 public sealed record ExtendRequest(DateOnly DueOn, string? Reason);
 
@@ -90,7 +92,7 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
                 var required = cis.Count(ci => ci.CycleId == s.CycleId && Applies(ci, unit));
                 var waiting = cycle.Status == CycleStatus.Open && (
                     (s.IsEditable && edit.Covers(unit) && me.Has(Feature, Cap.Edit))
-                    || (s.Status == SubmissionStatus.InReview && me.HasSpecial(Feature, ApprovalRules.SpecialFor(s.Step))
+                    || (s.Status == SubmissionStatus.InReview && ApprovalRules.MayReview(me, unit.Kind, s.Step)
                         && !editors.Contains(s.Id) && !approvedByMe.Contains(s.Id)));
                 return new FormRow(s.Id, s.CycleId, cycle.Name, unit.Id, unit.NameAr, unit.Kind, unit.ParentId is { } p ? units[p].NameAr : null,
                     s.Step, ApprovalRules.StepName(s.Step), s.Status, s.DueOn, s.Status != SubmissionStatus.Approved && s.DueOn < today && cycle.Status == CycleStatus.Open,
@@ -202,11 +204,14 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
         return await BuildAsync(ctx, ct);
     }
 
-    public async Task<FormDto> ApproveAsync(Guid id, NoteRequest req, CancellationToken ct)
+    public async Task<FormDto> ApproveAsync(Guid id, ApproveFormRequest req, CancellationToken ct)
     {
         var ctx = await LoadAsync(id, Cap.View, tracking: true, ct);
-        await EnsureReviewerAsync(ctx, ct);
-        var next = ApprovalRules.Next(ctx.Unit.Kind, ctx.Submission.Step);
+        if (req.Version is { } version && version != ctx.Submission.Version)
+            throw new DomainException("conflict", "تغيّر النموذج. حدّث الصفحة ثم أعد المحاولة.", "The form changed. Refresh and try again.", 409);
+        await EnsureReviewerAsync(ctx, ct, allowDirect: true);
+        var next = ApprovalRules.DirectApprovalTo(ctx.Me, ctx.Unit.Kind, ctx.Submission.Step)
+            ?? ApprovalRules.Next(ctx.Unit.Kind, ctx.Submission.Step);
         Move(ctx, SubmissionAction.Approved, next, Require.Optional(req.Note, 2000));
         await db.SaveChangesAsync(ct);
         await notifier.MovedAsync(ctx.Submission, ctx.Unit, ctx.Cycle, ct);
@@ -359,13 +364,12 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
                 : $"النموذج عند «{ApprovalRules.StepName(ctx.Submission.Step)}»؛ لا يعدل حتى يعاد للتصحيح.", "The form is locked.", 409);
     }
 
-    private async Task EnsureReviewerAsync(FormContext ctx, CancellationToken ct)
+    private async Task EnsureReviewerAsync(FormContext ctx, CancellationToken ct, bool allowDirect = false)
     {
         if (ctx.Cycle.Status != CycleStatus.Open) throw new DomainException("cycle_not_open", "الدورة مغلقة.", "The cycle is closed.");
         if (ctx.Submission.Status != SubmissionStatus.InReview)
             throw new DomainException("not_in_review", "النموذج لا ينتظر مراجعة الآن.", "The form is not waiting for review.");
-        var special = ApprovalRules.SpecialFor(ctx.Submission.Step);
-        if (!ctx.Me.HasSpecial(Feature, special)) throw DomainException.Forbidden();
+        if (!ApprovalRules.MayReview(ctx.Me, ctx.Unit.Kind, ctx.Submission.Step, allowDirect)) throw DomainException.Forbidden();
         var history = await db.SubmissionEvents.AsNoTracking().Where(e => e.SubmissionId == ctx.Submission.Id && e.At > (ctx.Submission.SubmittedAt ?? DateTimeOffset.MinValue).AddSeconds(-1)).ToListAsync(ct);
         ApprovalRules.EnsureSeparation(current.UserId!.Value, ctx.Values.Values.Select(v => v.EditedBy), history);
     }
@@ -374,6 +378,7 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
     {
         var s = ctx.Submission;
         var from = s.Step;
+        var direct = action == SubmissionAction.Approved && from == ApprovalStep.DepartmentReview && to == ApprovalStep.Dean;
         db.SubmissionEvents.Add(new SubmissionEvent
         {
             SubmissionId = s.Id, Action = action, FromStep = from, ToStep = to, By = current.UserId!.Value, ByName = current.DisplayName, At = clock.UtcNow, Note = note,
@@ -389,6 +394,9 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
         var (verb, ar, en) = action switch
         {
             SubmissionAction.Submitted => ("dc.form_submitted", "إرسال نموذج جهة للمراجعة", "Submitted a unit form"),
+            SubmissionAction.Approved when direct => ("dc.form_approved_department_directly", "اعتماد مباشر لنموذج القسم من لجنة الكلية", "College committee approved a department form directly"),
+            SubmissionAction.Approved when to == ApprovalStep.Quality && from is ApprovalStep.DepartmentReview or ApprovalStep.CollegeCommittee
+                => ("dc.form_approved_as_dean_directly", "اعتماد مباشر من العميد وإحالة للجودة المركزية", "Dean approved the form directly and forwarded it to central quality"),
             SubmissionAction.Approved => (to == ApprovalStep.Done ? "dc.form_approved_final" : "dc.form_approved", to == ApprovalStep.Done ? "الاعتماد النهائي لنموذج جهة" : "اعتماد خطوة في نموذج جهة", "Approved a unit form step"),
             SubmissionAction.Returned => ("dc.form_returned", "إعادة نموذج جهة للتصحيح", "Returned a unit form"),
             _ => ("dc.form_reopened", "إعادة فتح نموذج معتمد", "Reopened an approved form"),
@@ -481,26 +489,27 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
         var cycleOpen = ctx.Cycle.Status == CycleStatus.Open;
         var canEdit = cycleOpen && s.IsEditable && ctx.Me.Has(Feature, Cap.Edit) && UnitScope.For(ctx.Me, Feature, Cap.Edit).Covers(ctx.Unit);
         var sinceSubmit = events.Where(e => e.At >= (s.SubmittedAt ?? DateTimeOffset.MaxValue).AddSeconds(-1)).ToList();
-        var canReview = cycleOpen && s.Status == SubmissionStatus.InReview && ctx.Me.HasSpecial(Feature, ApprovalRules.SpecialFor(s.Step))
+        var canReview = cycleOpen && s.Status == SubmissionStatus.InReview && ApprovalRules.MayReview(ctx.Me, ctx.Unit.Kind, s.Step)
                         && ctx.Values.Values.All(v => v.EditedBy != current.UserId)
                         && !sinceSubmit.Any(e => e.Action == SubmissionAction.Approved && e.By == current.UserId);
         var canReopen = cycleOpen && s.Status == SubmissionStatus.Approved && ctx.Me.HasSpecial(Features.Cycles, ApprovalRules.Reopen);
+        var directTo = canReview ? ApprovalRules.DirectApprovalTo(ctx.Me, ctx.Unit.Kind, s.Step) : null;
         var next = s.Status == SubmissionStatus.Approved ? null
-            : s.IsEditable ? ApprovalRules.StepName(ApprovalRules.Next(ctx.Unit.Kind, ApprovalStep.Entry))
-            : ApprovalRules.StepName(ApprovalRules.Next(ctx.Unit.Kind, s.Step));
+            : ApprovalRules.StepName(directTo ?? ApprovalRules.Next(ctx.Unit.Kind, s.Step));
 
         return new FormDto(
             s.Id, ctx.Cycle.Id, ctx.Cycle.Name, ctx.Cycle.PeriodLabel, ctx.Cycle.Status, ctx.Cycle.Trial, ctx.Cycle.TargetYear,
             ctx.Unit.Id, ctx.Unit.NameAr, ctx.Unit.Kind, s.Step, s.Status, s.DueOn,
             cycleOpen && s.Status != SubmissionStatus.Approved && s.DueOn < CairoTime.DateOf(clock.UtcNow),
-            path.Select((p, i) => new PathStep(p, ApprovalRules.StepName(p), i < stepIndex ? "done" : i == stepIndex ? "current" : "pending")).ToList(),
+            path.Select((p, i) => new PathStep(p, ApprovalRules.StepName(p), i < stepIndex && events.Any(e => e.At >= s.SubmittedAt && ApprovalRules.SkippedBy(e, p))
+                ? "skipped" : i < stepIndex ? "done" : i == stepIndex ? "current" : "pending")).ToList(),
             next, s.ReturnNote, s.LastEditedAt, ctx.Values.Count, ctx.Indicators.Count,
             ctx.Indicators.GroupBy(i => i.Standard)
                 .Select(g => new FormSection(g.First().Pillar?.Code, g.First().Pillar?.NameAr, g.Key.Code, g.Key.NameAr, g.Select(i => Item(ctx, i, bigChange, targets, docs)).ToList()))
                 .ToList(),
             blocking,
             events.Select(e => new FormEventDto(e.Action, e.FromStep, e.ToStep, e.ByName, e.At, e.Note)).ToList(),
-            new FormActions(canEdit, canEdit && blocking.Count == 0, canReview, canReopen),
+            new FormActions(canEdit, canEdit && blocking.Count == 0, canReview, canReopen, directTo == ApprovalStep.Dean, directTo == ApprovalStep.Quality),
             s.Version);
     }
 }

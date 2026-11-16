@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Tier1.Application.Abstractions;
 using Tier1.Application.Access;
+using Tier1.Application.Collection;
 using Tier1.Domain.Access;
 using Tier1.Domain.Common;
 using Tier1.Domain.Identity;
@@ -17,6 +18,14 @@ namespace Tier1.Infrastructure.Persistence;
 public sealed class Seeder(Tier1DbContext db, IPasswordHasher hasher, ISecretProtector protector, IConfiguration config, ILogger<Seeder> log)
 {
     public const string DemoDomain = "tier1.local";
+    private const string FlowSeedKey = "seed:flow";
+    private const string LegacyFlowCollegeKey = "seed:flow:college-indicators";
+
+    private static readonly HashSet<string> FlowUsers = new(StringComparer.Ordinal)
+    {
+        "sa1", "sa2", "president", "planner", "committee", "quality", "dean", "college", "deptrep", "entry", "entry.uni", "tier1",
+        "rep.ele", "rep.mec", "entry.cs", "college.cs", "dean.cs", "rep.se", "rep.ai",
+    };
 
     /// <summary>كليات تجريبية للتطوير فقط؛ الكليات الحقيقية تدخل من شاشة الجهات أو باستيراد قائمتها الرسمية.</summary>
     private static readonly (string Code, string NameAr, (string Code, string NameAr)[] Departments)[] DemoColleges =
@@ -77,21 +86,54 @@ public sealed class Seeder(Tier1DbContext db, IPasswordHasher hasher, ISecretPro
     public async Task SeedAsync(CancellationToken ct)
     {
         var now = DateTimeOffset.UtcNow;
+        var flow = config.GetValue<bool>("Seed:Flow");
+        var flowSeeded = await db.Settings.AnyAsync(s => s.Key == FlowSeedKey, ct);
+        if (flow != flowSeeded && (await db.OrgUnits.AnyAsync(ct) || flow && await db.Users.AnyAsync(ct)))
+            throw new InvalidOperationException("Keep Seed:Flow on its own database. Start the flow profile with an empty database.");
+        if (flow)
+        {
+            await SeedRolesAsync(now, ct);
+            await SeedFlowAsync(flowSeeded, now, ct);
+            return;
+        }
         await SeedRolesAsync(now, ct);
-        await ReferenceSeed.ApplyAsync(db, now, log, ct);
+        var structure = await UniversityStructure.LoadedAsync(db, ct);
+        if (!structure && config.GetValue<bool>("Seed:Structure") && !await db.OrgUnits.AnyAsync(ct))
+        {
+            // بذر الإطار والهيكل الرسمي معًا على قاعدة جديدة، حتى لو كانت الحسابات التجريبية معطلة.
+            await using var transaction = await db.Database.BeginTransactionAsync(ct);
+            await ReferenceSeed.ApplyAsync(db, now, log, ct);
+            await UniversityStructure.ApplyAsync(db, now, ct);
+            await transaction.CommitAsync(ct);
+            structure = true;
+            log.LogInformation("Loaded the official university structure.");
+        }
+        else
+        {
+            await ReferenceSeed.ApplyAsync(db, now, log, ct);
+        }
         if (config.GetValue<bool>("Seed:Demo"))
         {
-            // النسخة التجريبية تعمل على هيكل الجامعة الرسمي (Seed:Structure)؛ قاعدة التطوير والاختبارات على الكليات التجريبية الثلاث.
-            var structure = await UniversityStructure.LoadedAsync(db, ct);
-            if (!structure && config.GetValue<bool>("Seed:Structure"))
-            {
-                await UniversityStructure.ApplyAsync(db, now, ct);
-                structure = true;
-                log.LogInformation("Loaded the official university structure.");
-            }
             if (!structure) await SeedDemoCollegesAsync(now, ct);
             await SeedDemoUsersAsync(structure, now, ct);
         }
+    }
+
+    private async Task SeedFlowAsync(bool seeded, DateTimeOffset now, CancellationToken ct)
+    {
+        if (await db.Settings.AnyAsync(s => s.Key == LegacyFlowCollegeKey, ct))
+            throw new InvalidOperationException("Start the two-college Flow profile with an empty database. The current database uses the previous college-only definitions.");
+
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        if (!seeded)
+        {
+            await ReferenceSeed.ApplyAsync(db, now, log, ct);
+            await SeedDemoCollegesAsync(now, ct, flow: true);
+            db.Settings.Add(new SystemSetting { Key = FlowSeedKey, Value = "1", UpdatedAt = now });
+        }
+        await SeedDemoUsersAsync(false, now, ct, flow: true);
+        await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
     }
 
     private async Task SeedRolesAsync(DateTimeOffset now, CancellationToken ct)
@@ -128,6 +170,24 @@ public sealed class Seeder(Tier1DbContext db, IPasswordHasher hasher, ISecretPro
         await db.SaveChangesAsync(ct);
         await SeedNewFeatureGrantsAsync(now, ct);
         await ScopeUnitDirectoryOnceAsync(now, ct);
+        await SeedFormApprovalSpecialAsync("CTC", ApprovalRules.ReviewCollege, ApprovalRules.ApproveDepartmentDirectly, now, ct);
+        await SeedFormApprovalSpecialAsync("DEAN", ApprovalRules.ApproveCollege, ApprovalRules.ApproveAsDeanDirectly, now, ct);
+    }
+
+    private async Task SeedFormApprovalSpecialAsync(string roleCode, string existingSpecial, string newSpecial, DateTimeOffset now, CancellationToken ct)
+    {
+        var key = $"catalog:{Features.Forms}:{newSpecial}";
+        if (await db.Settings.AnyAsync(s => s.Key == key, ct)) return;
+        var grants = await (from g in db.RoleGrants
+                            join r in db.Roles on g.RoleId equals r.Id
+                            where r.IsSystem && g.Feature == Features.Forms
+                               && (r.Code == PermissionCatalog.SuperAdminRole || r.Code == roleCode && g.Specials.Contains(existingSpecial))
+                            select g).ToListAsync(ct);
+        foreach (var grant in grants.Where(g => !g.Specials.Contains(newSpecial)))
+            grant.Specials.Add(newSpecial);
+        db.Settings.Add(new SystemSetting { Key = key, Value = "1", UpdatedAt = now });
+        await db.SaveChangesAsync(ct);
+        await db.AccessStates.Where(s => s.Id == 1).ExecuteUpdateAsync(s => s.SetProperty(x => x.Version, x => x.Version + 1), ct);
     }
 
     /// <summary>
@@ -189,12 +249,13 @@ public sealed class Seeder(Tier1DbContext db, IPasswordHasher hasher, ISecretPro
         }
     }
 
-    private async Task SeedDemoCollegesAsync(DateTimeOffset now, CancellationToken ct)
+    private async Task SeedDemoCollegesAsync(DateTimeOffset now, CancellationToken ct, bool flow = false)
     {
         var root = await db.OrgUnits.FirstAsync(u => u.Kind == OrgUnitKind.University, ct);
         var order = 0;
         foreach (var (code, name, departments) in DemoColleges)
         {
+            if (flow && code is not ("ENG" or "CS")) continue;
             order++;
             if (await db.OrgUnits.AnyAsync(u => u.Code == code, ct)) continue;
             var college = new OrgUnit { Code = code, NameAr = name, Kind = OrgUnitKind.College, ParentId = root.Id, Path = OrgUnit.PathOf(root.Path, code), SortOrder = order, CreatedAt = now };
@@ -203,7 +264,7 @@ public sealed class Seeder(Tier1DbContext db, IPasswordHasher hasher, ISecretPro
             foreach (var (dc, dn) in departments)
                 db.OrgUnits.Add(new OrgUnit { Code = dc, NameAr = dn, Kind = OrgUnitKind.Department, ParentId = college.Id, Path = OrgUnit.PathOf(college.Path, dc), SortOrder = ++d, CreatedAt = now });
         }
-        foreach (var (code, name, kind) in DemoCentralUnits)
+        foreach (var (code, name, kind) in flow ? [] : DemoCentralUnits)
         {
             order++;
             if (await db.OrgUnits.AnyAsync(u => u.Code == code, ct)) continue;
@@ -212,15 +273,16 @@ public sealed class Seeder(Tier1DbContext db, IPasswordHasher hasher, ISecretPro
         await db.SaveChangesAsync(ct);
     }
 
-    private async Task SeedDemoUsersAsync(bool structure, DateTimeOffset now, CancellationToken ct)
+    private async Task SeedDemoUsersAsync(bool structure, DateTimeOffset now, CancellationToken ct, bool flow = false)
     {
         var password = config["Seed:DemoPassword"];
         if (string.IsNullOrWhiteSpace(password) || password.Length < 12)
-            throw new InvalidOperationException("Seed:DemoPassword (>= 12 chars) is required when Seed:Demo is true.");
+            throw new InvalidOperationException("Seed:DemoPassword (>= 12 chars) is required for demo accounts.");
         var totp = config["Seed:DemoTotpSecret"];
         var roles = await db.Roles.ToDictionaryAsync(r => r.Code, ct);
         foreach (var (email, demoName, nameEn, roleCode, demoScope) in DemoUsers)
         {
+            if (flow && !FlowUsers.Contains(email.Split('@', 2)[0])) continue;
             if (await db.Users.AnyAsync(u => u.Email == email, ct)) continue;
             // على الهيكل الرسمي: نطاق الحساب واسمه بالجهة الحقيقية المقابلة للجهة التجريبية.
             var scope = structure ? demoScope.Select(UniversityStructure.MapDemoCode).ToArray() : demoScope;

@@ -45,7 +45,7 @@ export interface FormItem {
 
 export interface FormSection { pillarCode: string | null; pillarName: string | null; standardCode: string; standardName: string; items: FormItem[] }
 
-export interface PathStep { step: ApprovalStep; name: string; state: "done" | "current" | "pending" }
+export interface PathStep { step: ApprovalStep; name: string; state: "done" | "current" | "pending" | "skipped" }
 
 export interface FormEvent { action: SubmissionAction; fromStep: ApprovalStep; toStep: ApprovalStep; byName: string | null; at: string; note: string | null }
 
@@ -54,7 +54,7 @@ export interface Form {
   unitId: string; unitName: string; unitKind: OrgUnitKind; step: ApprovalStep; status: SubmissionStatus; dueOn: string; overdue: boolean;
   path: PathStep[]; nextStepName: string | null; returnNote: string | null; lastEditedAt: string | null;
   completed: number; required: number; sections: FormSection[]; blocking: string[]; events: FormEvent[];
-  actions: { canEdit: boolean; canSubmit: boolean; canReview: boolean; canReopen: boolean }; version: number;
+  actions: { canEdit: boolean; canSubmit: boolean; canReview: boolean; canReopen: boolean; directDepartmentApproval: boolean; directDeanApproval: boolean }; version: number;
 }
 
 export interface SaveValue {

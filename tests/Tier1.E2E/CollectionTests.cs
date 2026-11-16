@@ -65,6 +65,18 @@ public sealed class CollectionTests(ITestOutputHelper output)
         t.Check(mine.Any(f => f["unitId"].Str() == eng["id"].Str()), "The Engineering form is in 'required from me'");
         t.Check(mine.All(f => f["unitName"].Truthy()) && !mine.Any(f => f["unitId"].Str() != eng["id"].Str() && f["parentName"].Str() is { } p && p != eng["nameAr"].Str()), "The Engineering entry user sees no other college's forms");
         var formRow = mine.First(f => f["unitId"].Str() == eng["id"].Str());
+        var computingId = units["CS"]["id"].Str();
+        var computingForm = (await planner.Get($"/api/forms?cycleId={cycleId}")).Items()
+            .Single(row => row["unitId"].Str() == computingId);
+        var computingFormId = computingForm["id"].Str();
+        var computingEntry = await Env.As("entry.cs");
+        (status, _) = await computingEntry.Call("GET", $"/api/forms/{computingFormId}");
+        t.Check(status == 200, "The Computing entry user can open their college form");
+        var deanForms = (await dean.Get($"/api/forms?cycleId={cycleId}")).Items();
+        t.Check(deanForms.Any(row => row["id"].Str() == formRow["id"].Str())
+            && deanForms.All(row => row["id"].Str() != computingFormId), "The Engineering dean's form list excludes the Computing form");
+        (status, _) = await dean.Call("GET", $"/api/forms/{computingFormId}");
+        t.Check(status == 404, "The Engineering dean cannot open the Computing form by direct link");
         (status, _) = await viewer.Call("GET", $"/api/forms/{formRow["id"].Str()}");
         t.Check(status == 404, "The computing viewer cannot see the Engineering form (404)");
         var form = (await entry.Get($"/api/forms/{formRow["id"].Str()}"))!;
@@ -131,8 +143,8 @@ public sealed class CollectionTests(ITestOutputHelper output)
         t.Step("3. Return with notes, then the approval path with separation of duties");
         (status, _) = await entry.Call("POST", $"/api/forms/{form["id"].Str()}/approve", Scenario.O(("note", null)));
         t.Check(status == 403, "The entry user cannot approve");
-        (status, _) = await dean.Call("POST", $"/api/forms/{form["id"].Str()}/approve", Scenario.O(("note", null)));
-        t.Check(status == 403, "The dean cannot approve before their turn (college committee step)");
+        (status, _) = await quality.Call("POST", $"/api/forms/{form["id"].Str()}/approve", Scenario.O(("note", null)));
+        t.Check(status == 403, "Central quality cannot approve before its turn");
         t.Check((await college.Get($"/api/forms?cycleId={cycleId}&awaitingMe=true")).Items().Any(f => f["id"].Str() == form["id"].Str()), "The form is in 'required from me' for the college committee");
         (status, _) = await college.Call("POST", $"/api/forms/{form["id"].Str()}/return", Scenario.O(("note", ""), ("items", new JsonArray())));
         t.Check(status == 400, "Returning asks for a note");
@@ -169,6 +181,34 @@ public sealed class CollectionTests(ITestOutputHelper output)
             cf = await deptrep.Ok("POST", $"/api/forms/{cf["id"].Str()}/submit");
             (status, err) = await deptrep.Call("POST", $"/api/forms/{cf["id"].Str()}/approve", Scenario.O(("note", null)));
             t.Check(status == 403 && err.Code().StartsWith("sod_", StringComparison.Ordinal), $"Whoever entered does not review their own form ({err.Code()})");
+
+            var departmentPath = $"/api/forms/{cf["id"].Str()}";
+            var committeeForm = (await college.Get(departmentPath))!;
+            t.Check(committeeForm["actions"]!["directDepartmentApproval"].Truthy(), "The college committee can approve while the department review is pending");
+            t.Check((await college.Get($"/api/forms?cycleId={cycleId}&awaitingMe=true")).Items().Any(f => f["id"].Str() == cf["id"].Str()),
+                "The department form appears in the committee's queue");
+            var version = committeeForm["version"];
+            cf = await college.Ok("POST", departmentPath + "/approve", Scenario.O(("note", null), ("version", version)));
+            t.Check(cf["step"].Str() == "Dean" && cf["path"].Items().Any(p => p["step"].Str() == "DepartmentReview" && p["state"].Str() == "skipped"),
+                "Direct approval skips department review and advances to the dean");
+            t.Check(cf["events"].Items().Any(e => e["action"].Str() == "Approved" && e["fromStep"].Str() == "DepartmentReview" && e["toStep"].Str() == "Dean"),
+                "The form history records direct approval");
+            (status, _) = await deptrep.Call("POST", departmentPath + "/approve", Scenario.O(("note", null), ("version", version)));
+            t.Check(status == 409, "An approval from a stale form version cannot move the form again");
+        }
+
+        if (units.TryGetValue("ENG-ELE", out var ele)
+            && (await entry.Get($"/api/forms?cycleId={cycleId}")).Items().FirstOrDefault(f => f["unitId"].Str() == ele["id"].Str()) is { } eleRow)
+        {
+            var path = $"/api/forms/{eleRow["id"].Str()}";
+            await entry.Fill((await entry.Get(path))!);
+            var ef = await entry.Ok("POST", path + "/submit");
+            var deanForm = (await dean.Get(path))!;
+            t.Check(deanForm["actions"]!["directDeanApproval"].Truthy(), "The dean can approve a department form directly");
+            ef = await dean.Ok("POST", path + "/approve", Scenario.O(("version", ef["version"])));
+            t.Check(ef["step"].Str() == "Quality"
+                && ef["path"].Items().Count(p => p["state"].Str() == "skipped") == 2,
+                "Direct dean approval skips department and college review and advances to central quality");
         }
 
         t.Step("5. Excel import: preview, then all-or-nothing apply");
@@ -239,7 +279,8 @@ public sealed class CollectionTests(ITestOutputHelper output)
         t.Check(engVals.Count > 0, "Engineering results come from its approved form");
         t.Check(resEng["indicators"].Items().All(r => r["summary"].Truthy()), "Every indicator has a readable summary sentence");
         var dres = (await dean.Get($"/api/results?cycleId={cycleId}"))!;
-        t.Check(dres["unit"]!["id"].Str() == eng["id"].Str() && dres["units"].Items().All(u => u["kind"].Str() != "University"), "The dean sees their college, not the university");
+        t.Check(dres["unit"]!["id"].Str() == eng["id"].Str()
+            && dres["units"].Items().All(u => u["id"].Str() == eng["id"].Str()), "The Engineering dean sees only Engineering results");
         t.Check(!dres["canExport"].Truthy(), "The dean cannot export");
         var detail = (await planner.Get($"/api/results/{cycleId}/indicators/{engVals[0]["indicatorId"].Str()}?unitId={eng["id"].Str()}"))!;
         t.Check(detail["trend"].Items().Any(), "The indicator trend across cycles");

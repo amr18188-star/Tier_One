@@ -9,6 +9,7 @@ import { Link, NavLink, matchPath, useLocation, useNavigate } from "react-router
 import { api } from "../api/client";
 import type { RbacChange } from "../api/types";
 import type { IndicatorRow, OrgUnit } from "../api/tier1";
+import { DevRoleTabs } from "../shared/DevRoleTabs";
 import { L, setLang, useLang } from "../shared/i18n";
 import { prefersReducedMotion } from "../shared/entrance";
 import { usePermissions, useSession } from "../shared/session";
@@ -269,6 +270,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <Button className="lcp-burger" type="text" icon={<MenuOutlined aria-hidden />} onClick={() => setDrawer(true)} aria-label={L("القائمة", "Menu")} />
           <GlobalSearch />
           <span className="lcp-top-space" />
+          <DevRoleTabs />
           <Button type="text" className="lcp-lang" onClick={toggleLang}>{lang === "ar" ? "EN" : "ع"}</Button>
           {/* المظهر (لوحة الألوان والزوايا) بجانب اللغة والحساب. */}
           <AppearanceButton tooltip={false} />
