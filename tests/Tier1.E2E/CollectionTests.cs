@@ -65,6 +65,18 @@ public sealed class CollectionTests(ITestOutputHelper output)
         t.Check(mine.Any(f => f["unitId"].Str() == eng["id"].Str()), "The Engineering form is in 'required from me'");
         t.Check(mine.All(f => f["unitName"].Truthy()) && !mine.Any(f => f["unitId"].Str() != eng["id"].Str() && f["parentName"].Str() is { } p && p != eng["nameAr"].Str()), "The Engineering entry user sees no other college's forms");
         var formRow = mine.First(f => f["unitId"].Str() == eng["id"].Str());
+        var computingId = units["CS"]["id"].Str();
+        var computingForm = (await planner.Get($"/api/forms?cycleId={cycleId}")).Items()
+            .Single(row => row["unitId"].Str() == computingId);
+        var computingFormId = computingForm["id"].Str();
+        var computingEntry = await Env.As("entry.cs");
+        (status, _) = await computingEntry.Call("GET", $"/api/forms/{computingFormId}");
+        t.Check(status == 200, "The Computing entry user can open their college form");
+        var deanForms = (await dean.Get($"/api/forms?cycleId={cycleId}")).Items();
+        t.Check(deanForms.Any(row => row["id"].Str() == formRow["id"].Str())
+            && deanForms.All(row => row["id"].Str() != computingFormId), "The Engineering dean's form list excludes the Computing form");
+        (status, _) = await dean.Call("GET", $"/api/forms/{computingFormId}");
+        t.Check(status == 404, "The Engineering dean cannot open the Computing form by direct link");
         (status, _) = await viewer.Call("GET", $"/api/forms/{formRow["id"].Str()}");
         t.Check(status == 404, "The computing viewer cannot see the Engineering form (404)");
         var form = (await entry.Get($"/api/forms/{formRow["id"].Str()}"))!;
@@ -267,7 +279,8 @@ public sealed class CollectionTests(ITestOutputHelper output)
         t.Check(engVals.Count > 0, "Engineering results come from its approved form");
         t.Check(resEng["indicators"].Items().All(r => r["summary"].Truthy()), "Every indicator has a readable summary sentence");
         var dres = (await dean.Get($"/api/results?cycleId={cycleId}"))!;
-        t.Check(dres["unit"]!["id"].Str() == eng["id"].Str() && dres["units"].Items().All(u => u["kind"].Str() != "University"), "The dean sees their college, not the university");
+        t.Check(dres["unit"]!["id"].Str() == eng["id"].Str()
+            && dres["units"].Items().All(u => u["id"].Str() == eng["id"].Str()), "The Engineering dean sees only Engineering results");
         t.Check(!dres["canExport"].Truthy(), "The dean cannot export");
         var detail = (await planner.Get($"/api/results/{cycleId}/indicators/{engVals[0]["indicatorId"].Str()}?unitId={eng["id"].Str()}"))!;
         t.Check(detail["trend"].Items().Any(), "The indicator trend across cycles");

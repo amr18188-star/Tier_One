@@ -57,7 +57,28 @@ public sealed class ScenarioTests(ITestOutputHelper output)
         d = await committee.Ok("POST", $"/api/kpi/indicators/{code}/approve", Scenario.O(("decisionRef", "محضر اللجنة العليا 1/2026")));
         t.Check(d["current"]!["status"].Str() == "Approved", "The higher committee approved the definition");
 
-        t.Step("2. Editing an approved definition creates a new version; the approved one stays in force");
+        // Trial cycles exercise the same definition snapshot without consuming official quarters.
+        async Task<string> OpenTrialAsync()
+        {
+            var label = $"تعريف-{Calls.Tag()}";
+            var cycle = await planner.Ok("POST", "/api/cycles", Scenario.O(("name", label), ("periodLabel", label),
+                ("targetYear", 2027), ("opensOn", Calls.Today()), ("dueOn", Calls.Today(14)), ("trial", true)));
+            var cycleId = cycle["id"].Str()!;
+            await planner.Ok("POST", $"/api/cycles/{cycleId}/open");
+            return cycleId;
+        }
+
+        async Task<string?> FormDenominatorAsync(string cycleId)
+        {
+            var formRow = (await planner.Get($"/api/forms?cycleId={cycleId}")).Items()
+                .Single(row => row["unitId"].Str() == eng["id"].Str());
+            var form = (await planner.Get($"/api/forms/{formRow["id"].Str()}"))!;
+            return form.ItemsOf().Single(item => item["code"].Str() == code)["denominatorLabel"].Str();
+        }
+
+        var firstCycle = await OpenTrialAsync();
+        t.Check(await FormDenominatorAsync(firstCycle) == "المقام", "The open form uses the original denominator");
+        t.Step("2. Approving a revision keeps the open cycle frozen and updates the next cycle");
         v = d["current"]!;
         body = DefinitionBody(v, withOwner: true);
         if (d["actions"]!["editCreatesVersion"].Truthy())
@@ -65,12 +86,24 @@ public sealed class ScenarioTests(ITestOutputHelper output)
             (status, err) = await planner.Call("PUT", $"/api/kpi/indicators/{code}/definition", body);
             t.Check(status == 400 && err.Code() == "change_reason_required", "Editing an approved definition without a reason is refused");
             body["changeReason"] = "حصر الأبحاث في Scopus فقط بقرار اللجنة";
-            body["denominator"] = "الأبحاث المفهرسة في Scopus";
+            const string revisedDenominator = "الأبحاث المفهرسة في Scopus";
+            body["denominator"] = revisedDenominator;
             d = await planner.Ok("PUT", $"/api/kpi/indicators/{code}/definition", body);
             t.Check((d["current"]!["number"].Num() ?? 0) >= 2 && d["current"]!["status"].Str() == "Draft", $"Version {d["current"]!["number"].Num()} created as a draft");
-            t.Check(d["effective"].Truthy() && d["effective"]!["denominator"].Str() != "الأبحاث المفهرسة في Scopus", "The previous approved version is still in force with its old denominator");
+            await planner.Ok("POST", $"/api/kpi/indicators/{code}/submit");
+            d = (await planner.Get($"/api/kpi/indicators/{code}"))!;
+            t.Check(d["effective"]?["denominator"].Str() == "المقام", "The submitted revision leaves the original denominator effective");
+            d = await committee.Ok("POST", $"/api/kpi/indicators/{code}/approve", Scenario.O(("decisionRef", "محضر اعتماد الإصدار الثاني")));
+            // The detail response omits Effective when Current is already the effective version.
+            t.Check(d["effective"] is null && d["current"]!["status"].Str() == "Approved"
+                && d["current"]!["denominator"].Str() == revisedDenominator, "Approval makes the revised denominator effective");
+            var secondCycle = await OpenTrialAsync();
+            t.Check(await FormDenominatorAsync(firstCycle) == "المقام", "The original open cycle keeps its frozen denominator");
+            t.Check(await FormDenominatorAsync(secondCycle) == revisedDenominator, "The newly opened cycle uses the revised denominator");
+            await planner.Ok("POST", $"/api/cycles/{secondCycle}/close", Scenario.O(("note", "انتهاء اختبار تثبيت التعريف")));
         }
-        else t.Check(true, "The new version already exists from an earlier run");
+        else t.Check(false, "The approved definition should allow a revision");
+        await planner.Ok("POST", $"/api/cycles/{firstCycle}/close", Scenario.O(("note", "انتهاء اختبار تثبيت التعريف")));
 
         t.Step("3. Targets: college scope, distribution and separation of duties in approval");
         string? code2 = null; int year = 0;
