@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { DownOutlined } from "@ant-design/icons";
 import { useSearchParams } from "react-router-dom";
+import { QueryError, type QueryLike } from "./QueryState";
+import { PanelSkeleton } from "./PanelSkeleton";
 import "./accordion-panel.css";
 
 /**
@@ -83,7 +85,7 @@ export function useSingleOpen(opts?: { param?: string; keys?: string[] }): {
  * id فريد في الصفحة: منه معرفا الرأس (`${id}-head`) والمحتوى (`${id}-body`).
  * header محتوى زر: عناصر سطرية فقط (span، b، small …).
  */
-export function AccordionPanel({ id, open, onToggle, header, children, className, style }: {
+export function AccordionPanel({ id, open, onToggle, header, children, className, style, query, skeleton, onIntent }: {
   id: string;
   open: boolean;
   onToggle: () => void;
@@ -91,11 +93,28 @@ export function AccordionPanel({ id, open, onToggle, header, children, className
   children: ReactNode;
   className?: string;
   style?: CSSProperties;
+  /**
+   * استعلام جسم اللوحة (إن كان محتواها من الخادم): تفتح اللوحة فورًا بحركتها المعتادة وتعرض skeleton أثناء التحميل الأول،
+   * ثم يكبر ارتفاعها بسلاسة إلى المحتوى (الشبكة 0fr ← 1fr تتبع ارتفاع المحتوى مهما تغير)، وعند الفشل تعرض خطأ مع «أعد المحاولة» داخلها.
+   * الاستعلام المخزن (data موجودة) لا يعرض هيكلًا. children تُرسم بعد وصول البيانات فقط، فيجوز أن تقرأ data مباشرة.
+   */
+  query?: QueryLike;
+  /** شكل الهيكل؛ الافتراضي PanelSkeleton بثلاثة صفوف. */
+  skeleton?: ReactNode;
+  /** تحويم أو تركيز على الرأس: مكان جلب مسبق (queryClient.prefetchQuery). */
+  onIntent?: () => void;
 }) {
   const headId = `${id}-head`, bodyId = `${id}-body`;
+  let body: ReactNode = children;
+  if (query) {
+    if (query.isLoading) body = skeleton ?? <PanelSkeleton />;
+    else if (query.isError && query.data === undefined)
+      body = <div className="ds-acc-state"><QueryError error={query.error} onRetry={() => void query.refetch()} /></div>;
+  }
   return (
     <div className={className ? `ds-acc ${className}` : "ds-acc"} data-open={open ? "true" : "false"} style={style}>
       <button type="button" id={headId} className="ds-acc-head" aria-expanded={open} aria-controls={bodyId}
+        onMouseEnter={onIntent} onFocus={onIntent}
         onClick={(e) => {
           if (!open) keepHeadInView(e.currentTarget);
           onToggle();
@@ -103,8 +122,8 @@ export function AccordionPanel({ id, open, onToggle, header, children, className
         <span className="ds-acc-title">{header}</span>
         <DownOutlined className="ds-acc-chev" aria-hidden />
       </button>
-      <div id={bodyId} className="ds-acc-body" role="region" aria-labelledby={headId}>
-        <div className="ds-acc-inner">{children}</div>
+      <div id={bodyId} className="ds-acc-body" role="region" aria-labelledby={headId} aria-busy={query?.isLoading ? true : undefined}>
+        <div className="ds-acc-inner">{body}</div>
       </div>
     </div>
   );
@@ -131,4 +150,28 @@ function keepHeadInView(head: HTMLElement) {
   if (top >= ceil && bottom <= floor) return;
   const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
   window.scrollTo({ top: Math.max(0, window.scrollY + top - ceil - 8), behavior: reduce ? "auto" : "smooth" });
+}
+
+/**
+ * جسم يطوى بالحركة نفسها (220ms، 0fr ← 1fr) لعنصر ليس له رأس لوحة (مثل تفصيل صف): يرسم children عند أول فتح ويبقيها بعده
+ * فتنطوي بحركة وتحفظ حالتها، والمطوي مخفي عن Tab وقارئ الشاشة. الزر المتحكم يحمل aria-expanded وaria-controls={id}.
+ */
+export function Reveal({ open, id, children }: { open: boolean; id: string; children: ReactNode }) {
+  const [shown, setShown] = useState(open);
+  if (open && !shown) setShown(true);
+  // أول فتح: يرسم مطويًا ثم يفتح بعد 30ms، فتجري الحركة بدل ظهور الجسم مفتوحًا دفعة واحدة.
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!open || armed) return;
+    const t = window.setTimeout(() => setArmed(true), 30);
+    return () => window.clearTimeout(t);
+  }, [open, armed, shown]);
+  if (!shown) return null;
+  return (
+    <div className="ds-acc ds-reveal" data-open={open && armed ? "true" : "false"}>
+      <div id={id} className="ds-acc-body" role="region">
+        <div className="ds-acc-inner">{children}</div>
+      </div>
+    </div>
+  );
 }

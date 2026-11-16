@@ -29,6 +29,15 @@ export function LoginPage() {
   );
 }
 
+/** سهم الزر: يشير في اتجاه القراءة (ينقلب في العربية عبر CSS). */
+function ArrowIcon() {
+  return (
+    <svg className="lgn-arrow" viewBox="0 0 24 24" width="18" height="18" aria-hidden focusable="false" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 12h14M13 6l6 6-6 6" />
+    </svg>
+  );
+}
+
 function PasswordStep() {
   const reload = useReloadSession();
   const [error, setError] = useState<string | null>(null);
@@ -47,17 +56,17 @@ function PasswordStep() {
   }
   return (
     <>
-      <Typography.Title level={3}>{L("مرحبًا بك", "Welcome")}</Typography.Title>
-      <Typography.Paragraph type="secondary">{L("سجّل دخولك بحساب الجامعة للمتابعة.", "Sign in with your university account to continue.")}</Typography.Paragraph>
+      <Typography.Title level={3}>{L("تسجيل الدخول", "Sign in")}</Typography.Title>
+      <Typography.Paragraph type="secondary">{L("أدخل بريد الجامعة وكلمة المرور للمتابعة.", "Enter your university email and password to continue.")}</Typography.Paragraph>
       {error && <Alert type="error" showIcon message={error} className="mb" />}
       <Form layout="vertical" onFinish={submit} requiredMark={false} initialValues={{ email: devRoleEmail() }}>
         <Form.Item name="email" label={L("البريد الإلكتروني", "Email")} rules={[{ required: true, message: L("اكتب البريد", "Enter your email") }]}>
-          <Input prefix={<MailOutlined />} autoComplete="username" dir="ltr" size="large" />
+          <Input prefix={<MailOutlined />} autoComplete="username" dir="ltr" />
         </Form.Item>
         <Form.Item name="password" label={L("كلمة المرور", "Password")} rules={[{ required: true, message: L("اكتب كلمة المرور", "Enter your password") }]}>
-          <Input.Password prefix={<LockOutlined />} autoComplete="current-password" dir="ltr" size="large" />
+          <Input.Password prefix={<LockOutlined />} autoComplete="current-password" dir="ltr" />
         </Form.Item>
-        <Button type="primary" htmlType="submit" block size="large" loading={busy}>{L("تسجيل الدخول", "Sign in")}</Button>
+        <Button type="primary" htmlType="submit" block loading={busy}>{L("تسجيل الدخول", "Sign in")}<ArrowIcon /></Button>
       </Form>
     </>
   );
@@ -86,9 +95,9 @@ function CodeStep() {
       {error && <Alert type="error" showIcon message={error} className="mb" />}
       <Form layout="vertical" onFinish={submit} requiredMark={false}>
         <Form.Item name="code" label={L("رمز تطبيق المصادقة", "Authenticator code")} rules={[{ required: true, pattern: /^\d{6}$/, message: L("ستة أرقام", "Six digits") }]}>
-          <Input prefix={<SafetyOutlined />} inputMode="numeric" autoComplete="one-time-code" maxLength={6} dir="ltr" size="large" className="code-input" />
+          <Input prefix={<SafetyOutlined />} inputMode="numeric" autoComplete="one-time-code" maxLength={6} dir="ltr" className="code-input" />
         </Form.Item>
-        <Button type="primary" htmlType="submit" block size="large" loading={busy}>{L("تحقق", "Verify")}</Button>
+        <Button type="primary" htmlType="submit" block loading={busy}>{L("تحقق", "Verify")}</Button>
       </Form>
       <SignOutLink />
     </>
@@ -126,16 +135,16 @@ function EnrollStep() {
       <Typography.Paragraph type="secondary">{L("دورك يتطلب التحقق بخطوتين. امسح الرمز بتطبيق مصادقة ثم اكتب الرمز الذي يظهر.", "Your role requires two-step verification. Scan the code with an authenticator app, then enter the code it shows.")}</Typography.Paragraph>
       {error && <Alert type="error" showIcon message={error} className="mb" />}
       {!setup ? (
-        <Button type="primary" block size="large" onClick={start}>{L("ابدأ الإعداد", "Start setup")}</Button>
+        <Button type="primary" block onClick={start}>{L("ابدأ الإعداد", "Start setup")}</Button>
       ) : (
         <>
           <div className="qr-box"><Image src={setup.qrDataUri} alt={L("رمز QR للإعداد", "Setup QR code")} preview={false} width={180} /></div>
           <Typography.Paragraph copyable={{ text: setup.secret }} className="secret">{setup.secret}</Typography.Paragraph>
           <Form layout="vertical" onFinish={enable} requiredMark={false}>
             <Form.Item name="code" label={L("رمز تطبيق المصادقة", "Authenticator code")} rules={[{ required: true, pattern: /^\d{6}$/, message: L("ستة أرقام", "Six digits") }]}>
-              <Input inputMode="numeric" maxLength={6} dir="ltr" size="large" className="code-input" />
+              <Input inputMode="numeric" maxLength={6} dir="ltr" className="code-input" />
             </Form.Item>
-            <Button type="primary" htmlType="submit" block size="large" loading={busy}>{L("فعّل وادخل", "Enable and continue")}</Button>
+            <Button type="primary" htmlType="submit" block loading={busy}>{L("فعّل وادخل", "Enable and continue")}</Button>
           </Form>
         </>
       )}

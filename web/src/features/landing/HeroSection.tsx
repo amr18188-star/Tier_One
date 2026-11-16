@@ -1,142 +1,105 @@
-import { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Icon } from "./Icon";
+import { ArrowLeft, ArrowRight, Languages } from "lucide-react";
+import { L, setLang, useLang } from "../../shared/i18n";
 import universityLogo from "../../assets/brand/capital-university-logo-dark.png";
-import strategyLogoDark from "../../assets/brand/strategy-performance-dark.png";
-
-/** Two decorative signal lines (rising and falling) behind the hero text. */
-function HeroChart() {
-  const { greenPoints, redPoints } = useMemo(() => {
-    const green: string[] = [];
-    const red: string[] = [];
-
-    for (let i = 0; i < 120; i++) {
-      const x = (i / 119) * 1000;
-      const greenY = 180 + Math.sin(i * 0.18) * 45 + Math.cos(i * 0.43) * 20;
-      const redY = 210 + Math.cos(i * 0.16) * 40 + Math.sin(i * 0.38) * 25;
-
-      green.push(`${x},${greenY}`);
-      red.push(`${x},${redY}`);
-    }
-
-    return { greenPoints: green, redPoints: red };
-  }, []);
-
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 h-full w-full opacity-60"
-      viewBox="0 0 1000 400"
-      preserveAspectRatio="none"
-      fill="none"
-    >
-      <defs>
-        <linearGradient id="heroGreenGradient" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" style={{ stopColor: "var(--ds-chart-up)" }} stopOpacity="0.15" />
-          <stop offset="100%" style={{ stopColor: "var(--ds-chart-up)" }} stopOpacity="0" />
-        </linearGradient>
-
-        <linearGradient id="heroRedGradient" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" style={{ stopColor: "var(--ds-chart-down)" }} stopOpacity="0.12" />
-          <stop offset="100%" style={{ stopColor: "var(--ds-chart-down)" }} stopOpacity="0" />
-        </linearGradient>
-
-        <filter id="heroGreenGlow">
-          <feGaussianBlur stdDeviation="3" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-
-        <filter id="heroRedGlow">
-          <feGaussianBlur stdDeviation="3" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-
-      <polygon points={`0,400 ${greenPoints.join(" ")} 1000,400`} fill="url(#heroGreenGradient)" />
-
-      <polygon points={`0,400 ${redPoints.join(" ")} 1000,400`} fill="url(#heroRedGradient)" />
-
-      <polyline
-        points={greenPoints.join(" ")}
-        className="stroke-ds-chart-up"
-        strokeWidth="2"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-        filter="url(#heroGreenGlow)"
-      />
-
-      <polyline
-        points={redPoints.join(" ")}
-        className="stroke-ds-chart-down"
-        strokeWidth="2"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-        filter="url(#heroRedGlow)"
-      />
-    </svg>
-  );
-}
+import tierLogo from "../../assets/brand/sidebarLogo.png";
+import strategyLogo from "../../assets/brand/strategy-performance-dark.png";
+import { HeroChart } from "./HeroChart";
 
 export function HeroSection() {
+  const lang = useLang();
+  const isAr = lang === "ar";
+  const Arrow = isAr ? ArrowLeft : ArrowRight;
+
   return (
-    <section
-      data-section="dark"
-      className="landing-hero relative isolate overflow-hidden px-5 text-ds-fg sm:px-10"
-    >
-      {/* Grid */}
+    <section data-section="dark" className="landing-hero relative isolate flex flex-col overflow-hidden text-ds-fg">
+      {/* Grid texture, vignette, gold orbit */}
       <div
+        aria-hidden="true"
         className="pointer-events-none absolute inset-0 opacity-40"
         style={{ backgroundImage: "var(--ds-texture-hero)", backgroundSize: "40px 40px" }}
       />
-
-      <HeroChart />
-
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{ background: "var(--ds-hero-vignette)" }} />
       <div aria-hidden="true" className="landing-hero-orbit pointer-events-none absolute" />
 
-      {/* Overlay */}
-      <div className="pointer-events-none absolute inset-0" style={{ background: "var(--ds-hero-vignette)" }} />
+      {/* Chart along the bottom edge */}
+      <div className="landing-hero-chart pointer-events-none absolute inset-x-0 bottom-0">
+        <HeroChart />
+      </div>
 
-      <div className="landing-hero-content relative z-10 mx-auto w-full max-w-7xl">
-        <div className="landing-hero-university">
-          <img src={universityLogo} alt="جامعة العاصمة" />
-        </div>
+      {/* Header: Tier1 logo and the language switch only */}
+      <header className="relative z-10 mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-5 py-4 sm:px-10">
+        <img src={tierLogo} alt="Tier1" className="landing-hero-tier h-10 w-auto sm:h-12" />
 
-        <div className="landing-hero-main">
-          <div className="landing-hero-brand">
-            <img
-              src={strategyLogoDark}
-              alt="الخطة الاستراتيجية وتقييم الأداء، جامعة العاصمة"
-              width={1536}
-              height={1024}
-              fetchPriority="high"
-            />
+        <button
+          type="button"
+          onClick={() => setLang(isAr ? "en" : "ar")}
+          lang={isAr ? "en" : "ar"}
+          className="inline-flex min-h-11 items-center gap-2 rounded-ds-md border border-ds-btn-ghost-border px-4 text-sm font-semibold text-ds-btn-ghost-fg transition-colors hover:border-ds-btn-ghost-hover-border hover:bg-ds-btn-ghost-hover-bg hover:text-ds-btn-ghost-hover-fg"
+        >
+          <Languages size={18} aria-hidden="true" />
+          <span>{isAr ? "English" : "عربي"}</span>
+        </button>
+      </header>
+
+      {/* Content */}
+      <div className="relative z-10 mx-auto grid w-full max-w-7xl flex-1 items-center gap-8 px-5 py-6 sm:px-10 lg:grid-cols-[1.15fr_.85fr] lg:gap-12">
+        <div className="landing-rise flex min-w-0 flex-col items-start">
+          <div className="mb-5 flex items-center gap-3">
+            <span aria-hidden="true" className="h-0.5 w-10 bg-ds-accent sm:w-14" />
+            <span className="text-sm font-bold tracking-wide text-ds-eyebrow sm:text-base">
+              {L("جامعة العاصمة · الخطة الاستراتيجية", "Capital University · Strategic Plan")}{" "}
+              <span className="inline-block whitespace-nowrap">2027–2031</span>
+            </span>
           </div>
 
-          <h1 className="landing-hero-title text-ds-heading">
-            من الرؤية إلى <span className="text-ds-highlight-display">أثر قابل للقياس</span>
+          <h1 className="font-ds-heading text-4xl font-bold leading-[1.4] text-ds-heading sm:text-5xl xl:text-6xl">
+            {L("من الرؤية إلى", "From vision to")}
+            <span className="block text-ds-highlight-display">{L("أثر قابل للقياس", "measurable impact")}</span>
           </h1>
 
-          <p className="landing-hero-description text-ds-body-strong">
-            نربط أهداف جامعة العاصمة بمؤشرات الأداء والمبادرات، لنرى التقدم بوضوح ونطوّر أثره باستمرار.
+          <p className="mt-5 max-w-xl text-base leading-8 text-ds-body-strong sm:text-lg">
+            {L(
+              "ستة محاور تقود الخطة، ومؤشرات تُقاس كل ربع سنة، لتصل إلى بطاقة أداء الجامعة وترتيبها.",
+              "Six pillars drive the plan. Indicators are measured every quarter, feeding the university scorecard and ranking.",
+            )}
           </p>
 
           <Link
             to="/login"
-            className="landing-hero-cta group flex items-center gap-4 rounded-ds-md border border-ds-btn-primary-border bg-ds-btn-primary-bg px-8 py-3 text-sm font-bold text-ds-btn-primary-fg transition-all hover:border-ds-btn-primary-hover-border hover:bg-ds-btn-primary-hover-bg hover:text-ds-btn-primary-hover-fg"
+            className="group mt-7 inline-flex min-h-12 items-center gap-3 rounded-ds-md border border-ds-btn-primary-border bg-ds-btn-primary-bg px-8 py-3 text-base font-bold text-ds-btn-primary-fg transition-colors hover:border-ds-btn-primary-hover-border hover:bg-ds-btn-primary-hover-bg hover:text-ds-btn-primary-hover-fg"
           >
-            <span>الدخول إلى المنظومة</span>
-            <Icon name="arrow" size={19} className="transition-transform rtl:group-hover:-translate-x-1 ltr:group-hover:translate-x-1" />
+            <span>{L("الدخول إلى المنظومة", "Enter the platform")}</span>
+            <Arrow
+              size={19}
+              aria-hidden="true"
+              className="transition-transform motion-reduce:transition-none rtl:group-hover:-translate-x-1 ltr:group-hover:translate-x-1"
+            />
           </Link>
+        </div>
+
+        {/* Logos */}
+        <div className="landing-rise landing-rise-2 flex items-center justify-center gap-5 sm:gap-8 xl:gap-10">
+          <img src={universityLogo} alt={L("جامعة العاصمة", "Capital University")} className="landing-hero-logo w-auto shrink-0 object-contain" />
+          <span aria-hidden="true" className="landing-hero-divider w-px shrink-0 bg-gradient-to-b from-transparent via-ds-accent to-transparent" />
+          <img
+            src={strategyLogo}
+            alt={L("الخطة الاستراتيجية وتقييم الأداء", "Strategic plan and performance evaluation")}
+            width={1536}
+            height={1024}
+            fetchPriority="high"
+            className="landing-hero-logo-wide shrink-0 object-contain"
+          />
         </div>
       </div>
 
-      {/* Bottom Indicator */}
-      <div className="absolute bottom-0 left-0 right-0 h-1 bg-ds-accent/40" />
+      {/* Footer line */}
+      <footer className="relative z-10 mx-auto w-full max-w-7xl px-5 pb-3 pt-1 text-center text-xs leading-6 text-ds-body sm:px-10">
+        {L(
+          `© ${new Date().getFullYear()} جامعة العاصمة · مركز الاتصالات وتكنولوجيا المعلومات`,
+          `© ${new Date().getFullYear()} Capital University · Center for Communication and Information Technology`,
+        )}
+      </footer>
     </section>
   );
 }

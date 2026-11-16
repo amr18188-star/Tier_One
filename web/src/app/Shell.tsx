@@ -11,6 +11,7 @@ import type { RbacChange } from "../api/types";
 import type { IndicatorRow, OrgUnit } from "../api/tier1";
 import { DevRoleTabs } from "../shared/DevRoleTabs";
 import { L, setLang, useLang } from "../shared/i18n";
+import { prefersReducedMotion } from "../shared/entrance";
 import { usePermissions, useSession } from "../shared/session";
 import { initials } from "../shared/ui";
 import { AppearanceButton } from "./AppearanceMenu";
@@ -23,6 +24,7 @@ import "../shared/tier1.css";
 import "../shared/theme.css";
 import "../shared/layout.css";
 import "./nav.css";
+import "./entrance.css";
 
 interface NavItem { to: string; icon: ReactNode; label: string; end?: boolean; badge?: number; badgeText?: string; tab?: boolean }
 // icon: أيقونة المجموعة في الشريط المطوي وحده (زر المجموعة)؛ لا تتكرر أيقونة رابط فيها. رؤوس الموسع نص فقط.
@@ -112,6 +114,15 @@ export function Shell({ children }: { children: ReactNode }) {
   const perms = usePermissions();
   const lang = useLang();
   const [drawer, setDrawer] = useState(false);
+
+  // حركة الشريطين الجانبي والعلوي: عند تحميل الصفحة كاملة أو بعد الدخول (Shell يركب حينها فقط)، للمسؤول على «/»؛ لا تعاد عند التنقل الداخلي.
+  // محتوى الصفحة الرئيسية يتحرك عند كل تركيب بنفسه (entrance.css).
+  const [entering, setEntering] = useState(() => perms.isSuperAdmin && !prefersReducedMotion() && ["/", "/login"].includes(window.location.pathname)); // «/login» يحول إلى «/» فور التركيب
+  useEffect(() => {
+    if (!entering) return;
+    const id = window.setTimeout(() => setEntering(false), 2400);
+    return () => window.clearTimeout(id);
+  }, [entering]);
 
   // الشريط المطوي. «railing» طوال تغير العرض فقط: النصوص فيه سطر واحد يتلاشى (nav.css)؛ بلا حركة (تقليل الحركة) لا حاجة إليه.
   const sideId = useId();
@@ -242,7 +253,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const tabs = visible.flatMap((g) => g.items).filter((n) => n.tab).slice(0, 5);
 
   return (
-    <div className={["lcp lcp-staff", rail && "is-rail", railing && "is-railing"].filter(Boolean).join(" ")}>
+    <div className={["lcp lcp-staff", rail && "is-rail", railing && "is-railing", entering && "is-enter"].filter(Boolean).join(" ")}>
       <aside id={sideId} className="lcp-side">
         <div className="lcp-side-head">
           {brand}

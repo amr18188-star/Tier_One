@@ -1,19 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, App, Button, Input, InputNumber, Tag, Tooltip } from "antd";
 import { CheckCircleOutlined, DownOutlined, SearchOutlined, SendOutlined, SwapOutlined } from "@ant-design/icons";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { api } from "../../api/client";
 import type { Cycle } from "../../api/collection";
 import type { Review, ReviewCycle, ReviewRow, ReviewState } from "../../api/scorecard";
-import { AccordionPanel, useSingleOpen } from "../../shared/AccordionPanel";
+import { AccordionPanel, Reveal, useSingleOpen } from "../../shared/AccordionPanel";
 import { howCalculated } from "../../shared/calc";
 import { errorText, formatDateTime } from "../../shared/format";
 import { L } from "../../shared/i18n";
 import { aggregation, cycleStatus, num, submissionStatus } from "../../shared/labels";
 import { stdLabel, tint, usePillarMap, type PillarInfo } from "../../shared/pillars";
-import { QueryState } from "../../shared/QueryState";
+import { QueryError } from "../../shared/QueryState";
 import { usePermissions } from "../../shared/session";
+import { PanelSkeleton } from "../../shared/PanelSkeleton";
 import { EmptyNote, FilterMeta, PageHeader } from "../../shared/ui";
 import { usePeriodParams, useSearchState } from "../../shared/usePeriodParams";
 import { pillarNum } from "../strategy/model";
@@ -81,6 +82,8 @@ export default function ReviewPage() {
   const cycleId = navMode ? period.cycle?.id : params.get("cycle") ?? undefined;
   const review = useQuery({
     queryKey: ["review", cycleId], queryFn: () => api.get<Review>(`/api/review${cycleId ? `?cycleId=${cycleId}` : ""}`), enabled: !waiting && !noCycleInYear,
+    // تغيير الربع أو السنة يغير المفتاح: تبقى ركائز الربع السابق ظاهرة (وأجسامها هياكل) حتى يصل الجديد، فلا تُمحى اللوحات وتعود.
+    placeholderData: keepPreviousData,
   });
   const qc = useQueryClient();
   const { message, modal } = App.useApp();
@@ -145,7 +148,10 @@ export default function ReviewPage() {
   const purpose = L("راجع تقدم الكليات في كل مؤشر وحساب الجامعة منها، ثم انقل القيمة إلى مؤشر الجامعة؛ المنقول وحده يدخل بطاقة الأداء والفئة وملف المجلس.",
     "Check each college's progress and the computed university value, then transfer it. Only transferred values enter the scorecard, the tier and the board file.");
   // ما دام الشريط ينتظر الدورات والتقويم، المراجعة «تحمل» (الاستعلام لم يبدأ بعد).
-  const reviewState = { ...review, isLoading: review.isLoading || waiting };
+  // جسم اللوحات يعرض هيكلًا في التحميل الأول، وأثناء انتظار الربع الجديد (بيانات السابق مؤقتة).
+  const reviewState = { ...review, isLoading: review.isLoading || waiting || review.isPlaceholderData };
+  const firstLoad = !r && reviewState.isLoading;
+  const failed = !r && review.isError && !reviewState.isLoading;
 
   return (
     <>
@@ -185,22 +191,23 @@ export default function ReviewPage() {
             {L(`لا دورة ربعية للمراجعة في ${period.value.year ?? ""}: تظهر المراجعة بعد فتح دورة ربعية في هذه السنة.`, `No quarterly cycle to review in ${period.value.year ?? ""}.`)}
           </EmptyNote>
         ) : (
-          <QueryState query={reviewState}>
-            {() => !r!.cycle ? (
+          failed ? <QueryError error={review.error} onRetry={() => void review.refetch()} />
+          : r && !r.cycle ? (
               <EmptyNote action={cyclesLink}>
                 {L("تظهر المراجعة بعد فتح أول دورة ربعية رسمية واعتماد نماذج الكليات.", "Open a quarterly cycle first.")}
               </EmptyNote>
-            ) : rows.length === 0 ? (
+            ) : r && rows.length === 0 ? (
               <EmptyNote action={(otherCycle || cyclesLink) && (
                 <span className="rv-empty-actions">
                   {otherCycle && <Button onClick={() => goToCycle(otherCycle.id, otherCycle.year)}>{L(`عرض ${otherCycle.label}`, `Show ${otherCycle.year} · Q${otherCycle.quarter}`)}</Button>}
                   {cyclesLink}
                 </span>
               )}>
-                {L(`لا مؤشرات للمراجعة في ${r!.cycle.label} بعد: تظهر حين تعتمد الكليات نماذج هذا الربع.`, "No indicators to review for this quarter yet.")}
+                {L(`لا مؤشرات للمراجعة في ${r!.cycle!.label} بعد: تظهر حين تعتمد الكليات نماذج هذا الربع.`, "No indicators to review for this quarter yet.")}
               </EmptyNote>
             ) : (
               <>
+                {r && (
                 <div className="lcp-filters rv-toolbar">
                   <Input className="rv-search" allowClear prefix={<SearchOutlined aria-hidden />} value={q} onChange={(e) => setQ(e.target.value)}
                     placeholder={L("كود المؤشر أو اسمه", "Code or name")} aria-label={L("بحث بكود المؤشر أو اسمه", "Search by code or name")} />
@@ -216,8 +223,9 @@ export default function ReviewPage() {
                     ))}
                   </div>
                 </div>
+                )}
 
-                {panels.length === 0 ? (
+                {r && panels.length === 0 ? (
                   <EmptyNote action={<Button onClick={resetFilters}>{L("إعادة ضبط المرشحات", "Reset filters")}</Button>}>
                     {L("لا مؤشرات تطابق البحث أو الحالة المختارة.", "No indicators match the search or the selected state.")}
                   </EmptyNote>
@@ -225,7 +233,8 @@ export default function ReviewPage() {
                   <div className="rv-acc">
                     {panels.map((g) => (
                       <AccordionPanel key={g.key} id={`rv-p-${g.key}`} className="rv-pillar" style={tint(g.index)}
-                        open={openKey === g.key} onToggle={() => toggle(g.key)} header={<PillarHeader group={g} filtering={filtering} />}>
+                        open={openKey === g.key} onToggle={() => toggle(g.key)} header={<PillarHeader group={g} filtering={filtering} loading={firstLoad} />}
+                        query={reviewState} skeleton={<PanelSkeleton rows={Math.min(Math.max(g.all.length, 3), 6)} variant="rows" />}>
                         {g.all.length === 0 ? (
                           <div className="rv-pillar-empty"><EmptyNote>{L("لا مؤشرات من هذه الركيزة تجمع في هذا الربع.", "No indicators of this pillar are collected this quarter.")}</EmptyNote></div>
                         ) : (
@@ -241,8 +250,7 @@ export default function ReviewPage() {
                   </div>
                 )}
               </>
-            )}
-          </QueryState>
+            )
         )}
       </div>
     </>
@@ -250,7 +258,7 @@ export default function ReviewPage() {
 }
 
 /** رأس الركيزة (داخل زر اللوحة، فعناصر سطرية فقط): الرقم 01…06 والاسم، وعدد المؤشرات وحالاتها، والمنقول منها بشريط. */
-function PillarHeader({ group, filtering }: { group: PillarGroup; filtering: boolean }) {
+function PillarHeader({ group, filtering, loading }: { group: PillarGroup; filtering: boolean; loading?: boolean }) {
   const { index, info, all, shown } = group;
   const total = all.length;
   const moved = all.filter((x) => x.state === "Transferred").length;
@@ -262,16 +270,16 @@ function PillarHeader({ group, filtering }: { group: PillarGroup; filtering: boo
       <span className="rv-p-main">
         <b className="rv-p-name">{name}</b>
         <span className="rv-p-sum">
-          {filtering
+          {loading ? null : filtering
             ? <span>{L("المطابقة", "Matching")} <span className="ltr">{shown.length}/{total}</span></span>
             : <span>{indicatorCount(total)}</span>}
-          {!filtering && SUMMARY_ORDER.map((s) => {
+          {!filtering && !loading && SUMMARY_ORDER.map((s) => {
             const n = all.filter((x) => x.state === s).length;
             return n === 0 ? null : <span key={s} className="rv-p-st" data-st={s}><i aria-hidden />{L(stateOf(s).ar, stateOf(s).en)} <span className="ltr">{n}</span></span>;
           })}
         </span>
       </span>
-      {total > 0 && (
+      {total > 0 && !loading && (
         <span className="rv-p-state">
           <span className="rv-p-state-label">{L("منقول", "Transferred")} <b className="ltr">{moved}/{total}</b></span>
           <span className="rv-p-bar" aria-hidden><i style={{ width: `${pct}%` }} /></span>
@@ -288,7 +296,7 @@ function IndicatorRow({ row, cycleId, canTransfer, open, onToggle }: { row: Revi
   const max = Math.max(1, ...row.units.map(measure));
   return (
     <article className={`rv-row${open ? " open" : ""}`}>
-      <button type="button" className="rv-head" onClick={onToggle} aria-expanded={open}>
+      <button type="button" className="rv-head" onClick={onToggle} aria-expanded={open} aria-controls={`rv-d-${row.indicatorId}`}>
         <span className="rv-name">
           <code className="pill-code ltr">{row.code}</code>
           <b>{row.name}</b>
@@ -317,7 +325,7 @@ function IndicatorRow({ row, cycleId, canTransfer, open, onToggle }: { row: Revi
         </span>
         <span className="rv-state"><Tag color={st.color}>{L(st.ar, st.en)}</Tag><DownOutlined className="rv-caret" aria-hidden /></span>
       </button>
-      {open && <Detail row={row} cycleId={cycleId} canTransfer={canTransfer} />}
+      <Reveal open={open} id={`rv-d-${row.indicatorId}`}><Detail row={row} cycleId={cycleId} canTransfer={canTransfer} /></Reveal>
     </article>
   );
 }
@@ -419,7 +427,7 @@ function Detail({ row, cycleId, canTransfer }: { row: ReviewRow; cycleId: string
         <div className="rv-transfer">
           <label>
             <span>{L("القيمة التي تنقل إلى مؤشر الجامعة", "Value to transfer")}</span>
-            <InputNumber value={value} onChange={(v) => setValue(v)} className="ltr" style={{ width: 180 }} addonAfter={row.unit.trim() === "%" ? "%" : undefined} />
+            <InputNumber value={value} onChange={(v) => setValue(v)} className="ltr" style={{ width: 180 }} suffix={row.unit.trim() === "%" ? "%" : undefined} />
           </label>
           {needNote && (
             <label className="grow">

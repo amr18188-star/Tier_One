@@ -13,6 +13,7 @@ import type { Home, StrategyTree } from "../../api/tier1";
 import { L, useLang } from "../../shared/i18n";
 import { StdCode, tint, usePillarMap } from "../../shared/pillars";
 import { QueryState } from "../../shared/QueryState";
+import { CountUp } from "../../shared/useCountUp";
 import { usePermissions } from "../../shared/session";
 import { PlanCtx, type PlanContext, type ResultMap } from "../strategy/model";
 import { DotLegend, StateBar } from "../strategy/PlanMap";
@@ -131,7 +132,7 @@ function ResultsCard({ results, periods, period, onPeriod }: {
         ) : (
           <div className="han-results">
             <div className="han-summary">
-              <b className="ltr">{r.formsTotal}</b>
+              <b className="ltr"><CountUp value={r.formsTotal} /></b>
               <span>{L("إجمالي النماذج", "Total forms")}</span>
               <small>{L(`${r.formsApproved} معتمد نهائيًا`, `${r.formsApproved} approved`)}</small>
             </div>
@@ -165,7 +166,7 @@ function ScoreRow() {
           {() => (
             <div className="han-score">
               <div className="han-score-main">
-                <b className="ltr">{c!.overall.score}</b>
+                <b className="ltr"><CountUp value={c!.overall.score} /></b>
                 <span>{L(`الفئة ${c!.overall.tier.finalTier}: ${c!.tiers.find((t) => t.tier === c!.overall.tier.finalTier)?.nameAr ?? ""}`, `Tier ${c!.overall.tier.finalTier}`)}</span>
                 <small>{c!.lastReported ? L(`حتى ${c!.lastReported.label}`, `Up to ${c!.lastReported.label}`) : L("لم تعتمد قيم أي ربع بعد", "No approved quarter yet")}</small>
               </div>
@@ -266,12 +267,12 @@ function DefinitionSections({ home }: { home: ReturnType<typeof useHome> }) {
   return (
     <>
       <div className="han-kpis">
-        <KpiCard icon={<UnorderedListOutlined />} tone="ok" label={L("مؤشرات معتمدة", "Approved indicators")} value={`${approved} / ${total}`}
+        <KpiCard icon={<UnorderedListOutlined />} tone="ok" label={L("مؤشرات معتمدة", "Approved indicators")} value={<><CountUp value={approved} /> / {total}</>}
           hint={L("تعريفات معتمدة في القاموس", "Approved definitions")} to="/indicators?status=Approved" loading={home.isLoading} />
-        <KpiCard icon={<FileDoneOutlined />} tone="review" label={L("تنتظر الاعتماد", "Awaiting approval")} value={status("UnderReview")}
+        <KpiCard icon={<FileDoneOutlined />} tone="review" label={L("تنتظر الاعتماد", "Awaiting approval")} value={<CountUp value={status("UnderReview")} />}
           hint={L("تعريفات قيد الاعتماد", "Definitions under review")} to="/indicators?status=UnderReview" loading={home.isLoading} />
         {d?.structureAveragePercent !== null && d?.structureAveragePercent !== undefined && (
-          <KpiCard icon={<ClusterOutlined />} tone="gold" label={L("اكتمال هياكل الكليات", "College structures complete")} value={`${d.structureAveragePercent}%`}
+          <KpiCard icon={<ClusterOutlined />} tone="gold" label={L("اكتمال هياكل الكليات", "College structures complete")} value={<CountUp value={d.structureAveragePercent} suffix="%" />}
             hint={L(`${d.collegeCount} كلية ومعهد`, `${d.collegeCount} colleges`)} to="/structure" loading={home.isLoading} />
         )}
       </div>

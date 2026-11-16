@@ -1,8 +1,0 @@
-/* يبقى شعار المنظومة مقروءًا فوق النموذج، مع تصغيره تدريجيًا على الهواتف الضيقة. */
-.auth-brand { object-fit: contain; object-position: center; }
-
-@media (max-width: 420px) {
-  .auth-brand { width: min(100%, 240px); }
-  .auth-side .auth-uni img { height: 40px; }
-  .auth-side .auth-pitch h1 { font-size: 16px; }
-}

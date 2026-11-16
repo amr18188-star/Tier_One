@@ -1,0 +1,27 @@
+/* هيكل تحميل اللوحة (PanelSkeleton.tsx): رموز --ds-* فقط، والزوايا من --ds-radius-*، والاتجاه منطقي فيصلح لـ RTL. */
+.ds-skel { display: grid; gap: var(--ds-space-sm); padding: var(--ds-space-md); }
+.ds-skel i {
+  display: block; height: 12px; border-radius: var(--ds-radius-sm);
+  background: var(--ds-app-muted-bg); background-size: 200% 100%;
+}
+.ds-skel .w90 { width: 90%; } .ds-skel .w70 { width: 70%; } .ds-skel .w60 { width: 60%; } .ds-skel .w40 { width: 40%; }
+.ds-skel-row { display: flex; align-items: center; gap: var(--ds-space-sm); }
+.ds-skel-row .dot { flex: none; width: 28px; height: 28px; border-radius: var(--ds-radius-md); }
+.ds-skel-row i:last-child { flex: 1 1 auto; }
+.ds-skel-cards { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+.ds-skel-card {
+  display: grid; gap: var(--ds-space-sm); padding: var(--ds-space-md);
+  border: 1px solid var(--ds-border); border-radius: var(--ds-radius-md); background: var(--ds-surface);
+}
+.ds-skel-tr { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: var(--ds-space-md); align-items: center; padding-block: var(--ds-space-xs); border-bottom: 1px solid var(--ds-line-soft); }
+.ds-skel-tr.head i { height: 10px; opacity: 0.7; }
+.ds-skel-tr i { height: 14px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .ds-skel i {
+    background-image: linear-gradient(90deg, transparent 0%, var(--ds-app-row-hover) 50%, transparent 100%);
+    animation: ds-skel-shimmer 1.4s linear infinite;
+  }
+  html[dir="rtl"] .ds-skel i { animation-direction: reverse; }
+}
+@keyframes ds-skel-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }

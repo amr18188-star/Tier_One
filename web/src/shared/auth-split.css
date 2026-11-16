@@ -1,0 +1,163 @@
+/*
+ * الدخول بتقسيم نصفين. ألوان من --ds-* فقط، وخصائص منطقية (RTL أولًا).
+ * النموذج على سطح فاتح، واللوحة كحلية (data-section="dark") وزواياها من مقياس --ds-radius-*؛ الحقول والزر بحجم التطبيق الافتراضي.
+ */
+.lgn-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  background: var(--ds-bg);
+  color: var(--ds-fg);
+  overflow-x: clip;
+}
+
+/* ---------- نصف النموذج ---------- */
+.lgn-form { display: flex; flex-direction: column; padding: 28px clamp(20px, 4vw, 56px) 20px; min-width: 0; }
+.lgn-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.lgn-brand { display: block; height: 44px; width: auto; max-width: 60%; object-fit: contain; object-position: start center; }
+.lgn-card { width: 100%; max-width: 420px; margin: auto; padding: 24px 0; }
+.lgn-mark { display: block; height: 64px; width: auto; margin: 0 auto 16px; }
+.lgn-head { text-align: center; margin-bottom: 20px; }
+.lgn-head h2 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 28px; line-height: 1.5; color: var(--ds-heading); }
+.lgn-head p { margin: 4px 0 0; color: var(--ds-body); font-size: 14px; line-height: 1.75; }
+.lgn-card > h3.ant-typography { text-align: center; font-family: var(--font-display); font-size: 28px; margin-bottom: 4px; }
+.lgn-card > .ant-typography:not(h3) { text-align: center; margin-bottom: 20px; font-size: 14px; line-height: 1.75; }
+.lgn-arrow { flex: none; transition: transform 0.25s ease; }
+html[dir="rtl"] .lgn-arrow { transform: scaleX(-1); }
+.lgn-copy-note { margin: 0; text-align: center; color: var(--ds-body); font-size: 12px; }
+
+/* ---------- نصف العرض (كحلي) ---------- */
+.lgn-show {
+  position: relative; overflow: hidden; isolation: isolate;
+  display: flex; flex-direction: column;
+  padding: 40px clamp(28px, 4vw, 64px) 0;
+  color: var(--ds-fg);
+  background: var(--ds-gradient-auth);
+  border-start-start-radius: var(--ds-radius-xl);
+  border-end-start-radius: var(--ds-radius-xl);
+}
+.lgn-uni { position: absolute; top: 32px; inset-inline-end: clamp(24px, 3vw, 48px); height: 72px; width: auto; z-index: 2; }
+.lgn-band-title { display: none; margin: 0; }
+
+.lgn-copy { margin-top: clamp(64px, 9vh, 100px); padding-inline-start: clamp(24px, 6vw, 96px); max-width: 640px; position: relative; z-index: 2; }
+.lgn-texts { display: grid; }
+.lgn-text {
+  grid-area: 1 / 1; text-align: start;
+  opacity: 0; transform: translateY(14px); visibility: hidden;
+  transition: opacity 400ms ease, transform 400ms ease, visibility 0s linear 400ms;
+}
+.lgn-text[data-active="true"] {
+  opacity: 1; transform: none; visibility: visible;
+  transition: opacity 600ms ease 200ms, transform 600ms ease 200ms, visibility 0s linear 0s;
+}
+.lgn-text h2 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: clamp(26px, 2.6vw, 40px); line-height: 1.5; color: var(--ds-heading); }
+.lgn-text h2 span { color: var(--ds-highlight); }
+.lgn-text p { margin: 6px 0 0; color: var(--ds-on-dark-body); font-size: clamp(14px, 1.2vw, 17px); line-height: 1.8; }
+
+.lgn-dots { display: flex; align-items: center; gap: 8px; margin-top: 22px; }
+.lgn-dot {
+  appearance: none; border: 0; padding: 0; cursor: pointer; height: 8px; width: 8px; border-radius: var(--ds-radius-pill);
+  background: color-mix(in srgb, var(--ds-fg) 35%, transparent);
+  transition: width 500ms ease, background-color 500ms ease;
+}
+.lgn-dot[data-active="true"] { width: 40px; background: var(--ds-accent); }
+.lgn-dot:hover { background: color-mix(in srgb, var(--ds-fg) 60%, transparent); }
+.lgn-dot[data-active="true"]:hover { background: var(--ds-accent); }
+/* مساحة لمس أكبر حول النقطة دون تغيير شكلها */
+.lgn-dot { position: relative; }
+.lgn-dot::after { content: ""; position: absolute; inset: -10px -4px; }
+
+.lgn-stage {
+  position: relative; flex: 1; min-height: 260px; margin-top: 20px; padding-bottom: 32px;
+  display: flex; align-items: center; justify-content: center;
+  container-type: size; perspective: 1400px; perspective-origin: 50% 40%;
+  --tx: 0; --ty: 0; /* ميل الفأرة (-1..1) يضبطه AuthShowcase */
+}
+/* الإطار بنسبة الصورة ويتسع للوحة كاملًا؛ ميل ثلاثي الأبعاد نحو النموذج (ينعكس في RTL) */
+/* الطفو على غلاف مستقل عن ميل الفأرة (على .lgn-device) كي لا يلغي أحدهما transform الآخر */
+.lgn-float {
+  position: relative; flex: none; width: min(88cqw, calc(88cqh * 1.78));
+  transform-style: preserve-3d; --sgn: 1;
+  animation: lgn-float 7s ease-in-out infinite alternate; will-change: transform;
+}
+html[dir="rtl"] .lgn-float { --sgn: -1; }
+@keyframes lgn-float {
+  from { transform: translateY(0) rotateX(0deg) rotateY(0deg); }
+  to { transform: translateY(-12px) rotateX(1.5deg) rotateY(calc(var(--sgn) * 1.5deg)); }
+}
+/* ظل أرضي يصغر ويخف كلما ارتفع الإطار */
+.lgn-ground {
+  position: absolute; inset-inline: 10%; bottom: -30px; height: 26px; pointer-events: none;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--ds-shade) 75%, transparent), transparent);
+  animation: lgn-ground 7s ease-in-out infinite alternate; will-change: transform, opacity;
+}
+@keyframes lgn-ground { from { transform: scale(1); opacity: 0.8; } to { transform: scale(0.82); opacity: 0.45; } }
+.lgn-device {
+  position: relative; width: 100%;
+  padding: 6px; border-radius: var(--ds-radius-lg);
+  background: color-mix(in srgb, var(--ds-fg) 16%, var(--ds-bg));
+  border: 1px solid color-mix(in srgb, var(--ds-fg) 32%, transparent);
+  transform-style: preserve-3d; backface-visibility: hidden;
+  transform: rotateX(calc(8deg + var(--ty) * 4deg)) rotateY(calc(-20deg + var(--tx) * 6deg)) rotateZ(0.5deg);
+  transition: transform 450ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  will-change: transform;
+}
+html[dir="rtl"] .lgn-device { transform: rotateX(calc(8deg + var(--ty) * 4deg)) rotateY(calc(20deg + var(--tx) * 6deg)) rotateZ(-0.5deg); }
+/* سماكة الجهاز: لوح خلفي أغمق مزاح للخلف فيظهر حافة جانبية عند الدوران، ومعه ظل طبقي ناعم */
+.lgn-device::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit;
+  background: color-mix(in srgb, var(--ds-shade) 70%, var(--ds-fg));
+  transform: translateZ(-24px); backface-visibility: hidden;
+  box-shadow:
+    0 2px 4px color-mix(in srgb, var(--ds-shade) 50%, transparent),
+    0 18px 28px -6px color-mix(in srgb, var(--ds-shade) 55%, transparent),
+    0 48px 72px -12px color-mix(in srgb, var(--ds-shade) 70%, transparent);
+}
+.lgn-screen {
+  position: relative; border-radius: var(--ds-radius-md); overflow: hidden; background: var(--ds-bg);
+  /* نسبة الإطار تتبع الشريحة الظاهرة فتملأ الصورة الشاشة بالضبط بلا شريط علوي أو سفلي */
+  aspect-ratio: var(--ar, 2.04); transition: aspect-ratio 600ms ease; transform: translateZ(0);
+}
+/* لمعان خفيف يقطع الشاشة بزاوية */
+.lgn-screen::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(115deg, color-mix(in srgb, var(--ds-fg) 16%, transparent) 0%, transparent 38%, transparent 70%, color-mix(in srgb, var(--ds-fg) 6%, transparent) 100%);
+}
+.lgn-shot {
+  position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover;
+  opacity: 0; transform: translateY(14px) scale(0.97); z-index: 0;
+  /* الخارجة تبقى ظاهرة حتى تكتمل الداخلة فوقها: انتقال متقاطع بلا وميض للخلفية */
+  transition: opacity 0s linear 650ms, transform 0s linear 650ms;
+  backface-visibility: hidden; will-change: opacity, transform;
+}
+.lgn-shot[data-active="true"] { opacity: 1; transform: none; z-index: 1; transition: opacity 600ms ease, transform 700ms ease; }
+.lgn-screen::after { z-index: 2; }
+
+.lgn-dot:focus-visible, .lgn-card :focus-visible { outline: 2px solid var(--ds-focus-ring); outline-offset: 3px; }
+.lgn-form :focus-visible { outline-color: var(--ds-focus-ring); }
+.lgn-show :focus-visible { outline: 2px solid var(--ds-focus-ring); outline-offset: 4px; }
+
+/* ---------- أقل من 1024px: اللوحة شريط علوي صغير ---------- */
+@media (max-width: 1023px) {
+  .lgn-page { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .lgn-show {
+    order: -1; flex-direction: row; align-items: center; gap: 14px; padding: 10px 20px;
+    border-radius: 0; background: var(--ds-gradient-auth);
+  }
+  .lgn-uni { position: static; height: 44px; flex: none; }
+  .lgn-band-title { display: block; font-family: var(--font-display); font-weight: 700; font-size: 16px; line-height: 1.5; color: var(--ds-heading); }
+  .lgn-copy, .lgn-stage { display: none; }
+  .lgn-form { padding-block: 16px; }
+  .lgn-brand { height: 44px; }
+}
+@media (max-width: 420px) {
+  .lgn-head h2, .lgn-card > h3.ant-typography { font-size: 24px; }
+  .lgn-band-title { font-size: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lgn-float, .lgn-ground { animation: none; }
+  .lgn-screen { transition: none; }
+  .lgn-device, .lgn-text, .lgn-text[data-active="true"], .lgn-shot, .lgn-shot[data-active="true"], .lgn-dot, .lgn-arrow { transition: none; }
+}
