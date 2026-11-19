@@ -18,6 +18,9 @@ import { groupResultIndicators } from "./indicatorGroups";
 import "./results.css";
 
 const PERF: Performance[] = ["Achieved", "Near", "Behind", "NoData", "NoTarget", "Incomplete", "NotStarted"];
+
+/** حصة من مستهدف الجامعة (0–1) نسبة مئوية بخانة عشرية واحدة؛ الحصة الموجبة الأصغر من 0.1% لا تعرض صفرًا. */
+const pct = (x: number) => (x > 0 && x < 0.0005 ? "<0.1%" : `${Math.round(x * 1000) / 10}%`);
 const PERF_COLORS: Record<string, string> = { Achieved: "var(--ds-status-ok)", Near: "var(--ds-status-near)", Behind: "var(--ds-status-late-ink)", NoData: "var(--ds-status-none)", NoTarget: "var(--ds-status-none-ink)" };
 
 /**
@@ -114,8 +117,18 @@ export default function ResultsPage() {
         },
         { title: L("الإنجاز", "Achievement"), key: "p", width: 190, render: (_, i) => <Achievement i={i} /> },
         ...(r && r.unit.kind !== "University" ? [{
-          title: L("من نسبة الجامعة المرجوة", "vs university target"), key: "u", width: 150,
-          render: (_: unknown, i: IndicatorResult) => i.universityTarget === null || i.targetSource === "University" ? <span className="muted">—</span> : (
+          title: L("مقارنة بمستهدف الجامعة", "vs university target"), key: "u", width: 170,
+          render: (_: unknown, i: IndicatorResult) => i.universityTotalTarget != null ? (
+            // مؤشر مجموع (عدد): مساهمة الكلية في رقم الجامعة المرجو، مستهدفًا وإنجازًا.
+            <Tooltip title={L(`مستهدف الجامعة كلها ${withUnit(i.universityTotalTarget, i.unit)}${i.targetShare != null ? `؛ مستهدف كليتك ${pct(i.targetShare)} منه` : ""}${i.actualShare != null ? `، وما حققته ${pct(i.actualShare)} منه` : ""}.`,
+              `University total ${withUnit(i.universityTotalTarget, i.unit)}.`)}>
+              <span className="t1-share">
+                <small className="muted">{L("الحصة", "Share")}</small>{" "}
+                <span className="ltr">{i.targetShare != null ? pct(i.targetShare) : "—"}</span>
+                {i.actualShare != null && <> · <small className="muted">{L("حققت", "Done")}</small> <b className="ltr">{pct(i.actualShare)}</b></>}
+              </span>
+            </Tooltip>
+          ) : i.universityTarget === null || i.targetSource === "University" ? <span className="muted">—</span> : (
             <Tooltip title={L(`مستهدف الجامعة ${withUnit(i.universityTarget, i.unit)}`, `University target ${withUnit(i.universityTarget, i.unit)}`)}>
               <span className="ltr">{withUnit(i.universityTarget, i.unit)}</span>
               {i.universityAchievement !== null && <b className="ltr ms">{Math.round(i.universityAchievement * 100)}%</b>}

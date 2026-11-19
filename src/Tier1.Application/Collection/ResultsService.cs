@@ -13,13 +13,15 @@ namespace Tier1.Application.Collection;
 public sealed record ResultUnit(Guid Id, string Name, OrgUnitKind Kind);
 
 /// <summary>
-/// نتيجة مؤشر لجهة. PendingTarget: مستهدف مقترح بانتظار اعتماد اللجنة العليا (D3)، للعرض فقط؛ الأداء يقاس بـ Target المعتمد. للكلية في مؤشر نسبة أو متوسط: مستهدف الجامعة ونسبة الإنجاز منه أيضًا، فتعرف بعدها عن نسبة الجامعة المرجوة.
+/// نتيجة مؤشر لجهة. UniversityTotalTarget وTargetShare وActualShare: لكلية في مؤشر مجموع، مستهدف الجامعة الكلي وحصة مستهدف الكلية وما حققته منه.
+/// PendingTarget: مستهدف مقترح بانتظار اعتماد اللجنة العليا (D3)، للعرض فقط؛ الأداء يقاس بـ Target المعتمد. للكلية في مؤشر نسبة أو متوسط: مستهدف الجامعة ونسبة الإنجاز منه أيضًا، فتعرف بعدها عن نسبة الجامعة المرجوة.
 /// </summary>
 public sealed record IndicatorResult(
     Guid IndicatorId, string Code, string Name, string StandardCode, string Unit, Direction Direction, CollectionLevel Level,
     decimal? Actual, decimal? Target, decimal? Baseline, decimal? Previous, decimal? Achievement, Performance Performance,
     int Reported, int Expected, string? Note, string Summary,
-    Kpi.TargetSource TargetSource, int? TargetYear, decimal? UniversityTarget, decimal? UniversityAchievement, decimal? PendingTarget = null, int? PendingTargetYear = null);
+    Kpi.TargetSource TargetSource, int? TargetYear, decimal? UniversityTarget, decimal? UniversityAchievement, decimal? PendingTarget = null, int? PendingTargetYear = null,
+    decimal? UniversityTotalTarget = null, decimal? TargetShare = null, decimal? ActualShare = null);
 
 public sealed record StandardResult(string Code, string Name, int Indicators, int Achieved, int Near, int Behind, int NoData, int NoTarget);
 
@@ -381,12 +383,17 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
         var uniTarget = unit.Kind != OrgUnitKind.University && Kpi.TargetLookup.ComparableAcrossLevels(i.Version.Aggregation)
             ? Kpi.TargetLookup.University([.. s.Targets[i.Ci.IndicatorId]], s.Root.Id, s.Cycle.TargetYear, s.PlanStart.GetValueOrDefault(i.Ci.IndicatorId))
             : null;
+        // للكلية في مؤشر مجموع (عدد): مستهدف الجامعة الكلي وحصتها منه، مستهدفًا وإنجازًا، لتعرف مساهمتها في رقم الجامعة.
+        var universityTotal = unit.Kind != OrgUnitKind.University && i.Version.Aggregation == Aggregation.Sum
+            ? Kpi.TargetLookup.University([.. s.Targets[i.Ci.IndicatorId]], s.Root.Id, s.Cycle.TargetYear, s.PlanStart.GetValueOrDefault(i.Ci.IndicatorId))
+            : null;
         var note = target.NotStarted ? $"يبدأ مستهدف المؤشر في {target.Year}." : agg.Note;
         return new IndicatorResult(i.Ci.IndicatorId, i.Ci.Code, i.Version.NameAr, i.Standard.Code, i.Version.Unit, i.Version.Direction, i.Ci.Level,
             agg.Value, target.Value, baseline, prev, ResultsRules.Achievement(i.Version.Direction, agg.Value, target.Value),
             ResultsRules.Status(i.Version.Aggregation, i.Version.Direction, agg, target.Value, target.NotStarted, near), agg.Reported, agg.Expected, note,
             ResultsRules.Summary(who, i.Version.Unit, i.Version.Direction, agg.Value, target.Value, prev),
-            target.Source, target.Year, uniTarget, ResultsRules.Achievement(i.Version.Direction, agg.Value, uniTarget), target.PendingValue, target.PendingYear);
+            target.Source, target.Year, uniTarget, ResultsRules.Achievement(i.Version.Direction, agg.Value, uniTarget), target.PendingValue, target.PendingYear,
+            universityTotal, ResultsRules.ShareOfUniversity(target.Value, universityTotal), ResultsRules.ShareOfUniversity(agg.Value, universityTotal));
     }
 
     private static List<ResultUnit> VisibleUnits(Snapshot s, UnitScope scope)

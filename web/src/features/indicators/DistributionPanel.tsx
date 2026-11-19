@@ -35,6 +35,10 @@ export function DistributionPanel({ code }: { code: string }) {
           <div className="t1-summary">
             <Tag color={distributionStatus[r!.status].color}>{distributionStatus[r!.status].text}</Tag> {r!.summaryAr}
             <div className="t1-help">{L("قاعدة التجميع:", "Aggregation:")} {aggregation[t!.aggregation]}</div>
+            {dist.data!.ownUnitsOnly && (
+              <div className="t1-help">{L("تظهر مستهدفات كليتك وحدها بجانب مستهدف الجامعة وإجمالي التوزيع؛ مستهدفات الكليات الأخرى لا تظهر لك.",
+                "Only your college targets are shown, next to the university target and the overall distribution.")}</div>
+            )}
           </div>
           {dist.data!.shares.length === 0 ? (
             <p className="muted">{L("لا توجد كليات في الهيكل بعد. أضفها من صفحة «الجهات».", "No colleges yet. Add them from the Units page.")}</p>

@@ -123,6 +123,7 @@ export interface Distribution {
   year: number;
   result: { status: DistributionStatus; universityValue: number | null; collegesValue: number | null; gap: number | null; collegeCount: number; missingCount: number; summaryAr: string };
   shares: CollegeShare[];
+  /** المستخدم يرى كليات نطاقه وحدها مع إجمالي التوزيع (SEC-3). */ ownUnitsOnly?: boolean;
 }
 
 // ----- التعارضات -----

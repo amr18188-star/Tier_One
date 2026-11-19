@@ -89,6 +89,8 @@ export interface IndicatorResult {
   reported: number; expected: number; note: string | null; summary: string;
   targetSource: TargetSource; targetYear: number | null; universityTarget: number | null; universityAchievement: number | null;
   /** مستهدف مقترح بانتظار الاعتماد (D3)، للعرض فقط. */ pendingTarget?: number | null; pendingTargetYear?: number | null;
+  /** لكلية في مؤشر مجموع: مستهدف الجامعة الكلي، وحصة مستهدف الكلية وما حققته منه (0–1). */
+  universityTotalTarget?: number | null; targetShare?: number | null; actualShare?: number | null;
 }
 
 export interface StandardResult { code: string; name: string; indicators: number; achieved: number; near: number; behind: number; noData: number; noTarget: number }

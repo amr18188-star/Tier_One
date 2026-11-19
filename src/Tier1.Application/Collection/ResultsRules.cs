@@ -97,6 +97,13 @@ public static class ResultsRules
         Kpi.Achievement.Ratio(direction, actual, target) is { } r ? decimal.Round(r, 4) : null;
 
     /// <summary>
+    /// حصة الكلية من مستهدف الجامعة في مؤشر مجموع (عدد): كم يساهم مستهدفها أو ما حققته في رقم الجامعة المرجو.
+    /// لا معنى لها في النسب والمتوسطات (تقارن هناك بمستهدف الجامعة نفسه)، ولا مع مستهدف جامعة صفري.
+    /// </summary>
+    public static decimal? ShareOfUniversity(decimal? part, decimal? universityTarget) =>
+        part is { } p && universityTarget is { } u && u != 0 ? decimal.Round(p / u, 4) : null;
+
+    /// <summary>
     /// الحكم على القيمة. للوصول إلى قيمة: محقق إن كان الانحراف نصف هامش «القريب» أو أقل (5% افتراضيًا)، وقريب حتى الهامش كله (10%).
     /// </summary>
     public static Performance Judge(Direction direction, decimal? actual, decimal? target, decimal near = NearRatio)

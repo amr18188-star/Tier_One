@@ -27,7 +27,8 @@ public sealed record SaveTargetRequest(
     Guid UnitId, int Year, TargetKind Kind, decimal? Value, string? Text, decimal? Numerator, decimal? Denominator,
     string? Source, string? Note, string? Reason, string? DecisionRef, uint? Version);
 
-public sealed record DistributionDto(int Year, DistributionResult Result, IReadOnlyList<CollegeShare> Shares);
+/// <param name="OwnUnitsOnly">المستخدم يرى كليات نطاقه وحدها، مع إجمالي التوزيع على الجامعة دون أرقام الكليات الأخرى (SEC-3).</param>
+public sealed record DistributionDto(int Year, DistributionResult Result, IReadOnlyList<CollegeShare> Shares, bool OwnUnitsOnly = false);
 
 public sealed record PlanValue(int Year, decimal? Value);
 
@@ -279,7 +280,8 @@ public sealed class TargetsService(IAppDb db, IClock clock, ICurrentUser current
     /// <summary>هل يحقق توزيع الكليات مستهدف الجامعة لهذه السنة؟ الكلية بلا مستهدف خاص يسري عليها الموحد «لكل كلية».</summary>
     public async Task<DistributionDto> DistributionAsync(string code, int year, CancellationToken ct)
     {
-        await access.RequireAsync(Feature, Cap.View, ct);
+        var me = await access.RequireAsync(Feature, Cap.View, ct);
+        var scope = UnitScope.For(me, Feature, Cap.View);
         var (indicator, version) = await LoadIndicatorAsync(code, ct);
         var university = await UniversityAsync(ct);
         var colleges = await db.OrgUnits.AsNoTracking()
@@ -298,7 +300,11 @@ public sealed class TargetsService(IAppDb db, IClock clock, ICurrentUser current
         }).ToList();
 
         var result = DistributionRules.Compare(version.Aggregation, version.Direction, version.Unit.Trim() == "%", uni?.Value, shares);
-        return new DistributionDto(year, result, shares);
+        // الإجمالي يحسب من كل الكليات، أما أرقام كل كلية فلمن نطاقه يغطيها فقط: الكلية ترى مستهدفها بجانب مستهدف الجامعة وإجمالي التوزيع،
+        // لا مستهدفات الكليات الأخرى (SEC-3). التوزيع كله لمن نطاقه الجامعة (مدير متابعة الخطة واللجنة العليا ومن في حكمهما).
+        if (scope.All) return new DistributionDto(year, result, shares);
+        var visible = shares.Where((_, i) => scope.Covers(colleges[i])).ToList();
+        return new DistributionDto(year, result, visible, OwnUnitsOnly: true);
     }
 
     private async Task<(Indicator Indicator, IndicatorVersion Version)> LoadIndicatorAsync(string code, CancellationToken ct)
