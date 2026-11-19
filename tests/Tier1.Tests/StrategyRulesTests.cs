@@ -107,9 +107,10 @@ public class StrategyRulesTests
         var agg = ResultsRules.Combine(Aggregation.Sum, false, values, 3);
         Assert.Contains("1 من 3", agg.Note);
         Assert.Equal(Performance.Incomplete, ResultsRules.Status(Aggregation.Sum, Direction.HigherIsBetter, agg, 1000, false));
-        // النسبة من الجهات المعتمدة يحكم عليها مع ملاحظة.
+        // D6: النسبة من بعض الجهات لا يحكم عليها أيضًا، والمكتملة يحكم عليها.
         var ratio = new Aggregate(80, 80, 100, 1, 3, 0, null);
-        Assert.Equal(Performance.Achieved, ResultsRules.Status(Aggregation.RatioOfSums, Direction.HigherIsBetter, ratio, 75, false));
+        Assert.Equal(Performance.Incomplete, ResultsRules.Status(Aggregation.RatioOfSums, Direction.HigherIsBetter, ratio, 75, false));
+        Assert.Equal(Performance.Achieved, ResultsRules.Status(Aggregation.RatioOfSums, Direction.HigherIsBetter, ratio with { Reported = 3 }, 75, false));
         Assert.Equal(Performance.NotStarted, ResultsRules.Status(Aggregation.RatioOfSums, Direction.HigherIsBetter, ratio, null, true));
     }
 

@@ -18,14 +18,22 @@ public enum Performance
     /// <summary>سنة القياس قبل سنة بدء مستهدف المؤشر في الخطة.</summary>
     NotStarted = 7,
 
-    /// <summary>مجموع من بعض الجهات فقط: لا يحكم عليه قبل اكتمال الجهات، حتى لا يبدو متأخرًا وهو ناقص.</summary>
+    /// <summary>قيمة مجمعة من بعض الجهات فقط (مجموع أو نسبة أو متوسط): لا يحكم عليها قبل اكتمال الجهات، حتى لا تبدو متأخرة وهي ناقصة.</summary>
     Incomplete = 8,
 }
 
 public sealed record UnitValue(Guid UnitId, ValueKind Kind, decimal? Value, decimal? Numerator, decimal? Denominator);
 
-/// <summary>القيمة المجمعة لجهة أعلى: القيمة، وكم جهة أبلغت من المتوقع، وملاحظة إن لم يصح الجمع.</summary>
-public sealed record Aggregate(decimal? Value, decimal? Numerator, decimal? Denominator, int Reported, int Expected, int NotApplicable, string? Note);
+/// <summary>
+/// القيمة المجمعة لجهة أعلى، وملاحظة إن لم يصح الجمع أو لم يكتمل (D6، ADR-0005):
+/// Reported: الجهات التي أبلغت رقمًا. Expected: الجهات المطلوب منها رقم، أي المتوقعة عدا «غير منطبق».
+/// «غير متاح» بيانات ناقصة: لا رقم ولا صفر، فلا تحسب ضمن Reported ويبقى المجموع جزئيًا.
+/// </summary>
+public sealed record Aggregate(decimal? Value, decimal? Numerator, decimal? Denominator, int Reported, int Expected, int NotApplicable, string? Note, int NotAvailable = 0)
+{
+    /// <summary>أبلغت كل الجهات المطلوب منها رقم.</summary>
+    public bool Complete => Reported >= Expected;
+}
 
 /// <summary>
 /// تجميع القيم وحكم الأداء (دوال نقية). القاعدة من تعريف المؤشر: المجموع للأعداد، ونسبة مجموع البسط إلى مجموع المقام للنسب،
@@ -40,21 +48,26 @@ public static class ResultsRules
     {
         var numbers = values.Where(v => v.Kind == ValueKind.Number).ToList();
         var notApplicable = values.Count(v => v.Kind == ValueKind.NotApplicable);
-        var reported = values.Count;
-        if (numbers.Count == 0) return new(null, null, null, reported, expected, notApplicable, null);
+        var notAvailable = values.Count(v => v.Kind == ValueKind.NotAvailable);
+        // «غير منطبق» يخرج الجهة من المطلوب، و«غير متاح» يبقيها مطلوبة بلا رقم (D6).
+        var due = Math.Max(0, expected - notApplicable);
+        var reported = numbers.Count;
+        Aggregate Of(decimal? value, decimal? n, decimal? d, string? note) => new(value, n, d, reported, due, notApplicable, note, notAvailable);
+        string? Partial(string what) => reported < due
+            ? $"{what} جزئي: اعتمدت أرقام {reported} من {due} جهة{(notAvailable > 0 ? $"، و«غير متاح» من {notAvailable}" : "")}؛ لا يحكم عليه قبل اكتمالها."
+            : null;
+        if (numbers.Count == 0) return Of(null, null, null, notAvailable > 0 ? $"«غير متاح» من {notAvailable} جهة." : null);
 
         switch (aggregation)
         {
             case Aggregation.Sum:
-                return new(numbers.Sum(v => v.Value ?? 0), null, null, reported, expected, notApplicable,
-                    reported < expected ? $"مجموع جزئي: اعتمدت قيم {reported} من {expected} جهة." : null);
+                return Of(numbers.Sum(v => v.Value ?? 0), null, null, Partial("مجموع"));
             case Aggregation.RatioOfSums:
             {
                 var withRatio = numbers.Where(v => v.Numerator is not null && v.Denominator is > 0).ToList();
                 var n = withRatio.Sum(v => v.Numerator!.Value);
                 var d = withRatio.Sum(v => v.Denominator!.Value);
-                return d == 0 ? new(null, n, d, reported, expected, notApplicable, "مجموع المقامات صفر.")
-                    : new(decimal.Round(n / d * (percent ? 100 : 1), 4), n, d, reported, expected, notApplicable, null);
+                return d == 0 ? Of(null, n, d, "مجموع المقامات صفر.") : Of(decimal.Round(n / d * (percent ? 100 : 1), 4), n, d, Partial("نسبة"));
             }
             case Aggregation.WeightedAverage:
             {
@@ -62,15 +75,15 @@ public static class ResultsRules
                 if (weighted.Count == numbers.Count)
                 {
                     var w = weighted.Sum(v => v.Denominator!.Value);
-                    return new(decimal.Round(weighted.Sum(v => (v.Value ?? 0) * v.Denominator!.Value) / w, 4), null, w, reported, expected, notApplicable, null);
+                    return Of(decimal.Round(weighted.Sum(v => (v.Value ?? 0) * v.Denominator!.Value) / w, 4), null, w, Partial("متوسط"));
                 }
-                return new(decimal.Round(numbers.Average(v => v.Value ?? 0), 4), null, null, reported, expected, notApplicable,
-                    "متوسط بسيط: لم تُدخل كل الجهات عدد المستجيبين للترجيح.");
+                return Of(decimal.Round(numbers.Average(v => v.Value ?? 0), 4), null, null,
+                    Partial("متوسط") ?? "متوسط بسيط: لم تُدخل كل الجهات عدد المستجيبين للترجيح.");
             }
             default:
                 return numbers.Count == 1 && expected <= 1
-                    ? new(numbers[0].Value, numbers[0].Numerator, numbers[0].Denominator, reported, expected, notApplicable, null)
-                    : new(null, null, null, reported, expected, notApplicable, aggregation == Aggregation.DistinctCount
+                    ? Of(numbers[0].Value, numbers[0].Numerator, numbers[0].Denominator, null)
+                    : Of(null, null, null, aggregation == Aggregation.DistinctCount
                         ? "عدد مميز: لا يجمع من الجهات؛ يقاس على مستوى الجامعة بعد إزالة التكرار."
                         : "لا يجمع من الجهات بحسب قاعدة التجميع.");
         }
@@ -106,13 +119,14 @@ public static class ResultsRules
     }
 
     /// <summary>
-    /// حالة المؤشر للجهة: «لم يبدأ» قبل سنة بدئه، و«بيانات جزئية» لمجموع لم تعتمد كل جهاته بعد، وإلا الحكم مقابل المستهدف.
+    /// حالة المؤشر للجهة: «لم يبدأ» قبل سنة بدئه، و«بيانات جزئية» لأي قيمة مجمعة لم تعتمد كل جهاتها أرقامها بعد
+    /// (مجموع أو نسبة أو متوسط؛ و«غير متاح» نقص لا رقم)، وإلا الحكم مقابل المستهدف. نقص البيانات حالة مستقلة لا ضعف أداء (4-10-1، D6).
     /// </summary>
     public static Performance Status(Aggregation aggregation, Direction direction, Aggregate actual, decimal? target, bool notStarted, decimal near = NearRatio)
     {
         if (notStarted) return Performance.NotStarted;
         if (actual.Value is null) return Performance.NoData;
-        if (aggregation == Aggregation.Sum && actual.Reported < actual.Expected) return Performance.Incomplete;
+        if (!actual.Complete) return Performance.Incomplete;
         return Judge(direction, actual.Value, target, near);
     }
 

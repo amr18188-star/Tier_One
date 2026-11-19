@@ -155,7 +155,8 @@ public class CollectionRulesTests
     {
         var a = ResultsRules.Combine(Aggregation.Sum, false, [V(5), V(7), V(null, kind: ValueKind.NotApplicable)], 4);
         Assert.Equal(12m, a.Value);
-        Assert.Equal((3, 4, 1), (a.Reported, a.Expected, a.NotApplicable));
+        // D6: «غير منطبق» يخرج الجهة من المطلوب، والمبلغ عنه هو الأرقام وحدها: رقمان من ثلاث جهات مطلوبة.
+        Assert.Equal((2, 3, 1), (a.Reported, a.Expected, a.NotApplicable));
     }
 
     [Fact]

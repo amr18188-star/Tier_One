@@ -367,7 +367,8 @@ function IndicatorDrawer({ cycleId, unitId, university, item, onClose }: { cycle
     <Drawer open width={640} onClose={onClose} title={<span className="t1-code-title"><code className="ltr">{item.code}</code> {item.name}</span>}>
       <p className="t1-summary">{item.summary}</p>
       {item.note && <p className="t1-help">{item.note}</p>}
-      <p className="t1-help">{L(`أبلغ ${item.reported} من ${item.expected} جهة متوقعة.`, `${item.reported} of ${item.expected} units reported.`)}</p>
+      <p className="t1-help">{L(`اعتمدت أرقام ${item.reported} من ${item.expected} جهة مطلوب منها رقم («غير منطبق» لا يحسب، و«غير متاح» نقص لا صفر).`,
+        `${item.reported} of ${item.expected} units with a number due ("not applicable" excluded; "not available" is missing, not zero).`)}</p>
       <Panel query={d}>
         {() => (
           <>
