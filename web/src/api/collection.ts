@@ -54,7 +54,9 @@ export interface Form {
   unitId: string; unitName: string; unitKind: OrgUnitKind; step: ApprovalStep; status: SubmissionStatus; dueOn: string; overdue: boolean;
   path: PathStep[]; nextStepName: string | null; returnNote: string | null; lastEditedAt: string | null;
   completed: number; required: number; sections: FormSection[]; blocking: string[]; events: FormEvent[];
-  actions: { canEdit: boolean; canSubmit: boolean; canReview: boolean; canReopen: boolean; directDepartmentApproval: boolean; directDeanApproval: boolean }; version: number;
+  actions: { canEdit: boolean; canSubmit: boolean; canReview: boolean; canReopen: boolean; directDepartmentApproval: boolean; directDeanApproval: boolean;
+    /** الاعتماد العادي إلى nextStepName. */ canApprove?: boolean;
+    /** الاعتماد المباشر (اختيار صريح بسبب مكتوب): الخطوة التي يحيل إليها. */ directStepName?: string | null }; version: number;
 }
 
 export interface SaveValue {

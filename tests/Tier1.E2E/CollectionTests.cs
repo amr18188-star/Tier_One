@@ -188,11 +188,20 @@ public sealed class CollectionTests(ITestOutputHelper output)
             t.Check((await college.Get($"/api/forms?cycleId={cycleId}&awaitingMe=true")).Items().Any(f => f["id"].Str() == cf["id"].Str()),
                 "The department form appears in the committee's queue");
             var version = committeeForm["version"];
-            cf = await college.Ok("POST", departmentPath + "/approve", Scenario.O(("note", null), ("version", version)));
+            // D2: the skip is an explicit choice with a written reason; a plain approve does not turn into a direct one.
+            t.Check(!committeeForm["actions"]!["canApprove"].Truthy() && committeeForm["actions"]!["directStepName"].Str() is { Length: > 0 },
+                "The committee is offered direct approval only (it does not hold the department review)");
+            (status, err) = await college.Call("POST", departmentPath + "/approve", Scenario.O(("note", null), ("version", version)));
+            t.Check(status == 409 && err.Code() == "direct_only", $"A plain approve does not silently skip a step ({status} {err.Code()})");
+            (status, err) = await college.Call("POST", departmentPath + "/approve", Scenario.O(("note", null), ("version", version), ("direct", true)));
+            t.Check(status == 400 && err.Code() == "direct_reason_required", $"A direct approval needs a reason ({status} {err.Code()})");
+            const string skipReason = "ممثل القسم في إجازة رسمية";
+            cf = await college.Ok("POST", departmentPath + "/approve", Scenario.O(("note", skipReason), ("version", version), ("direct", true)));
             t.Check(cf["step"].Str() == "Dean" && cf["path"].Items().Any(p => p["step"].Str() == "DepartmentReview" && p["state"].Str() == "skipped"),
                 "Direct approval skips department review and advances to the dean");
-            t.Check(cf["events"].Items().Any(e => e["action"].Str() == "Approved" && e["fromStep"].Str() == "DepartmentReview" && e["toStep"].Str() == "Dean"),
-                "The form history records direct approval");
+            t.Check(cf["events"].Items().Any(e => e["action"].Str() == "Approved" && e["fromStep"].Str() == "DepartmentReview" && e["toStep"].Str() == "Dean"
+                                                  && e["note"].Str() == skipReason),
+                "The form history records the direct approval and its reason");
             (status, _) = await deptrep.Call("POST", departmentPath + "/approve", Scenario.O(("note", null), ("version", version)));
             t.Check(status == 409, "An approval from a stale form version cannot move the form again");
         }
@@ -205,7 +214,11 @@ public sealed class CollectionTests(ITestOutputHelper output)
             var ef = await entry.Ok("POST", path + "/submit");
             var deanForm = (await dean.Get(path))!;
             t.Check(deanForm["actions"]!["directDeanApproval"].Truthy(), "The dean can approve a department form directly");
-            ef = await dean.Ok("POST", path + "/approve", Scenario.O(("version", ef["version"])));
+            // D2: whoever may pass the form on may also send it back.
+            var returned = await dean.Ok("POST", path + "/return", Scenario.O(("note", "أكمل أدلة المؤشرات قبل الاعتماد"), ("items", new JsonArray())));
+            t.Check(returned["status"].Str() == "Returned", "A direct-only approver (the dean) can return the form for correction");
+            ef = await entry.Ok("POST", path + "/submit");
+            ef = await dean.Ok("POST", path + "/approve", Scenario.O(("version", ef["version"]), ("direct", true), ("note", "اعتماد مباشر لضيق موعد الدورة")));
             t.Check(ef["step"].Str() == "Quality"
                 && ef["path"].Items().Count(p => p["state"].Str() == "skipped") == 2,
                 "Direct dean approval skips department and college review and advances to central quality");

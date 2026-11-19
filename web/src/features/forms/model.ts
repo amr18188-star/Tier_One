@@ -30,6 +30,16 @@ export function formEventText({ action, fromStep, toStep }: Pick<FormEvent, "act
   }
 }
 
+/**
+ * الخطوات التي يتخطاها الاعتماد المباشر (D2): من الخطوة الحالية حتى ما قبل خطوة المعتمد نفسه، وهي التي تسبق الخطوة المحال إليها
+ * (العميد يحيل إلى الجودة فيؤدي خطوة العميد، ولجنة الكلية تحيل إلى العميد فتؤدي خطوة اللجنة). يطابق ApprovalRules.SkippedBy.
+ */
+export function skippedSteps(form: { path: { name: string; state: string }[] }, target: string | null | undefined): string[] {
+  const from = form.path.findIndex((p) => p.state === "current");
+  const to = form.path.findIndex((p) => p.name === target);
+  return from < 0 || to - 1 <= from ? [] : form.path.slice(from, to - 1).map((p) => p.name);
+}
+
 /** الأولوية في كل القوائم: المعاد للتصحيح، ثم ما ينتظرني، ثم الأقرب موعدًا. */
 export function byPriority(a: FormRow, b: FormRow): number {
   return Number(b.status === "Returned") - Number(a.status === "Returned") || Number(b.awaitingMe) - Number(a.awaitingMe) || a.dueOn.localeCompare(b.dueOn);

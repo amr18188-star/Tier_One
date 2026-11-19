@@ -52,6 +52,12 @@ public static class ApprovalRules
     public static bool Holds(EffectiveAccess access, string special, OrgUnit unit) =>
         UnitScope.ForSpecial(access, Features.Forms, special).Covers(unit);
 
+    /// <summary>
+    /// إلى أين ينقل الاعتماد المباشر النموذج من هذه الخطوة إن كان المستخدم يملكه على هذه الجهة، وإلا null.
+    /// الاعتماد المباشر اختيار صريح من المعتمد بسبب مكتوب (D2)، ولا يفرض نفسه على الاعتماد العادي لمن يملك الاثنين.
+    /// العميد يحيل نموذج القسم أو الكلية من خطوتي القسم واللجنة إلى الجودة؛ ولجنة الكلية تحيل نموذج القسم من خطوة القسم إلى العميد.
+    /// من يملك المسارين معًا يأخذ الأبعد (العميد).
+    /// </summary>
     public static ApprovalStep? DirectApprovalTo(EffectiveAccess access, OrgUnit unit, ApprovalStep step)
     {
         var kind = unit.Kind;
@@ -59,17 +65,19 @@ public static class ApprovalRules
         var collegeReview = kind is OrgUnitKind.Department or OrgUnitKind.College or OrgUnitKind.Institute
             && step == ApprovalStep.CollegeCommittee;
         if (!departmentReview && !collegeReview) return null;
-
-        var canReviewNormally = Holds(access, SpecialFor(step), unit);
-        // Preserve ordinary approvals for the super admin, who holds every review permission.
-        if (access.IsSuperAdmin && canReviewNormally) return null;
         if (Holds(access, ApproveAsDeanDirectly, unit)) return ApprovalStep.Quality;
-        return departmentReview && !canReviewNormally && Holds(access, ApproveDepartmentDirectly, unit)
-            ? ApprovalStep.Dean : null;
+        return departmentReview && Holds(access, ApproveDepartmentDirectly, unit) ? ApprovalStep.Dean : null;
     }
 
+    /// <summary>الاعتماد العادي: إجراء مراجعة الخطوة نفسها على الجهة، فينتقل النموذج إلى الخطوة التالية في مساره.</summary>
+    public static bool MayApprove(EffectiveAccess access, OrgUnit unit, ApprovalStep step) =>
+        step is not (ApprovalStep.Entry or ApprovalStep.Done) && Holds(access, SpecialFor(step), unit);
+
+    /// <summary>
+    /// من يملك قرارًا على النموذج في خطوته: اعتمادها عاديًا، أو مباشرًا إن سمح allowDirect. ومن يملك القرار يملك الإعادة للتصحيح.
+    /// </summary>
     public static bool MayReview(EffectiveAccess access, OrgUnit unit, ApprovalStep step, bool allowDirect = true) =>
-        Holds(access, SpecialFor(step), unit) || (allowDirect && DirectApprovalTo(access, unit, step) is not null);
+        MayApprove(access, unit, step) || (allowDirect && DirectApprovalTo(access, unit, step) is not null);
 
     public static bool SkippedBy(SubmissionEvent e, ApprovalStep step) => (e.Action, e.FromStep, e.ToStep, step) switch
     {

@@ -33,7 +33,11 @@ public sealed record FormSection(string? PillarCode, string? PillarName, string 
 
 public sealed record FormEventDto(SubmissionAction Action, ApprovalStep FromStep, ApprovalStep ToStep, string? ByName, DateTimeOffset At, string? Note);
 
-public sealed record FormActions(bool CanEdit, bool CanSubmit, bool CanReview, bool CanReopen, bool DirectDepartmentApproval, bool DirectDeanApproval);
+/// <param name="CanReview">يملك قرارًا على النموذج في خطوته (اعتماد عادي أو مباشر، والإعادة للتصحيح).</param>
+/// <param name="CanApprove">يملك الاعتماد العادي إلى الخطوة التالية (NextStepName).</param>
+/// <param name="DirectStepName">إن ملك الاعتماد المباشر: الخطوة التي يحيل إليها. يحتاج سببًا مكتوبًا (D2).</param>
+public sealed record FormActions(bool CanEdit, bool CanSubmit, bool CanReview, bool CanReopen, bool DirectDepartmentApproval, bool DirectDeanApproval,
+    bool CanApprove = false, string? DirectStepName = null);
 
 public sealed record FormDto(
     Guid Id, Guid CycleId, string CycleName, string PeriodLabel, CycleStatus CycleStatus, bool Trial, int TargetYear,
@@ -50,7 +54,8 @@ public sealed record ReturnRequest(string? Note, IReadOnlyList<ReturnItem>? Item
 
 public sealed record NoteRequest(string? Note);
 
-public sealed record ApproveFormRequest(string? Note, uint? Version);
+/// <param name="Direct">اعتماد مباشر يتخطى خطوة أو خطوتين؛ يلزمه Note سببًا (5 أحرف على الأقل).</param>
+public sealed record ApproveFormRequest(string? Note, uint? Version, bool Direct = false);
 
 public sealed record ExtendRequest(DateOnly DueOn, string? Reason);
 
@@ -232,9 +237,23 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
         if (req.Version is { } version && version != ctx.Submission.Version)
             throw new DomainException("conflict", "تغيّر النموذج. حدّث الصفحة ثم أعد المحاولة.", "The form changed. Refresh and try again.", 409);
         await EnsureReviewerAsync(ctx, ct, allowDirect: true);
-        var next = ApprovalRules.DirectApprovalTo(ctx.Me, ctx.Unit, ctx.Submission.Step)
-            ?? ApprovalRules.Next(ctx.Unit.Kind, ctx.Submission.Step);
-        Move(ctx, SubmissionAction.Approved, next, Require.Optional(req.Note, 2000));
+        // D2: التخطي اختيار صريح بسبب مكتوب يبقى في سجل النموذج؛ والاعتماد العادي لا يتحول مباشرًا من تلقاء نفسه.
+        ApprovalStep next;
+        string? note;
+        if (req.Direct)
+        {
+            next = ApprovalRules.DirectApprovalTo(ctx.Me, ctx.Unit, ctx.Submission.Step) ?? throw DomainException.Forbidden();
+            note = Require.Reason(req.Note, 5, "direct_reason_required", 2000);
+        }
+        else
+        {
+            if (!ApprovalRules.MayApprove(ctx.Me, ctx.Unit, ctx.Submission.Step))
+                throw new DomainException("direct_only", "لا تملك اعتماد هذه الخطوة؛ اختر «اعتماد مباشر» واكتب سبب التخطي.",
+                    "You cannot approve this step; choose direct approval and give the reason for skipping.", 409);
+            next = ApprovalRules.Next(ctx.Unit.Kind, ctx.Submission.Step);
+            note = Require.Optional(req.Note, 2000);
+        }
+        Move(ctx, SubmissionAction.Approved, next, note);
         await notifier.MovedAsync(ctx.Submission, ctx.Unit, ctx.Cycle, ct);
         await db.SaveChangesAsync(ct);
         return await BuildAsync(ctx, ct);
@@ -244,7 +263,8 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
     public async Task<FormDto> ReturnAsync(Guid id, ReturnRequest req, CancellationToken ct)
     {
         var ctx = await LoadAsync(id, Cap.View, tracking: true, ct);
-        await EnsureReviewerAsync(ctx, ct);
+        // من يملك تمرير النموذج (عاديًا أو مباشرًا) يملك إعادته للتصحيح (D2).
+        await EnsureReviewerAsync(ctx, ct, allowDirect: true);
         var note = Require.Reason(req.Note, 5, "note_required", 2000);
         foreach (var item in req.Items ?? [])
             if (ctx.Values.TryGetValue(item.IndicatorId, out var v)) v.ReviewNote = Require.Optional(item.Note, 1000);
@@ -516,8 +536,9 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
                         && !sinceSubmit.Any(e => e.Action == SubmissionAction.Approved && e.By == current.UserId);
         var canReopen = cycleOpen && s.Status == SubmissionStatus.Approved && ctx.Me.HasSpecial(Features.Cycles, ApprovalRules.Reopen);
         var directTo = canReview ? ApprovalRules.DirectApprovalTo(ctx.Me, ctx.Unit, s.Step) : null;
+        var canApprove = canReview && ApprovalRules.MayApprove(ctx.Me, ctx.Unit, s.Step);
         var next = s.Status == SubmissionStatus.Approved ? null
-            : ApprovalRules.StepName(directTo ?? ApprovalRules.Next(ctx.Unit.Kind, s.Step));
+            : ApprovalRules.StepName(ApprovalRules.Next(ctx.Unit.Kind, s.Step));
 
         return new FormDto(
             s.Id, ctx.Cycle.Id, ctx.Cycle.Name, ctx.Cycle.PeriodLabel, ctx.Cycle.Status, ctx.Cycle.Trial, ctx.Cycle.TargetYear,
@@ -531,7 +552,8 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
                 .ToList(),
             blocking,
             events.Select(e => new FormEventDto(e.Action, e.FromStep, e.ToStep, e.ByName, e.At, e.Note)).ToList(),
-            new FormActions(canEdit, canEdit && blocking.Count == 0, canReview, canReopen, directTo == ApprovalStep.Dean, directTo == ApprovalStep.Quality),
+            new FormActions(canEdit, canEdit && blocking.Count == 0, canReview, canReopen, directTo == ApprovalStep.Dean, directTo == ApprovalStep.Quality,
+                canApprove, directTo is { } d ? ApprovalRules.StepName(d) : null),
             s.Version);
     }
 }

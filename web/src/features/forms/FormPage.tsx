@@ -20,7 +20,7 @@ import { useSearchState } from "../../shared/usePeriodParams";
 import { PillarCards, PillarHeader, PillarMobileBar, PillarStep, type PillarGroup } from "./FormPillars";
 import { ImportModal } from "./ImportModal";
 import { NoteCard } from "./NoteCard";
-import { formEventText } from "./model";
+import { formEventText, skippedSteps } from "./model";
 import { usePillarSwipe, useReducedMotion } from "./usePillarSwipe";
 import { AutosaveContext, useAutosaveRegistry } from "./useValueAutosave";
 import { savedAt, ValueRow, type ReturnMark } from "./ValueRow";
@@ -42,7 +42,7 @@ export default function FormPage() {
   const form = useQuery({ queryKey: key, queryFn: () => api.get<Form>(`/api/forms/${id}`) });
   const [filter, setFilter] = useState<Filter>("all");
   const [marks, setMarks] = useState<Record<string, ReturnMark>>({});
-  const [dialog, setDialog] = useState<"submit" | "approve" | "return" | "reopen" | "import" | "extend" | null>(null);
+  const [dialog, setDialog] = useState<"submit" | "approve" | "direct" | "return" | "reopen" | "import" | "extend" | null>(null);
   const canExtend = usePermissions().can("dc.cycles", "E");
   // الحفظ التلقائي في الصفوف: الجاري منه لشريط الحالة، وflushAll قبل التنقل والإرسال.
   const autosave = useAutosaveRegistry();
@@ -159,9 +159,12 @@ export default function FormPage() {
   if (!f) return <Panel query={form}>{null}</Panel>;
   const editable = f.actions.canEdit;
   const reviewing = f.actions.canReview;
+  // D2: الاعتماد المباشر اختيار صريح بجانب الاعتماد العادي، ومن يملك أيهما يملك الإعادة للتصحيح.
+  const canApprove = f.actions.canApprove ?? (reviewing && !f.actions.directDepartmentApproval && !f.actions.directDeanApproval);
   const directDeanApproval = f.actions.directDeanApproval;
-  const directApproval = f.actions.directDepartmentApproval || directDeanApproval;
-  const canReturn = reviewing && !directApproval;
+  const directApproval = reviewing && (f.actions.directDepartmentApproval || directDeanApproval);
+  const canReturn = reviewing;
+  const directStep = f.actions.directStepName ?? f.nextStepName;
   const directLabel = directDeanApproval
     ? L("اعتماد مباشر وإحالة للجودة المركزية", "Approve directly and forward to central quality")
     : L("اعتماد مباشر وإحالة للعميد", "Approve directly and forward to the dean");
@@ -217,11 +220,14 @@ export default function FormPage() {
       {f.cycleStatus === "Closed" && <Alert type="info" showIcon className="mb" message={L("الدورة مغلقة؛ النموذج للاطلاع فقط.", "The cycle is closed; read only.")} />}
       {reviewing && (
         <Alert type="info" showIcon className="mb"
-          message={directApproval
-            ? L(`النموذج عند «${f.path[current]?.name}». يمكنك مراجعته واعتماده وإحالته مباشرة إلى «${f.nextStepName}».`,
-                `The form is at “${f.path[current]?.name}”. You can review it and forward it directly to “${f.nextStepName}”.`)
-            : L(`النموذج ينتظر مراجعتك (${f.path[current]?.name}). اعتمده لينتقل إلى ${f.nextStepName ?? "الاعتماد النهائي"}، أو علّم المؤشرات التي تحتاج تصحيحًا وأعده.`,
-                "This form is waiting for your review.")} />
+          message={directApproval && !canApprove
+            ? L(`النموذج عند «${f.path[current]?.name}». يمكنك اعتماده مباشرة وإحالته إلى «${directStep}» بسبب مكتوب، أو إعادته للتصحيح.`,
+                `The form is at “${f.path[current]?.name}”. You can approve it directly to “${directStep}” with a written reason, or return it.`)
+            : directApproval
+              ? L(`النموذج ينتظر مراجعتك (${f.path[current]?.name}). اعتمده لينتقل إلى ${f.nextStepName ?? "الاعتماد النهائي"}، أو اعتمده مباشرة إلى «${directStep}» بسبب مكتوب، أو أعده للتصحيح.`,
+                  `This form is waiting for your review. Approve it to ${f.nextStepName ?? "final approval"}, approve it directly to “${directStep}” with a reason, or return it.`)
+              : L(`النموذج ينتظر مراجعتك (${f.path[current]?.name}). اعتمده لينتقل إلى ${f.nextStepName ?? "الاعتماد النهائي"}، أو علّم المؤشرات التي تحتاج تصحيحًا وأعده.`,
+                  "This form is waiting for your review.")} />
       )}
 
       <Panel className="fp-summary">
@@ -310,7 +316,6 @@ export default function FormPage() {
                     </Popover>}
               </span>
             )}
-            {directApproval && L("راجع القيم والأدلة قبل الاعتماد المباشر.", "Review values and evidence before direct approval.")}
             {canReturn && (flaggedCount > 0
               ? L(`علّمت ${flaggedCount} مؤشرًا للتصحيح.`, `${flaggedCount} marked for correction.`)
               : L("راجع القيم والأدلة، ثم اعتمد أو أعد.", "Review values and evidence, then approve or return."))}
@@ -330,9 +335,16 @@ export default function FormPage() {
           {reviewing && (
             <>
               {canReturn && <Button danger size="large" icon={<RollbackOutlined />} onClick={() => setDialog("return")}>{L("إعادة للتصحيح", "Return")}</Button>}
-              <Button type="primary" size="large" icon={<CheckOutlined />} disabled={canReturn && flaggedCount > 0} onClick={() => setDialog("approve")}>
-                {directApproval ? directLabel : f.nextStepName ? L("اعتماد وإحالة", "Approve") : L("اعتماد نهائي", "Final approval")}
-              </Button>
+              {directApproval && (
+                <Button type={canApprove ? "default" : "primary"} size="large" icon={<CheckOutlined />} disabled={flaggedCount > 0} onClick={() => setDialog("direct")}>
+                  {directLabel}
+                </Button>
+              )}
+              {canApprove && (
+                <Button type="primary" size="large" icon={<CheckOutlined />} disabled={flaggedCount > 0} onClick={() => setDialog("approve")}>
+                  {f.nextStepName ? L("اعتماد وإحالة", "Approve") : L("اعتماد نهائي", "Final approval")}
+                </Button>
+              )}
             </>
           )}
           {f.actions.canReopen && <Button icon={<UnlockOutlined />} onClick={() => setDialog("reopen")}>{L("إعادة فتح للتصحيح", "Reopen")}</Button>}
@@ -345,8 +357,9 @@ export default function FormPage() {
         <SubmitModal form={f} items={items} pending={submit.isPending} error={submit.error} onClose={() => setDialog(null)}
           onConfirm={async () => { await autosave.flushAll(); await submit.mutateAsync(); setDialog(null); }} />
       )}
-      {dialog === "approve" && (
-        <ApproveModal form={f} onClose={() => setDialog(null)} onDone={(next) => { qc.setQueryData(key, next); void qc.invalidateQueries({ queryKey: ["forms"] }); }} />
+      {(dialog === "approve" || dialog === "direct") && (
+        <ApproveModal form={f} direct={dialog === "direct"} onClose={() => setDialog(null)}
+          onDone={(next) => { qc.setQueryData(key, next); void qc.invalidateQueries({ queryKey: ["forms"] }); }} />
       )}
       {dialog === "return" && (
         <DecisionModal title={L("إعادة النموذج للتصحيح", "Return the form")} field="note" label={L("الملاحظة العامة لمدخل البيانات", "Note to the data entry")} okText={L("إعادة", "Return")} danger
@@ -403,20 +416,38 @@ function SubmitModal({ form, items, pending, error, onConfirm, onClose }: {
   );
 }
 
-function ApproveModal({ form, onClose, onDone }: { form: Form; onClose: () => void; onDone: (f: Form) => void }) {
+function ApproveModal({ form, direct, onClose, onDone }: { form: Form; direct: boolean; onClose: () => void; onDone: (f: Form) => void }) {
   const [version] = useState(form.version);
-  const run = useMutation({ mutationFn: () => api.post<Form>(`/api/forms/${form.id}/approve`, { note: null, version }), onSuccess: (f) => { onDone(f); onClose(); } });
+  const [fields] = AntForm.useForm<{ note: string }>();
+  const run = useMutation({
+    mutationFn: (note: string | null) => api.post<Form>(`/api/forms/${form.id}/approve`, { note, version, direct }),
+    onSuccess: (f) => { onDone(f); onClose(); },
+  });
   const final = !form.nextStepName;
-  const title = form.actions.directDeanApproval ? L("اعتماد مباشر من العميد", "Direct dean approval")
-    : form.actions.directDepartmentApproval ? L("اعتماد مباشر لنموذج القسم", "Direct approval of the department form")
+  const skipped = direct ? skippedSteps(form, form.actions.directStepName) : [];
+  const title = direct
+    ? form.actions.directDeanApproval ? L("اعتماد مباشر من العميد", "Direct dean approval") : L("اعتماد مباشر لنموذج القسم", "Direct approval of the department form")
     : final ? L("الاعتماد النهائي", "Final approval") : L("اعتماد وإحالة", "Approve and forward");
   return (
-    <Modal open title={title} onCancel={onClose} onOk={() => run.mutate()} confirmLoading={run.isPending}
-      okText={L("اعتماد", "Approve")} cancelText={L("إلغاء", "Cancel")}>
+    <Modal open title={title} onCancel={onClose} onOk={() => (direct ? fields.submit() : run.mutate(null))} confirmLoading={run.isPending}
+      okText={L("اعتماد", "Approve")} cancelText={L("إلغاء", "Cancel")} destroyOnHidden>
       {run.error && <Alert type="error" showIcon message={errorText(run.error)} className="mb" />}
-      <p>{final
-        ? L(`تعتمد قيم ${form.unitName} نهائيًا فتدخل نتائج الجامعة، ويقفل النموذج.`, "Values become final and enter the results.")
-        : L(`ينتقل النموذج إلى «${form.nextStepName}».`, `The form moves to ${form.nextStepName}.`)}</p>
+      {direct ? (
+        <>
+          <p>{L(`ينتقل النموذج إلى «${form.actions.directStepName ?? ""}» متخطيًا: ${skipped.join("، ")}. يسجل التخطي وسببه في سجل النموذج.`,
+            `The form moves to ${form.actions.directStepName ?? ""}, skipping ${skipped.join(", ")}. The skip and its reason are recorded.`)}</p>
+          <AntForm form={fields} layout="vertical" onFinish={(v) => run.mutate(v.note.trim())}>
+            <AntForm.Item name="note" label={L("سبب التخطي", "Reason for skipping")}
+              rules={[{ required: true, whitespace: true, min: 5, message: L("اكتب سبب التخطي (5 أحرف على الأقل)", "Enter the reason (at least 5 characters)") }]}>
+              <Input.TextArea rows={3} maxLength={2000} autoFocus />
+            </AntForm.Item>
+          </AntForm>
+        </>
+      ) : (
+        <p>{final
+          ? L(`تعتمد قيم ${form.unitName} نهائيًا فتدخل نتائج الجامعة، ويقفل النموذج.`, "Values become final and enter the results.")
+          : L(`ينتقل النموذج إلى «${form.nextStepName}».`, `The form moves to ${form.nextStepName}.`)}</p>
+      )}
     </Modal>
   );
 }

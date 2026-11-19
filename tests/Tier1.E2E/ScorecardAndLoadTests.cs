@@ -96,7 +96,7 @@ public sealed class ScorecardTests(ITestOutputHelper output)
                 {
                     var reviewer = await Env.As(name);
                     var (s, f) = await reviewer.Call("GET", $"/api/forms/{id}");
-                    if (s == 200 && f!["actions"]!["canReview"].Truthy()) { await reviewer.Ok("POST", $"/api/forms/{id}/approve", Scenario.O(("note", null))); done = true; break; }
+                    if (s == 200 && f!["actions"]!["canApprove"].Truthy()) { await reviewer.Ok("POST", $"/api/forms/{id}/approve", Scenario.O(("note", null))); done = true; break; }
                 }
                 if (!done) break;
             }

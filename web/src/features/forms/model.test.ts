@@ -8,7 +8,7 @@ import type { PlanQuarter } from "../../api/scorecard";
 import {
   chipLabel, cycleTimeline as buildTimeline, planState, quarterTimeline, resolveCycle as resolveSelection, resolveQuarter, stateLine, stepSlot,
 } from "../../shared/period";
-import { formEventText, formModes, groupByCollege, type Access } from "./model";
+import { formEventText, formModes, groupByCollege, skippedSteps, type Access } from "./model";
 
 describe("form history", () => {
   it("labels direct approvals by the college committee and dean", () => {
@@ -182,5 +182,23 @@ describe("forms grouped by college", () => {
     expect(groups).toHaveLength(1);
     expect(groups[0]).toMatchObject({ name: "كلية الهندسة", total: 3 });
     expect(groups[0].shown.map((r) => r.id)).toEqual(["civ"]);
+  });
+});
+
+describe("direct approval skips (D2)", () => {
+  const path = (current: number) => ["الإدخال", "ممثل القسم", "لجنة الكلية", "العميد", "الجودة"].map((name, i) => ({
+    name, state: i < current ? "done" : i === current ? "current" : "pending",
+  }));
+  it("lists the steps between the current one and the approver's own step (matches ApprovalRules.SkippedBy)", () => {
+    // The dean forwards to quality from the department step: department review and college committee are skipped.
+    expect(skippedSteps({ path: path(1) }, "الجودة")).toEqual(["ممثل القسم", "لجنة الكلية"]);
+    // The dean forwards to quality from the committee step: only the committee is skipped.
+    expect(skippedSteps({ path: path(2) }, "الجودة")).toEqual(["لجنة الكلية"]);
+    // The college committee forwards to the dean from the department step: only department review is skipped.
+    expect(skippedSteps({ path: path(1) }, "العميد")).toEqual(["ممثل القسم"]);
+  });
+  it("skips nothing without a target ahead of the current step", () => {
+    expect(skippedSteps({ path: path(2) }, null)).toEqual([]);
+    expect(skippedSteps({ path: path(3) }, "لجنة الكلية")).toEqual([]);
   });
 });
