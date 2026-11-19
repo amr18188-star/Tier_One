@@ -244,9 +244,16 @@ internal sealed class DemoRun(Uri baseAddress, string password, ILogger log) : I
         {
             var step = form["step"].Str()!;
             if (!steps.TryGetValue(step, out var who)) throw new InvalidOperationException($"{unit["code"].Str()}: no demo reviewer for step {step}.");
-            form = (await (await UserAsync(who)).CallAsync(HttpMethod.Post, $"/api/forms/{form["id"].Str()}/approve", new JsonObject { ["note"] = "روجعت القيم والأدلة" }, 200, ct)).Body!;
+            form = (await (await UserAsync(who)).CallAsync(HttpMethod.Post, $"/api/forms/{form["id"].Str()}/approve", new JsonObject { ["note"] = "روجعت القيم والأدلة", ["version"] = form["version"].Copy() }, 200, ct)).Body!;
         }
         return form;
+    }
+
+    /// <summary>Sends a form from the version the server holds after the values were saved (BE-2: every transition carries it).</summary>
+    private async Task<JsonNode> SubmitAsync(DemoClient entry, string formId)
+    {
+        var fresh = (await entry.GetAsync($"/api/forms/{formId}", ct))!;
+        return (await entry.CallAsync(HttpMethod.Post, $"/api/forms/{formId}/submit", new JsonObject { ["version"] = fresh["version"].Copy() }, 200, ct)).Body!;
     }
 
     private async Task<JsonNode> ReturnAsync(JsonNode form, JsonNode unit, string note)
@@ -255,7 +262,7 @@ internal sealed class DemoRun(Uri baseAddress, string password, ILogger log) : I
         var items = new JsonArray();
         foreach (var i in ItemsOf(form).Where(i => i["value"].Truthy() && i["value"]!["kind"].Str() == "Number").Take(2))
             items.Add(new JsonObject { ["indicatorId"] = i["indicatorId"].Copy(), ["note"] = "الرقم لا يطابق الكشف المرفق؛ راجعوا المصدر" });
-        return (await reviewer.CallAsync(HttpMethod.Post, $"/api/forms/{form["id"].Str()}/return", new JsonObject { ["note"] = note, ["items"] = items }, 200, ct)).Body!;
+        return (await reviewer.CallAsync(HttpMethod.Post, $"/api/forms/{form["id"].Str()}/return", new JsonObject { ["note"] = note, ["items"] = items, ["version"] = form["version"].Copy() }, 200, ct)).Body!;
     }
 
     private async Task RunCycleAsync(CycleSpec spec)
@@ -288,7 +295,7 @@ internal sealed class DemoRun(Uri baseAddress, string password, ILogger log) : I
                 continue;
             }
             await FillAsync(entry, form, unit, spec);
-            form = (await entry.CallAsync(HttpMethod.Post, $"/api/forms/{form["id"].Str()}/submit", null, 200, ct)).Body!;
+            form = await SubmitAsync(entry, form["id"].Str()!);
             var returnedOnce = stages is null && spec.Quarter == 2 && unit["code"].Str() == "ENG";
             if (stage == "returned" || returnedOnce)
             {
@@ -299,7 +306,7 @@ internal sealed class DemoRun(Uri baseAddress, string password, ILogger log) : I
                     continue;
                 }
                 await FillAsync(entry, (await entry.GetAsync($"/api/forms/{form["id"].Str()}", ct))!, unit, spec);
-                form = (await entry.CallAsync(HttpMethod.Post, $"/api/forms/{form["id"].Str()}/submit", null, 200, ct)).Body!;
+                form = await SubmitAsync(entry, form["id"].Str()!);
             }
             await AdvanceAsync(form, unit, stage == "Done" ? "Done" : stage);
         }

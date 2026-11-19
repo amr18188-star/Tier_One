@@ -113,7 +113,7 @@ public sealed class ReviewService(IAppDb db, IClock clock, ICurrentUser current,
                 : "القيمة تختلف عن المحسوبة من الكليات؛ اكتب سبب التعديل.", "A reason is required.", 400);
 
         var existing = await db.UniversityValues.FirstOrDefaultAsync(v => v.IndicatorId == row.IndicatorId && v.Year == cycle.TargetYear && v.Quarter == cycle.Quarter, ct);
-        if (existing is not null && version is not null) Concurrency.Expect(db, existing, version);
+        if (existing is not null) Concurrency.ExpectUpsert(db, existing, version);
         var old = existing?.Value;
         var entity = existing ?? new UniversityValue { IndicatorId = row.IndicatorId, Year = cycle.TargetYear, Quarter = cycle.Quarter!.Value };
         entity.CycleId = cycle.Id;

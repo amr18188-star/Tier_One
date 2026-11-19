@@ -57,15 +57,29 @@ public static class People
 }
 
 /// <summary>
-/// التعديل المتزامن: الشاشة ترسل إصدار الصف الذي فتحته، فإن عدّله غيرها بعد ذلك يرد الحفظ 409 «عدّل مستخدم آخر هذا العنصر»
-/// بدل أن يمحو تعديله. الإصدار اختياري ليبقى التكامل القديم يعمل.
+/// التعديل المتزامن (BE-2): الشاشة ترسل إصدار الصف الذي فتحته، فإن عدّله غيرها بعد ذلك يرد الحفظ 409 «عدّل مستخدم آخر هذا العنصر»
+/// بدل أن يمحو تعديله. الإصدار إلزامي في تعديل صف قائم وفي كل انتقال؛ غيابه 428.
 /// </summary>
 public static class Concurrency
 {
-    public static void Expect<TEntity>(IAppDb db, TEntity entity, uint? version) where TEntity : class
+    /// <summary>تعديل صف قائم أو نقله: الإصدار إلزامي.</summary>
+    public static void Expect<TEntity>(IAppDb db, TEntity entity, uint? version) where TEntity : class =>
+        db.Entry(entity).Property("Version").OriginalValue = Require(version);
+
+    /// <summary>
+    /// حفظ ينشئ الصف أو يعدله: الإصدار الفارغ يعني «لم أر صفًا»، فإن وجد الصف الآن فقد أنشأه غيره بعد فتح الشاشة (409).
+    /// </summary>
+    public static void ExpectUpsert<TEntity>(IAppDb db, TEntity existing, uint? version) where TEntity : class =>
+        db.Entry(existing).Property("Version").OriginalValue = version ?? throw DomainException.Conflict();
+
+    /// <summary>الانتقال من الإصدار الذي رآه المستخدم: الغائب 428، والمختلف 409.</summary>
+    public static void Transition(uint current, uint? version)
     {
-        if (version is { } v) db.Entry(entity).Property("Version").OriginalValue = v;
+        if (Require(version) != current) throw DomainException.Conflict();
     }
+
+    public static uint Require(uint? version) => version ?? throw new DomainException("version_required",
+        "الطلب بلا إصدار العنصر الذي فتحته؛ حدّث الصفحة ثم أعد المحاولة.", "The request carries no version of the item you opened. Refresh and try again.", 428);
 }
 
 /// <summary>الموعد بتوقيت القاهرة كما يكتب في أحداث الطلبات والسجل.</summary>

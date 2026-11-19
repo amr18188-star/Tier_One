@@ -36,6 +36,12 @@ public sealed class FormFlowTests(Tier1App app, ITestOutputHelper output)
             entry.Call("PUT", $"/api/forms/{id}/values", Scenario.With(edit, ("explanation", "التعديل الأول"))),
             entry.Call("PUT", $"/api/forms/{id}/values", Scenario.With(edit, ("explanation", "التعديل الثاني"))));
         Assert.Equal([200, 409], race.Select(r => r.Status).Order());
+
+        // BE-2: a save that saw no value (version null) does not overwrite a value saved meanwhile.
+        var blind = Calls.InputFor(items[2]);
+        blind["version"] = null;
+        var (status, error) = await entry.Call("PUT", $"/api/forms/{id}/values", blind);
+        Assert.Equal((409, "conflict"), (status, error.Code()));
     }
 
     [Fact]
@@ -87,7 +93,12 @@ public sealed class FormFlowTests(Tier1App app, ITestOutputHelper output)
         t.Check(await MailFor(cycle) > mailBefore, "Submitting queued the committee's notification in the same commit as the move");
 
         (status, error) = await entry.Call("POST", $"/api/forms/{id}/submit");
-        t.Check(status == 409 && error.Code() == "form_locked", $"Submitting twice is a conflict (409 form_locked), got {status} {error.Code()}");
+        t.Check(status == 409 && error.Code() == "form_locked", $"Submitting twice is a conflict (409 form_locked), got {status} {error?.ToJsonString()}");
+
+        (status, error) = await college.Call("POST", $"/api/forms/{id}/approve", Scenario.O(("note", null)));
+        t.Check(status == 428 && error.Code() == "version_required", $"A transition without the form's version is refused (428), got {status} {error.Code()}");
+        (status, error) = await college.Call("POST", $"/api/forms/{id}/return", Scenario.O(("note", "ملاحظة بلا إصدار"), ("items", new JsonArray())));
+        t.Check(status == 428, $"Returning without the version is refused too (428), got {status}");
 
         var stale = Scenario.With(Flow.Approve(form), ("version", form["version"].Num() - 1));
         var mail = await MailFor(cycle);

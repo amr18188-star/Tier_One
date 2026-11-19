@@ -86,7 +86,7 @@ public sealed class ScorecardTests(ITestOutputHelper output)
                     if (s == 200 && saved!["issues"].Items().Any(x => x["code"].Str() == "big_change"))
                         await filler.Ok("PUT", $"/api/forms/{id}/values", Scenario.With(b, ("explanation", "قيمة الربع الأول"), ("version", saved["value"]!["version"])));
                 }
-                await filler.Ok("POST", $"/api/forms/{id}/submit");
+                await filler.Ok("POST", $"/api/forms/{id}/submit", await filler.Versioned($"/api/forms/{id}"));
             }
             for (var i = 0; i < 6; i++)
             {
@@ -96,7 +96,7 @@ public sealed class ScorecardTests(ITestOutputHelper output)
                 {
                     var reviewer = await Env.As(name);
                     var (s, f) = await reviewer.Call("GET", $"/api/forms/{id}");
-                    if (s == 200 && f!["actions"]!["canApprove"].Truthy()) { await reviewer.Ok("POST", $"/api/forms/{id}/approve", Scenario.O(("note", null))); done = true; break; }
+                    if (s == 200 && f!["actions"]!["canApprove"].Truthy()) { await reviewer.Ok("POST", $"/api/forms/{id}/approve", await reviewer.Versioned($"/api/forms/{id}", Scenario.O(("note", null)))); done = true; break; }
                 }
                 if (!done) break;
             }

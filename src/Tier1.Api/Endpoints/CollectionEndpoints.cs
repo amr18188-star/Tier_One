@@ -55,7 +55,9 @@ public static class CollectionEndpoints
                 return Results.NoContent();
             })
             .RequirePermission(Features.Forms, Cap.Edit);
-        g.MapPost("/{id:guid}/submit", async (Guid id, FormsService svc, CancellationToken ct) => Results.Ok(await svc.SubmitAsync(id, ct)))
+        // The body is optional on the wire: a submit without one is refused by the service (409 if locked, else 428), not by routing.
+        g.MapPost("/{id:guid}/submit", async (Guid id, HttpRequest http, FormsService svc, CancellationToken ct) =>
+                Results.Ok(await svc.SubmitAsync(id, (await OptionalBodyAsync<FormTransitionRequest>(http, ct))?.Version, ct)))
             .RequirePermission(Features.Forms, Cap.Edit);
         // المراجعة والاعتماد: الخدمة تفحص الإجراء الخاص لخطوة النموذج الحالية وفصل المهام.
         g.MapPost("/{id:guid}/approve", async (Guid id, ApproveFormRequest req, FormsService svc, CancellationToken ct) => Results.Ok(await svc.ApproveAsync(id, req, ct)))
@@ -63,7 +65,7 @@ public static class CollectionEndpoints
         g.MapPost("/{id:guid}/return", async (Guid id, ReturnRequest req, FormsService svc, CancellationToken ct) => Results.Ok(await svc.ReturnAsync(id, req, ct)))
             .RequireAnyPermission(ReviewSpecials);
         // إعادة فتح المعتمد بطلب وقرار (D4): الطلب ممن يملك «إعادة الفتح»، والقرار للجنة العليا برقم المحضر.
-        g.MapPost("/{id:guid}/reopen", async (Guid id, NoteRequest req, FormsService svc, CancellationToken ct) => Results.Ok(await svc.RequestReopenAsync(id, req, ct)))
+        g.MapPost("/{id:guid}/reopen", async (Guid id, FormTransitionRequest req, FormsService svc, CancellationToken ct) => Results.Ok(await svc.RequestReopenAsync(id, req, ct)))
             .RequireSpecial(Features.Cycles, ApprovalRules.Reopen);
         g.MapPost("/{id:guid}/reopen/approve", async (Guid id, Tier1.Application.Kpi.CommitteeDecisionRequest req, FormsService svc, CancellationToken ct) => Results.Ok(await svc.ApproveReopenAsync(id, req, ct)))
             .RequireSpecial(Features.Cycles, ApprovalRules.ApproveReopen);
@@ -210,5 +212,14 @@ public static class CollectionEndpoints
         // تقويم الأرباع يلزم من ينشئ الدورات ومن يطالع النتائج والنماذج.
         api.MapGet("/plan/calendar", async (Tier1.Application.Scorecard.ScorecardService svc, CancellationToken ct) => Results.Ok(await svc.CalendarAsync(ct)))
             .RequireAnyPermission($"{Features.Cycles}:V", $"{Features.Forms}:V", $"{Features.Results}:V");
+    }
+
+    /// <summary>A JSON body when one was sent, else null (a body-less POST would otherwise miss the route and fall to the 404 fallback).</summary>
+    private static async Task<T?> OptionalBodyAsync<T>(HttpRequest http, CancellationToken ct) where T : class
+    {
+        if (http.ContentLength is null or 0 && !http.Headers.ContainsKey("Transfer-Encoding")) return null;
+        try { return await http.ReadFromJsonAsync<T>(ct); }
+        catch (System.Text.Json.JsonException) { throw new DomainException("invalid_body", "صيغة الطلب غير صالحة.", "The request body is not valid JSON.", 400); }
+        catch (InvalidOperationException) { throw new DomainException("invalid_body", "صيغة الطلب غير صالحة.", "The request body must be JSON.", 415); }
     }
 }

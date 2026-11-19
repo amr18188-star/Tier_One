@@ -36,7 +36,7 @@ internal static class Flow
     {
         var entry = await app.As("entry");
         var form = await entry.Fill(await FormAsync(app, cycle, "ENG", "entry"));
-        return await entry.Ok("POST", $"/api/forms/{form["id"].Str()}/submit");
+        return await entry.Ok("POST", $"/api/forms/{form["id"].Str()}/submit", Scenario.O(("version", form["version"])));
     }
 
     public static JsonObject Approve(JsonNode form, string? note = null) => Scenario.O(("note", note), ("version", form["version"]), ("direct", false));

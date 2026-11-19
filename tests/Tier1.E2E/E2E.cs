@@ -131,6 +131,15 @@ internal static class Calls
 
     public static string Code(this JsonNode? error) => error?["code"].Str() ?? "";
 
+    /// <summary>BE-2: every form transition carries the version of the form it acts on; this reads the current one into the body.</summary>
+    public static async Task<JsonObject> Versioned(this DemoClient c, string formPath, JsonObject? body = null)
+    {
+        var form = (await c.GetAsync(formPath, default))!;
+        var o = body is null ? new JsonObject() : (JsonObject)body.DeepClone();
+        o["version"] = form["version"]?.DeepClone();
+        return o;
+    }
+
     public static string Today(int plusDays = 0) => DateOnly.FromDateTime(DateTime.Today).AddDays(plusDays).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
 
     public static string Tag(int length = 6) => Guid.NewGuid().ToString("N")[..length];

@@ -22,10 +22,11 @@ public sealed record ApprovedValueDto(ValueKind Kind, decimal? Value, decimal? N
 /// </summary>
 public sealed partial class FormsService
 {
-    public async Task<FormDto> RequestReopenAsync(Guid id, NoteRequest req, CancellationToken ct)
+    public async Task<FormDto> RequestReopenAsync(Guid id, FormTransitionRequest req, CancellationToken ct)
     {
         await access.RequireSpecialAsync(Features.Cycles, ApprovalRules.Reopen, ct);
         var ctx = await LoadAsync(id, Cap.View, tracking: true, ct);
+        Concurrency.Transition(ctx.Submission.Version, req.Version);
         var reason = Require.Reason(req.Note, 5, "reason_required", 2000);
         var pending = await db.ReopenRequests.AnyAsync(r => r.SubmissionId == id && r.Status == ReopenRequestStatus.Pending, ct);
         ReopenRules.EnsureCanRequest(ctx.Submission, ctx.Cycle, pending);

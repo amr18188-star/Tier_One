@@ -123,7 +123,7 @@ public sealed partial class FormsService
             var status = issues.Any(i => i.Severity == IssueSeverity.Error) ? "error" : same ? "same" : current is null ? "new" : "changed";
             items.Add(new(line, code, ci.Version.NameAr, status, display, issues));
             if (status is "new" or "changed")
-                pending.Add((ci, new SaveValueRequest(ci.Ci.IndicatorId, kind.Value, value, num, den, reason, explanation, null), computed));
+                pending.Add((ci, new SaveValueRequest(ci.Ci.IndicatorId, kind.Value, value, num, den, reason, explanation, ctx.Values.GetValueOrDefault(ci.Ci.IndicatorId)?.Version), computed));
         }
 
         var errors = items.Count(i => i.Status == "error");

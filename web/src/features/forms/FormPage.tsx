@@ -59,7 +59,11 @@ export default function FormPage() {
   };
 
   const submit = useMutation({
-    mutationFn: () => api.post<Form>(`/api/forms/${id}/submit`),
+    // The autosaves just flushed move the form's version, so send from the version the server holds now (BE-2).
+    mutationFn: async () => {
+      const fresh = await qc.fetchQuery({ queryKey: key, queryFn: () => api.get<Form>(`/api/forms/${id}`), staleTime: 0 });
+      return api.post<Form>(`/api/forms/${id}/submit`, { version: fresh.version });
+    },
     onSuccess: (f) => {
       qc.setQueryData(key, f);
       void qc.invalidateQueries({ queryKey: ["forms"] });
@@ -391,6 +395,7 @@ export default function FormPage() {
           onSubmit={async (note) => {
             const next = await api.post<Form>(`/api/forms/${f.id}/return`, {
               note, items: Object.entries(marks).filter(([, m]) => m.checked).map(([indicatorId, m]) => ({ indicatorId, note: m.note || note })),
+              version: f.version,
             });
             setMarks({});
             qc.setQueryData(key, next);
@@ -403,7 +408,7 @@ export default function FormPage() {
           explain={L("يرسل الطلب إلى اللجنة العليا ويبقى النموذج معتمدًا ومقفلًا حتى تعتمده برقم المحضر. عندها يعود إلى الإدخال ويمر بخطوات الاعتماد كلها من جديد، وتبقى قيمه المعتمدة الحالية رسمية في النتائج حتى يعاد اعتماده.",
             "The request goes to the higher committee; the form stays approved and locked until it approves with a decision reference.")}
           onSubmit={async (note) => {
-            qc.setQueryData(key, await api.post<Form>(`/api/forms/${f.id}/reopen`, { note }));
+            qc.setQueryData(key, await api.post<Form>(`/api/forms/${f.id}/reopen`, { note, version: f.version }));
             void qc.invalidateQueries({ queryKey: ["forms"] });
           }}
           onClose={() => setDialog(null)} />

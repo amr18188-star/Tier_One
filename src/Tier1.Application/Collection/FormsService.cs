@@ -51,7 +51,10 @@ public sealed record SaveValueRequest(Guid IndicatorId, ValueKind Kind, decimal?
 
 public sealed record ReturnItem(Guid IndicatorId, string Note);
 
-public sealed record ReturnRequest(string? Note, IReadOnlyList<ReturnItem>? Items);
+public sealed record ReturnRequest(string? Note, IReadOnlyList<ReturnItem>? Items, uint? Version = null);
+
+/// <summary>انتقال من إصدار النموذج الذي رآه المستخدم (الإرسال وطلب إعادة الفتح)؛ الملاحظة لطلب إعادة الفتح.</summary>
+public sealed record FormTransitionRequest(uint? Version, string? Note = null);
 
 public sealed record NoteRequest(string? Note);
 
@@ -179,7 +182,7 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
         }
         else
         {
-            Concurrency.Expect(db, row, req.Version);
+            Concurrency.ExpectUpsert(db, row, req.Version);
         }
         var changes = new ChangeSet().Add("kind", created ? null : row.Kind.ToString(), req.Kind.ToString()).Add("value", row.Value, value)
             .Add("numerator", row.Numerator, req.Numerator).Add("denominator", row.Denominator, req.Denominator);
@@ -221,10 +224,11 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task<FormDto> SubmitAsync(Guid id, CancellationToken ct)
+    public async Task<FormDto> SubmitAsync(Guid id, uint? version, CancellationToken ct)
     {
         var ctx = await LoadAsync(id, Cap.Edit, tracking: true, ct);
         EnsureEditable(ctx);
+        Concurrency.Transition(ctx.Submission.Version, version);
         var blocking = await BlockingAsync(ctx, ct);
         if (blocking.Count > 0)
             throw new DomainException("not_ready", "لا يرسل النموذج قبل استكمال: " + string.Join(" — ", blocking.Take(3)) + (blocking.Count > 3 ? $" (و{blocking.Count - 3} غيرها)" : ""), "The form is not ready.");
@@ -241,8 +245,8 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
     public async Task<FormDto> ApproveAsync(Guid id, ApproveFormRequest req, CancellationToken ct)
     {
         var ctx = await LoadAsync(id, Cap.View, tracking: true, ct);
-        if (req.Version is { } version && version != ctx.Submission.Version)
-            throw new DomainException("conflict", "تغيّر النموذج. حدّث الصفحة ثم أعد المحاولة.", "The form changed. Refresh and try again.", 409);
+        // The version first: a stale screen is told so (409), whoever's turn it is now.
+        Concurrency.Transition(ctx.Submission.Version, req.Version);
         await EnsureReviewerAsync(ctx, ct, allowDirect: true);
         // D2: التخطي اختيار صريح بسبب مكتوب يبقى في سجل النموذج؛ والاعتماد العادي لا يتحول مباشرًا من تلقاء نفسه.
         ApprovalStep next;
@@ -270,6 +274,7 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
     public async Task<FormDto> ReturnAsync(Guid id, ReturnRequest req, CancellationToken ct)
     {
         var ctx = await LoadAsync(id, Cap.View, tracking: true, ct);
+        Concurrency.Transition(ctx.Submission.Version, req.Version);
         // من يملك تمرير النموذج (عاديًا أو مباشرًا) يملك إعادته للتصحيح (D2).
         await EnsureReviewerAsync(ctx, ct, allowDirect: true);
         var note = Require.Reason(req.Note, 5, "note_required", 2000);

@@ -21,6 +21,9 @@ public sealed class AssignmentTests(ITestOutputHelper output)
         JsonNode com = units["COM"], eng = units["ENG"], qac = units["QAC"], stu = units["STU"], acc = units["COM-ACC"];
         string Id(JsonNode u) => u["id"].Str()!;
 
+        // A run stopped half-way leaves units customised; start from the default like the cleanup at the end does.
+        foreach (var u in new[] { com, qac, stu }) await planner.Ok("PUT", $"/api/org/units/{Id(u)}/indicators", Scenario.O(("custom", false), ("indicatorIds", new JsonArray())));
+
         t.Step("1. Unit indicators: the default, then customising");
         var d = (await planner.Get($"/api/org/units/{Id(com)}/indicators"))!;
         var items = d["standards"].Items().SelectMany(s => s["indicators"].Items()).ToList();
@@ -94,13 +97,13 @@ public sealed class AssignmentTests(ITestOutputHelper output)
         t.Check(row["forms"].Num() == mine.Count, $"Their cycle counts are their unit's forms ({row["forms"].Num()}), not the university's ({forms.Count})");
 
         t.Step("5. A unit that sees the whole university");
-        JsonObject Edit(bool views) => Scenario.O(("nameAr", qac["nameAr"]), ("nameEn", qac["nameEn"]), ("sortOrder", qac["sortOrder"]), ("effectiveOn", null), ("reason", null), ("version", null), ("viewsWholeUniversity", views));
+        async Task<JsonObject> Edit(bool views) => Scenario.O(("nameAr", qac["nameAr"]), ("nameEn", qac["nameEn"]), ("sortOrder", qac["sortOrder"]), ("effectiveOn", null), ("reason", null), ("version", (await admin.Get("/api/org/units")).Items().Single(u => u["id"].Str() == Id(qac))["version"]), ("viewsWholeUniversity", views));
         // On the official structure QAC (SPU) already sees the whole university; start narrow so widening is a real change, and put it back after.
         var qacWasWide = qac["viewsWholeUniversity"].Truthy();
-        if (qacWasWide) await admin.Ok("PUT", $"/api/org/units/{Id(qac)}", Edit(false));
-        (status, err) = await planner.Call("PUT", $"/api/org/units/{Id(qac)}", Edit(true));
+        if (qacWasWide) await admin.Ok("PUT", $"/api/org/units/{Id(qac)}", await Edit(false));
+        (status, err) = await planner.Call("PUT", $"/api/org/units/{Id(qac)}", await Edit(true));
         t.Check(status == 403 && err.Code() == "grants_required", "The plan manager cannot widen a unit's view");
-        var saved = await admin.Ok("PUT", $"/api/org/units/{Id(qac)}", Edit(true));
+        var saved = await admin.Ok("PUT", $"/api/org/units/{Id(qac)}", await Edit(true));
         t.Check(saved["viewsWholeUniversity"].Truthy(), "The super admin (who manages permissions) made QAC see the whole university");
         seen = (await central.Get($"/api/forms?cycleId={cycleId}")).Items().ToList();
         t.Check(seen.Count == forms.Count, $"The QAC entry user sees every form ({seen.Count} of {forms.Count})");
@@ -109,10 +112,10 @@ public sealed class AssignmentTests(ITestOutputHelper output)
         t.Check(!f1["actions"]!["canEdit"].Truthy(), "And reads the Engineering form without editing it");
         f1 = (await central.Get($"/api/forms/{forms[Id(qac)]["id"].Str()}"))!;
         t.Check(f1["actions"]!["canEdit"].Truthy(), "And edits their own unit's form");
-        await admin.Ok("PUT", $"/api/org/units/{Id(qac)}", Edit(false));
+        await admin.Ok("PUT", $"/api/org/units/{Id(qac)}", await Edit(false));
         seen = (await central.Get($"/api/forms?cycleId={cycleId}")).Items().ToList();
         if (!alreadyWhole) t.Check(seen.Count < forms.Count, "Removing the view returns them to their units at once");
-        if (qacWasWide) await admin.Ok("PUT", $"/api/org/units/{Id(qac)}", Edit(true));
+        if (qacWasWide) await admin.Ok("PUT", $"/api/org/units/{Id(qac)}", await Edit(true));
 
         t.Step("6. Restore what changed");
         foreach (var u in new[] { com, qac, stu }) await planner.Ok("PUT", $"/api/org/units/{Id(u)}/indicators", Scenario.O(("custom", false), ("indicatorIds", new JsonArray())));

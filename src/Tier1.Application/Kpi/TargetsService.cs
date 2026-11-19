@@ -96,7 +96,6 @@ public sealed class TargetsService(IAppDb db, IClock clock, ICurrentUser current
         }
         else
         {
-            Concurrency.Expect(db, target, req.Version);
             if (target.Status == TargetStatus.Approved)
             {
                 // تعديل المعتمد: بصلاحية الاعتماد وسبب ورقم قرار، والقيمة السابقة تحفظ للمقارنة.
@@ -107,6 +106,8 @@ public sealed class TargetsService(IAppDb db, IClock clock, ICurrentUser current
                 db.TargetRevisions.Add(Revision(target, value, Require.Optional(req.Text, 300), reason, decision, TargetRevisionAction.Revised, now));
                 target.DecisionRef = decision;
             }
+            // After the permission check, so a refused editor hears "not allowed" rather than "changed meanwhile".
+            Concurrency.ExpectUpsert(db, target, req.Version);
         }
 
         var changes = new ChangeSet().Add("value", target.Value, value).Add("text", target.Text, Require.Optional(req.Text, 300))
