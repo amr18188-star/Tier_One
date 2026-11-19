@@ -2318,7 +2318,7 @@
    "numerator": "إجمالي ساعات التدريس والتفاعل المباشر الأسبوعية لأعضاء هيئة التدريس",
    "denominator": "عدد أعضاء هيئة التدريس",
    "unit": "ساعة / أسبوع",
-   "direction": "Range",
+   "direction": "LowerIsBetter",
    "level": "College",
    "aggregation": "RatioOfSums",
    "aggregationNote": "نسبة مجموع البسط إلى مجموع المقام",

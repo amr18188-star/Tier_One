@@ -60,23 +60,22 @@ public static class ScorecardRules
 {
     public static decimal Round1(decimal v) => decimal.Round(v, 1, MidpointRounding.AwayFromZero);
 
-    /// <summary>نسبة الإنجاز من المستهدف (0–100 للتصاعدي الموجب)، أو null بلا قيمة أو بلا مستهدف.</summary>
-    public static decimal? Achievement(decimal? value, decimal? target, Direction direction)
-    {
-        if (value is not { } v || target is not { } t) return null;
-        var lower = direction == Direction.LowerIsBetter;
-        if (t == 0) return lower ? Round1(Math.Max(0, Math.Min(100 - v, 100))) : v >= 0 ? 100 : 0;
-        if (lower) return v == 0 ? 100 : Round1(Math.Min(t / v * 100, 100));
-        return Round1(Math.Min(v / t * 100, 100));
-    }
+    /// <summary>
+    /// نسبة الإنجاز من المستهدف بعرض ملف الإطار: من المصدر الواحد Kpi.Achievement (D7)، محدودة بـ100 ومقربة لرقم عشري؛ أو null بلا قيمة أو بلا مستهدف.
+    /// الاتجاه غير المحدد يعامل تصاعديًا كما في الملف.
+    /// </summary>
+    public static decimal? Achievement(decimal? value, decimal? target, Direction direction) =>
+        Kpi.Achievement.Ratio(Framework(direction), value, target) is { } r ? Round1(Math.Min(r * 100, 100)) : null;
 
-    /// <summary>النسبة الفعلية دون حد الـ100، للعلم فقط حين يتجاوز الأداء المستهدف.</summary>
+    /// <summary>النسبة الفعلية دون حد الـ100، للعلم فقط حين يتجاوز الأداء المستهدف؛ لا معنى لها مع مستهدف صفر أو فعلي صفر في التنازلي.</summary>
     public static decimal? RawAchievement(decimal? value, decimal? target, Direction direction)
     {
         if (value is not { } v || target is not { } t || t == 0) return null;
-        if (direction == Direction.LowerIsBetter) return v == 0 ? null : Round1(t / v * 100);
-        return Round1(v / t * 100);
+        if (direction == Direction.LowerIsBetter && v == 0) return null;
+        return Kpi.Achievement.Ratio(Framework(direction), v, t) is { } r ? Round1(r * 100) : null;
     }
+
+    private static Direction Framework(Direction d) => d == Direction.Undefined ? Direction.HigherIsBetter : d;
 
     /// <summary>«في المستوى» إذا بلغت أحدث قيمة المستهدف النهائي في اتجاه المؤشر، وإلا «دون المستوى».</summary>
     public static Level LevelOf(decimal? latest, decimal? finalTarget, Direction direction)

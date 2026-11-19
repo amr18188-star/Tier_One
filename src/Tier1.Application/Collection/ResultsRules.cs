@@ -90,20 +90,11 @@ public static class ResultsRules
     }
 
     /// <summary>
-    /// نسبة الإنجاز من المستهدف بحسب الاتجاه: الأعلى أفضل = الفعلي ÷ المستهدف، والأقل أفضل = المستهدف ÷ الفعلي،
-    /// والوصول إلى قيمة = 1 − نسبة الانحراف عنها في أي اتجاه (12 ساعة مستهدفة و13 فعلية = 92%).
+    /// نسبة الإنجاز من المستهدف بحسب الاتجاه، من المصدر الواحد Kpi.Achievement (D7)، مقربة لأربع خانات ودون حد أعلى:
+    /// الأعلى أفضل = الفعلي ÷ المستهدف، والأقل أفضل = المستهدف ÷ الفعلي، والوصول إلى قيمة = 1 − نسبة الانحراف عنها (12 مستهدفة و13 فعلية = 92%).
     /// </summary>
-    public static decimal? Achievement(Direction direction, decimal? actual, decimal? target)
-    {
-        if (actual is not { } a || target is not { } t) return null;
-        return direction switch
-        {
-            Direction.HigherIsBetter => t == 0 ? (a >= 0 ? 1 : 0) : decimal.Round(a / t, 4),
-            Direction.LowerIsBetter => a == 0 ? 1 : decimal.Round(t / a, 4),
-            Direction.Range => t == 0 ? (a == 0 ? 1 : 0) : decimal.Round(Math.Max(0, 1 - Math.Abs(a - t) / Math.Abs(t)), 4),
-            _ => null,
-        };
-    }
+    public static decimal? Achievement(Direction direction, decimal? actual, decimal? target) =>
+        Kpi.Achievement.Ratio(direction, actual, target) is { } r ? decimal.Round(r, 4) : null;
 
     /// <summary>
     /// الحكم على القيمة. للوصول إلى قيمة: محقق إن كان الانحراف نصف هامش «القريب» أو أقل (5% افتراضيًا)، وقريب حتى الهامش كله (10%).
