@@ -10,6 +10,7 @@ import { HBarChart, ProgressToTarget, SegmentBar } from "../../shared/charts";
 import { L } from "../../shared/i18n";
 import { PeriodNav } from "../../shared/PeriodNav";
 import { num, performance as perfText, withUnit } from "../../shared/labels";
+import { PendingTarget } from "../../shared/PendingTarget";
 import { DataTable, EmptyNote, FilterMeta, oneOf, PageHeader, Panel } from "../../shared/ui";
 import { usePeriodParams, useSearchState } from "../../shared/usePeriodParams";
 import { ReportView } from "./ReportView";
@@ -107,6 +108,7 @@ export default function ResultsPage() {
             <span>
               <span className="ltr">{withUnit(i.target, i.unit)}</span>
               {i.targetSource === "University" && <Tooltip title={L("لا مستهدف خاص بالكلية؛ تقارن بمستهدف الجامعة.", "No college target; compared with the university target.")}><small className="muted"> ({L("الجامعة", "univ.")})</small></Tooltip>}
+              <PendingTarget value={i.pendingTarget} year={i.pendingTargetYear} unit={i.unit} />
             </span>
           ),
         },

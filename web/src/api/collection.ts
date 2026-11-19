@@ -41,6 +41,7 @@ export interface FormItem {
   indicatorId: string; code: string; name: string; unit: string; aggregation: Aggregation; usesRatio: boolean; numeratorLabel: string | null; denominatorLabel: string | null;
   definition: string | null; dataSource: string | null; evidenceRequired: string | null; direction: Direction; previous: number | null; target: number | null;
   value: Value | null; issues: Issue[]; evidence: Doc[]; entryNote: string | null; targetSource: TargetSource;
+  /** مستهدف مقترح بانتظار الاعتماد (D3)، للعرض فقط. */ pendingTarget?: number | null; pendingTargetYear?: number | null;
 }
 
 export interface FormSection { pillarCode: string | null; pillarName: string | null; standardCode: string; standardName: string; items: FormItem[] }
@@ -76,6 +77,7 @@ export interface IndicatorResult {
   actual: number | null; target: number | null; baseline: number | null; previous: number | null; achievement: number | null; performance: Performance;
   reported: number; expected: number; note: string | null; summary: string;
   targetSource: TargetSource; targetYear: number | null; universityTarget: number | null; universityAchievement: number | null;
+  /** مستهدف مقترح بانتظار الاعتماد (D3)، للعرض فقط. */ pendingTarget?: number | null; pendingTargetYear?: number | null;
 }
 
 export interface StandardResult { code: string; name: string; indicators: number; achieved: number; near: number; behind: number; noData: number; noTarget: number }

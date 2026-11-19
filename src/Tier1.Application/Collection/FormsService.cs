@@ -26,7 +26,8 @@ public sealed record ValueDto(
 public sealed record FormItem(
     Guid IndicatorId, string Code, string Name, string Unit, Aggregation Aggregation, bool UsesRatio, string? NumeratorLabel, string? DenominatorLabel,
     string? Definition, string? DataSource, string? EvidenceRequired, Direction Direction, decimal? Previous, decimal? Target,
-    ValueDto? Value, IReadOnlyList<IssueDto> Issues, IReadOnlyList<DocDto> Evidence, string? EntryNote, Kpi.TargetSource TargetSource);
+    ValueDto? Value, IReadOnlyList<IssueDto> Issues, IReadOnlyList<DocDto> Evidence, string? EntryNote, Kpi.TargetSource TargetSource,
+    decimal? PendingTarget = null, int? PendingTargetYear = null);
 
 /// <summary>معيار في النموذج بركيزته، فيعرض الإدخال مصنفًا: الركيزة ← المعيار ← مؤشراته.</summary>
 public sealed record FormSection(string? PillarCode, string? PillarName, string StandardCode, string StandardName, IReadOnlyList<FormItem> Items);
@@ -512,7 +513,7 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
         return new FormItem(i.Ci.IndicatorId, i.Ci.Code, v.NameAr, v.Unit, v.Aggregation, ValueRules.UsesRatio(spec), v.Numerator, v.Denominator,
             v.Definition, v.DataSource, v.EvidenceRequired, v.Direction, ctx.Previous.GetValueOrDefault(i.Ci.IndicatorId), target.Value,
             value is null ? null : new ValueDto(value.Kind, value.Value, value.Numerator, value.Denominator, value.Reason, value.Explanation, value.ReviewNote, value.EditedAt, value.Version),
-            issues, docs.GetValueOrDefault(i.Ci.IndicatorId) ?? [], EntryNote(i.Ci, v, ctx.Unit), target.Source);
+            issues, docs.GetValueOrDefault(i.Ci.IndicatorId) ?? [], EntryNote(i.Ci, v, ctx.Unit), target.Source, target.PendingValue, target.PendingYear);
     }
 
     internal static DocDto ToDoc(StoredDocument d) => new(d.Id, d.FileName, d.ContentType, d.SizeBytes, d.UploadedAt, d.Description, d.VoidedAt is not null, d.VoidReason);

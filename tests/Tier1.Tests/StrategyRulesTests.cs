@@ -16,7 +16,7 @@ public class StrategyRulesTests
     private static readonly OrgUnit College = new() { Code = "ENG", Kind = OrgUnitKind.College, Path = "/CU/ENG/", ParentId = University.Id };
 
     private static IndicatorTarget T(OrgUnit unit, int year, decimal value, TargetKind kind = TargetKind.Target) =>
-        new() { UnitId = unit.Id, Year = year, Value = value, Kind = kind };
+        new() { UnitId = unit.Id, Year = year, Value = value, Kind = kind, Status = TargetStatus.Approved };
 
     // ---------------------------------------------------------------- المستهدف الساري
 

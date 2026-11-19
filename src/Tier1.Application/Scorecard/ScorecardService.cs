@@ -97,7 +97,8 @@ public sealed class ScorecardService(IAppDb db, IAccessService access, IClock cl
         var standards = await db.Standards.AsNoTracking().OrderBy(s => s.SortOrder).ToListAsync(ct);
         var indicators = await db.Indicators.AsNoTracking().Include(i => i.Versions).Where(i => !i.Suspended).OrderBy(i => i.SortOrder).ToListAsync(ct);
         var university = await db.OrgUnits.AsNoTracking().Where(u => u.Kind == OrgUnitKind.University).Select(u => u.Id).FirstOrDefaultAsync(ct);
-        var targets = (await db.Targets.AsNoTracking().Where(t => t.UnitId == university && t.Kind == TargetKind.Target).ToListAsync(ct)).ToLookup(t => t.IndicatorId);
+        // بطاقة الأداء تقاس بالمستهدفات المعتمدة وحدها (D3).
+        var targets = (await db.Targets.AsNoTracking().Where(t => t.UnitId == university && t.Kind == TargetKind.Target && t.Status == TargetStatus.Approved).ToListAsync(ct)).ToLookup(t => t.IndicatorId);
         // القيم الرسمية التي نقلها مسئول ملف Tier 1 بعد مراجعة الكليات، لا المحسوبة لحظيًا: لا يدخل البطاقة رقم لم يراجع.
         var values = (await db.UniversityValues.AsNoTracking().ToListAsync(ct))
             .GroupBy(v => (v.Year, v.Quarter))

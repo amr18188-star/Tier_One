@@ -13,13 +13,13 @@ namespace Tier1.Application.Collection;
 public sealed record ResultUnit(Guid Id, string Name, OrgUnitKind Kind);
 
 /// <summary>
-/// نتيجة مؤشر لجهة. للكلية في مؤشر نسبة أو متوسط: مستهدف الجامعة ونسبة الإنجاز منه أيضًا، فتعرف بعدها عن نسبة الجامعة المرجوة.
+/// نتيجة مؤشر لجهة. PendingTarget: مستهدف مقترح بانتظار اعتماد اللجنة العليا (D3)، للعرض فقط؛ الأداء يقاس بـ Target المعتمد. للكلية في مؤشر نسبة أو متوسط: مستهدف الجامعة ونسبة الإنجاز منه أيضًا، فتعرف بعدها عن نسبة الجامعة المرجوة.
 /// </summary>
 public sealed record IndicatorResult(
     Guid IndicatorId, string Code, string Name, string StandardCode, string Unit, Direction Direction, CollectionLevel Level,
     decimal? Actual, decimal? Target, decimal? Baseline, decimal? Previous, decimal? Achievement, Performance Performance,
     int Reported, int Expected, string? Note, string Summary,
-    Kpi.TargetSource TargetSource, int? TargetYear, decimal? UniversityTarget, decimal? UniversityAchievement);
+    Kpi.TargetSource TargetSource, int? TargetYear, decimal? UniversityTarget, decimal? UniversityAchievement, decimal? PendingTarget = null, int? PendingTargetYear = null);
 
 public sealed record StandardResult(string Code, string Name, int Indicators, int Achieved, int Near, int Behind, int NoData, int NoTarget);
 
@@ -34,14 +34,14 @@ public sealed record ResultsDto(
 
 public sealed record UnitResult(
     Guid UnitId, string UnitName, decimal? Actual, decimal? Target, decimal? Achievement, Performance Performance, int Reported, int Expected, string? Note,
-    Kpi.TargetSource TargetSource, decimal? Numerator, decimal? Denominator);
+    Kpi.TargetSource TargetSource, decimal? Numerator, decimal? Denominator, decimal? PendingTarget = null, int? PendingTargetYear = null);
 
 public sealed record TrendPoint(Guid CycleId, string Label, decimal? Actual, decimal? Target);
 
 /// <summary>قيمة جهة في مؤشر ضمن دورة: ببسطها ومقامها، وكم جهة تحتها أبلغت، وحالة نموذجها، ومستهدفها.</summary>
 public sealed record UnitBreakdown(
     Guid UnitId, string UnitName, OrgUnitKind Kind, decimal? Value, decimal? Numerator, decimal? Denominator, int Reported, int Expected, string? Note,
-    SubmissionStatus? FormStatus, decimal? Target, Kpi.TargetSource TargetSource);
+    SubmissionStatus? FormStatus, decimal? Target, Kpi.TargetSource TargetSource, decimal? PendingTarget = null, int? PendingTargetYear = null);
 
 /// <summary>مؤشر في دورة: قيمة الجامعة المحسوبة من الجهات ومستهدفها، وقيمة كل جهة.</summary>
 public sealed record IndicatorBreakdown(
@@ -127,7 +127,7 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
                 var target = TargetFor(snap, ind, cu);
                 return new UnitResult(c.Id, c.Name, agg.Value, target.Value, ResultsRules.Achievement(ind.Version.Direction, agg.Value, target.Value),
                     ResultsRules.Status(ind.Version.Aggregation, ind.Version.Direction, agg, target.Value, target.NotStarted, near), agg.Reported, agg.Expected, agg.Note,
-                    target.Source, agg.Numerator, agg.Denominator);
+                    target.Source, agg.Numerator, agg.Denominator, target.PendingValue, target.PendingYear);
             })
             .OrderByDescending(r => r.Achievement ?? -1).ToList();
 
@@ -201,7 +201,7 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
                 var a = u.Kind == OrgUnitKind.University ? uni : Actual(snap, i, u);
                 var t = TargetFor(snap, i, u);
                 return new UnitBreakdown(u.Id, u.NameAr, u.Kind, a.Value, a.Numerator, a.Denominator, a.Reported, a.Expected, a.Note,
-                    formOf.TryGetValue(u.Id, out var st) ? st : null, t.Value, t.Source);
+                    formOf.TryGetValue(u.Id, out var st) ? st : null, t.Value, t.Source, t.PendingValue, t.PendingYear);
             }).ToList();
             list.Add(new IndicatorBreakdown(i.Ci.IndicatorId, i.Ci.Code, i.Version, i.Standard.Code, i.Ci.Level, uni, uniTarget, units));
         }
@@ -370,7 +370,7 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
             agg.Value, target.Value, baseline, prev, ResultsRules.Achievement(i.Version.Direction, agg.Value, target.Value),
             ResultsRules.Status(i.Version.Aggregation, i.Version.Direction, agg, target.Value, target.NotStarted, near), agg.Reported, agg.Expected, note,
             ResultsRules.Summary(who, i.Version.Unit, i.Version.Direction, agg.Value, target.Value, prev),
-            target.Source, target.Year, uniTarget, ResultsRules.Achievement(i.Version.Direction, agg.Value, uniTarget));
+            target.Source, target.Year, uniTarget, ResultsRules.Achievement(i.Version.Direction, agg.Value, uniTarget), target.PendingValue, target.PendingYear);
     }
 
     private static List<ResultUnit> VisibleUnits(Snapshot s, UnitScope scope)

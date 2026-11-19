@@ -9,6 +9,7 @@ import type { Doc, FormItem, ValueKind } from "../../api/collection";
 import { errorText } from "../../shared/format";
 import { L } from "../../shared/i18n";
 import { direction as directionText, fileSize, num, withUnit } from "../../shared/labels";
+import { PendingTarget } from "../../shared/PendingTarget";
 import { NoteCard } from "./NoteCard";
 import { useValueAutosave, type Draft, type SaveError, type SaveState } from "./useValueAutosave";
 
@@ -70,6 +71,7 @@ export function ValueRow({ formId, item, editable, reviewing, mark, onMark, onSa
           <span>
             {L("المستهدف:", "Target:")} <b className="ltr">{withUnit(item.target, item.unit)}</b>
             {item.targetSource === "University" && <small className="muted"> ({L("مستهدف الجامعة؛ لا مستهدف خاص بالجهة", "university target")})</small>}
+            <PendingTarget value={item.pendingTarget} year={item.pendingTargetYear} unit={item.unit} />
           </span>
           <span>{L("آخر قيمة معتمدة:", "Last approved:")} <b className="ltr">{withUnit(item.previous, item.unit)}</b></span>
         </div>
