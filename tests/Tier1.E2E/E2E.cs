@@ -64,12 +64,16 @@ internal static class Env
     public static readonly byte[] Pdf = "%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"u8.ToArray();
 }
 
-/// <summary>Skips when no server is reachable (set T1_BASE to point at one).</summary>
+/// <summary>
+/// Skips when no server is reachable (set T1_BASE to point at one). With <c>T1_E2E_REQUIRE_SERVER=1</c> (CI) it never skips,
+/// so a missing server fails the run instead of passing green.
+/// </summary>
 public sealed class E2EFactAttribute : FactAttribute
 {
     public E2EFactAttribute()
     {
-        if (!Env.ServerUp) Skip = $"No server at {Env.Base}; start one (docker compose ... up) or set T1_BASE.";
+        if (!Env.ServerUp && Environment.GetEnvironmentVariable("T1_E2E_REQUIRE_SERVER") != "1")
+            Skip = $"No server at {Env.Base}; start one (docker compose ... up) or set T1_BASE.";
     }
 }
 

@@ -10,6 +10,7 @@
 | `src/Tier1.Api` | المسارات (`Endpoints/Tier1Endpoints.cs` و`Endpoints/CollectionEndpoints.cs`) والصلاحيات والإعدادات |
 | `web` | الواجهة (React + antd)، وتبنى إلى `src/Tier1.Api/wwwroot` |
 | `tests/Tier1.Tests` | اختبارات الوحدة (القواعد والصلاحيات والبذرة) |
+| `tests/Tier1.IntegrationTests` | اختبارات التكامل: التطبيق كله على PostgreSQL وMongoDB في حاويات مؤقتة (Testcontainers): مسار النموذج والتزامن ومصفوفة الاعتماد وإدارة الحسابات والأدوار |
 | `tests/Tier1.E2E` | اختبارات شاملة على خادم يعمل (xUnit): القاموس والمستهدفات والتعارضات والهيكل والتكليف وجمع البيانات والاعتماد والاستيراد والنتائج وشجرة الخطة، وبطاقة الأداء، واختبار الحمل |
 | `deploy/` | صورة Docker وملف compose للإنتاج والوكيل العكسي وتهيئة MongoDB |
 | `docs/requirements.md` | وثيقة المتطلبات والقرارات |
@@ -92,9 +93,19 @@ docker compose -p tier1-flow -f docker-compose.flow.yml up -d
 
 ```bash
 dotnet test tests/Tier1.Tests                                  # اختبارات الوحدة (بلا خادم)
-cd web && npx tsc -b --noEmit && npx vitest run && cd ..       # الواجهة
+dotnet test tests/Tier1.IntegrationTests                       # التكامل: يلزم Docker فقط (حاويات مؤقتة تحذف بعدها)
+cd web && npm run typecheck && npm run lint && npm test && cd ..   # الواجهة
 dotnet test tests/Tier1.E2E                                    # شاملة: والخادم يعمل (docker compose ... up)
 ```
+
+**CI** (`.github/workflows/ci.yml`) يشغل كل ذلك مع كل دفع وطلب دمج:
+- البناء بالتحذيرات أخطاءً، واختبارات الوحدة، وفحص حزم NuGet المعروفة الثغرات.
+- اختبارات التكامل على حاويات.
+- الواجهة: الأنواع، وESLint (قواعد hooks وإتاحة JSX، والتحذيرات لا تزيد على سقف `--max-warnings`)، وvitest، و`npm audit` لحزم التشغيل، والبناء.
+- فحص الأسرار (gitleaks بإعدادات `.gitleaks.toml`).
+- الاختبارات الشاملة على بيئة `docker-compose.e2e.yml`، بـ `T1_E2E_REQUIRE_SERVER=1` فيفشل التشغيل إن غاب الخادم بدل أن تتخطى الاختبارات نفسها.
+
+اختبارات تفاعل الواجهة تعمل في jsdom بتعليق `// @vitest-environment jsdom` أول الملف (مثال: `web/src/shared/DecisionModal.test.tsx`)، وبقية الاختبارات في بيئة node.
 
 الاختبارات الشاملة (`tests/Tier1.E2E`) تتخطى نفسها إن لم يوجد خادم، وتقرأ `T1_BASE` (الافتراضي http://localhost:5150) و`T1_DEMO_PASSWORD` (الافتراضي `Tier1-Demo-Pass1`).
 تتكرر على القاعدة نفسها دون إعادة تهيئتها، وتعمل واحدًا بعد الآخر لأنها تشترك في الخادم والحسابات. وتعمل على الهيكل الرسمي أو التجريبي (تسمي الكليات برموزها التجريبية ENG وCS وCOM).

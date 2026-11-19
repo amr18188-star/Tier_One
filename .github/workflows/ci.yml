@@ -1,0 +1,113 @@
+# CI: the safety net for every change (phase 0 of docs/audit/2026-11). Each job must pass before a merge.
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+
+jobs:
+  backend:
+    name: Backend build, unit tests, vulnerable packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - run: dotnet restore Tier1.sln
+      # Warnings are errors (Directory.Build.props), so this also enforces the analyzers.
+      - run: dotnet build Tier1.sln -c Release --no-restore
+      - run: dotnet test tests/Tier1.Tests -c Release --no-build
+      - name: No known-vulnerable NuGet packages
+        run: |
+          dotnet list Tier1.sln package --vulnerable --include-transitive | tee vulnerable.txt
+          if grep -q "has the following vulnerable packages" vulnerable.txt; then exit 1; fi
+
+  integration:
+    name: Integration tests (PostgreSQL and MongoDB containers)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      # Testcontainers starts postgres:18 and mongo:8 on the runner's Docker.
+      - run: dotnet test tests/Tier1.IntegrationTests -c Release
+
+  web:
+    name: Web typecheck, lint, tests, audit, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      # ESLint: no errors, and warnings may not exceed the ratchet in package.json.
+      - run: npm run lint
+      - run: npm test
+      # Runtime dependencies only; development tools are not shipped.
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npx vite build
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      # The tracked files of this commit. Scan the whole history too once it is cleaned (docs/repo-history-cleanup.md).
+      - run: docker run --rm -v "$PWD:/repo:ro" ghcr.io/gitleaks/gitleaks:v8.21.2 dir /repo --config /repo/.gitleaks.toml --redact --no-banner
+
+  e2e:
+    name: End-to-end tests (compose environment)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Start the E2E environment
+        run: docker compose -p tier1-e2e -f docker-compose.e2e.yml up -d
+      - name: Wait until the demo data is loaded
+        run: |
+          for i in $(seq 1 120); do
+            if docker logs tier1-e2e-api 2>&1 | grep -q "Demo data loaded"; then echo "ready after $((i * 10)) s"; exit 0; fi
+            if docker logs tier1-e2e-api 2>&1 | grep -q "Demo data seeding failed"; then break; fi
+            sleep 10
+          done
+          docker logs tier1-e2e-api 2>&1 | tail -100
+          exit 1
+      # T1_E2E_REQUIRE_SERVER: a missing server fails the run instead of skipping every test green.
+      - run: dotnet test tests/Tier1.E2E
+        env:
+          T1_BASE: http://127.0.0.1:5152
+          T1_E2E_REQUIRE_SERVER: "1"
+      - name: Server log on failure
+        if: failure()
+        run: docker logs tier1-e2e-api 2>&1 | tail -300
+      - if: always()
+        run: docker compose -p tier1-e2e -f docker-compose.e2e.yml down -v

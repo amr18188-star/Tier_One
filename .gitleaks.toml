@@ -1,0 +1,23 @@
+# Secret scan (gitleaks) for CI. The default rules apply; the values below are public by design and listed one by one,
+# so a real key added anywhere, tests included, still fails the scan.
+title = "Tier1 secret scan"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Development-only keys and passwords, published test vectors and golden hashes"
+regexTarget = "secret"
+regexes = [
+  # Development-only chain key (appsettings.Development.json, docker-compose.dev.yml); production keys come from the vault.
+  '''ybMmZEAJWMsrFElpEXuzGX81cfjMp1jnFHpxbzNRqgk=''',
+  # Alphabet for generated temporary passwords (Tokens.cs).
+  '''ABCDEFGHJKMNPQRSTVWXYZabcdefghjkmnpqrstvwxyz23456789''',
+  # Golden chain hashes in ChainHashTests.
+  '''8e0ad854f9ce2fae3bf77d8b85ec483eedfcb8f550163e62a4fe5b999250ff51''',
+  '''101d152429783a01881b4d90ef87bfd937042610404f10b6d543eebb9e0790f5''',
+  # RFC 6238 appendix B test secret, Base32 (SecurityTests).
+  '''GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ''',
+  # Demo account password inside the throwaway integration-test containers.
+  '''Tier1-Integration-Pass1''',
+]

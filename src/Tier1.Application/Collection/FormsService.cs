@@ -401,7 +401,7 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
     {
         if (ctx.Cycle.Status != CycleStatus.Open) throw new DomainException("cycle_not_open", "الدورة مغلقة.", "The cycle is closed.");
         if (ctx.Submission.Status != SubmissionStatus.InReview)
-            throw new DomainException("not_in_review", "النموذج لا ينتظر مراجعة الآن.", "The form is not waiting for review.");
+            throw new DomainException("not_in_review", "النموذج لا ينتظر مراجعة الآن.", "The form is not waiting for review.", 409);
         if (!ApprovalRules.MayReview(ctx.Me, ctx.Unit, ctx.Submission.Step, allowDirect)) throw DomainException.Forbidden();
         var history = await db.SubmissionEvents.AsNoTracking().Where(e => e.SubmissionId == ctx.Submission.Id && e.At > (ctx.Submission.SubmittedAt ?? DateTimeOffset.MinValue).AddSeconds(-1)).ToListAsync(ct);
         ApprovalRules.EnsureSeparation(current.UserId!.Value, ctx.Values.Values.Select(v => v.EditedBy), history);
