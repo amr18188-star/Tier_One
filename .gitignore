@@ -28,3 +28,15 @@ data/
 
 # Web build copied into the API
 src/Tier1.Api/wwwroot/
+
+# Backups and data exports never enter git (D9, ADR-0009): keep them in secured storage outside the repository.
+# The transfer folder keeps its scripts; its backups/ is delivered alongside the repository.
+backups/
+*.dump
+*.bak
+*.archive
+*.sql.gz
+*.bson
+
+# Throwaway builds of the web app
+web/.scratch-*/
