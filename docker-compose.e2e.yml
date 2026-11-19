@@ -1,0 +1,37 @@
+# بيئة معزولة لاختبارات E2E: الخادم ببيانات التطوير التجريبية الكاملة على منفذ مستقل،
+# بحاويات وبيانات منفصلة عن tier1-dev وtier1-flow، فتعمل معهما على الجهاز نفسه.
+#
+#   docker compose -p tier1-e2e -f docker-compose.e2e.yml up -d
+#   T1_BASE=http://127.0.0.1:5152 dotnet test tests/Tier1.E2E
+#   docker compose -p tier1-e2e -f docker-compose.e2e.yml down -v     # بيانات جديدة في المرة التالية
+services:
+  postgres:
+    extends:
+      file: docker-compose.yml
+      service: postgres
+    container_name: tier1-e2e-postgres
+    ports: !reset []
+
+  mongo:
+    extends:
+      file: docker-compose.yml
+      service: mongo
+    container_name: tier1-e2e-mongo
+    ports: !reset []
+
+  api:
+    extends:
+      file: docker-compose.dev.yml
+      service: api
+    container_name: tier1-e2e-api
+    ports: !override
+      - "127.0.0.1:5152:5150"
+    environment:
+      App__PublicUrl: http://127.0.0.1:5152
+
+volumes:
+  tier1_pgdata:
+  tier1_mongodata:
+  tier1_api_out:
+  tier1_api_nuget:
+  tier1_api_data:

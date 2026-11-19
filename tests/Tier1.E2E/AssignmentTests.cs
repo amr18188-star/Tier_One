@@ -95,6 +95,9 @@ public sealed class AssignmentTests(ITestOutputHelper output)
 
         t.Step("5. A unit that sees the whole university");
         JsonObject Edit(bool views) => Scenario.O(("nameAr", qac["nameAr"]), ("nameEn", qac["nameEn"]), ("sortOrder", qac["sortOrder"]), ("effectiveOn", null), ("reason", null), ("version", null), ("viewsWholeUniversity", views));
+        // On the official structure QAC (SPU) already sees the whole university; start narrow so widening is a real change, and put it back after.
+        var qacWasWide = qac["viewsWholeUniversity"].Truthy();
+        if (qacWasWide) await admin.Ok("PUT", $"/api/org/units/{Id(qac)}", Edit(false));
         (status, err) = await planner.Call("PUT", $"/api/org/units/{Id(qac)}", Edit(true));
         t.Check(status == 403 && err.Code() == "grants_required", "The plan manager cannot widen a unit's view");
         var saved = await admin.Ok("PUT", $"/api/org/units/{Id(qac)}", Edit(true));
@@ -109,12 +112,14 @@ public sealed class AssignmentTests(ITestOutputHelper output)
         await admin.Ok("PUT", $"/api/org/units/{Id(qac)}", Edit(false));
         seen = (await central.Get($"/api/forms?cycleId={cycleId}")).Items().ToList();
         if (!alreadyWhole) t.Check(seen.Count < forms.Count, "Removing the view returns them to their units at once");
+        if (qacWasWide) await admin.Ok("PUT", $"/api/org/units/{Id(qac)}", Edit(true));
 
         t.Step("6. Restore what changed");
         foreach (var u in new[] { com, qac, stu }) await planner.Ok("PUT", $"/api/org/units/{Id(u)}/indicators", Scenario.O(("custom", false), ("indicatorIds", new JsonArray())));
         await planner.Ok("POST", $"/api/cycles/{cycleId}/close", Scenario.O(("note", "انتهى اختبار التكليف")));
         var back = await Env.UnitsAsync(planner);
         t.Check(!back["COM"]["customIndicators"].Truthy() && back["QAC"]["indicatorCount"].Num() == 0, "The units are back to the default and the trial is closed");
+        t.Check(back["QAC"]["viewsWholeUniversity"].Truthy() == qacWasWide, "QAC keeps the whole-university view it started with");
 
         t.Step("7. The strategic plan document: the plan manager uploads, everyone reads");
         (status, _) = await entryCom.Upload("/api/strategy/documents", "plan.pdf", Env.Pdf);
