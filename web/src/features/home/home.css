@@ -48,7 +48,7 @@
 .home-admin-filters { display: flex; flex-wrap: wrap; gap: 5px; min-width: 0; }
 .home-admin-filters button { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 5px 10px; border: 1px solid var(--hair); border-radius: var(--ds-radius-md); background: var(--ds-surface); color: var(--muted); font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap; }
 .home-admin-filters button span { min-width: 18px; padding: 0 5px; border-radius: var(--ds-radius-pill); background: var(--ds-app-muted-bg); text-align: center; font-size: 10px; }
-.home-admin-filters button.is-active { background: var(--navy); border-color: var(--navy); color: var(--ds-on-dark-fg); }
+.home-admin-filters button.is-active { background: var(--ds-ink-fill); border-color: var(--ds-ink-fill); color: var(--ds-on-dark-fg); }
 .home-admin-filters button.is-active span { color: var(--navy); background: var(--ds-surface); }
 .home-admin-tools { display: flex; flex: 1 1 270px; justify-content: flex-end; flex-wrap: wrap; gap: 8px; min-width: 0; }
 .home-admin-search { display: flex; align-items: center; gap: 7px; flex: 1 1 170px; min-width: 0; max-width: 270px; min-height: 36px; padding: 0 9px; color: var(--muted); border: 1px solid var(--hair); border-radius: var(--ds-radius-md); }
@@ -76,7 +76,7 @@
 .home-admin-due > span { display: grid; line-height: 1.45; }
 .home-admin-due.is-late { color: var(--crit); }
 .home-admin-due.is-near { color: var(--warn); }
-.home-admin-action { display: inline-flex; justify-content: center; align-items: center; gap: 6px; min-height: 35px; padding: 4px 7px; border-radius: var(--ds-radius-md); background: var(--navy); color: var(--ds-on-dark-fg); font-size: 11px; font-weight: 700; white-space: nowrap; }
+.home-admin-action { display: inline-flex; justify-content: center; align-items: center; gap: 6px; min-height: 35px; padding: 4px 7px; border-radius: var(--ds-radius-md); background: var(--ds-ink-fill); color: var(--ds-on-dark-fg); font-size: 11px; font-weight: 700; white-space: nowrap; }
 .home-admin-action:hover { background: var(--teal-ink); color: var(--ds-on-dark-fg); }
 .home-admin-state { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 94px; padding: 22px; color: var(--muted); font-size: 13px; }
 .home-admin-pager { display: flex; justify-content: center; align-items: center; gap: 12px; padding: 12px; border-top: 1px solid var(--hair); color: var(--muted); font-size: 12px; }

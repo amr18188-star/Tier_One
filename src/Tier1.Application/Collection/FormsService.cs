@@ -125,9 +125,33 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
             throw new DomainException(error.Code, error.MessageAr, error.MessageAr, 400);
 
         var row = Upsert(ctx, ci, spec, req, value, "dc.value_saved");
-        await db.SaveChangesAsync(ct);
+        await SaveValuesAsync(ctx, ct);
         ctx.Values[req.IndicatorId] = row;
         return await ItemAsync(ctx, ci, bigChange, ct);
+    }
+
+    /// <summary>
+    /// يحفظ القيم المكتوبة بـ Upsert ويلمس النموذج (آخر تعديل، ومن «لم يبدأ» إلى «قيد الإدخال») في معاملة واحدة.
+    /// النموذج يحدث بعبارة شرطية لا برمز الإصدار: الحفظ التلقائي يرسل صفوف المؤشرات متوازية، فكان الحفظ الثاني في النموذج نفسه
+    /// يفشل بتعارض زائف (409) ولا تحفظ قيمته؛ الآن ينتظر قفل الصف. والشرط يرفض الكتابة إن أرسل النموذج أو قفل بعد تحميله.
+    /// </summary>
+    private async Task SaveValuesAsync(FormContext ctx, CancellationToken ct)
+    {
+        var id = ctx.Submission.Id;
+        Guid? me = current.UserId!.Value;
+        var now = clock.UtcNow;
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        var touched = await db.Submissions
+            .Where(s => s.Id == id && s.Step == ApprovalStep.Entry
+                        && (s.Status == SubmissionStatus.NotStarted || s.Status == SubmissionStatus.InProgress || s.Status == SubmissionStatus.Returned))
+            .ExecuteUpdateAsync(u => u
+                .SetProperty(s => s.LastEditedBy, me)
+                .SetProperty(s => s.LastEditedAt, now)
+                .SetProperty(s => s.Status, s => s.Status == SubmissionStatus.NotStarted ? SubmissionStatus.InProgress : s.Status), ct);
+        if (touched == 0)
+            throw new DomainException("form_locked", "أرسل النموذج أو قفل أثناء الحفظ؛ حدّث الصفحة.", "The form was submitted or locked while saving; refresh the page.", 409);
+        await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
     }
 
     /// <summary>كتابة قيمة فحصت مسبقًا في سطرها (جديد أو تعديل بإصدار)، مع سجل التدقيق بالتغييرات؛ الحفظ على المستدعي.</summary>
@@ -156,9 +180,7 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
         row.ReviewNote = null;
         row.EditedBy = current.UserId!.Value;
         row.EditedAt = now;
-        ctx.Submission.LastEditedBy = current.UserId;
-        ctx.Submission.LastEditedAt = now;
-        if (ctx.Submission.Status == SubmissionStatus.NotStarted) ctx.Submission.Status = SubmissionStatus.InProgress;
+        // آخر تعديل وحالة «قيد الإدخال» على النموذج يكتبهما SaveValuesAsync بعبارة شرطية، لا هنا.
 
         var imported = verb == "dc.value_imported";
         audit.Record(AuditEvents.Audit("dc", Feature, verb, imported ? "استيراد قيمة مؤشر من Excel" : "حفظ قيمة مؤشر في نموذج جهة",
@@ -199,8 +221,8 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
         foreach (var v in ctx.Values.Values) v.ReviewNote = null;
         ctx.Submission.SubmittedAt = clock.UtcNow;
         ctx.Submission.ReturnNote = null;
-        await db.SaveChangesAsync(ct);
         await notifier.MovedAsync(ctx.Submission, ctx.Unit, ctx.Cycle, ct);
+        await db.SaveChangesAsync(ct);
         return await BuildAsync(ctx, ct);
     }
 
@@ -213,8 +235,8 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
         var next = ApprovalRules.DirectApprovalTo(ctx.Me, ctx.Unit.Kind, ctx.Submission.Step)
             ?? ApprovalRules.Next(ctx.Unit.Kind, ctx.Submission.Step);
         Move(ctx, SubmissionAction.Approved, next, Require.Optional(req.Note, 2000));
-        await db.SaveChangesAsync(ct);
         await notifier.MovedAsync(ctx.Submission, ctx.Unit, ctx.Cycle, ct);
+        await db.SaveChangesAsync(ct);
         return await BuildAsync(ctx, ct);
     }
 
@@ -228,8 +250,8 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
             if (ctx.Values.TryGetValue(item.IndicatorId, out var v)) v.ReviewNote = Require.Optional(item.Note, 1000);
         Move(ctx, SubmissionAction.Returned, ApprovalStep.Entry, note);
         ctx.Submission.ReturnNote = note;
-        await db.SaveChangesAsync(ct);
         await notifier.MovedAsync(ctx.Submission, ctx.Unit, ctx.Cycle, ct);
+        await db.SaveChangesAsync(ct);
         return await BuildAsync(ctx, ct);
     }
 
@@ -244,8 +266,8 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
         Move(ctx, SubmissionAction.Reopened, ApprovalStep.Entry, reason);
         ctx.Submission.ApprovedAt = null;
         ctx.Submission.ReturnNote = reason;
-        await db.SaveChangesAsync(ct);
         await notifier.MovedAsync(ctx.Submission, ctx.Unit, ctx.Cycle, ct);
+        await db.SaveChangesAsync(ct);
         return await BuildAsync(ctx, ct);
     }
 

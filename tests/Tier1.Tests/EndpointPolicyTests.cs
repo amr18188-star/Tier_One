@@ -34,12 +34,8 @@ public class EndpointPolicyTests
         builder.Services.AddInfrastructure(builder.Configuration);
         builder.Services.AddApi(builder.Configuration);
         var app = builder.Build();
-        var api = app.MapGroup("/api");
-        api.MapAuth();
-        api.MapIam();
-        api.MapLogs();
-        api.MapSettings();
-        api.MapTier1();
+        // المسارات نفسها التي يسجلها Program.cs (منها مسارات جمع البيانات والاعتماد التي كانت تفلت من هذا الفحص).
+        app.MapGroup("/api").MapApi();
         return ((IEndpointRouteBuilder)app).DataSources.SelectMany(d => d.Endpoints).OfType<RouteEndpoint>().ToList();
     }
 

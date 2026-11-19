@@ -33,8 +33,8 @@ public sealed class FormNotifier(IAppDb db, IAccessService access, IMailOutbox m
                 $"اعتمدت الجودة المركزية نموذج {unit.NameAr} في دورة «{cycle.Name}». شكرًا لكم.\n{link}"),
             _ => ([], "", ""),
         };
+        // يضيف الرسائل فقط؛ المستدعي يحفظها مع نقل النموذج في SaveChanges واحد، فلا ينجح النقل وتضيع رسالته.
         foreach (var email in recipients) mail.Enqueue("dc.form", email, subject, body);
-        if (recipients.Count > 0) await db.SaveChangesAsync(ct);
     }
 
     /// <summary>تذكير يومي بالنماذج المتأخرة أو القريبة من موعدها: لمن عليه الإجراء الآن، مرة في اليوم لكل نموذج.</summary>

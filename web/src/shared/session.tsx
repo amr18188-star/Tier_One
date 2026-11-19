@@ -36,11 +36,23 @@ export function useSession() {
   return useContext(SessionContext);
 }
 
-/** يعيد قراءة الجلسة ورمز CSRF بعد الدخول أو الخروج أو أي خطوة تحقق. */
+/**
+ * يعيد قراءة الجلسة ورمز CSRF بعد الدخول أو الخروج أو أي خطوة تحقق.
+ * إن تغيرت هوية المستخدم (انتهت الجلسة ثم دخل غيره في التبويب نفسه) تحذف كل البيانات المخزنة، لا تعلم «قديمة» فقط:
+ * التعليم وحده يبقي بيانات المستخدم السابق ظاهرة حتى يعاد جلبها، وإلى الأبد لما لا يملك الجديد صلاحية جلبه.
+ */
 export async function reloadSession(qc: QueryClient) {
   await refreshCsrf();
-  await qc.invalidateQueries();
-  await qc.refetchQueries({ queryKey: ["me"] });
+  await refreshIdentity(qc, () => qc.refetchQueries({ queryKey: ["me"] }));
+}
+
+/** يجلب الجلسة بـ fetchMe؛ هوية مختلفة عما قبلها تحذف ما سوى ["me"]، والهوية نفسها تعلم الكل قديمًا ليعاد جلبه. */
+export async function refreshIdentity(qc: QueryClient, fetchMe: () => Promise<unknown>) {
+  const before = qc.getQueryData<Me | null>(["me"])?.id ?? null;
+  await fetchMe();
+  const after = qc.getQueryData<Me | null>(["me"])?.id ?? null;
+  if (before !== after) qc.removeQueries({ predicate: (q) => q.queryKey[0] !== "me" });
+  else await qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== "me" });
 }
 
 export function useReloadSession() {

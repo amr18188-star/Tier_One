@@ -51,6 +51,33 @@ public class RoleRulesTests
         Assert.Single(RoleRules.Validate("SYS", false, [G("adm.users", "VPEAD")]));
     }
 
+    [Fact]
+    public void System_admin_may_view_the_home_page_but_nothing_more_of_the_dashboards()
+    {
+        // انحدار: الكتالوج يمنح مسؤول النظام «الصفحة الرئيسية» عرضًا (224ed7e)، فيجب أن يقبل حفظ دوره من المصفوفة.
+        Assert.Single(RoleRules.Validate("SYS", false, [G("dash.home", "V")]));
+        // الطباعة تبقى ممنوعة: المدخل للعرض فقط.
+        Assert.Equal("sod_sod_11", Assert.Throws<DomainException>(() => RoleRules.Validate("SYS", false, [G("dash.home", "VP")])).Code);
+    }
+
+    [Fact]
+    public void Catalog_defaults_of_every_role_pass_its_own_rules()
+    {
+        // يمنع تكرار 224ed7e: منح افتراضي في الكتالوج يخالف RoleRules فيقفل تعديل الدور من المصفوفة.
+        foreach (var role in PermissionCatalog.Roles.Select(r => r.Code).Where(c => c != PermissionCatalog.SuperAdminRole))
+        {
+            var defaults = PermissionCatalog.Features
+                .Where(f => f.Defaults.ContainsKey(role) || f.Specials.Any(s => s.DefaultRoles.Contains(role)))
+                .Select(f => new GrantInput(f.Key,
+                    f.Defaults.TryGetValue(role, out var d) ? d.Caps : Cap.None,
+                    f.Defaults.TryGetValue(role, out var d2) ? d2.Scope : AccessScope.All,
+                    [.. f.Specials.Where(s => s.DefaultRoles.Contains(role)).Select(s => s.Key)]))
+                .ToList();
+            var ex = Record.Exception(() => RoleRules.Validate(role, false, defaults));
+            Assert.True(ex is null, $"{role}: {ex?.Message}");
+        }
+    }
+
     [Theory]
     [InlineData("PRES", "adm.roles", "approve")]
     [InlineData("PM", "adm.users", "set_password")]

@@ -140,7 +140,7 @@ public sealed partial class FormsService
             var row = Upsert(ctx, ci, CycleSpec.Of(ci.Version), req, value, "dc.value_imported");
             ctx.Values[ci.Ci.IndicatorId] = row;
         }
-        await db.SaveChangesAsync(ct);
+        await SaveValuesAsync(ctx, ct);
         return preview;
     }
 

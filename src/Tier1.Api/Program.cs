@@ -84,13 +84,7 @@ if (app.Configuration.GetValue("Database:MigrateOnStartup", app.Environment.IsDe
 
 app.UsePipeline();
 
-var api = app.MapGroup("/api");
-api.MapAuth();
-api.MapIam();
-api.MapLogs();
-api.MapSettings();
-api.MapTier1();
-api.MapCollection();
+app.MapGroup("/api").MapApi();
 
 app.MapGet("/health/live", () => Results.Ok(new { status = "live" })).AllowAnonymous();
 app.MapGet("/health/ready", async (NpgsqlDataSource pg, CancellationToken ct) =>

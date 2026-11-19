@@ -41,6 +41,15 @@ public static class RoleRules
     /// </summary>
     private static readonly HashSet<string> BusinessFeatures = new(StringComparer.Ordinal) { "org.structure", "log.audit", "log.access" };
 
+    /// <summary>
+    /// الصفحة الرئيسية مدخل كل مستخدم، ومحتواها يرشح بصلاحياته الأخرى (HomeService)، فيراها مسؤول النظام عرضًا فقط
+    /// دون طباعة ولا إجراءات خاصة. بقية خصائص وحدة اللوحات تبقى ممنوعة عليه (SOD-11).
+    /// </summary>
+    private const string EntryPointFeature = "dash.home";
+
+    private static bool IsEntryPointView(string feature, Cap caps, IReadOnlyCollection<string> specials) =>
+        feature == EntryPointFeature && (caps & ~Cap.View) == Cap.None && specials.Count == 0;
+
     /// <summary>ينظف المنح ويتحقق منها؛ يرمي خطأ يشرح أول مخالفة.</summary>
     public static IReadOnlyList<GrantInput> Validate(string roleCode, bool roleLocked, IEnumerable<GrantInput> grants)
     {
@@ -67,7 +76,7 @@ public static class RoleRules
             if (roleCode != PermissionCatalog.SuperAdminRole && specials.FirstOrDefault(s => PermissionCatalog.IsSuperAdminOnly(def.Key, s)) is { } reserved)
                 throw DomainException.SeparationOfDuties("SOD-10", $"الإجراء «{def.Specials.First(s => s.Key == reserved).Name.Ar}» للمدير الأعلى وحده ولا يمنح لدور آخر.", $"'{reserved}' in '{def.Key}' belongs to super administrators only and cannot be granted to another role.");
 
-            if (roleCode == SystemAdminRole && (BusinessModules.Contains(def.Module) || BusinessFeatures.Contains(def.Key)))
+            if (roleCode == SystemAdminRole && (BusinessModules.Contains(def.Module) || BusinessFeatures.Contains(def.Key)) && !IsEntryPointView(def.Key, g.Caps, specials))
                 throw DomainException.SeparationOfDuties("SOD-11", $"مسؤول النظام لا يرى محتوى المعاملات: «{def.Name.Ar}».", $"The system administrator cannot see transaction content: '{g.Feature}'.");
             if (roleCode == SystemAdminRole && specials.Any(PermissionCatalog.DecisionSpecials.Contains))
                 throw DomainException.SeparationOfDuties("SOD-11", "مسؤول النظام لا يعتمد شيئًا ماليًا أو أكاديميًا.", "The system administrator cannot approve financial or academic decisions.");
