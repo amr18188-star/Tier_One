@@ -45,23 +45,31 @@ public static class ApprovalRules
         _ => throw new InvalidOperationException($"{step} has no reviewer."),
     };
 
-    public static ApprovalStep? DirectApprovalTo(EffectiveAccess access, OrgUnitKind kind, ApprovalStep step)
+    /// <summary>
+    /// هل يملك المستخدم هذا الإجراء على هذه الجهة؟ يقاس بنطاق الإجراء نفسه (نطاق الدور الذي منحه)، لا بنطاق العرض:
+    /// من يحمل لجنة كلية في الهندسة ودورًا آخر يوسع عرضه لا يعتمد نماذج كلية أخرى (D1).
+    /// </summary>
+    public static bool Holds(EffectiveAccess access, string special, OrgUnit unit) =>
+        UnitScope.ForSpecial(access, Features.Forms, special).Covers(unit);
+
+    public static ApprovalStep? DirectApprovalTo(EffectiveAccess access, OrgUnit unit, ApprovalStep step)
     {
+        var kind = unit.Kind;
         var departmentReview = kind == OrgUnitKind.Department && step == ApprovalStep.DepartmentReview;
         var collegeReview = kind is OrgUnitKind.Department or OrgUnitKind.College or OrgUnitKind.Institute
             && step == ApprovalStep.CollegeCommittee;
         if (!departmentReview && !collegeReview) return null;
 
-        var canReviewNormally = access.HasSpecial(Features.Forms, SpecialFor(step));
+        var canReviewNormally = Holds(access, SpecialFor(step), unit);
         // Preserve ordinary approvals for the super admin, who holds every review permission.
         if (access.IsSuperAdmin && canReviewNormally) return null;
-        if (access.HasSpecial(Features.Forms, ApproveAsDeanDirectly)) return ApprovalStep.Quality;
-        return departmentReview && !canReviewNormally && access.HasSpecial(Features.Forms, ApproveDepartmentDirectly)
+        if (Holds(access, ApproveAsDeanDirectly, unit)) return ApprovalStep.Quality;
+        return departmentReview && !canReviewNormally && Holds(access, ApproveDepartmentDirectly, unit)
             ? ApprovalStep.Dean : null;
     }
 
-    public static bool MayReview(EffectiveAccess access, OrgUnitKind kind, ApprovalStep step, bool allowDirect = true) =>
-        access.HasSpecial(Features.Forms, SpecialFor(step)) || (allowDirect && DirectApprovalTo(access, kind, step) is not null);
+    public static bool MayReview(EffectiveAccess access, OrgUnit unit, ApprovalStep step, bool allowDirect = true) =>
+        Holds(access, SpecialFor(step), unit) || (allowDirect && DirectApprovalTo(access, unit, step) is not null);
 
     public static bool SkippedBy(SubmissionEvent e, ApprovalStep step) => (e.Action, e.FromStep, e.ToStep, step) switch
     {

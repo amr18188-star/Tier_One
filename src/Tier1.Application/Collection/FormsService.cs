@@ -92,7 +92,7 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
                 var required = cis.Count(ci => ci.CycleId == s.CycleId && Applies(ci, unit));
                 var waiting = cycle.Status == CycleStatus.Open && (
                     (s.IsEditable && edit.Covers(unit) && me.Has(Feature, Cap.Edit))
-                    || (s.Status == SubmissionStatus.InReview && ApprovalRules.MayReview(me, unit.Kind, s.Step)
+                    || (s.Status == SubmissionStatus.InReview && ApprovalRules.MayReview(me, unit, s.Step)
                         && !editors.Contains(s.Id) && !approvedByMe.Contains(s.Id)));
                 return new FormRow(s.Id, s.CycleId, cycle.Name, unit.Id, unit.NameAr, unit.Kind, unit.ParentId is { } p ? units[p].NameAr : null,
                     s.Step, ApprovalRules.StepName(s.Step), s.Status, s.DueOn, s.Status != SubmissionStatus.Approved && s.DueOn < today && cycle.Status == CycleStatus.Open,
@@ -232,7 +232,7 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
         if (req.Version is { } version && version != ctx.Submission.Version)
             throw new DomainException("conflict", "تغيّر النموذج. حدّث الصفحة ثم أعد المحاولة.", "The form changed. Refresh and try again.", 409);
         await EnsureReviewerAsync(ctx, ct, allowDirect: true);
-        var next = ApprovalRules.DirectApprovalTo(ctx.Me, ctx.Unit.Kind, ctx.Submission.Step)
+        var next = ApprovalRules.DirectApprovalTo(ctx.Me, ctx.Unit, ctx.Submission.Step)
             ?? ApprovalRules.Next(ctx.Unit.Kind, ctx.Submission.Step);
         Move(ctx, SubmissionAction.Approved, next, Require.Optional(req.Note, 2000));
         await notifier.MovedAsync(ctx.Submission, ctx.Unit, ctx.Cycle, ct);
@@ -391,7 +391,7 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
         if (ctx.Cycle.Status != CycleStatus.Open) throw new DomainException("cycle_not_open", "الدورة مغلقة.", "The cycle is closed.");
         if (ctx.Submission.Status != SubmissionStatus.InReview)
             throw new DomainException("not_in_review", "النموذج لا ينتظر مراجعة الآن.", "The form is not waiting for review.");
-        if (!ApprovalRules.MayReview(ctx.Me, ctx.Unit.Kind, ctx.Submission.Step, allowDirect)) throw DomainException.Forbidden();
+        if (!ApprovalRules.MayReview(ctx.Me, ctx.Unit, ctx.Submission.Step, allowDirect)) throw DomainException.Forbidden();
         var history = await db.SubmissionEvents.AsNoTracking().Where(e => e.SubmissionId == ctx.Submission.Id && e.At > (ctx.Submission.SubmittedAt ?? DateTimeOffset.MinValue).AddSeconds(-1)).ToListAsync(ct);
         ApprovalRules.EnsureSeparation(current.UserId!.Value, ctx.Values.Values.Select(v => v.EditedBy), history);
     }
@@ -511,11 +511,11 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
         var cycleOpen = ctx.Cycle.Status == CycleStatus.Open;
         var canEdit = cycleOpen && s.IsEditable && ctx.Me.Has(Feature, Cap.Edit) && UnitScope.For(ctx.Me, Feature, Cap.Edit).Covers(ctx.Unit);
         var sinceSubmit = events.Where(e => e.At >= (s.SubmittedAt ?? DateTimeOffset.MaxValue).AddSeconds(-1)).ToList();
-        var canReview = cycleOpen && s.Status == SubmissionStatus.InReview && ApprovalRules.MayReview(ctx.Me, ctx.Unit.Kind, s.Step)
+        var canReview = cycleOpen && s.Status == SubmissionStatus.InReview && ApprovalRules.MayReview(ctx.Me, ctx.Unit, s.Step)
                         && ctx.Values.Values.All(v => v.EditedBy != current.UserId)
                         && !sinceSubmit.Any(e => e.Action == SubmissionAction.Approved && e.By == current.UserId);
         var canReopen = cycleOpen && s.Status == SubmissionStatus.Approved && ctx.Me.HasSpecial(Features.Cycles, ApprovalRules.Reopen);
-        var directTo = canReview ? ApprovalRules.DirectApprovalTo(ctx.Me, ctx.Unit.Kind, s.Step) : null;
+        var directTo = canReview ? ApprovalRules.DirectApprovalTo(ctx.Me, ctx.Unit, s.Step) : null;
         var next = s.Status == SubmissionStatus.Approved ? null
             : ApprovalRules.StepName(directTo ?? ApprovalRules.Next(ctx.Unit.Kind, s.Step));
 

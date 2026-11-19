@@ -19,6 +19,14 @@ public sealed record UnitScope(bool All, IReadOnlyCollection<string> Codes)
         _ => Nothing,
     };
 
+    /// <summary>نطاق إجراء خاص (اعتماد أو مراجعة) على الهيكل، من نطاق المنح الذي أعطاه (D1).</summary>
+    public static UnitScope ForSpecial(EffectiveAccess access, string feature, string special) => access.SpecialScopeFor(feature, special) switch
+    {
+        AccessScope.All => new(true, []),
+        AccessScope.Unit => new(false, access.SpecialScopeValues(feature, special)),
+        _ => Nothing,
+    };
+
     public bool Covers(string unitPath) => All || OrgScope.Covers(Codes, unitPath);
 
     public bool Covers(OrgUnit unit) => Covers(unit.Path);

@@ -68,7 +68,7 @@ public sealed class FormNotifier(IAppDb db, IAccessService access, IMailOutbox m
     private async Task<List<string>> ReviewersAsync(ApprovalStep step, OrgUnit unit, CancellationToken ct)
     {
         if (step is ApprovalStep.Entry or ApprovalStep.Done) return [];
-        return await UsersWhereAsync(a => ApprovalRules.MayReview(a, unit.Kind, step) && UnitScope.For(a, Features.Forms, Cap.View).Covers(unit), ct);
+        return await UsersWhereAsync(a => ApprovalRules.MayReview(a, unit, step) && UnitScope.For(a, Features.Forms, Cap.View).Covers(unit), ct);
     }
 
     /// <summary>من أدخل قيم النموذج، وإلا كل من يملك الإدخال في نطاق الجهة.</summary>

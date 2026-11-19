@@ -10,6 +10,15 @@ public sealed class FeatureAccess
     public HashSet<string> Specials { get; } = new(StringComparer.Ordinal);
 
     /// <summary>
+    /// نطاق كل إجراء خاص، من نطاق المنح الذي أعطاه (أوسعها إن تعددت). الاعتماد قرار على جهة بعينها، فيقاس بنطاق الإجراء نفسه
+    /// لا بنطاق العرض (D1): لجنة كلية الهندسة تعتمد نماذج الهندسة وأقسامها فقط، ولو اتسع عرضها لغير ذلك.
+    /// </summary>
+    public Dictionary<string, AccessScope> SpecialScopes { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>قيم «نطاقه» لكل إجراء خاص على حدة، كما في الإمكانيات.</summary>
+    public Dictionary<string, HashSet<string>> SpecialScopeValues { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>
     /// قيم نطاق «نطاقه» لكل إمكانية على حدة: دور يعطي العرض في x وآخر يعطي التعديل في y لا يعطيان التعديل في x.
     /// </summary>
     public Dictionary<Cap, HashSet<string>> CapScopeValues { get; } = [];
@@ -45,6 +54,15 @@ public sealed class EffectiveAccess
 
     public bool HasSpecial(string feature, string special) => Features.TryGetValue(feature, out var f) && f.Specials.Contains(special);
 
+    /// <summary>نطاق إجراء خاص؛ null إن لم يملكه.</summary>
+    public AccessScope? SpecialScopeFor(string feature, string special) =>
+        Features.TryGetValue(feature, out var f) && f.SpecialScopes.TryGetValue(special, out var s) ? s : null;
+
+    /// <summary>قيم «نطاقه» لإجراء خاص؛ فارغة إن لم يكن نطاقه «نطاقه».</summary>
+    public IReadOnlyCollection<string> SpecialScopeValues(string feature, string special) =>
+        Features.TryGetValue(feature, out var f) && f.SpecialScopes.TryGetValue(special, out var s) && s == AccessScope.Unit
+        && f.SpecialScopeValues.TryGetValue(special, out var v) ? v : [];
+
     public AccessScope? ScopeFor(string feature, Cap cap) => Features.TryGetValue(feature, out var f) && f.Caps.TryGetValue(cap, out var s) ? s : null;
 
     /// <summary>قيم «نطاقه» لإمكانية محددة؛ فارغة إن لم يكن نطاقها «نطاقه».</summary>
@@ -58,7 +76,8 @@ public sealed class EffectiveAccess
         if (!Features.TryGetValue(feature, out var f)) return caps == Cap.None && !specials.Any();
         foreach (var c in PermissionCatalog.Each(caps))
             if (!f.Caps.TryGetValue(c, out var mine) || mine < scope) return false;
-        return specials.All(f.Specials.Contains);
+        // الإجراء الخاص كالإمكانية: لا يمنح بنطاق أوسع مما يملكه المانح.
+        return specials.All(s => f.SpecialScopes.TryGetValue(s, out var mine) && mine >= scope);
     }
 }
 
@@ -110,7 +129,12 @@ public static class EffectiveAccessCalculator
                 fa.Caps.Remove(c);
                 fa.CapScopeValues.Remove(c);
             }
-            foreach (var s in o.Specials) fa.Specials.Remove(s);
+            foreach (var s in o.Specials)
+            {
+                fa.Specials.Remove(s);
+                fa.SpecialScopes.Remove(s);
+                fa.SpecialScopeValues.Remove(s);
+            }
         }
 
         foreach (var key in features.Where(kv => kv.Value.IsEmpty).Select(kv => kv.Key).ToList()) features.Remove(key);
@@ -132,6 +156,16 @@ public static class EffectiveAccessCalculator
                 values.UnionWith(scopeValues);
             }
         }
-        foreach (var s in specials.Where(def.HasSpecial)) fa.Specials.Add(s);
+        // الإجراء الخاص يأخذ نطاق المنح الذي أعطاه، ولا يمسه توسيع العرض إلى الجامعة (ذلك للعرض والطباعة وحدهما).
+        foreach (var s in specials.Where(def.HasSpecial))
+        {
+            fa.Specials.Add(s);
+            fa.SpecialScopes[s] = fa.SpecialScopes.TryGetValue(s, out var existing) && existing > scope ? existing : scope;
+            if (scope == AccessScope.Unit)
+            {
+                if (!fa.SpecialScopeValues.TryGetValue(s, out var values)) fa.SpecialScopeValues[s] = values = new HashSet<string>(StringComparer.Ordinal);
+                values.UnionWith(scopeValues);
+            }
+        }
     }
 }
