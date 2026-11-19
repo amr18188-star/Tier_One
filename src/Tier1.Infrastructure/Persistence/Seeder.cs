@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Tier1.Application.Abstractions;
 using Tier1.Application.Access;
+using Tier1.Application.Auditing;
 using Tier1.Application.Collection;
 using Tier1.Domain.Access;
 using Tier1.Domain.Common;
@@ -15,7 +16,7 @@ namespace Tier1.Infrastructure.Persistence;
 /// بذر البيانات الأساسية: أدوار الكتالوج بمنحها الافتراضية مرة واحدة (تعديلات المصفوفة اللاحقة لا تُستبدل)،
 /// والبيانات المرجعية لـ Tier 1 على قاعدة فارغة، وفي التطوير فقط كليات وحسابات تجريبية لكل دور.
 /// </summary>
-public sealed class Seeder(Tier1DbContext db, IPasswordHasher hasher, ISecretProtector protector, IConfiguration config, ILogger<Seeder> log)
+public sealed class Seeder(Tier1DbContext db, IPasswordHasher hasher, ISecretProtector protector, IConfiguration config, ILogger<Seeder> log, IAuditLog audit)
 {
     public const string DemoDomain = "tier1.local";
     private const string FlowSeedKey = "seed:flow";
@@ -168,81 +169,135 @@ public sealed class Seeder(Tier1DbContext db, IPasswordHasher hasher, ISecretPro
             log.LogInformation("Seeded role {Code} with {Grants} grants.", def.Code, role.Grants.Count);
         }
         await db.SaveChangesAsync(ct);
-        await SeedNewFeatureGrantsAsync(now, ct);
-        await ScopeUnitDirectoryOnceAsync(now, ct);
-        await GrantHomeToAllRolesOnceAsync(now, ct);
-        await SeedFormApprovalSpecialAsync("CTC", ApprovalRules.ReviewCollege, ApprovalRules.ApproveDepartmentDirectly, now, ct);
-        await SeedFormApprovalSpecialAsync("DEAN", ApprovalRules.ApproveCollege, ApprovalRules.ApproveAsDeanDirectly, now, ct);
-        await SeedCycleSpecialAsync("HC", ApprovalRules.ApproveReopen, now, ct);
+        if (existing.Count == 0)
+        {
+            // قاعدة جديدة: الأدوار أنشئت الآن من الكتالوج الحالي، وفيه كل الإصلاحات، فتسجل خط أساس لا تطبيقًا.
+            await MarkDataFixesAsBaselineAsync(now, ct);
+            return;
+        }
+        // D10: الإصلاحات تغير بيانات قائمة (صلاحيات الأدوار)، فلا تطبق تلقائيًا إلا في التطوير.
+        // في الإنتاج: --data-fixes يعرض المعلق، و--apply-data-fixes --confirm --operator يطبقه بموافقة ويسجله.
+        if (config.GetValue<bool>("Seed:AutoDataFixes"))
+            await ApplyDataFixesAsync("تطبيق تلقائي في التطوير (Seed:AutoDataFixes)", now, ct);
+        else if ((await PendingDataFixesAsync(ct)).Count is > 0 and var pending)
+            log.LogWarning("{Count} data fix(es) await approval. List them with --data-fixes, apply with --apply-data-fixes --confirm --operator \"<name>\".", pending);
+    }
+
+    /// <summary>إصلاح بيانات لمرة واحدة: مفتاحه في الإعدادات، ووصف ما يغيره.</summary>
+    public sealed record DataFixInfo(string Key, string DescriptionAr, string DescriptionEn);
+
+    /// <summary>إصلاح وتطبيقه: يغير الكيانات ويعيد عدد ما تغير، والحفظ على المطبق.</summary>
+    private sealed record DataFix(string Key, string DescriptionAr, string DescriptionEn, Func<CancellationToken, Task<int>> ApplyAsync)
+    {
+        public DataFixInfo Info => new(Key, DescriptionAr, DescriptionEn);
     }
 
     /// <summary>
-    /// إجراء خاص جديد في «الدورات» للأدوار القائمة مرة واحدة (D4: اعتماد إعادة الفتح للجنة العليا)، وللمدير الأعلى.
-    /// القواعد الجديدة تأخذه من الكتالوج؛ ما يغيره المدير بعدها من المصفوفة يبقى.
+    /// سجل إصلاحات البيانات (D10، ADR-0010)، بالترتيب الذي تطبق به. المفاتيح كما كانت، فما طبق قبلًا لا يعاد.
+    /// كل إصلاح يغير صلاحيات أدوار الكتالوج القائمة مرة واحدة؛ ما يغيره المدير بعدها من المصفوفة يبقى.
     /// </summary>
-    private async Task SeedCycleSpecialAsync(string roleCode, string newSpecial, DateTimeOffset now, CancellationToken ct)
+    private IEnumerable<DataFix> AllDataFixes()
     {
-        var key = $"catalog:{Features.Cycles}:{newSpecial}";
-        if (await db.Settings.AnyAsync(s => s.Key == key, ct)) return;
-        var grants = await (from g in db.RoleGrants
-                            join r in db.Roles on g.RoleId equals r.Id
-                            where r.IsSystem && g.Feature == Features.Cycles && (r.Code == PermissionCatalog.SuperAdminRole || r.Code == roleCode)
-                            select g).ToListAsync(ct);
-        foreach (var grant in grants.Where(g => !g.Specials.Contains(newSpecial)))
-            grant.Specials.Add(newSpecial);
-        db.Settings.Add(new SystemSetting { Key = key, Value = "1", UpdatedAt = now });
-        await db.SaveChangesAsync(ct);
-        await db.AccessStates.Where(s => s.Id == 1).ExecuteUpdateAsync(s => s.SetProperty(x => x.Version, x => x.Version + 1), ct);
+        foreach (var f in PermissionCatalog.Features)
+            yield return new($"catalog:{f.Key}", $"منح الخاصية «{f.Name.Ar}» لأدوار الكتالوج القائمة بحسب منحها الافتراضية",
+                $"Grant '{f.Name.En}' to the existing catalog roles by its defaults", ct => GrantFeatureToExistingRolesAsync(f, ct));
+        yield return new("catalog-fix:org.units-unit-scope", "تقييد دليل الجهات في الأدوار المرتبطة بجهة (VP، DEAN، CTC، DREP، DE، VIEW) بنطاقها",
+            "Limit the unit directory of unit-bound roles to their own units", ScopeUnitDirectoryAsync);
+        yield return new("catalog-fix:dash.home-all-roles", "منح الصفحة الرئيسية لمسئول ملف Tier 1 ومسؤول النظام",
+            "Grant the home page to the Tier 1 officer and the system administrator", GrantHomeToAllRolesAsync);
+        yield return new($"catalog:{Features.Forms}:{ApprovalRules.ApproveDepartmentDirectly}", "منح لجنة الكلية الاعتماد المباشر لنموذج القسم (D2)",
+            "Grant the college committee direct approval of department forms (D2)",
+            ct => AddSpecialAsync(Features.Forms, "CTC", ApprovalRules.ReviewCollege, ApprovalRules.ApproveDepartmentDirectly, ct));
+        yield return new($"catalog:{Features.Forms}:{ApprovalRules.ApproveAsDeanDirectly}", "منح العميد الاعتماد المباشر وإحالة النموذج للجودة المركزية (D2)",
+            "Grant the dean direct approval to central quality (D2)",
+            ct => AddSpecialAsync(Features.Forms, "DEAN", ApprovalRules.ApproveCollege, ApprovalRules.ApproveAsDeanDirectly, ct));
+        yield return new($"catalog:{Features.Cycles}:{ApprovalRules.ApproveReopen}", "منح اللجنة العليا اعتماد طلبات إعادة فتح النماذج المعتمدة (D4)",
+            "Grant the higher committee approval of reopen requests (D4)",
+            ct => AddSpecialAsync(Features.Cycles, "HC", null, ApprovalRules.ApproveReopen, ct));
     }
 
-    private async Task SeedFormApprovalSpecialAsync(string roleCode, string existingSpecial, string newSpecial, DateTimeOffset now, CancellationToken ct)
+    /// <summary>الإصلاحات التي لم تطبق بعد على هذه القاعدة.</summary>
+    public async Task<IReadOnlyList<DataFixInfo>> PendingDataFixesAsync(CancellationToken ct)
     {
-        var key = $"catalog:{Features.Forms}:{newSpecial}";
-        if (await db.Settings.AnyAsync(s => s.Key == key, ct)) return;
+        var done = (await db.Settings.AsNoTracking().Where(s => s.Key.StartsWith("catalog")).Select(s => s.Key).ToListAsync(ct)).ToHashSet(StringComparer.Ordinal);
+        return [.. AllDataFixes().Where(f => !done.Contains(f.Key)).Select(f => f.Info)];
+    }
+
+    /// <summary>
+    /// يطبق الإصلاحات المعلقة بالترتيب، كل إصلاح في معاملته: التغيير، ومفتاحه، وقيد في سجل التدقيق باسم من وافق وعدد ما تغير.
+    /// يعيد ما طبق وكم تغير في كل منها. إعادة التشغيل لا تعيد ما طبق.
+    /// </summary>
+    public async Task<IReadOnlyList<(DataFixInfo Fix, int Changed)>> ApplyDataFixesAsync(string approvedBy, DateTimeOffset now, CancellationToken ct)
+    {
+        var pending = (await PendingDataFixesAsync(ct)).Select(p => p.Key).ToHashSet(StringComparer.Ordinal);
+        var applied = new List<(DataFixInfo, int)>();
+        foreach (var fix in AllDataFixes().Where(f => pending.Contains(f.Key)))
+        {
+            await using var tx = await db.Database.BeginTransactionAsync(ct);
+            var changed = await fix.ApplyAsync(ct);
+            db.Settings.Add(new SystemSetting { Key = fix.Key, Value = "1", UpdatedAt = now });
+            audit.Record(AuditEvents.Audit("adm", Features.Roles, "seed.data_fix_applied", "تطبيق إصلاح بيانات معتمد", "Applied an approved data fix") with
+            {
+                ActorName = approvedBy,
+                Target = new AuditTarget("data_fix", fix.Key, fix.DescriptionAr),
+                Details = new { changed, description = fix.DescriptionEn },
+            });
+            await db.SaveChangesAsync(ct);
+            if (changed > 0)
+                await db.AccessStates.Where(s => s.Id == 1).ExecuteUpdateAsync(s => s.SetProperty(x => x.Version, x => x.Version + 1), ct);
+            await tx.CommitAsync(ct);
+            applied.Add((fix.Info, changed));
+            log.LogInformation("Applied data fix {Key} ({Changed} change(s)), approved by {By}.", fix.Key, changed, approvedBy);
+        }
+        return applied;
+    }
+
+    /// <summary>قاعدة جديدة: الأدوار من الكتالوج الحالي، فكل الإصلاحات متضمنة؛ تسجل مفاتيحها «خط أساس» دون تغيير.</summary>
+    private async Task MarkDataFixesAsBaselineAsync(DateTimeOffset now, CancellationToken ct)
+    {
+        foreach (var fix in await PendingDataFixesAsync(ct))
+            db.Settings.Add(new SystemSetting { Key = fix.Key, Value = "baseline", UpdatedAt = now });
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>إجراء خاص جديد في الكتالوج لدور قائم، وللمدير الأعلى. إن أعطي existingSpecial فلمن يملك تلك المراجعة في الخاصية فقط.</summary>
+    private async Task<int> AddSpecialAsync(string feature, string roleCode, string? existingSpecial, string newSpecial, CancellationToken ct)
+    {
         var grants = await (from g in db.RoleGrants
                             join r in db.Roles on g.RoleId equals r.Id
-                            where r.IsSystem && g.Feature == Features.Forms
-                               && (r.Code == PermissionCatalog.SuperAdminRole || r.Code == roleCode && g.Specials.Contains(existingSpecial))
+                            where r.IsSystem && g.Feature == feature
+                               && (r.Code == PermissionCatalog.SuperAdminRole || r.Code == roleCode && (existingSpecial == null || g.Specials.Contains(existingSpecial)))
                             select g).ToListAsync(ct);
+        var changed = 0;
         foreach (var grant in grants.Where(g => !g.Specials.Contains(newSpecial)))
+        {
             grant.Specials.Add(newSpecial);
-        db.Settings.Add(new SystemSetting { Key = key, Value = "1", UpdatedAt = now });
-        await db.SaveChangesAsync(ct);
-        await db.AccessStates.Where(s => s.Id == 1).ExecuteUpdateAsync(s => s.SetProperty(x => x.Version, x => x.Version + 1), ct);
+            changed++;
+        }
+        return changed;
     }
 
     /// <summary>
     /// قرار الجامعة (نوفمبر 2026): مستخدم الكلية أو الإدارة لا يرى إلا جهته، ومنها دليل الجهات نفسه.
-    /// تحول منح «الجهات» في أدوار الكتالوج المقيدة بجهة من «الكل» إلى «نطاقه» مرة واحدة؛ ما يغيره المدير بعدها من المصفوفة يبقى.
+    /// تحول منح «الجهات» في أدوار الكتالوج المقيدة بجهة من «الكل» إلى «نطاقه».
     /// </summary>
-    private async Task ScopeUnitDirectoryOnceAsync(DateTimeOffset now, CancellationToken ct)
+    private async Task<int> ScopeUnitDirectoryAsync(CancellationToken ct)
     {
-        const string key = "catalog-fix:org.units-unit-scope";
-        if (await db.Settings.AnyAsync(s => s.Key == key, ct)) return;
         string[] unitRoles = ["VP", "DEAN", "CTC", "DREP", "DE", "VIEW"];
         var grants = await (from g in db.RoleGrants
                             join r in db.Roles on g.RoleId equals r.Id
                             where r.IsSystem && unitRoles.Contains(r.Code) && g.Feature == Features.Units && g.Scope == AccessScope.All
                             select g).ToListAsync(ct);
         foreach (var g in grants) g.Scope = AccessScope.Unit;
-        db.Settings.Add(new SystemSetting { Key = key, Value = "1", UpdatedAt = now });
-        await db.SaveChangesAsync(ct);
-        if (grants.Count > 0)
-        {
-            await db.AccessStates.Where(s => s.Id == 1).ExecuteUpdateAsync(s => s.SetProperty(x => x.Version, x => x.Version + 1), ct);
-            log.LogInformation("Unit-bound roles now see only their own units in the unit directory ({Count} grants).", grants.Count);
-        }
+        return grants.Count;
     }
 
     /// <summary>
-    /// الصفحة الرئيسية هي نقطة دخول كل مستخدم، ومهامها تُرشَّح بصلاحياته هو، فتمنح لكل الأدوار.
+    /// الصفحة الرئيسية نقطة دخول كل مستخدم، ومهامها تُرشَّح بصلاحياته هو، فتمنح لكل الأدوار.
     /// كان مسؤول ملف Tier 1 ومسؤول النظام بلا «الصفحة الرئيسية» فتفتح لهما صفحة «لا تملك صلاحية».
-    /// يمنحان الخاصية مرة واحدة في القواعد القائمة (القواعد الجديدة تأخذها من الكتالوج)؛ ما يغيره المدير بعدها من المصفوفة يبقى.
     /// </summary>
-    private async Task GrantHomeToAllRolesOnceAsync(DateTimeOffset now, CancellationToken ct)
+    private async Task<int> GrantHomeToAllRolesAsync(CancellationToken ct)
     {
-        const string key = "catalog-fix:dash.home-all-roles";
-        if (await db.Settings.AnyAsync(s => s.Key == key, ct)) return;
         string[] roleCodes = ["T1O", "SYS"];
         var roles = await db.Roles.Include(r => r.Grants).Where(r => r.IsSystem && roleCodes.Contains(r.Code)).ToListAsync(ct);
         var added = 0;
@@ -251,49 +306,29 @@ public sealed class Seeder(Tier1DbContext db, IPasswordHasher hasher, ISecretPro
             db.RoleGrants.Add(new RoleGrant { RoleId = role.Id, Feature = Features.Dashboard, Caps = Cap.View, Scope = AccessScope.All, Specials = [] });
             added++;
         }
-        db.Settings.Add(new SystemSetting { Key = key, Value = "1", UpdatedAt = now });
-        await db.SaveChangesAsync(ct);
-        if (added > 0)
-        {
-            await db.AccessStates.Where(s => s.Id == 1).ExecuteUpdateAsync(s => s.SetProperty(x => x.Version, x => x.Version + 1), ct);
-            log.LogInformation("Granted the home page to {Count} existing role(s).", added);
-        }
+        return added;
     }
 
-    /// <summary>
-    /// خاصية أضيفت إلى الكتالوج في إصدار لاحق تأخذ منحها الافتراضية في أدوار الكتالوج القائمة، مرة واحدة لكل خاصية:
-    /// تسجل في الإعدادات فلا تعاد إن سحبها المدير بعد ذلك من المصفوفة.
-    /// </summary>
-    private async Task SeedNewFeatureGrantsAsync(DateTimeOffset now, CancellationToken ct)
+    /// <summary>خاصية أضيفت إلى الكتالوج في إصدار لاحق تأخذ منحها الافتراضية في أدوار الكتالوج القائمة التي لا تملكها.</summary>
+    private async Task<int> GrantFeatureToExistingRolesAsync(FeatureDefinition f, CancellationToken ct)
     {
-        const string prefix = "catalog:";
-        var seeded = (await db.Settings.Where(s => s.Key.StartsWith(prefix)).Select(s => s.Key).ToListAsync(ct)).ToHashSet(StringComparer.Ordinal);
         var roles = await db.Roles.Include(r => r.Grants).Where(r => r.IsSystem).ToListAsync(ct);
-        var changed = false;
-        foreach (var f in PermissionCatalog.Features.Where(f => !seeded.Contains(prefix + f.Key)))
+        var added = 0;
+        foreach (var role in roles.Where(r => r.Grants.All(g => g.Feature != f.Key)))
         {
-            foreach (var role in roles.Where(r => r.Grants.All(g => g.Feature != f.Key)))
+            if (role.Code == PermissionCatalog.SuperAdminRole)
             {
-                if (role.Code == PermissionCatalog.SuperAdminRole)
-                {
-                    db.RoleGrants.Add(new RoleGrant { RoleId = role.Id, Feature = f.Key, Caps = f.AllowedCaps, Scope = AccessScope.All, Specials = [.. f.Specials.Select(s => s.Key)] });
-                    changed = true;
-                    continue;
-                }
-                var caps = f.Defaults.TryGetValue(role.Code, out var d) ? d.Caps : Cap.None;
-                var specials = f.Specials.Where(s => s.DefaultRoles.Contains(role.Code)).Select(s => s.Key).ToList();
-                if (caps == Cap.None && specials.Count == 0) continue;
-                db.RoleGrants.Add(new RoleGrant { RoleId = role.Id, Feature = f.Key, Caps = caps, Scope = d?.Scope ?? AccessScope.All, Specials = specials });
-                changed = true;
+                db.RoleGrants.Add(new RoleGrant { RoleId = role.Id, Feature = f.Key, Caps = f.AllowedCaps, Scope = AccessScope.All, Specials = [.. f.Specials.Select(s => s.Key)] });
+                added++;
+                continue;
             }
-            db.Settings.Add(new SystemSetting { Key = prefix + f.Key, Value = "1", UpdatedAt = now });
+            var caps = f.Defaults.TryGetValue(role.Code, out var d) ? d.Caps : Cap.None;
+            var specials = f.Specials.Where(s => s.DefaultRoles.Contains(role.Code)).Select(s => s.Key).ToList();
+            if (caps == Cap.None && specials.Count == 0) continue;
+            db.RoleGrants.Add(new RoleGrant { RoleId = role.Id, Feature = f.Key, Caps = caps, Scope = d?.Scope ?? AccessScope.All, Specials = specials });
+            added++;
         }
-        await db.SaveChangesAsync(ct);
-        if (changed)
-        {
-            await db.AccessStates.Where(s => s.Id == 1).ExecuteUpdateAsync(s => s.SetProperty(x => x.Version, x => x.Version + 1), ct);
-            log.LogInformation("Granted newly added catalog features to the existing roles.");
-        }
+        return added;
     }
 
     private async Task SeedDemoCollegesAsync(DateTimeOffset now, CancellationToken ct, bool flow = false)

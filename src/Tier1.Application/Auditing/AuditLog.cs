@@ -112,7 +112,7 @@ public sealed class AuditLog(IAppDb db, IClock clock, ICurrentUser current, IAcc
             var actorId = current.UserId ?? e.ActorOverride;
             w.WriteStartObject("actor");
             w.WriteString("userId", actorId?.ToString());
-            w.WriteString("name", current.UserId is null && current.Channel == "job" ? "النظام" : current.DisplayName ?? e.ActorName);
+            w.WriteString("name", ActorNameFor(current.UserId, current.Channel, current.DisplayName, e.ActorName));
             w.WriteStartArray("roles");
             foreach (var r in actorId is { } uid ? accessCache.CachedRoleCodes(uid) : []) w.WriteStringValue(r);
             w.WriteEndArray();
@@ -167,6 +167,12 @@ public sealed class AuditLog(IAppDb db, IClock clock, ICurrentUser current, IAcc
         w.WriteString("ownerId", t.OwnerId);
         w.WriteEndObject();
     }
+
+    /// <summary>
+    /// اسم الفاعل في القيد: المستخدم إن وجد؛ وفي المهام والأوامر بلا مستخدم الاسم الذي سماه القيد (أمر الإنتاج باسم من وافق، D10)، وإلا «النظام».
+    /// </summary>
+    public static string? ActorNameFor(Guid? userId, string? channel, string? displayName, string? eventActorName) =>
+        userId is null && channel == "job" ? eventActorName ?? "النظام" : displayName ?? eventActorName;
 
     internal static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 }

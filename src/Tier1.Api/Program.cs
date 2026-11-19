@@ -25,9 +25,23 @@ var app = builder.Build();
 StartupGuards.Check(app.Configuration, app.Environment);
 
 // أوامر التشغيل لمرة واحدة.
+var production = app.Environment.IsProduction();
+// D10: الترحيل والبيانات الأساسية فقط؛ الإصلاحات المعلقة تعرض ولا تطبق إلا بالأمر المعتمد.
 if (args.Contains("--migrate"))
 {
     await DatabaseMigrator.MigrateAsync(app.Services, app.Configuration);
+    await SeedCommands.ListDataFixesAsync(app.Services, Console.Out);
+    return;
+}
+if (args.Contains("--data-fixes"))
+{
+    Environment.ExitCode = await SeedCommands.ListDataFixesAsync(app.Services, Console.Out);
+    return;
+}
+if (args.Contains("--apply-data-fixes"))
+{
+    if (!args.Contains("--confirm")) throw new ArgumentException("--apply-data-fixes changes role permissions in the database. Review --data-fixes, then add --confirm --operator \"<name>\".");
+    Environment.ExitCode = await SeedCommands.ApplyDataFixesAsync(app.Services, SeedCommands.Operator(args, production, "--apply-data-fixes"), Console.Out);
     return;
 }
 if (args.Contains("--mongo-setup"))
@@ -41,6 +55,7 @@ if (args.Contains("--mongo-setup"))
 // قيد السجل المختوم يبقى في صندوق الصادر بالقاعدة ويكتب إلى السجل عند تشغيل الخادم التالي.
 if (args.Contains("--reset-kpi"))
 {
+    if (SeedCommands.Refusal("--reset-kpi", production, 0) is { } refused) throw new InvalidOperationException(refused);
     if (!args.Contains("--confirm")) throw new ArgumentException("--reset-kpi deletes all indicator data. Add --confirm to proceed.");
     await DatabaseMigrator.MigrateAsync(app.Services, app.Configuration);
     await Console.Out.WriteLineAsync(await KpiFramework.ResetAsync(app.Services));
@@ -51,8 +66,12 @@ if (args.Contains("--reset-kpi"))
 if (args.Contains("--load-structure"))
 {
     if (!args.Contains("--confirm")) throw new ArgumentException("--load-structure replaces the demo units. Add --confirm to proceed.");
+    var approvedBy = SeedCommands.Operator(args, production, "--load-structure");
     await DatabaseMigrator.MigrateAsync(app.Services, app.Configuration);
-    await Console.Out.WriteLineAsync(await UniversityStructure.LoadAsync(app.Services));
+    if (SeedCommands.Refusal("--load-structure", production, await SeedCommands.ExistingUnitsAsync(app.Services)) is { } refused) throw new InvalidOperationException(refused);
+    var loaded = await UniversityStructure.LoadAsync(app.Services);
+    await SeedCommands.RecordStructureLoadAsync(app.Services, approvedBy, loaded);
+    await Console.Out.WriteLineAsync(loaded);
     return;
 }
 // Full backup and restore test (replace the old PowerShell scripts).

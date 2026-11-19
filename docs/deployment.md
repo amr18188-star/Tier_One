@@ -32,6 +32,7 @@ cp deploy/.env.example deploy/.env     # املأ كل القيم (كلمات م
    docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d postgres mongo
    docker compose -f deploy/docker-compose.yml --env-file deploy/.env build app
    docker compose -f deploy/docker-compose.yml --env-file deploy/.env run --rm app --migrate
+   docker compose -f deploy/docker-compose.yml --env-file deploy/.env run --rm app --load-structure --confirm --operator "<اسم المسؤول المعتمد>"
    docker compose -f deploy/docker-compose.yml --env-file deploy/.env run --rm \
      -e ConnectionStrings__MongoAdmin="mongodb://tier1_root:<MONGO_ROOT_PASSWORD>@mongo:27017/?authSource=admin" app --mongo-setup
    docker compose -f deploy/docker-compose.yml --env-file deploy/.env run --rm app --create-superadmin admin@capu.edu.eg "مدير المنظومة"
@@ -41,6 +42,19 @@ cp deploy/.env.example deploy/.env     # املأ كل القيم (كلمات م
 4. **التحقق**: `https://tier1.capu.edu.eg/health/ready` يعيد `ready`.
 
 **التحديث**: `git pull`، ثم `build app`، ثم `run --rm app --migrate`، ثم `up -d app`. الترحيل لا يجري تلقائيًا عند بدء الإنتاج عمدًا.
+
+### البيانات في الإنتاج ([ADR-0010](adr/0010-production-seed.md))
+
+- **`--migrate`** يرحل المخطط، ويضيف ما ينقص من أدوار الكتالوج، ويضيف البيانات المرجعية على قاعدة فارغة فقط. لا يغير بيانات قائمة.
+- **إصلاحات البيانات** تغير صلاحيات أدوار قائمة مرة واحدة، فلا تطبق تلقائيًا في الإنتاج. يعرضها `--migrate` في آخره، وتطبق بموافقة المسؤول المعتمد:
+  ```bash
+  docker compose -f deploy/docker-compose.yml --env-file deploy/.env run --rm app --data-fixes
+  docker compose -f deploy/docker-compose.yml --env-file deploy/.env run --rm app --apply-data-fixes --confirm --operator "<اسم المسؤول المعتمد>"
+  ```
+  كل إصلاح يطبق في معاملته، ويسجل في سجل التدقيق باسم من وافق وعدد ما تغير. وإعادة التشغيل لا تعيد ما طبق.
+- **الهيكل الرسمي للجامعة** يحمل بـ `--load-structure --confirm --operator`، في الإنتاج على قاعدة بلا جهات فقط (التهيئة الأولى)، ويسجل في سجل التدقيق.
+- **`--reset-kpi`** يمحو بيانات المؤشرات كلها، فهو **مرفوض في الإنتاج**. جربه على نسخة تجريبية.
+- **الخادم يرفض البدء خارج التطوير** إن كان `Database:MigrateOnStartup` أو `Seed:Structure` أو `Seed:AutoDataFixes` مفعلًا.
 
 ## الخيار الثاني: Windows Server وIIS
 
@@ -55,7 +69,7 @@ cp deploy/.env.example deploy/.env     # املأ كل القيم (كلمات م
    مع `Files:Root` و`DataProtection:KeysPath` و`MongoLogs:CheckpointDirectory` على قرص بيانات خارج مجلد الموقع (مثل `D:\Tier1Data\files`).
    على Windows تحمى مفاتيح البيانات بـ DPAPI فلا تلزم شهادة PFX.
 5. `Network:TrustedProxies` = عنوان IIS نفسه (`127.0.0.1`) لأن ANCM يمرر الطلب محليًا.
-6. الترحيل وإنشاء المدير الأعلى من مجلد التطبيق: `dotnet Tier1.Api.dll --migrate` ثم `--mongo-setup` (بحساب الإدارة مؤقتًا) ثم `--create-superadmin`.
+6. الترحيل وإنشاء المدير الأعلى من مجلد التطبيق: `dotnet Tier1.Api.dll --migrate` ثم `--load-structure --confirm --operator "<الاسم>"` (أول مرة) ثم `--mongo-setup` (بحساب الإدارة مؤقتًا) ثم `--create-superadmin`. وبعد كل تحديث: `--migrate` ثم `--data-fixes` و`--apply-data-fixes --confirm --operator` إن وجد معلق.
 
 ## ما يرفض الخادم البدء بدونه خارج التطوير
 
