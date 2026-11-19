@@ -18,6 +18,10 @@ public sealed partial class Tier1DbContext
 
     public DbSet<SubmissionEvent> SubmissionEvents => Set<SubmissionEvent>();
 
+    public DbSet<ReopenRequest> ReopenRequests => Set<ReopenRequest>();
+
+    public DbSet<ValueSnapshot> ValueSnapshots => Set<ValueSnapshot>();
+
     public DbSet<StoredDocument> Documents => Set<StoredDocument>();
 
     public DbSet<UniversityValue> UniversityValues => Set<UniversityValue>();
@@ -79,6 +83,41 @@ public sealed partial class Tier1DbContext
             e.Property(x => x.ByName).HasMaxLength(200);
             e.Property(x => x.Note).HasMaxLength(2000);
             e.HasOne<Submission>().WithMany().HasForeignKey(x => x.SubmissionId).OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<ReopenRequest>(e =>
+        {
+            e.ToTable("reopen_requests", "dc", t =>
+            {
+                // الاعتماد برقم محضر، والرفض بسبب (D4).
+                t.HasCheckConstraint("ck_reopen_requests_decision",
+                    "(status = 1 AND decided_at IS NULL) OR (status = 2 AND decided_at IS NOT NULL AND decision_ref IS NOT NULL) OR (status = 3 AND decided_at IS NOT NULL AND decision_note IS NOT NULL)");
+                t.HasCheckConstraint("ck_reopen_requests_sod", "decided_by IS NULL OR decided_by <> requested_by");
+            });
+            // طلب معلق واحد لكل نموذج.
+            e.HasIndex(x => x.SubmissionId).IsUnique().HasFilter("status = 1").HasDatabaseName("ux_reopen_requests_one_pending");
+            e.HasIndex(x => new { x.SubmissionId, x.Status });
+            e.Property(x => x.Reason).HasMaxLength(2000);
+            e.Property(x => x.RequestedByName).HasMaxLength(200);
+            e.Property(x => x.DecidedByName).HasMaxLength(200);
+            e.Property(x => x.DecisionRef).HasMaxLength(200);
+            e.Property(x => x.DecisionNote).HasMaxLength(2000);
+            e.Property(x => x.Version).IsRowVersion();
+            e.HasOne<Submission>().WithMany().HasForeignKey(x => x.SubmissionId).OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<ValueSnapshot>(e =>
+        {
+            e.ToTable("value_snapshots", "dc");
+            e.Property(x => x.Id).UseIdentityAlwaysColumn();
+            e.HasIndex(x => new { x.RequestId, x.IndicatorId }).IsUnique();
+            e.HasIndex(x => x.SubmissionId);
+            e.Property(x => x.Value).HasPrecision(20, 4);
+            e.Property(x => x.Numerator).HasPrecision(20, 4);
+            e.Property(x => x.Denominator).HasPrecision(20, 4);
+            e.Property(x => x.Reason).HasMaxLength(500);
+            e.Property(x => x.Explanation).HasMaxLength(1000);
+            e.HasOne<ReopenRequest>().WithMany().HasForeignKey(x => x.RequestId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Submission>().WithMany().HasForeignKey(x => x.SubmissionId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<Indicator>().WithMany().HasForeignKey(x => x.IndicatorId).OnDelete(DeleteBehavior.Restrict);
         });
         b.Entity<UniversityValue>(e =>
         {

@@ -30,7 +30,9 @@ public sealed record ResultsCycle(Guid Id, string Name, string PeriodLabel, int 
 public sealed record ResultsDto(
     ResultsCycle Cycle, ResultUnit Unit, IReadOnlyList<ResultUnit> Units, ResultsCycle? PreviousCycle,
     int FormsApproved, int FormsTotal, IReadOnlyList<StandardResult> Standards, IReadOnlyList<IndicatorResult> Indicators,
-    IReadOnlyList<ResultUnit> HeatUnits, IReadOnlyList<HeatCell> Heat, bool CanExport);
+    IReadOnlyList<ResultUnit> HeatUnits, IReadOnlyList<HeatCell> Heat, bool CanExport,
+    /// <summary>نماذج قيد التصحيح بعد إعادة فتح معتمدة، تحتسب بقيمها المعتمدة السابقة (D4).</summary>
+    int FormsUnderCorrection = 0);
 
 public sealed record UnitResult(
     Guid UnitId, string UnitName, decimal? Actual, decimal? Target, decimal? Achievement, Performance Performance, int Reported, int Expected, string? Note,
@@ -41,7 +43,8 @@ public sealed record TrendPoint(Guid CycleId, string Label, decimal? Actual, dec
 /// <summary>قيمة جهة في مؤشر ضمن دورة: ببسطها ومقامها، وكم جهة تحتها أبلغت، وحالة نموذجها، ومستهدفها.</summary>
 public sealed record UnitBreakdown(
     Guid UnitId, string UnitName, OrgUnitKind Kind, decimal? Value, decimal? Numerator, decimal? Denominator, int Reported, int Expected, string? Note,
-    SubmissionStatus? FormStatus, decimal? Target, Kpi.TargetSource TargetSource, decimal? PendingTarget = null, int? PendingTargetYear = null);
+    SubmissionStatus? FormStatus, decimal? Target, Kpi.TargetSource TargetSource, decimal? PendingTarget = null, int? PendingTargetYear = null,
+    bool UnderCorrection = false);
 
 /// <summary>مؤشر في دورة: قيمة الجامعة المحسوبة من الجهات ومستهدفها، وقيمة كل جهة.</summary>
 public sealed record IndicatorBreakdown(
@@ -102,7 +105,7 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
         var formsInScope = snap.Submissions.Where(s => org.Kind == OrgUnitKind.University || snap.Units[s.UnitId].Path.StartsWith(org.Path, StringComparison.Ordinal)).ToList();
         return new ResultsDto(Cycle(cycle), unit, units, previousCycle is null ? null : Cycle(previousCycle),
             formsInScope.Count(s => s.Status == SubmissionStatus.Approved), formsInScope.Count, standards, indicators, heatUnits, heat,
-            me.HasSpecial(Feature, "export"));
+            me.HasSpecial(Feature, "export"), formsInScope.Count(s => snap.UnderCorrection.Contains(s.Id)));
     }
 
     public async Task<IndicatorResultsDto> IndicatorAsync(Guid cycleId, Guid indicatorId, Guid? unitId, CancellationToken ct)
@@ -185,6 +188,7 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
     {
         var snap = await SnapshotAsync(cycle, ct);
         var formOf = snap.Submissions.ToDictionary(s => s.UnitId, s => s.Status);
+        var correcting = snap.Submissions.Where(s => snap.UnderCorrection.Contains(s.Id)).Select(s => s.UnitId).ToHashSet();
         var colleges = snap.Units.Values.Where(u => u.IsCollegeLevel && u.Active).OrderBy(u => u.SortOrder).ThenBy(u => u.NameAr).ToList();
         var list = new List<IndicatorBreakdown>();
         foreach (var i in snap.Indicators)
@@ -201,7 +205,7 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
                 var a = u.Kind == OrgUnitKind.University ? uni : Actual(snap, i, u);
                 var t = TargetFor(snap, i, u);
                 return new UnitBreakdown(u.Id, u.NameAr, u.Kind, a.Value, a.Numerator, a.Denominator, a.Reported, a.Expected, a.Note,
-                    formOf.TryGetValue(u.Id, out var st) ? st : null, t.Value, t.Source, t.PendingValue, t.PendingYear);
+                    formOf.TryGetValue(u.Id, out var st) ? st : null, t.Value, t.Source, t.PendingValue, t.PendingYear, correcting.Contains(u.Id));
             }).ToList();
             list.Add(new IndicatorBreakdown(i.Ci.IndicatorId, i.Ci.Code, i.Version, i.Standard.Code, i.Ci.Level, uni, uniTarget, units));
         }
@@ -262,6 +266,9 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
         public required Dictionary<Guid, int?> PlanStart { get; init; }
 
         public required OrgUnit Root { get; init; }
+
+        /// <summary>نماذج أعيد فتحها بقرار وتحتسب بقيمها المعتمدة السابقة حتى يعاد اعتمادها (D4).</summary>
+        public IReadOnlySet<Guid> UnderCorrection { get; init; } = new HashSet<Guid>();
     }
 
     private async Task<Snapshot> SnapshotAsync(CollectionCycle cycle, CancellationToken ct)
@@ -277,6 +284,14 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
         var approvedIds = subs.Where(s => s.Status == SubmissionStatus.Approved).Select(s => s.Id).ToList();
         var unitOf = subs.ToDictionary(s => s.Id, s => s.UnitId);
         var values = await db.SubmittedValues.AsNoTracking().Where(v => approvedIds.Contains(v.SubmissionId)).ToListAsync(ct);
+        // D4: النموذج المعاد فتحه قيد التصحيح تبقى قيمه المعتمدة السابقة (لقطة آخر طلب معتمد) هي الرسمية حتى يعاد اعتماده،
+        // فلا تختفي أرقام الجهة من النتائج وبطاقة الأداء والتقدم أثناء تصحيح مؤشر.
+        var openIds = subs.Where(s => s.Status != SubmissionStatus.Approved).Select(s => s.Id).ToList();
+        var reopened = await db.ReopenRequests.AsNoTracking().Where(r => openIds.Contains(r.SubmissionId) && r.Status == ReopenRequestStatus.Approved).ToListAsync(ct);
+        var official = subs.Select(s => ReopenRules.OfficialSnapshot(s, reopened)).OfType<Guid>().ToList();
+        if (official.Count > 0)
+            values.AddRange((await db.ValueSnapshots.AsNoTracking().Where(v => official.Contains(v.RequestId)).ToListAsync(ct)).Select(ReopenRules.AsValue));
+        var underCorrection = reopened.Select(r => r.SubmissionId).ToHashSet();
         var targets = await db.Targets.AsNoTracking().Where(t => indicatorIds.Contains(t.IndicatorId) && (t.Year <= cycle.TargetYear || t.Kind == TargetKind.Baseline)).ToListAsync(ct);
         return new Snapshot
         {
@@ -287,6 +302,7 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
             Units = units,
             Standards = standards.Values.ToDictionary(s => s.Id),
             Submissions = subs,
+            UnderCorrection = underCorrection,
             Approved = values.ToDictionary(v => (unitOf[v.SubmissionId], v.IndicatorId)),
             Targets = targets.ToLookup(t => t.IndicatorId),
             PlanStart = indicators.Values.ToDictionary(i => i.Id, i => i.PlanStartYear),

@@ -27,7 +27,7 @@ public sealed record FormItem(
     Guid IndicatorId, string Code, string Name, string Unit, Aggregation Aggregation, bool UsesRatio, string? NumeratorLabel, string? DenominatorLabel,
     string? Definition, string? DataSource, string? EvidenceRequired, Direction Direction, decimal? Previous, decimal? Target,
     ValueDto? Value, IReadOnlyList<IssueDto> Issues, IReadOnlyList<DocDto> Evidence, string? EntryNote, Kpi.TargetSource TargetSource,
-    decimal? PendingTarget = null, int? PendingTargetYear = null);
+    decimal? PendingTarget = null, int? PendingTargetYear = null, ApprovedValueDto? ApprovedBefore = null);
 
 /// <summary>معيار في النموذج بركيزته، فيعرض الإدخال مصنفًا: الركيزة ← المعيار ← مؤشراته.</summary>
 public sealed record FormSection(string? PillarCode, string? PillarName, string StandardCode, string StandardName, IReadOnlyList<FormItem> Items);
@@ -38,14 +38,14 @@ public sealed record FormEventDto(SubmissionAction Action, ApprovalStep FromStep
 /// <param name="CanApprove">يملك الاعتماد العادي إلى الخطوة التالية (NextStepName).</param>
 /// <param name="DirectStepName">إن ملك الاعتماد المباشر: الخطوة التي يحيل إليها. يحتاج سببًا مكتوبًا (D2).</param>
 public sealed record FormActions(bool CanEdit, bool CanSubmit, bool CanReview, bool CanReopen, bool DirectDepartmentApproval, bool DirectDeanApproval,
-    bool CanApprove = false, string? DirectStepName = null);
+    bool CanApprove = false, string? DirectStepName = null, bool CanDecideReopen = false);
 
 public sealed record FormDto(
     Guid Id, Guid CycleId, string CycleName, string PeriodLabel, CycleStatus CycleStatus, bool Trial, int TargetYear,
     Guid UnitId, string UnitName, OrgUnitKind UnitKind, ApprovalStep Step, SubmissionStatus Status, DateOnly DueOn, bool Overdue,
     IReadOnlyList<PathStep> Path, string? NextStepName, string? ReturnNote, DateTimeOffset? LastEditedAt,
     int Completed, int Required, IReadOnlyList<FormSection> Sections, IReadOnlyList<string> Blocking,
-    IReadOnlyList<FormEventDto> Events, FormActions Actions, uint Version);
+    IReadOnlyList<FormEventDto> Events, FormActions Actions, uint Version, FormReopenDto? Reopen = null);
 
 public sealed record SaveValueRequest(Guid IndicatorId, ValueKind Kind, decimal? Value, decimal? Numerator, decimal? Denominator, string? Reason, string? Explanation, uint? Version);
 
@@ -86,6 +86,11 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
             .Select(v => v.SubmissionId).Distinct().ToListAsync(ct);
         var approvedByMe = await db.SubmissionEvents.AsNoTracking().Where(e => subIds.Contains(e.SubmissionId) && e.By == current.UserId && e.Action == SubmissionAction.Approved)
             .Select(e => e.SubmissionId).Distinct().ToListAsync(ct);
+        // D4: طلبات إعادة الفتح المعلقة تنتظر من يقررها (اللجنة العليا)، ما لم يكن مقدمها.
+        var reopenPending = me.HasSpecial(Features.Cycles, ApprovalRules.ApproveReopen)
+            ? (await db.ReopenRequests.AsNoTracking().Where(r => subIds.Contains(r.SubmissionId) && r.Status == ReopenRequestStatus.Pending && r.RequestedBy != current.UserId)
+                .Select(r => r.SubmissionId).ToListAsync(ct)).ToHashSet()
+            : [];
         var today = CairoTime.DateOf(clock.UtcNow);
         var term = q?.Trim();
 
@@ -99,7 +104,8 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
                 var waiting = cycle.Status == CycleStatus.Open && (
                     (s.IsEditable && edit.Covers(unit) && me.Has(Feature, Cap.Edit))
                     || (s.Status == SubmissionStatus.InReview && ApprovalRules.MayReview(me, unit, s.Step)
-                        && !editors.Contains(s.Id) && !approvedByMe.Contains(s.Id)));
+                        && !editors.Contains(s.Id) && !approvedByMe.Contains(s.Id))
+                    || reopenPending.Contains(s.Id));
                 return new FormRow(s.Id, s.CycleId, cycle.Name, unit.Id, unit.NameAr, unit.Kind, unit.ParentId is { } p ? units[p].NameAr : null,
                     s.Step, ApprovalRules.StepName(s.Step), s.Status, s.DueOn, s.Status != SubmissionStatus.Approved && s.DueOn < today && cycle.Status == CycleStatus.Open,
                     counts.GetValueOrDefault(s.Id), required, waiting);
@@ -271,22 +277,6 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
             if (ctx.Values.TryGetValue(item.IndicatorId, out var v)) v.ReviewNote = Require.Optional(item.Note, 1000);
         Move(ctx, SubmissionAction.Returned, ApprovalStep.Entry, note);
         ctx.Submission.ReturnNote = note;
-        await notifier.MovedAsync(ctx.Submission, ctx.Unit, ctx.Cycle, ct);
-        await db.SaveChangesAsync(ct);
-        return await BuildAsync(ctx, ct);
-    }
-
-    /// <summary>إعادة فتح نموذج معتمد بطلب مسبب وصلاحية خاصة؛ القيم السابقة ومراحل اعتمادها تبقى في السجل.</summary>
-    public async Task<FormDto> ReopenAsync(Guid id, NoteRequest req, CancellationToken ct)
-    {
-        await access.RequireSpecialAsync(Features.Cycles, ApprovalRules.Reopen, ct);
-        var ctx = await LoadAsync(id, Cap.View, tracking: true, ct);
-        var reason = Require.Reason(req.Note);
-        if (ctx.Submission.Status != SubmissionStatus.Approved) throw new DomainException("not_approved", "يعاد فتح النموذج المعتمد فقط.", "Only an approved form can be reopened.");
-        if (ctx.Cycle.Status != CycleStatus.Open) throw new DomainException("cycle_not_open", "الدورة مغلقة.", "The cycle is closed.");
-        Move(ctx, SubmissionAction.Reopened, ApprovalStep.Entry, reason);
-        ctx.Submission.ApprovedAt = null;
-        ctx.Submission.ReturnNote = reason;
         await notifier.MovedAsync(ctx.Submission, ctx.Unit, ctx.Cycle, ct);
         await db.SaveChangesAsync(ct);
         return await BuildAsync(ctx, ct);
@@ -497,7 +487,8 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
         return docs.GroupBy(d => byValue[d.OwnerId]).ToDictionary(g => g.Key, g => g.Select(ToDoc).ToList());
     }
 
-    private static FormItem Item(FormContext ctx, IndicatorInCycle i, decimal bigChange, Dictionary<Guid, Kpi.TargetInfo> targets, Dictionary<Guid, List<DocDto>> docs)
+    private static FormItem Item(FormContext ctx, IndicatorInCycle i, decimal bigChange, Dictionary<Guid, Kpi.TargetInfo> targets, Dictionary<Guid, List<DocDto>> docs,
+        IReadOnlyDictionary<Guid, ApprovedValueDto>? before = null)
     {
         var v = i.Version;
         var spec = CycleSpec.Of(v);
@@ -513,7 +504,8 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
         return new FormItem(i.Ci.IndicatorId, i.Ci.Code, v.NameAr, v.Unit, v.Aggregation, ValueRules.UsesRatio(spec), v.Numerator, v.Denominator,
             v.Definition, v.DataSource, v.EvidenceRequired, v.Direction, ctx.Previous.GetValueOrDefault(i.Ci.IndicatorId), target.Value,
             value is null ? null : new ValueDto(value.Kind, value.Value, value.Numerator, value.Denominator, value.Reason, value.Explanation, value.ReviewNote, value.EditedAt, value.Version),
-            issues, docs.GetValueOrDefault(i.Ci.IndicatorId) ?? [], EntryNote(i.Ci, v, ctx.Unit), target.Source, target.PendingValue, target.PendingYear);
+            issues, docs.GetValueOrDefault(i.Ci.IndicatorId) ?? [], EntryNote(i.Ci, v, ctx.Unit), target.Source, target.PendingValue, target.PendingYear,
+            before?.GetValueOrDefault(i.Ci.IndicatorId));
     }
 
     internal static DocDto ToDoc(StoredDocument d) => new(d.Id, d.FileName, d.ContentType, d.SizeBytes, d.UploadedAt, d.Description, d.VoidedAt is not null, d.VoidReason);
@@ -535,7 +527,10 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
         var canReview = cycleOpen && s.Status == SubmissionStatus.InReview && ApprovalRules.MayReview(ctx.Me, ctx.Unit, s.Step)
                         && ctx.Values.Values.All(v => v.EditedBy != current.UserId)
                         && !sinceSubmit.Any(e => e.Action == SubmissionAction.Approved && e.By == current.UserId);
-        var canReopen = cycleOpen && s.Status == SubmissionStatus.Approved && ctx.Me.HasSpecial(Features.Cycles, ApprovalRules.Reopen);
+        // D4: طلب إعادة الفتح ممن يملكه ولا طلب معلق، وقرار الطلب المعلق للجنة العليا ما لم يكن مقدمه.
+        var (reopen, pendingBy, before) = await ReopenStateAsync(s, ct);
+        var canReopen = cycleOpen && s.Status == SubmissionStatus.Approved && ctx.Me.HasSpecial(Features.Cycles, ApprovalRules.Reopen) && pendingBy is null;
+        var canDecideReopen = pendingBy is { } by && by != current.UserId && ctx.Me.HasSpecial(Features.Cycles, ApprovalRules.ApproveReopen);
         var directTo = canReview ? ApprovalRules.DirectApprovalTo(ctx.Me, ctx.Unit, s.Step) : null;
         var canApprove = canReview && ApprovalRules.MayApprove(ctx.Me, ctx.Unit, s.Step);
         var next = s.Status == SubmissionStatus.Approved ? null
@@ -549,12 +544,12 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
                 ? "skipped" : i < stepIndex ? "done" : i == stepIndex ? "current" : "pending")).ToList(),
             next, s.ReturnNote, s.LastEditedAt, ctx.Values.Count, ctx.Indicators.Count,
             ctx.Indicators.GroupBy(i => i.Standard)
-                .Select(g => new FormSection(g.First().Pillar?.Code, g.First().Pillar?.NameAr, g.Key.Code, g.Key.NameAr, g.Select(i => Item(ctx, i, bigChange, targets, docs)).ToList()))
+                .Select(g => new FormSection(g.First().Pillar?.Code, g.First().Pillar?.NameAr, g.Key.Code, g.Key.NameAr, g.Select(i => Item(ctx, i, bigChange, targets, docs, before)).ToList()))
                 .ToList(),
             blocking,
             events.Select(e => new FormEventDto(e.Action, e.FromStep, e.ToStep, e.ByName, e.At, e.Note)).ToList(),
             new FormActions(canEdit, canEdit && blocking.Count == 0, canReview, canReopen, directTo == ApprovalStep.Dean, directTo == ApprovalStep.Quality,
-                canApprove, directTo is { } d ? ApprovalRules.StepName(d) : null),
-            s.Version);
+                canApprove, directTo is { } d ? ApprovalRules.StepName(d) : null, canDecideReopen),
+            s.Version, reopen);
     }
 }

@@ -224,11 +224,35 @@ public sealed class CollectionTests(ITestOutputHelper output)
                 "Direct dean approval skips department and college review and advances to central quality");
         }
 
-        t.Step("5. Excel import: preview, then all-or-nothing apply");
-        var reopened = await planner.Ok("POST", $"/api/forms/{form["id"].Str()}/reopen", Scenario.O(("note", "تصحيح بعد مراجعة اللجنة العليا")));
-        t.Check(reopened["status"].Str() == "InProgress" && reopened["step"].Str() == "Entry", "The approved form was reopened with a reason");
-        (status, _) = await entry.Call("POST", $"/api/forms/{form["id"].Str()}/reopen", Scenario.O(("note", "سبب")));
-        t.Check(status == 403, "Reopening is a special permission only");
+        t.Step("5. Reopening by request and higher-committee decision (D4), then Excel import");
+        var committee = await Env.As("committee");
+        var formPath = $"/api/forms/{form["id"].Str()}";
+        Dictionary<string, decimal?> EngActuals(JsonNode r) =>
+            r["indicators"].Items().Where(i => i["actual"].Num() is not null).ToDictionary(i => i["code"].Str()!, i => i["actual"].Num());
+        var officialBefore = EngActuals((await planner.Get($"/api/results?cycleId={cycleId}&unitId={eng["id"].Str()}"))!);
+        (status, _) = await entry.Call("POST", formPath + "/reopen", Scenario.O(("note", "سبب كاف")));
+        t.Check(status == 403, "Requesting a reopen is a special permission only");
+        var requested = await planner.Ok("POST", formPath + "/reopen", Scenario.O(("note", "تصحيح بعد مراجعة اللجنة العليا")));
+        t.Check(requested["status"].Str() == "Approved" && requested["reopen"]!["status"].Str() == "Pending" && !requested["actions"]!["canReopen"].Truthy(),
+            "The request leaves the form approved and locked until the committee decides");
+        (status, err) = await planner.Call("POST", formPath + "/reopen", Scenario.O(("note", "طلب ثان للنموذج نفسه")));
+        t.Check(status == 409 && err.Code() == "reopen_pending", "Only one pending request per form");
+        (status, _) = await planner.Call("POST", formPath + "/reopen/approve", Scenario.O(("decisionRef", "محضر 7")));
+        t.Check(status == 403, "The plan manager who requested cannot approve (higher committee only)");
+        t.Check((await committee.Get(formPath))!["actions"]!["canDecideReopen"].Truthy(), "The higher committee is offered the decision");
+        t.Check((await committee.Get($"/api/forms?cycleId={cycleId}&awaitingMe=true")).Items().Any(f => f["id"].Str() == form["id"].Str()),
+            "The pending request is in the committee queue");
+        (status, _) = await committee.Call("POST", formPath + "/reopen/reject", Scenario.O(("note", "")));
+        t.Check(status == 400, "A rejection needs a reason");
+        var rejected = await committee.Ok("POST", formPath + "/reopen/reject", Scenario.O(("note", "التصحيح غير مبرر في هذه الدورة")));
+        t.Check(rejected["status"].Str() == "Approved" && rejected["reopen"]!["status"].Str() == "Rejected", "A rejected request leaves the form approved");
+        await planner.Ok("POST", formPath + "/reopen", Scenario.O(("note", "تصحيح مؤشر بعد مراجعة اللجنة العليا")));
+        (status, err) = await committee.Call("POST", formPath + "/reopen/approve", Scenario.O(("decisionRef", "")));
+        t.Check(status == 400 && err.Code() == "decision_ref_required", "Approval needs the committee decision reference");
+        var reopened = await committee.Ok("POST", formPath + "/reopen/approve", Scenario.O(("decisionRef", "محضر 7")));
+        t.Check(reopened["status"].Str() == "InProgress" && reopened["step"].Str() == "Entry" && reopened["reopen"]!["status"].Str() == "Approved",
+            "The committee approved with a decision reference and the form reopened");
+        t.Check(reopened.ItemsOf().Where(i => i["value"] is not null).All(i => i["approvedBefore"] is not null), "Every value keeps its approved snapshot");
         var template = await entry.Download($"/api/forms/{form["id"].Str()}/template.xlsx");
         t.Check(template.Status == 200 && template.Body.AsSpan().StartsWith("PK"u8), "The form's Excel template downloaded");
 
@@ -276,10 +300,17 @@ public sealed class CollectionTests(ITestOutputHelper output)
         }
         (status, _) = await entry.Upload(importPath, "x.xlsx", "not excel"u8.ToArray());
         t.Check(status == 400, "A file that is not Excel is refused");
+        var during = (await planner.Get($"/api/results?cycleId={cycleId}&unitId={eng["id"].Str()}"))!;
+        var officialDuring = EngActuals(during);
+        t.Check(officialDuring.Count == officialBefore.Count && officialBefore.All(kv => officialDuring.GetValueOrDefault(kv.Key) == kv.Value),
+            $"While under correction the results keep the approved values ({officialDuring.Count} indicators), not the edited ones");
+        t.Check(during["formsUnderCorrection"].Num() >= 1, "The results show the form as under correction");
 
         form = await entry.Ok("POST", $"/api/forms/{form["id"].Str()}/submit");
         foreach (var who in new[] { college, dean, quality }) form = await who.Ok("POST", $"/api/forms/{form["id"].Str()}/approve", Scenario.O(("note", null)));
         t.Check(form["status"].Str() == "Approved", "The form was approved again after the correction");
+        t.Check((await planner.Get($"/api/results?cycleId={cycleId}&unitId={eng["id"].Str()}"))!["formsUnderCorrection"].Num() == 0,
+            "After re-approval the form is no longer under correction");
 
         t.Step("6. Results: approved values against the target, scope and export");
         var res = (await planner.Get($"/api/results?cycleId={cycleId}"))!;

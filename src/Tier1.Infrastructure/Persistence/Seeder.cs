@@ -173,6 +173,26 @@ public sealed class Seeder(Tier1DbContext db, IPasswordHasher hasher, ISecretPro
         await GrantHomeToAllRolesOnceAsync(now, ct);
         await SeedFormApprovalSpecialAsync("CTC", ApprovalRules.ReviewCollege, ApprovalRules.ApproveDepartmentDirectly, now, ct);
         await SeedFormApprovalSpecialAsync("DEAN", ApprovalRules.ApproveCollege, ApprovalRules.ApproveAsDeanDirectly, now, ct);
+        await SeedCycleSpecialAsync("HC", ApprovalRules.ApproveReopen, now, ct);
+    }
+
+    /// <summary>
+    /// إجراء خاص جديد في «الدورات» للأدوار القائمة مرة واحدة (D4: اعتماد إعادة الفتح للجنة العليا)، وللمدير الأعلى.
+    /// القواعد الجديدة تأخذه من الكتالوج؛ ما يغيره المدير بعدها من المصفوفة يبقى.
+    /// </summary>
+    private async Task SeedCycleSpecialAsync(string roleCode, string newSpecial, DateTimeOffset now, CancellationToken ct)
+    {
+        var key = $"catalog:{Features.Cycles}:{newSpecial}";
+        if (await db.Settings.AnyAsync(s => s.Key == key, ct)) return;
+        var grants = await (from g in db.RoleGrants
+                            join r in db.Roles on g.RoleId equals r.Id
+                            where r.IsSystem && g.Feature == Features.Cycles && (r.Code == PermissionCatalog.SuperAdminRole || r.Code == roleCode)
+                            select g).ToListAsync(ct);
+        foreach (var grant in grants.Where(g => !g.Specials.Contains(newSpecial)))
+            grant.Specials.Add(newSpecial);
+        db.Settings.Add(new SystemSetting { Key = key, Value = "1", UpdatedAt = now });
+        await db.SaveChangesAsync(ct);
+        await db.AccessStates.Where(s => s.Id == 1).ExecuteUpdateAsync(s => s.SetProperty(x => x.Version, x => x.Version + 1), ct);
     }
 
     private async Task SeedFormApprovalSpecialAsync(string roleCode, string existingSpecial, string newSpecial, DateTimeOffset now, CancellationToken ct)

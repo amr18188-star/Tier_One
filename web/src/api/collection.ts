@@ -42,6 +42,7 @@ export interface FormItem {
   definition: string | null; dataSource: string | null; evidenceRequired: string | null; direction: Direction; previous: number | null; target: number | null;
   value: Value | null; issues: Issue[]; evidence: Doc[]; entryNote: string | null; targetSource: TargetSource;
   /** مستهدف مقترح بانتظار الاعتماد (D3)، للعرض فقط. */ pendingTarget?: number | null; pendingTargetYear?: number | null;
+  /** القيمة المعتمدة قبل إعادة الفتح (D4). */ approvedBefore?: ApprovedValue | null;
 }
 
 export interface FormSection { pillarCode: string | null; pillarName: string | null; standardCode: string; standardName: string; items: FormItem[] }
@@ -57,8 +58,18 @@ export interface Form {
   completed: number; required: number; sections: FormSection[]; blocking: string[]; events: FormEvent[];
   actions: { canEdit: boolean; canSubmit: boolean; canReview: boolean; canReopen: boolean; directDepartmentApproval: boolean; directDeanApproval: boolean;
     /** الاعتماد العادي إلى nextStepName. */ canApprove?: boolean;
-    /** الاعتماد المباشر (اختيار صريح بسبب مكتوب): الخطوة التي يحيل إليها. */ directStepName?: string | null }; version: number;
+    /** الاعتماد المباشر (اختيار صريح بسبب مكتوب): الخطوة التي يحيل إليها. */ directStepName?: string | null;
+    /** قرار طلب إعادة الفتح المعلق (اللجنة العليا، D4). */ canDecideReopen?: boolean }; version: number;
+  /** آخر طلب لإعادة فتح النموذج المعتمد (D4). */ reopen?: FormReopen | null;
 }
+
+export type ReopenStatus = "Pending" | "Approved" | "Rejected";
+export interface FormReopen {
+  id: string; status: ReopenStatus; reason: string; requestedByName: string | null; requestedAt: string;
+  decidedByName: string | null; decidedAt: string | null; decisionRef: string | null; decisionNote: string | null;
+}
+/** القيمة كما اعتمدت قبل إعادة فتح النموذج؛ تبقى الرسمية في النتائج حتى يعاد اعتماده (D4). */
+export interface ApprovedValue { kind: ValueKind; value: number | null; numerator: number | null; denominator: number | null; reason: string | null; approvedAt: string | null }
 
 export interface SaveValue {
   indicatorId: string; kind: ValueKind; value: number | null; numerator: number | null; denominator: number | null;
@@ -86,6 +97,7 @@ export interface HeatCell { unitId: string; standardCode: string; indicators: nu
 export interface Results {
   cycle: ResultsCycle; unit: ResultUnit; units: ResultUnit[]; previousCycle: ResultsCycle | null; formsApproved: number; formsTotal: number;
   standards: StandardResult[]; indicators: IndicatorResult[]; heatUnits: ResultUnit[]; heat: HeatCell[]; canExport: boolean;
+  /** نماذج قيد التصحيح بعد إعادة فتح معتمدة، تحتسب بقيمها المعتمدة السابقة (D4). */ formsUnderCorrection?: number;
 }
 
 export interface UnitResult {

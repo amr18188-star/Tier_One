@@ -18,7 +18,11 @@ public static class ApprovalRules
     public const string ApproveAsDeanDirectly = "approve_as_dean_directly";
     public const string ApproveCollege = "approve_college";
     public const string ApproveFinal = "approve_final";
+    /// <summary>طلب إعادة فتح نموذج معتمد (dc.cycles).</summary>
     public const string Reopen = "reopen";
+
+    /// <summary>اعتماد طلب إعادة الفتح أو رفضه، للجنة العليا (dc.cycles، D4).</summary>
+    public const string ApproveReopen = "approve_reopen";
 
     public static IReadOnlyList<ApprovalStep> PathFor(OrgUnitKind kind) => kind switch
     {

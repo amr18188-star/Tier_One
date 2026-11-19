@@ -64,6 +64,14 @@ public sealed class HomeService(IAppDb db, ICurrentUser current, IAccessService 
             if (review > 0)
                 tasks.Add(new("definitions_review", "تعريفات تنتظر اعتمادك", "اعتمدها برقم المحضر، أو أعدها بملاحظات.", review, "/indicators?status=UnderReview", "brand"));
         }
+        if (me.HasSpecial(Features.Cycles, Collection.ApprovalRules.ApproveReopen))
+        {
+            var reopen = await db.ReopenRequests.AsNoTracking().Where(r => r.Status == Domain.Collection.ReopenRequestStatus.Pending && r.RequestedBy != current.UserId)
+                .Select(r => r.SubmissionId).ToListAsync(ct);
+            if (reopen.Count > 0)
+                tasks.Add(new("reopen_requests", "طلبات إعادة فتح نماذج معتمدة", "اعتمدها برقم المحضر، أو ارفضها بسبب.", reopen.Count,
+                    reopen.Count == 1 ? $"/forms/{reopen[0]}" : "/forms", "warn"));
+        }
         if (me.HasSpecial(Features.Targets, Specials.Approve))
         {
             var proposed = await db.Targets.CountAsync(t => t.Status == TargetStatus.Proposed && t.Kind != TargetKind.EachCollege && t.UpdatedBy != current.UserId, ct);

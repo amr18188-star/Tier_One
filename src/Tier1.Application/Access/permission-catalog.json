@@ -387,10 +387,18 @@
       "specials": [
         {
           "key": "reopen",
-          "ar": "إعادة فتح نموذج معتمد بسبب",
-          "en": "Reopen an approved form",
+          "ar": "طلب إعادة فتح نموذج معتمد بسبب",
+          "en": "Request reopening an approved form",
           "roles": [
             "PM"
+          ]
+        },
+        {
+          "key": "approve_reopen",
+          "ar": "اعتماد طلب إعادة فتح نموذج معتمد برقم المحضر",
+          "en": "Approve a request to reopen an approved form",
+          "roles": [
+            "HC"
           ]
         }
       ],

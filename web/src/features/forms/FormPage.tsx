@@ -42,7 +42,7 @@ export default function FormPage() {
   const form = useQuery({ queryKey: key, queryFn: () => api.get<Form>(`/api/forms/${id}`) });
   const [filter, setFilter] = useState<Filter>("all");
   const [marks, setMarks] = useState<Record<string, ReturnMark>>({});
-  const [dialog, setDialog] = useState<"submit" | "approve" | "direct" | "return" | "reopen" | "import" | "extend" | null>(null);
+  const [dialog, setDialog] = useState<"submit" | "approve" | "direct" | "return" | "reopen" | "reopenApprove" | "reopenReject" | "import" | "extend" | null>(null);
   const canExtend = usePermissions().can("dc.cycles", "E");
   // الحفظ التلقائي في الصفوف: الجاري منه لشريط الحالة، وflushAll قبل التنقل والإرسال.
   const autosave = useAutosaveRegistry();
@@ -159,6 +159,9 @@ export default function FormPage() {
   if (!f) return <Panel query={form}>{null}</Panel>;
   const editable = f.actions.canEdit;
   const reviewing = f.actions.canReview;
+  // D4: طلب إعادة الفتح ينتظر قرار اللجنة العليا؛ من يقرره يرى الاعتماد والرفض.
+  const canDecideReopen = f.actions.canDecideReopen ?? false;
+  const reopen = f.reopen ?? null;
   // D2: الاعتماد المباشر اختيار صريح بجانب الاعتماد العادي، ومن يملك أيهما يملك الإعادة للتصحيح.
   const canApprove = f.actions.canApprove ?? (reviewing && !f.actions.directDepartmentApproval && !f.actions.directDeanApproval);
   const directDeanApproval = f.actions.directDeanApproval;
@@ -214,8 +217,21 @@ export default function FormPage() {
           )} />
       )}
       {f.status === "InProgress" && f.returnNote && f.events.at(-1)?.action === "Reopened" && (
-        <NoteCard tone="warn" notes={[f.returnNote]} title={L("أعيد فتح النموذج بعد اعتماده:", "Reopened after approval:")}
-          extra={<><UnlockOutlined aria-hidden /> {L("صحّح ما يلزم ثم أعد الإرسال.", "Correct what is needed, then send again.")}</>} />
+        <NoteCard tone="warn" notes={[f.returnNote]}
+          title={reopen?.status === "Approved" && reopen.decisionRef
+            ? L(`أعيد فتح النموذج بقرار اللجنة العليا (${reopen.decisionRef}):`, `Reopened by committee decision ${reopen.decisionRef}:`)
+            : L("أعيد فتح النموذج بعد اعتماده:", "Reopened after approval:")}
+          extra={<><UnlockOutlined aria-hidden /> {L("صحّح ما يلزم ثم أعد الإرسال. قيمه المعتمدة السابقة تبقى الرسمية في النتائج حتى يعاد اعتماده.", "Correct what is needed, then send again. The previously approved values stay official until re-approval.")}</>} />
+      )}
+      {reopen?.status === "Pending" && (
+        <Alert type="warning" showIcon className="mb"
+          message={L("طلب إعادة فتح ينتظر قرار اللجنة العليا", "A reopen request is awaiting the higher committee")}
+          description={<>{reopen.reason}<br /><small className="muted">{reopen.requestedByName ?? ""} · {formatDateTime(reopen.requestedAt)}</small></>} />
+      )}
+      {reopen?.status === "Rejected" && f.status === "Approved" && (
+        <Alert type="info" showIcon className="mb"
+          message={L("رفضت اللجنة العليا آخر طلب لإعادة فتح النموذج", "The higher committee rejected the last reopen request")}
+          description={<>{reopen.decisionNote}<br /><small className="muted">{reopen.decidedByName ?? ""} · {reopen.decidedAt ? formatDateTime(reopen.decidedAt) : ""}</small></>} />
       )}
       {f.cycleStatus === "Closed" && <Alert type="info" showIcon className="mb" message={L("الدورة مغلقة؛ النموذج للاطلاع فقط.", "The cycle is closed; read only.")} />}
       {reviewing && (
@@ -294,13 +310,13 @@ export default function FormPage() {
         </Panel>
       )}
 
-      {(pillars.length > 1 || editable || reviewing || f.actions.canReopen) && (
+      {(pillars.length > 1 || editable || reviewing || f.actions.canReopen || canDecideReopen) && (
       <div className="fp-dock no-print">
       {pillars.length > 1 && (
         <PillarMobileBar position={position} total={pillars.length} hasPrev={position > 0} hasNext={position < pillars.length - 1}
           onPrev={() => void goPillar(pillars[position - 1].key)} onNext={() => void goPillar(pillars[position + 1].key)} />
       )}
-      {(editable || reviewing || f.actions.canReopen) && (
+      {(editable || reviewing || f.actions.canReopen || canDecideReopen) && (
         <div className="f-actions">
           <span className="grow">
             {editable && (
@@ -347,7 +363,13 @@ export default function FormPage() {
               )}
             </>
           )}
-          {f.actions.canReopen && <Button icon={<UnlockOutlined />} onClick={() => setDialog("reopen")}>{L("إعادة فتح للتصحيح", "Reopen")}</Button>}
+          {f.actions.canReopen && <Button icon={<UnlockOutlined />} onClick={() => setDialog("reopen")}>{L("طلب إعادة فتح للتصحيح", "Request reopening")}</Button>}
+          {canDecideReopen && (
+            <>
+              <Button danger size="large" onClick={() => setDialog("reopenReject")}>{L("رفض طلب إعادة الفتح", "Reject the request")}</Button>
+              <Button type="primary" size="large" icon={<UnlockOutlined />} onClick={() => setDialog("reopenApprove")}>{L("اعتماد إعادة الفتح", "Approve reopening")}</Button>
+            </>
+          )}
         </div>
       )}
       </div>
@@ -377,10 +399,31 @@ export default function FormPage() {
           onClose={() => setDialog(null)} />
       )}
       {dialog === "reopen" && (
-        <DecisionModal title={L("إعادة فتح نموذج معتمد", "Reopen an approved form")} field="note" label={L("سبب إعادة الفتح", "Reason")} okText={L("إعادة فتح", "Reopen")}
-          explain={L("يعود النموذج إلى الإدخال ثم يمر بخطوات الاعتماد كلها من جديد. القيم السابقة واعتماداتها تبقى في السجل.", "The form returns to entry and the full approval path.")}
+        <DecisionModal title={L("طلب إعادة فتح نموذج معتمد", "Request reopening an approved form")} field="note" label={L("سبب إعادة الفتح", "Reason")} okText={L("إرسال الطلب", "Send request")}
+          explain={L("يرسل الطلب إلى اللجنة العليا ويبقى النموذج معتمدًا ومقفلًا حتى تعتمده برقم المحضر. عندها يعود إلى الإدخال ويمر بخطوات الاعتماد كلها من جديد، وتبقى قيمه المعتمدة الحالية رسمية في النتائج حتى يعاد اعتماده.",
+            "The request goes to the higher committee; the form stays approved and locked until it approves with a decision reference.")}
           onSubmit={async (note) => {
             qc.setQueryData(key, await api.post<Form>(`/api/forms/${f.id}/reopen`, { note }));
+            void qc.invalidateQueries({ queryKey: ["forms"] });
+          }}
+          onClose={() => setDialog(null)} />
+      )}
+      {dialog === "reopenApprove" && (
+        <DecisionModal title={L("اعتماد إعادة فتح النموذج", "Approve reopening the form")} field="decisionRef" label={L("رقم محضر اللجنة العليا", "Committee decision reference")} okText={L("اعتماد وإعادة الفتح", "Approve and reopen")}
+          explain={<>{L("سبب الطلب:", "Reason:")} {reopen?.reason}<br />{L("يعود النموذج إلى الإدخال، وتحفظ قيمه المعتمدة الحالية وتبقى الرسمية في النتائج حتى يعاد اعتماده.", "The form returns to entry; its approved values are kept and stay official until re-approval.")}</>}
+          onSubmit={async (decisionRef) => {
+            qc.setQueryData(key, await api.post<Form>(`/api/forms/${f.id}/reopen/approve`, { decisionRef, note: null }));
+            void qc.invalidateQueries({ queryKey: ["forms"] });
+            void qc.invalidateQueries({ queryKey: ["results"] });
+          }}
+          onClose={() => setDialog(null)} />
+      )}
+      {dialog === "reopenReject" && (
+        <DecisionModal title={L("رفض طلب إعادة الفتح", "Reject the reopen request")} field="note" label={L("سبب الرفض", "Reason")} okText={L("رفض", "Reject")} danger
+          explain={<>{L("سبب الطلب:", "Reason:")} {reopen?.reason}<br />{L("يبقى النموذج معتمدًا ومقفلًا، ويرى مقدم الطلب سبب الرفض.", "The form stays approved; the requester sees the reason.")}</>}
+          onSubmit={async (note) => {
+            qc.setQueryData(key, await api.post<Form>(`/api/forms/${f.id}/reopen/reject`, { note }));
+            void qc.invalidateQueries({ queryKey: ["forms"] });
           }}
           onClose={() => setDialog(null)} />
       )}

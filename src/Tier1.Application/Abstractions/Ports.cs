@@ -86,6 +86,10 @@ public interface IAppDb
 
     DbSet<Domain.Collection.SubmissionEvent> SubmissionEvents { get; }
 
+    DbSet<Domain.Collection.ReopenRequest> ReopenRequests { get; }
+
+    DbSet<Domain.Collection.ValueSnapshot> ValueSnapshots { get; }
+
     DbSet<Domain.Collection.StoredDocument> Documents { get; }
 
     DbSet<Domain.Collection.UniversityValue> UniversityValues { get; }

@@ -514,6 +514,88 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                     b.ToTable("cycle_indicators", "dc");
                 });
 
+            modelBuilder.Entity("Tier1.Domain.Collection.ReopenRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("DecidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decided_at");
+
+                    b.Property<Guid?>("DecidedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("decided_by");
+
+                    b.Property<string>("DecidedByName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("decided_by_name");
+
+                    b.Property<string>("DecisionNote")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("decision_note");
+
+                    b.Property<string>("DecisionRef")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("decision_ref");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("reason");
+
+                    b.Property<DateTimeOffset>("RequestedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("requested_at");
+
+                    b.Property<Guid>("RequestedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("requested_by");
+
+                    b.Property<string>("RequestedByName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("requested_by_name");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("SubmissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submission_id");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_reopen_requests");
+
+                    b.HasIndex("SubmissionId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_reopen_requests_one_pending")
+                        .HasFilter("status = 1");
+
+                    b.HasIndex("SubmissionId", "Status")
+                        .HasDatabaseName("ix_reopen_requests_submission_id_status");
+
+                    b.ToTable("reopen_requests", "dc", t =>
+                        {
+                            t.HasCheckConstraint("ck_reopen_requests_decision", "(status = 1 AND decided_at IS NULL) OR (status = 2 AND decided_at IS NOT NULL AND decision_ref IS NOT NULL) OR (status = 3 AND decided_at IS NOT NULL AND decision_note IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_reopen_requests_sod", "decided_by IS NULL OR decided_by <> requested_by");
+                        });
+                });
+
             modelBuilder.Entity("Tier1.Domain.Collection.StoredDocument", b =>
                 {
                     b.Property<Guid>("Id")
@@ -884,6 +966,84 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         {
                             t.HasCheckConstraint("ck_university_values_quarter", "quarter BETWEEN 1 AND 4");
                         });
+                });
+
+            modelBuilder.Entity("Tier1.Domain.Collection.ValueSnapshot", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTimeOffset?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("approved_at");
+
+                    b.Property<decimal?>("Denominator")
+                        .HasPrecision(20, 4)
+                        .HasColumnType("numeric(20,4)")
+                        .HasColumnName("denominator");
+
+                    b.Property<DateTimeOffset>("EditedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("edited_at");
+
+                    b.Property<Guid>("EditedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("edited_by");
+
+                    b.Property<string>("Explanation")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("explanation");
+
+                    b.Property<Guid>("IndicatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("indicator_id");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer")
+                        .HasColumnName("kind");
+
+                    b.Property<decimal?>("Numerator")
+                        .HasPrecision(20, 4)
+                        .HasColumnType("numeric(20,4)")
+                        .HasColumnName("numerator");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reason");
+
+                    b.Property<Guid>("RequestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("request_id");
+
+                    b.Property<Guid>("SubmissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submission_id");
+
+                    b.Property<decimal?>("Value")
+                        .HasPrecision(20, 4)
+                        .HasColumnType("numeric(20,4)")
+                        .HasColumnName("value");
+
+                    b.HasKey("Id")
+                        .HasName("pk_value_snapshots");
+
+                    b.HasIndex("IndicatorId")
+                        .HasDatabaseName("ix_value_snapshots_indicator_id");
+
+                    b.HasIndex("SubmissionId")
+                        .HasDatabaseName("ix_value_snapshots_submission_id");
+
+                    b.HasIndex("RequestId", "IndicatorId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_value_snapshots_request_id_indicator_id");
+
+                    b.ToTable("value_snapshots", "dc");
                 });
 
             modelBuilder.Entity("Tier1.Domain.Common.SystemSetting", b =>
@@ -2809,6 +2969,16 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_cycle_indicators_indicator_versions_version_id");
                 });
 
+            modelBuilder.Entity("Tier1.Domain.Collection.ReopenRequest", b =>
+                {
+                    b.HasOne("Tier1.Domain.Collection.Submission", null)
+                        .WithMany()
+                        .HasForeignKey("SubmissionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_reopen_requests_submissions_submission_id");
+                });
+
             modelBuilder.Entity("Tier1.Domain.Collection.Submission", b =>
                 {
                     b.HasOne("Tier1.Domain.Collection.CollectionCycle", null)
@@ -2868,6 +3038,30 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_university_values_indicators_indicator_id");
+                });
+
+            modelBuilder.Entity("Tier1.Domain.Collection.ValueSnapshot", b =>
+                {
+                    b.HasOne("Tier1.Domain.Kpi.Indicator", null)
+                        .WithMany()
+                        .HasForeignKey("IndicatorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_value_snapshots_indicators_indicator_id");
+
+                    b.HasOne("Tier1.Domain.Collection.ReopenRequest", null)
+                        .WithMany()
+                        .HasForeignKey("RequestId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_value_snapshots_reopen_requests_request_id");
+
+                    b.HasOne("Tier1.Domain.Collection.Submission", null)
+                        .WithMany()
+                        .HasForeignKey("SubmissionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_value_snapshots_submissions_submission_id");
                 });
 
             modelBuilder.Entity("Tier1.Domain.Identity.UserSession", b =>

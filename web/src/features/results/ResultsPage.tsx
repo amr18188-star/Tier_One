@@ -168,7 +168,11 @@ export default function ResultsPage() {
         {r && <OverallRing r={r} />}
       </div>
 
-      {r && r.formsApproved === 0 && (
+      {r && !!r.formsUnderCorrection && (
+        <Alert type="warning" showIcon className="mb" message={L(`${r.formsUnderCorrection} نموذج أعيد فتحه بقرار اللجنة العليا وهو قيد التصحيح؛ يحتسب بقيمه المعتمدة السابقة حتى يعاد اعتماده.`,
+          `${r.formsUnderCorrection} form(s) reopened for correction count with their previously approved values until re-approved.`)} />
+      )}
+      {r && r.formsApproved + (r.formsUnderCorrection ?? 0) === 0 && (
         <Panel><EmptyNote>{L("لم يعتمد أي نموذج في هذه الدورة بعد؛ النتائج تحسب من القيم المعتمدة نهائيًا فقط.", "No approved forms yet.")}</EmptyNote></Panel>
       )}
       {r && r.formsApproved > 0 && r.formsApproved < r.formsTotal && (

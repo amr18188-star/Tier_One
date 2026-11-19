@@ -62,8 +62,13 @@ public static class CollectionEndpoints
             .RequireAnyPermission([.. ReviewSpecials, $"{Features.Forms}:{ApprovalRules.ApproveDepartmentDirectly}", $"{Features.Forms}:{ApprovalRules.ApproveAsDeanDirectly}"]);
         g.MapPost("/{id:guid}/return", async (Guid id, ReturnRequest req, FormsService svc, CancellationToken ct) => Results.Ok(await svc.ReturnAsync(id, req, ct)))
             .RequireAnyPermission(ReviewSpecials);
-        g.MapPost("/{id:guid}/reopen", async (Guid id, NoteRequest req, FormsService svc, CancellationToken ct) => Results.Ok(await svc.ReopenAsync(id, req, ct)))
+        // إعادة فتح المعتمد بطلب وقرار (D4): الطلب ممن يملك «إعادة الفتح»، والقرار للجنة العليا برقم المحضر.
+        g.MapPost("/{id:guid}/reopen", async (Guid id, NoteRequest req, FormsService svc, CancellationToken ct) => Results.Ok(await svc.RequestReopenAsync(id, req, ct)))
             .RequireSpecial(Features.Cycles, ApprovalRules.Reopen);
+        g.MapPost("/{id:guid}/reopen/approve", async (Guid id, Tier1.Application.Kpi.CommitteeDecisionRequest req, FormsService svc, CancellationToken ct) => Results.Ok(await svc.ApproveReopenAsync(id, req, ct)))
+            .RequireSpecial(Features.Cycles, ApprovalRules.ApproveReopen);
+        g.MapPost("/{id:guid}/reopen/reject", async (Guid id, NoteRequest req, FormsService svc, CancellationToken ct) => Results.Ok(await svc.RejectReopenAsync(id, req, ct)))
+            .RequireSpecial(Features.Cycles, ApprovalRules.ApproveReopen);
 
         g.MapPost("/{id:guid}/extend", async (Guid id, ExtendRequest req, FormsService svc, CancellationToken ct) => Results.Ok(await svc.ExtendAsync(id, req, ct)))
             .RequirePermission(Features.Cycles, Cap.Edit);

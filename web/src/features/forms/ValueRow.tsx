@@ -74,6 +74,12 @@ export function ValueRow({ formId, item, editable, reviewing, mark, onMark, onSa
             <PendingTarget value={item.pendingTarget} year={item.pendingTargetYear} unit={item.unit} />
           </span>
           <span>{L("آخر قيمة معتمدة:", "Last approved:")} <b className="ltr">{withUnit(item.previous, item.unit)}</b></span>
+          {item.approvedBefore && (
+            <span className="t1-approved-before">
+              {L("المعتمدة قبل إعادة الفتح:", "Approved before reopening:")}{" "}
+              <b className="ltr">{item.approvedBefore.kind === "Number" ? withUnit(item.approvedBefore.value, item.unit) : L("غير متاح أو غير منطبق", "n/a")}</b>
+            </span>
+          )}
         </div>
         {item.entryNote && <div className="t1-entry-note">{item.entryNote}</div>}
         {item.value?.reviewNote && <NoteCard className="mt" notes={[item.value.reviewNote]} />}
