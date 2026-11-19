@@ -26,7 +26,9 @@ public sealed class SignInService(
     IAuditLog audit,
     IQrCodes qr,
     LoginThrottle throttle,
-    IOptions<AuthOptions> options)
+    IOptions<AuthOptions> options,
+    Access.IAccessService access,
+    Settings.SettingsService settings)
 {
     private const string Surface = "staff";
 
@@ -95,7 +97,9 @@ public sealed class SignInService(
         user = await db.Users.FirstAsync(u => u.Id == user.Id, ct);
         if (rehash) user.PasswordHash = hasher.Hash(cmd.Password!);
         user.LastLoginAt = now;
-        var mfaRequired = options.Value.RequireMfa && (user.MfaEnabled || await RoleRequiresMfaAsync(user.Id, ct));
+        // D11: أدوار الأمان الثابتة دائمًا، وأصحاب القرارات والصلاحيات الحساسة بحسب صلاحياتهم الفعلية حين يشغل المدير الأعلى المفتاح.
+        var mfaRequired = options.Value.RequireMfa
+            && (user.MfaEnabled || MfaPolicy.Requires(await access.GetAsync(user.Id, ct), options.Value, await settings.MfaForDecisionsAsync(ct)));
         var (token, session) = await sessions.CreateAsync(user, mfaRequired, ct);
         audit.Record(AuditEvents.Security("auth.login", Features.Users, "تسجيل دخول", "Signed in") with
         {
@@ -262,15 +266,6 @@ public sealed class SignInService(
         var sid = current.SessionId ?? throw DomainException.Forbidden();
         var user = await db.Users.FirstOrDefaultAsync(u => u.Id == uid && u.Active, ct) ?? throw DomainException.Forbidden();
         return (user, sid);
-    }
-
-    private async Task<bool> RoleRequiresMfaAsync(Guid userId, CancellationToken ct)
-    {
-        var codes = options.Value.MfaRoles;
-        var now = clock.UtcNow;
-        return await db.UserRoles.Where(r => r.UserId == userId && r.RevokedAt == null && r.ApprovedAt != null && r.ValidFrom <= now && (r.ValidTo == null || r.ValidTo > now))
-            .Join(db.Roles, a => a.RoleId, r => r.Id, (a, r) => r.Code)
-            .AnyAsync(c => codes.Contains(c), ct);
     }
 }
 

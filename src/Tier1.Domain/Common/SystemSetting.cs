@@ -15,7 +15,10 @@ public sealed class SystemSetting
 }
 
 /// <summary>تعريف إعداد: قيمته الافتراضية وحدوده واسمه.</summary>
-public sealed record SettingDefinition(string Key, int Default, int Min, int Max, string Ar, string En, string UnitAr, string UnitEn);
+/// <param name="SuperAdminOnly">لا يغيره إلا المدير الأعلى، ولو ملك غيره تعديل الإعدادات (D11).</param>
+/// <param name="IsSwitch">تشغيل (1) أو إيقاف (0)، يعرض مفتاحًا.</param>
+public sealed record SettingDefinition(string Key, int Default, int Min, int Max, string Ar, string En, string UnitAr, string UnitEn,
+    bool SuperAdminOnly = false, bool IsSwitch = false);
 
 public static class SettingKeys
 {
@@ -43,6 +46,12 @@ public static class SettingKeys
     /// <summary>كم تزيد حدود الدرجة الكلية على حدود الركائز (+5 في الإطار).</summary>
     public const string OverallTierOffset = "overall_tier_offset";
 
+    /// <summary>
+    /// المصادقة الثنائية لأصحاب القرارات والصلاحيات الحساسة بحسب صلاحياتهم الفعلية، فوق أدوار الأمان الثابتة في الإعدادات (D11، ADR-0007).
+    /// للمدير الأعلى وحده تشغيلها وإيقافها؛ الافتراضي إيقاف حتى يبلغ مستخدمو الكليات.
+    /// </summary>
+    public const string MfaForDecisions = "security_mfa_for_decisions";
+
     public static readonly IReadOnlyList<SettingDefinition> All =
     [
         new(NearTargetPercent, 90, 50, 99, "حد «قريب من المستهدف» (اللون الأصفر)", "Near-target threshold (amber)", "% من المستهدف", "% of target"),
@@ -54,6 +63,8 @@ public static class SettingKeys
         new(Tier2Min, 70, 30, 99, "الفئة 2 (جامعة وطنية للبحث والابتكار): أدنى درجة للركيزة", "Tier 2 minimum pillar score", "من 100", "of 100"),
         new(Tier3Min, 55, 20, 98, "الفئة 3 (جامعة شاملة): أدنى درجة للركيزة", "Tier 3 minimum pillar score", "من 100", "of 100"),
         new(Tier4Min, 40, 10, 97, "الفئة 4 (جامعة إقليمية تعليمية): أدنى درجة للركيزة", "Tier 4 minimum pillar score", "من 100", "of 100"),
+        new(MfaForDecisions, 0, 0, 1, "المصادقة الثنائية لكل من يعتمد أو يقرر أو يدير الصلاحيات", "Two-step verification for everyone who approves, decides or manages access",
+            "تشغيل أو إيقاف", "on or off", SuperAdminOnly: true, IsSwitch: true),
         new(OverallTierOffset, 5, 0, 15, "زيادة حدود الدرجة الكلية على حدود الركائز", "Overall-score thresholds raised by", "نقطة", "points"),
     ];
 

@@ -1,7 +1,7 @@
 import { ApartmentOutlined, ClusterOutlined, SafetyCertificateOutlined, TeamOutlined } from "@ant-design/icons";
 import { Link } from "react-router-dom";
 import { useState } from "react";
-import { Alert, Button, Form, Input, InputNumber, Modal, Tag } from "antd";
+import { Alert, Button, Form, Input, InputNumber, Modal, Switch, Tag, Tooltip } from "antd";
 import { EditOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
@@ -21,6 +21,9 @@ export interface SystemSetting {
   unit: string | null;
   min: number | null;
   max: number | null;
+  /** لا يغيره إلا المدير الأعلى (D11). */ superAdminOnly?: boolean;
+  /** تشغيل (1) أو إيقاف (0). */ isSwitch?: boolean;
+  /** يستطيع المستخدم الحالي تعديله. */ editable?: boolean;
 }
 
 function unitLabel(unit: string | null): string {
@@ -42,10 +45,15 @@ export default function SettingsPage() {
   const canView = perms.can("adm.settings", "V");
   const list = useQuery({ queryKey: ["admin-settings"], queryFn: () => api.get<SystemSetting[]>("/api/admin/settings"), enabled: canView });
   const [editing, setEditing] = useState<SystemSetting | null>(null);
-  const value = (s: SystemSetting, v: number | string) => <span className="nowrap"><b className="ltr">{v}</b> {unitLabel(s.unit)}</span>;
-  const edit = (s: SystemSetting) => perms.can("adm.settings", "E") && (
-    <Button size="small" icon={<EditOutlined aria-hidden />} onClick={(e) => { e.stopPropagation(); setEditing(s); }}>{L("تعديل", "Edit")}</Button>
-  );
+  const value = (s: SystemSetting, v: number | string) => s.isSwitch
+    ? <Tag color={Number(v) === 1 ? "green" : "default"}>{Number(v) === 1 ? L("مشغل", "On") : L("موقف", "Off")}</Tag>
+    : <span className="nowrap"><b className="ltr">{v}</b> {unitLabel(s.unit)}</span>;
+  const editable = (s: SystemSetting) => s.editable ?? (perms.can("adm.settings", "E") && !s.superAdminOnly);
+  const edit = (s: SystemSetting) => editable(s)
+    ? <Button size="small" icon={<EditOutlined aria-hidden />} onClick={(e) => { e.stopPropagation(); setEditing(s); }}>{s.isSwitch ? L("تغيير", "Change") : L("تعديل", "Edit")}</Button>
+    : s.superAdminOnly && perms.can("adm.settings", "E")
+      ? <Tooltip title={L("يغيره المدير الأعلى وحده.", "Only a super administrator can change it.")}><Tag>{L("للمدير الأعلى", "Super admin")}</Tag></Tooltip>
+      : null;
   return (
     <>
       <PageHeader title={L("إعدادات النظام", "System settings")}
@@ -78,7 +86,7 @@ export default function SettingsPage() {
               { title: L("الإعداد", "Setting"), render: (_, s) => <div className="dt-service"><b>{L(s.ar, s.en)}</b></div> },
               { title: L("القيمة", "Value"), render: (_, s) => <>{value(s, s.value)}{String(s.value) !== String(s.defaultValue) && <Tag color="gold" className="ms">{L("معدّل", "Changed")}</Tag>}</> },
               { title: L("الافتراضي", "Default"), render: (_, s) => <span className="muted">{value(s, s.defaultValue)}</span> },
-              { title: L("المدى", "Range"), render: (_, s) => s.min != null || s.max != null ? <span className="muted ltr">{s.min ?? "…"} – {s.max ?? "…"}</span> : "—" },
+              { title: L("المدى", "Range"), render: (_, s) => s.isSwitch ? <span className="muted">{L("تشغيل أو إيقاف", "On or off")}</span> : s.min != null || s.max != null ? <span className="muted ltr">{s.min ?? "…"} – {s.max ?? "…"}</span> : "—" },
               { title: "", key: "e", render: (_, s) => edit(s) },
             ]} />
         </QueryState>
@@ -108,12 +116,24 @@ function EditSetting({ setting: s, onClose, onDone }: { setting: SystemSetting; 
         }
       }}>
       {error && <Alert type="error" showIcon message={error} className="mb" />}
+      {s.isSwitch && s.superAdminOnly && (
+        <Alert type="info" showIcon className="mb"
+          message={L("عند التشغيل يطلب من كل من يعتمد أو يقرر أو يدير الحسابات والصلاحيات تسجيل تطبيق المصادقة عند دخوله التالي، وتتوقف جلساته الحالية غير المتحقق منها عن الإجراءات حتى يدخل من جديد. أدوار الأمان الثابتة يلزمها التحقق دائمًا.",
+            "When on, everyone who approves, decides or manages access must enrol an authenticator at next sign-in; their current unverified sessions stop working until they sign in again. Core security roles always need it.")} />
+      )}
       <Form form={form} layout="vertical" initialValues={{ value: s.value }}>
-        <Form.Item name="value" label={L(`القيمة (الافتراضي ${s.defaultValue})`, `Value (default ${s.defaultValue})`)} rules={[{ required: true }]}>
-          {numeric(s)
-            ? <InputNumber min={s.min ?? undefined} max={s.max ?? undefined} style={{ width: "100%" }} addonAfter={unitLabel(s.unit) || undefined} />
-            : <Input maxLength={500} />}
-        </Form.Item>
+        {s.isSwitch ? (
+          <Form.Item name="value" label={L("الحالة", "State")} valuePropName="checked"
+            getValueFromEvent={(on: boolean) => (on ? 1 : 0)} getValueProps={(v) => ({ checked: Number(v) === 1 })}>
+            <Switch checkedChildren={L("مشغل", "On")} unCheckedChildren={L("موقف", "Off")} />
+          </Form.Item>
+        ) : (
+          <Form.Item name="value" label={L(`القيمة (الافتراضي ${s.defaultValue})`, `Value (default ${s.defaultValue})`)} rules={[{ required: true }]}>
+            {numeric(s)
+              ? <InputNumber min={s.min ?? undefined} max={s.max ?? undefined} style={{ width: "100%" }} addonAfter={unitLabel(s.unit) || undefined} />
+              : <Input maxLength={500} />}
+          </Form.Item>
+        )}
         <Form.Item name="reason" label={L("سبب التعديل", "Reason for the change")} rules={[{ required: true, whitespace: true, min: 5 }]}><Input.TextArea rows={2} maxLength={500} /></Form.Item>
       </Form>
     </Modal>

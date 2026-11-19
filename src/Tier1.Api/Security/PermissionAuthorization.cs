@@ -21,15 +21,17 @@ public sealed class PermissionRequirement(IReadOnlyList<PermissionItem> items) :
     public IReadOnlyList<PermissionItem> Items { get; } = items;
 }
 
-public sealed class PermissionHandler(IAccessService access, IOptions<AuthOptions> auth) : AuthorizationHandler<PermissionRequirement>
+public sealed class PermissionHandler(IAccessService access, IOptions<AuthOptions> auth, Tier1.Application.Settings.SettingsService settings) : AuthorizationHandler<PermissionRequirement>
 {
     protected override async Task HandleRequirementAsync(AuthorizationHandlerContext context, PermissionRequirement requirement)
     {
         if (context.User.HasClaim(ClaimNames.MfaPending, "true") || context.User.HasClaim(ClaimNames.PasswordChangePending, "true")) return;
         if (!Guid.TryParse(context.User.FindFirst(ClaimNames.UserId)?.Value, out var uid)) return;
         var mine = await access.GetAsync(uid, CancellationToken.None);
-        // دور حساس أسند بعد دخول بلا تحقق بخطوتين لا يعمل في تلك الجلسة؛ يلزم دخول جديد بالتحقق.
-        if (!context.User.HasClaim(ClaimNames.MfaVerified, "true") && mine.RoleCodes.Any(auth.Value.MfaEnforcedFor)) return;
+        // من يلزمه التحقق بخطوتين (دور أمان ثابت، أو صلاحية قرار أو حساسة والمفتاح مشغل، D11) لا يعمل في جلسة بلا تحقق؛
+        // يلزم دخول جديد بالتحقق. ويشمل ذلك دورًا حساسًا أسند بعد الدخول، أو تشغيل المدير الأعلى للمفتاح أثناء الجلسة.
+        if (!context.User.HasClaim(ClaimNames.MfaVerified, "true")
+            && MfaPolicy.Requires(mine, auth.Value, await settings.MfaForDecisionsAsync(CancellationToken.None))) return;
         if (requirement.Items.Any(i => i.Special is null ? mine.Has(i.Feature, i.Cap) : mine.HasSpecial(i.Feature, i.Special)))
             context.Succeed(requirement);
     }
