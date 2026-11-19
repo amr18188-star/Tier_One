@@ -7,7 +7,8 @@ public class ContributionTests
 {
     [Theory]
     [InlineData(3, 60, 0.05)]      // the college target is 5% of the university target
-    [InlineData(2, 60, 0.0333)]    // and what it achieved is 3.3% of it
+    [InlineData(2, 60, 0.033333)]  // and what it achieved is 3.3% of it
+    [InlineData(3, 175000, 0.000017)] // a small college share of a large university total is not rounded to zero
     [InlineData(75, 60, 1.25)]     // a college can exceed the whole university target
     public void Share_of_the_university_target(double part, double universityTarget, double expected) =>
         Assert.Equal((decimal)expected, ResultsRules.ShareOfUniversity((decimal)part, (decimal)universityTarget));

@@ -101,7 +101,7 @@ public static class ResultsRules
     /// لا معنى لها في النسب والمتوسطات (تقارن هناك بمستهدف الجامعة نفسه)، ولا مع مستهدف جامعة صفري.
     /// </summary>
     public static decimal? ShareOfUniversity(decimal? part, decimal? universityTarget) =>
-        part is { } p && universityTarget is { } u && u != 0 ? decimal.Round(p / u, 4) : null;
+        part is { } p && universityTarget is { } u && u != 0 ? decimal.Round(p / u, 6) : null;
 
     /// <summary>
     /// الحكم على القيمة. للوصول إلى قيمة: محقق إن كان الانحراف نصف هامش «القريب» أو أقل (5% افتراضيًا)، وقريب حتى الهامش كله (10%).
