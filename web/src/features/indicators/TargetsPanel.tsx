@@ -6,6 +6,7 @@ import { api } from "../../api/client";
 import type { IndicatorTargets, Target } from "../../api/tier1";
 import { TrendChart } from "../../shared/charts";
 import { DecisionModal } from "../../shared/DecisionModal";
+import { formatDateTime } from "../../shared/format";
 import { L } from "../../shared/i18n";
 import { direction, withUnit } from "../../shared/labels";
 import { Panel } from "../../shared/ui";
@@ -69,11 +70,16 @@ export function TargetsPanel({ code, universityId }: { code: string; universityI
           </div>
           {t!.revisions.length > 0 && (
             <details className="mt">
-              <summary>{L(`تعديلات على مستهدفات معتمدة (${t!.revisions.length})`, `Changes to approved targets (${t!.revisions.length})`)}</summary>
-              <ul>
-                {t!.revisions.map((r) => (
-                  <li key={r.changedAt}>
-                    <span className="ltr">{r.oldValue ?? r.oldText} → {r.newValue ?? r.newText}</span> — {r.reason} ({r.decisionRef})
+              <summary>{L(`سجل تعديل المستهدفات المعتمدة وحذفها (${t!.revisions.length})`, `Changes to approved targets (${t!.revisions.length})`)}</summary>
+              <ul className="t1-history">
+                {t!.revisions.map((r, n) => (
+                  <li key={`${r.changedAt}-${n}`}>
+                    <b>{r.unitName ?? ""}{r.year ? ` · ${r.year}` : ""}</b>{" "}
+                    {r.action === "Deleted"
+                      ? <><Tag color="red">{L("حذف", "Deleted")}</Tag> <span className="ltr">{r.oldValue ?? r.oldText}</span></>
+                      : <span className="ltr">{r.oldValue ?? r.oldText ?? "—"} → {r.newValue ?? r.newText ?? "—"}</span>}
+                    {" "}— {r.reason}{r.decisionRef && <> ({r.decisionRef})</>}
+                    <div className="muted"><small>{r.changedByName ?? ""} · <span className="ltr">{formatDateTime(r.changedAt)}</span></small></div>
                   </li>
                 ))}
               </ul>

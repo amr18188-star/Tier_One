@@ -228,13 +228,17 @@ public sealed partial class Tier1DbContext
             e.ToTable("target_revisions", "kpi");
             e.Property(x => x.Id).UseIdentityAlwaysColumn();
             e.HasIndex(x => x.TargetId);
+            e.HasIndex(x => new { x.IndicatorId, x.ChangedAt });
+            e.Property(x => x.ChangedByName).HasMaxLength(200);
             e.Property(x => x.OldValue).HasPrecision(20, 4);
             e.Property(x => x.NewValue).HasPrecision(20, 4);
             e.Property(x => x.OldText).HasMaxLength(300);
             e.Property(x => x.NewText).HasMaxLength(300);
             e.Property(x => x.Reason).HasMaxLength(500);
             e.Property(x => x.DecisionRef).HasMaxLength(200);
-            e.HasOne<IndicatorTarget>().WithMany().HasForeignKey(x => x.TargetId).OnDelete(DeleteBehavior.Restrict);
+            // يبقى سجل المستهدف بعد حذفه (D8): الرابط يفرغ، والسطر يصف نفسه.
+            e.HasOne<IndicatorTarget>().WithMany().HasForeignKey(x => x.TargetId).OnDelete(DeleteBehavior.SetNull);
+            e.HasOne<Indicator>().WithMany().HasForeignKey(x => x.IndicatorId).OnDelete(DeleteBehavior.Restrict);
         });
         b.Entity<DataConflict>(e =>
         {

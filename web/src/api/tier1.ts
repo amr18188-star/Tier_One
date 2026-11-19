@@ -110,7 +110,11 @@ export interface Target {
   numerator: number | null; denominator: number | null; source: string | null; note: string | null; status: TargetStatus; decisionRef: string | null; version: number;
 }
 
-export interface TargetRevision { oldValue: number | null; oldText: string | null; newValue: number | null; newText: string | null; reason: string; decisionRef: string | null; changedAt: string }
+/** تعديل مستهدف معتمد أو حذفه، ومن عدله وأين (D8). */
+export interface TargetRevision {
+  oldValue: number | null; oldText: string | null; newValue: number | null; newText: string | null; reason: string; decisionRef: string | null; changedAt: string;
+  action?: "Revised" | "Deleted"; year?: number | null; kind?: string | null; unitName?: string | null; changedByName?: string | null;
+}
 
 export interface IndicatorTargets {
   indicatorCode: string; unit: string; direction: Direction; aggregation: Aggregation; level: CollectionLevel; years: number[];

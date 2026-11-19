@@ -88,6 +88,8 @@ public interface IAppDb
 
     DbSet<Domain.Collection.ReopenRequest> ReopenRequests { get; }
 
+    DbSet<Domain.Collection.UniversityValueChange> UniversityValueChanges { get; }
+
     DbSet<Domain.Collection.ValueSnapshot> ValueSnapshots { get; }
 
     DbSet<Domain.Collection.StoredDocument> Documents { get; }

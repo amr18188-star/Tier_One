@@ -422,6 +422,21 @@ function Detail({ row, cycleId, canTransfer }: { row: ReviewRow; cycleId: string
             : L(`منقولة: ${fmt(row.official.value, row.unit)}`, "Transferred")}
           description={<>{row.official.transferredByName} · <span className="ltr">{formatDateTime(row.official.transferredAt)}</span>{row.official.note && <> · {row.official.note}</>}</>} />
       )}
+      {(row.history?.length ?? 0) > 1 && (
+        <details className="mb">
+          <summary>{L(`تاريخ القيمة الرسمية (${row.history!.length})`, `Official value history (${row.history!.length})`)}</summary>
+          <ul className="t1-history">
+            {row.history!.map((h, n) => (
+              <li key={`${h.changedAt}-${n}`}>
+                <span className="ltr">{h.oldValue === null ? "—" : fmt(h.oldValue, row.unit)} → <b>{fmt(h.newValue, row.unit)}</b></span>
+                {h.computedValue !== null && h.computedValue !== h.newValue && <> <small className="muted">({L("المحسوبة", "computed")} <span className="ltr">{fmt(h.computedValue, row.unit)}</span>)</small></>}
+                {h.reason && <> — {h.reason}</>}
+                <div className="muted"><small>{h.changedByName ?? ""} · <span className="ltr">{formatDateTime(h.changedAt)}</span> · {L(`${h.reported} من ${h.expected} جهة`, `${h.reported}/${h.expected} units`)}</small></div>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
 
       {canTransfer && (
         <div className="rv-transfer">

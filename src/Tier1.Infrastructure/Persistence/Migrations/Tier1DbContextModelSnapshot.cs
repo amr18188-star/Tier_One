@@ -968,6 +968,84 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Tier1.Domain.Collection.UniversityValueChange", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTimeOffset>("ChangedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("changed_at");
+
+                    b.Property<Guid>("ChangedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("changed_by");
+
+                    b.Property<string>("ChangedByName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("changed_by_name");
+
+                    b.Property<decimal?>("ComputedValue")
+                        .HasPrecision(20, 4)
+                        .HasColumnType("numeric(20,4)")
+                        .HasColumnName("computed_value");
+
+                    b.Property<Guid>("CycleId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cycle_id");
+
+                    b.Property<int>("Expected")
+                        .HasColumnType("integer")
+                        .HasColumnName("expected");
+
+                    b.Property<Guid>("IndicatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("indicator_id");
+
+                    b.Property<decimal?>("NewValue")
+                        .HasPrecision(20, 4)
+                        .HasColumnType("numeric(20,4)")
+                        .HasColumnName("new_value");
+
+                    b.Property<decimal?>("OldValue")
+                        .HasPrecision(20, 4)
+                        .HasColumnType("numeric(20,4)")
+                        .HasColumnName("old_value");
+
+                    b.Property<int>("Quarter")
+                        .HasColumnType("integer")
+                        .HasColumnName("quarter");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("reason");
+
+                    b.Property<int>("Reported")
+                        .HasColumnType("integer")
+                        .HasColumnName("reported");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer")
+                        .HasColumnName("year");
+
+                    b.HasKey("Id")
+                        .HasName("pk_university_value_changes");
+
+                    b.HasIndex("CycleId")
+                        .HasDatabaseName("ix_university_value_changes_cycle_id");
+
+                    b.HasIndex("IndicatorId", "Year", "Quarter", "ChangedAt")
+                        .HasDatabaseName("ix_university_value_changes_indicator_id_year_quarter_changed_");
+
+                    b.ToTable("university_value_changes", "dc");
+                });
+
             modelBuilder.Entity("Tier1.Domain.Collection.ValueSnapshot", b =>
                 {
                     b.Property<long>("Id")
@@ -1945,6 +2023,10 @@ namespace Tier1.Infrastructure.Persistence.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityAlwaysColumn(b.Property<long>("Id"));
 
+                    b.Property<int>("Action")
+                        .HasColumnType("integer")
+                        .HasColumnName("action");
+
                     b.Property<DateTimeOffset>("ChangedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("changed_at");
@@ -1953,10 +2035,23 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("changed_by");
 
+                    b.Property<string>("ChangedByName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("changed_by_name");
+
                     b.Property<string>("DecisionRef")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("decision_ref");
+
+                    b.Property<Guid?>("IndicatorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("indicator_id");
+
+                    b.Property<int?>("Kind")
+                        .HasColumnType("integer")
+                        .HasColumnName("kind");
 
                     b.Property<string>("NewText")
                         .HasMaxLength(300)
@@ -1984,15 +2079,26 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("reason");
 
-                    b.Property<Guid>("TargetId")
+                    b.Property<Guid?>("TargetId")
                         .HasColumnType("uuid")
                         .HasColumnName("target_id");
+
+                    b.Property<Guid?>("UnitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("unit_id");
+
+                    b.Property<int?>("Year")
+                        .HasColumnType("integer")
+                        .HasColumnName("year");
 
                     b.HasKey("Id")
                         .HasName("pk_target_revisions");
 
                     b.HasIndex("TargetId")
                         .HasDatabaseName("ix_target_revisions_target_id");
+
+                    b.HasIndex("IndicatorId", "ChangedAt")
+                        .HasDatabaseName("ix_target_revisions_indicator_id_changed_at");
 
                     b.ToTable("target_revisions", "kpi");
                 });
@@ -3040,6 +3146,23 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_university_values_indicators_indicator_id");
                 });
 
+            modelBuilder.Entity("Tier1.Domain.Collection.UniversityValueChange", b =>
+                {
+                    b.HasOne("Tier1.Domain.Collection.CollectionCycle", null)
+                        .WithMany()
+                        .HasForeignKey("CycleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_university_value_changes_cycles_cycle_id");
+
+                    b.HasOne("Tier1.Domain.Kpi.Indicator", null)
+                        .WithMany()
+                        .HasForeignKey("IndicatorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_university_value_changes_indicators_indicator_id");
+                });
+
             modelBuilder.Entity("Tier1.Domain.Collection.ValueSnapshot", b =>
                 {
                     b.HasOne("Tier1.Domain.Kpi.Indicator", null)
@@ -3144,11 +3267,16 @@ namespace Tier1.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Tier1.Domain.Kpi.TargetRevision", b =>
                 {
+                    b.HasOne("Tier1.Domain.Kpi.Indicator", null)
+                        .WithMany()
+                        .HasForeignKey("IndicatorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_target_revisions_indicators_indicator_id");
+
                     b.HasOne("Tier1.Domain.Kpi.IndicatorTarget", null)
                         .WithMany()
                         .HasForeignKey("TargetId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
+                        .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_target_revisions_targets_target_id");
                 });
 

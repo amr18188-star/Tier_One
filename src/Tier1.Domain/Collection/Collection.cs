@@ -301,3 +301,37 @@ public sealed class UniversityValue
 
     public uint Version { get; set; }
 }
+/// <summary>
+/// تاريخ القيمة الرسمية للجامعة (D8، ADR-0008): كل نقل أو تعديل يضيف سطرًا بالقيمة السابقة والجديدة والمحسوبة، وكم جهة أبلغت،
+/// والسبب، ومن ومتى. القيمة الحالية في UniversityValue، وهذا ما قبلها.
+/// </summary>
+public sealed class UniversityValueChange
+{
+    public long Id { get; set; }
+
+    public Guid IndicatorId { get; set; }
+
+    public int Year { get; set; }
+
+    public int Quarter { get; set; }
+
+    public Guid CycleId { get; set; }
+
+    public decimal? OldValue { get; set; }
+
+    public decimal? NewValue { get; set; }
+
+    public decimal? ComputedValue { get; set; }
+
+    public int Reported { get; set; }
+
+    public int Expected { get; set; }
+
+    public string? Reason { get; set; }
+
+    public Guid ChangedBy { get; set; }
+
+    public string? ChangedByName { get; set; }
+
+    public DateTimeOffset ChangedAt { get; set; }
+}

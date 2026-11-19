@@ -20,6 +20,8 @@ public sealed partial class Tier1DbContext
 
     public DbSet<ReopenRequest> ReopenRequests => Set<ReopenRequest>();
 
+    public DbSet<UniversityValueChange> UniversityValueChanges => Set<UniversityValueChange>();
+
     public DbSet<ValueSnapshot> ValueSnapshots => Set<ValueSnapshot>();
 
     public DbSet<StoredDocument> Documents => Set<StoredDocument>();
@@ -118,6 +120,19 @@ public sealed partial class Tier1DbContext
             e.HasOne<ReopenRequest>().WithMany().HasForeignKey(x => x.RequestId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<Submission>().WithMany().HasForeignKey(x => x.SubmissionId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<Indicator>().WithMany().HasForeignKey(x => x.IndicatorId).OnDelete(DeleteBehavior.Restrict);
+        });
+        b.Entity<UniversityValueChange>(e =>
+        {
+            e.ToTable("university_value_changes", "dc");
+            e.Property(x => x.Id).UseIdentityAlwaysColumn();
+            e.HasIndex(x => new { x.IndicatorId, x.Year, x.Quarter, x.ChangedAt });
+            e.Property(x => x.OldValue).HasPrecision(20, 4);
+            e.Property(x => x.NewValue).HasPrecision(20, 4);
+            e.Property(x => x.ComputedValue).HasPrecision(20, 4);
+            e.Property(x => x.Reason).HasMaxLength(1000);
+            e.Property(x => x.ChangedByName).HasMaxLength(200);
+            e.HasOne<Indicator>().WithMany().HasForeignKey(x => x.IndicatorId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<CollectionCycle>().WithMany().HasForeignKey(x => x.CycleId).OnDelete(DeleteBehavior.Restrict);
         });
         b.Entity<UniversityValue>(e =>
         {

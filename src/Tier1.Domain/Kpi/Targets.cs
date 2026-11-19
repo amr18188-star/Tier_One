@@ -61,12 +61,34 @@ public sealed class IndicatorTarget
     public uint Version { get; set; }
 }
 
-/// <summary>تعديل مستهدف معتمد: القيمة السابقة والجديدة والسبب ورقم القرار، للمقارنة والمساءلة.</summary>
+public enum TargetRevisionAction
+{
+    /// <summary>تعديل قيمة مستهدف معتمد.</summary>
+    Revised = 1,
+
+    /// <summary>حذف مستهدف معتمد بقرار: القيمة الأخيرة قبل الحذف.</summary>
+    Deleted = 2,
+}
+
+/// <summary>
+/// تعديل مستهدف معتمد أو حذفه: القيمة السابقة والجديدة والسبب ورقم القرار ومن وأين ومتى، للمقارنة والمساءلة.
+/// يصف نفسه (المؤشر والجهة والسنة والنوع)، فيبقى بعد حذف المستهدف (D8، ADR-0008)؛ TargetId يصير فارغًا عندها.
+/// </summary>
 public sealed class TargetRevision
 {
     public long Id { get; set; }
 
-    public Guid TargetId { get; set; }
+    public Guid? TargetId { get; set; }
+
+    public Guid? IndicatorId { get; set; }
+
+    public Guid? UnitId { get; set; }
+
+    public int? Year { get; set; }
+
+    public TargetKind? Kind { get; set; }
+
+    public TargetRevisionAction Action { get; set; } = TargetRevisionAction.Revised;
 
     public decimal? OldValue { get; set; }
 
@@ -81,6 +103,8 @@ public sealed class TargetRevision
     public string? DecisionRef { get; set; }
 
     public Guid ChangedBy { get; set; }
+
+    public string? ChangedByName { get; set; }
 
     public DateTimeOffset ChangedAt { get; set; }
 }

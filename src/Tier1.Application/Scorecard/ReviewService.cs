@@ -45,11 +45,15 @@ public sealed record ReviewUnit(
 public sealed record OfficialValue(
     decimal? Value, decimal? Numerator, decimal? Denominator, decimal? ComputedValue, string? Note, string? TransferredByName, DateTimeOffset TransferredAt, uint Version);
 
+/// <summary>تغيير في القيمة الرسمية للجامعة (D8): السابقة والجديدة والمحسوبة، وكم جهة أبلغت، والسبب، ومن ومتى.</summary>
+public sealed record ValueChangeDto(decimal? OldValue, decimal? NewValue, decimal? ComputedValue, int Reported, int Expected, string? Reason, string? ChangedByName, DateTimeOffset ChangedAt);
+
 public sealed record ReviewRow(
     Guid IndicatorId, string Code, string Name, string StandardCode, string? PillarCode, int PillarIndex, string Unit, Direction Direction, Aggregation Aggregation,
     CollectionLevel Level, string? NumeratorLabel, string? DenominatorLabel, string? Formula,
     decimal? Computed, decimal? ComputedNumerator, decimal? ComputedDenominator, int Reported, int Expected, string? Note,
-    decimal? UniversityTarget, decimal? ComputedAchievement, OfficialValue? Official, ReviewState State, bool Comparable, IReadOnlyList<ReviewUnit> Units);
+    decimal? UniversityTarget, decimal? ComputedAchievement, OfficialValue? Official, ReviewState State, bool Comparable, IReadOnlyList<ReviewUnit> Units,
+    IReadOnlyList<ValueChangeDto>? History = null);
 
 public sealed record ReviewDto(IReadOnlyList<ReviewCycle> Cycles, ReviewCycle? Cycle, IReadOnlyList<ReviewRow> Rows, bool CanTransfer);
 
@@ -124,6 +128,13 @@ public sealed class ReviewService(IAppDb db, IClock clock, ICurrentUser current,
         entity.TransferredByName = current.DisplayName;
         entity.TransferredAt = clock.UtcNow;
         if (existing is null) db.UniversityValues.Add(entity);
+        // D8: كل نقل يحفظ في التاريخ بالقيمة السابقة والجديدة، فلا تمحى القيمة الرسمية السابقة بالكتابة فوقها.
+        db.UniversityValueChanges.Add(new UniversityValueChange
+        {
+            IndicatorId = row.IndicatorId, Year = cycle.TargetYear, Quarter = cycle.Quarter!.Value, CycleId = cycle.Id,
+            OldValue = old, NewValue = final, ComputedValue = row.Computed, Reported = row.Reported, Expected = row.Expected, Reason = why,
+            ChangedBy = entity.TransferredBy, ChangedByName = entity.TransferredByName, ChangedAt = entity.TransferredAt,
+        });
 
         audit.Record(AuditEvents.Audit("dc", Feature, "dc.university_value_transferred", "نقل قيمة إلى مؤشر الجامعة", "Transferred a value to the university indicator") with
         {
@@ -144,6 +155,9 @@ public sealed class ReviewService(IAppDb db, IClock clock, ICurrentUser current,
     {
         var breakdown = await results.BreakdownAsync(cycle, ct);
         var official = await db.UniversityValues.AsNoTracking().Where(v => v.Year == cycle.TargetYear && v.Quarter == cycle.Quarter).ToDictionaryAsync(v => v.IndicatorId, ct);
+        var history = (await db.UniversityValueChanges.AsNoTracking().Where(h => h.Year == cycle.TargetYear && h.Quarter == cycle.Quarter)
+                .OrderByDescending(h => h.ChangedAt).ToListAsync(ct))
+            .ToLookup(h => h.IndicatorId, h => new ValueChangeDto(h.OldValue, h.NewValue, h.ComputedValue, h.Reported, h.Expected, h.Reason, h.ChangedByName, h.ChangedAt));
         var pillars = await db.Pillars.AsNoTracking().OrderBy(p => p.SortOrder).ToListAsync(ct);
         var standards = await db.Standards.AsNoTracking().ToDictionaryAsync(s => s.Code, ct);
 
@@ -171,7 +185,7 @@ public sealed class ReviewService(IAppDb db, IClock clock, ICurrentUser current,
                 computed, b.University.Numerator, b.University.Denominator, b.University.Reported, b.University.Expected, b.University.Note,
                 b.UniversityTarget, ScorecardRules.Achievement(computed, b.UniversityTarget, v.Direction),
                 o is null ? null : new OfficialValue(o.Value, o.Numerator, o.Denominator, o.ComputedValue, o.Note, o.TransferredByName, o.TransferredAt, o.Version),
-                state, comparable, units);
+                state, comparable, units, [.. history[b.IndicatorId]]);
         }).ToList();
     }
 }

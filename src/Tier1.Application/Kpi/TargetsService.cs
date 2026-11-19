@@ -14,7 +14,9 @@ public sealed record TargetDto(
     Guid Id, Guid UnitId, string UnitCode, string UnitName, int Year, TargetKind Kind, decimal? Value, string? Text,
     decimal? Numerator, decimal? Denominator, string? Source, string? Note, TargetStatus Status, string? DecisionRef, uint Version);
 
-public sealed record TargetRevisionDto(decimal? OldValue, string? OldText, decimal? NewValue, string? NewText, string Reason, string? DecisionRef, DateTimeOffset ChangedAt);
+/// <summary>تعديل مستهدف معتمد أو حذفه: من وأين ومتى ولماذا (D8).</summary>
+public sealed record TargetRevisionDto(decimal? OldValue, string? OldText, decimal? NewValue, string? NewText, string Reason, string? DecisionRef, DateTimeOffset ChangedAt,
+    TargetRevisionAction Action = TargetRevisionAction.Revised, int? Year = null, TargetKind? Kind = null, string? UnitName = null, string? ChangedByName = null);
 
 public sealed record IndicatorTargetsDto(
     string IndicatorCode, string Unit, Direction Direction, Aggregation Aggregation, CollectionLevel Level,
@@ -58,8 +60,10 @@ public sealed class TargetsService(IAppDb db, IClock clock, ICurrentUser current
         var viewScope = UnitScope.For(me, Feature, Cap.View);
         var units = await db.OrgUnits.AsNoTracking().ToDictionaryAsync(u => u.Id, ct);
         var targets = await db.Targets.AsNoTracking().Where(t => t.IndicatorId == indicator.Id).ToListAsync(ct);
-        var ids = targets.Select(t => t.Id).ToList();
-        var revisions = await db.TargetRevisions.AsNoTracking().Where(r => ids.Contains(r.TargetId)).OrderByDescending(r => r.ChangedAt).Take(50).ToListAsync(ct);
+        // سجل المؤشر كله، ومنه المستهدفات المحذوفة (D8)؛ لكل مستخدم ما في نطاقه وحده، ومستهدفات الجامعة للجميع.
+        var revisions = (await db.TargetRevisions.AsNoTracking().Where(r => r.IndicatorId == indicator.Id).OrderByDescending(r => r.ChangedAt).Take(200).ToListAsync(ct))
+            .Where(r => r.UnitId is { } u && units.TryGetValue(u, out var ru) && (u == university.Id || viewScope.Covers(ru)))
+            .Take(50).ToList();
 
         TargetDto Dto(IndicatorTarget t) => ToDto(t, units[t.UnitId]);
         var editScope = UnitScope.For(me, Feature, Cap.Edit);
@@ -69,7 +73,8 @@ public sealed class TargetsService(IAppDb db, IClock clock, ICurrentUser current
             targets.Where(t => t.UnitId == university.Id && t.Kind != TargetKind.EachCollege).OrderBy(t => t.Year).Select(Dto).ToList(),
             targets.FirstOrDefault(t => t.Kind == TargetKind.EachCollege) is { } each ? Dto(each) : null,
             targets.Where(t => t.UnitId != university.Id && viewScope.Covers(units[t.UnitId])).OrderBy(t => units[t.UnitId].NameAr).ThenBy(t => t.Year).Select(Dto).ToList(),
-            revisions.Select(r => new TargetRevisionDto(r.OldValue, r.OldText, r.NewValue, r.NewText, r.Reason, r.DecisionRef, r.ChangedAt)).ToList(),
+            revisions.Select(r => new TargetRevisionDto(r.OldValue, r.OldText, r.NewValue, r.NewText, r.Reason, r.DecisionRef, r.ChangedAt,
+                r.Action, r.Year, r.Kind, r.UnitId is { } u ? units[u].NameAr : null, r.ChangedByName)).ToList(),
             new TargetActions(editScope.All, me.Has(Feature, Cap.Edit), me.HasSpecial(Feature, Specials.Approve)));
     }
 
@@ -99,11 +104,7 @@ public sealed class TargetsService(IAppDb db, IClock clock, ICurrentUser current
                 reason = Require.Reason(req.Reason);
                 var decision = Require.Optional(req.DecisionRef, 200)
                     ?? throw new DomainException("decision_ref_required", "تعديل مستهدف معتمد يحتاج رقم قرار اللجنة العليا.", "Changing an approved target needs a decision reference.", 400);
-                db.TargetRevisions.Add(new TargetRevision
-                {
-                    TargetId = target.Id, OldValue = target.Value, OldText = target.Text, NewValue = value, NewText = Require.Optional(req.Text, 300),
-                    Reason = reason, DecisionRef = decision, ChangedBy = current.UserId!.Value, ChangedAt = now,
-                });
+                db.TargetRevisions.Add(Revision(target, value, Require.Optional(req.Text, 300), reason, decision, TargetRevisionAction.Revised, now));
                 target.DecisionRef = decision;
             }
         }
@@ -215,7 +216,8 @@ public sealed class TargetsService(IAppDb db, IClock clock, ICurrentUser current
     }
 
     /// <summary>
-    /// يحذف المستهدف وتعديلاته. المعتمد يحتاج صلاحية الاعتماد وسببًا ورقم قرار؛ قيمته وقراره يبقيان في سجل التدقيق المتسلسل.
+    /// يحذف المستهدف. المعتمد يحتاج صلاحية الاعتماد وسببًا ورقم قرار، ويضاف إلى سجله سطر «حذف» بقيمته الأخيرة؛
+    /// وسجل تعديلاته يبقى بعد الحذف (D8)، ولا يمحى كما كان.
     /// </summary>
     private void Remove(IndicatorTarget target, EffectiveAccess me, string? reason, string? decisionRef, DateTimeOffset now)
     {
@@ -228,10 +230,19 @@ public sealed class TargetsService(IAppDb db, IClock clock, ICurrentUser current
                 Reason = why,
                 Details = new { target.Year, target.Value, target.Text, decision, at = now },
             });
+            db.TargetRevisions.Add(Revision(target, null, null, why, decision, TargetRevisionAction.Deleted, now));
         }
-        db.TargetRevisions.RemoveRange(db.TargetRevisions.Where(r => r.TargetId == target.Id));
         db.Targets.Remove(target);
     }
+
+    /// <summary>سطر في سجل المستهدف يصف نفسه (المؤشر والجهة والسنة والنوع)، فيبقى بعد حذفه؛ سطر الحذف بلا رابط بالمستهدف المحذوف.</summary>
+    private TargetRevision Revision(IndicatorTarget t, decimal? newValue, string? newText, string reason, string? decision, TargetRevisionAction action, DateTimeOffset now) => new()
+    {
+        TargetId = action == TargetRevisionAction.Deleted ? null : t.Id,
+        IndicatorId = t.IndicatorId, UnitId = t.UnitId, Year = t.Year, Kind = t.Kind, Action = action,
+        OldValue = t.Value, OldText = t.Text, NewValue = newValue, NewText = newText,
+        Reason = reason, DecisionRef = decision, ChangedBy = current.UserId!.Value, ChangedByName = current.DisplayName, ChangedAt = now,
+    };
 
     private (string Reason, string Decision) AmendApproved(EffectiveAccess me, string? reason, string? decisionRef)
     {
@@ -246,11 +257,7 @@ public sealed class TargetsService(IAppDb db, IClock clock, ICurrentUser current
     private void Revise(IndicatorTarget target, decimal? value, string? text, EffectiveAccess me, string? reason, string? decisionRef, DateTimeOffset now)
     {
         var (why, decision) = AmendApproved(me, reason, decisionRef);
-        db.TargetRevisions.Add(new TargetRevision
-        {
-            TargetId = target.Id, OldValue = target.Value, OldText = target.Text, NewValue = value, NewText = text,
-            Reason = why, DecisionRef = decision, ChangedBy = current.UserId!.Value, ChangedAt = now,
-        });
+        db.TargetRevisions.Add(Revision(target, value, text, why, decision, TargetRevisionAction.Revised, now));
         target.DecisionRef = decision;
     }
 

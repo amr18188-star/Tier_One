@@ -60,6 +60,12 @@ export interface OfficialValue {
   value: number | null; numerator: number | null; denominator: number | null; computedValue: number | null; note: string | null;
   transferredByName: string | null; transferredAt: string; version: number;
 }
+/** تغيير في القيمة الرسمية للجامعة (D8). */
+export interface ValueChange {
+  oldValue: number | null; newValue: number | null; computedValue: number | null; reported: number; expected: number;
+  reason: string | null; changedByName: string | null; changedAt: string;
+}
+
 export interface ReviewRow {
   indicatorId: string; code: string; name: string; standardCode: string; pillarCode: string | null; pillarIndex: number; unit: string;
   direction: Direction; aggregation: import("./tier1").Aggregation; level: import("./tier1").CollectionLevel;
@@ -68,6 +74,7 @@ export interface ReviewRow {
   universityTarget: number | null; computedAchievement: number | null; official: OfficialValue | null; state: ReviewState;
   /** تقارن الكلية بمستهدف الجامعة (نسبة أو متوسط أو مركزي)، وإلا بحصتها من رقم الجامعة. */
   comparable: boolean; units: ReviewUnit[];
+  /** تاريخ القيمة الرسمية في هذا الربع، الأحدث أولًا (D8). */ history?: ValueChange[];
 }
 export interface Review { cycles: ReviewCycle[]; cycle: ReviewCycle | null; rows: ReviewRow[]; canTransfer: boolean }
 

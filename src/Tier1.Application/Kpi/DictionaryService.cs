@@ -300,7 +300,8 @@ public sealed class DictionaryService(IAppDb db, IClock clock, ICurrentUser curr
                 "The indicator was measured in a cycle; suspend it instead.", 409);
         var targets = await db.Targets.Where(t => t.IndicatorId == indicator.Id).ToListAsync(ct);
         var targetIds = targets.Select(t => t.Id).ToList();
-        db.TargetRevisions.RemoveRange(await db.TargetRevisions.Where(r => targetIds.Contains(r.TargetId)).ToListAsync(ct));
+        // مؤشر لم يقس يحذف كله ومعه سجل مستهدفاته (الحذف نفسه في سجل التدقيق)؛ سطور السجل ترتبط بالمؤشر مباشرة أيضًا (D8).
+        db.TargetRevisions.RemoveRange(await db.TargetRevisions.Where(r => r.IndicatorId == indicator.Id || (r.TargetId != null && targetIds.Contains(r.TargetId.Value))).ToListAsync(ct));
         db.Targets.RemoveRange(targets);
         foreach (var initiative in await db.Initiatives.Where(i => i.IndicatorCodes.Contains(indicator.Code)).ToListAsync(ct))
             initiative.IndicatorCodes = initiative.IndicatorCodes.Where(c => c != indicator.Code).ToList();
