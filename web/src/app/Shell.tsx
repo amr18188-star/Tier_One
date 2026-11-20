@@ -1,14 +1,12 @@
-import { cloneElement, useCallback, useEffect, useId, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactElement, type ReactNode } from "react";
-import { AutoComplete, Button, Drawer, Dropdown, Input, Tooltip } from "antd";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { Button, Drawer, Dropdown, Tooltip } from "antd";
 import {
-  AimOutlined, ApartmentOutlined, AuditOutlined, BankOutlined, BarChartOutlined, BranchesOutlined, CalendarOutlined, ClusterOutlined, ControlOutlined, DatabaseOutlined, DoubleLeftOutlined, DoubleRightOutlined, DownOutlined, FileDoneOutlined, FilePdfOutlined, FormOutlined, HomeOutlined, LogoutOutlined, MailOutlined, MenuOutlined,
-  PartitionOutlined, RiseOutlined, SafetyCertificateOutlined, SearchOutlined, SettingOutlined, TeamOutlined, TrophyOutlined, UnorderedListOutlined,
+  AimOutlined, ApartmentOutlined, AuditOutlined, BankOutlined, BarChartOutlined, BranchesOutlined, CalendarOutlined, ClusterOutlined, ControlOutlined, DatabaseOutlined, DoubleLeftOutlined, DoubleRightOutlined, FileDoneOutlined, FilePdfOutlined, FormOutlined, HomeOutlined, LogoutOutlined, MailOutlined, MenuOutlined, PartitionOutlined, RiseOutlined, SafetyCertificateOutlined, SettingOutlined, TeamOutlined, TrophyOutlined, UnorderedListOutlined,
 } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
-import { Link, NavLink, matchPath, useLocation, useNavigate } from "react-router-dom";
+import { Link, NavLink, matchPath, useLocation } from "react-router-dom";
 import { api } from "../api/client";
 import type { RbacChange } from "../api/types";
-import type { IndicatorRow } from "../api/tier1";
 import { DevRoleTabs } from "../shared/DevRoleTabs";
 import { L, setLang, useLang } from "../shared/i18n";
 import { prefersReducedMotion } from "../shared/entrance";
@@ -16,97 +14,19 @@ import { usePermissions, useSession } from "../shared/session";
 import { initials } from "../shared/ui";
 import { AppearanceButton } from "./AppearanceMenu";
 import { NotificationBell } from "../features/notifications/NotificationBell";
-import { useUnits } from "../api/queries";
 import { canOpen, ROUTE_NEEDS } from "./routeAccess";
-// شعار الجامعة للترويسة الفاتحة، وشعار الخطة للشريط الجانبي الكحلي.
 import logoOnWhite from "../assets/brand/capital-university-logo-light.png";
 import strategyBrandOnNavy from "../assets/brand/strategy-performance-dark.png";
 import sidebarLogo from "../assets/brand/sidebarLogo.png";
+import { GlobalSearch } from "./GlobalSearch";
+import { RailTip, SideNav } from "./SideNav";
+import { NavGroup, NavItem, RAIL_MS, TipSide, VisibleGroup, readNavOpen, readRail, writeNavOpen, writeRail } from "./navState";
 import "../shared/ui.css";
 import "../shared/tier1.css";
 import "../shared/theme.css";
 import "../shared/layout.css";
 import "./nav.css";
 import "./entrance.css";
-
-interface NavItem { to: string; icon: ReactNode; label: string; end?: boolean; badge?: number; badgeText?: string; tab?: boolean }
-// icon: أيقونة المجموعة في الشريط المطوي وحده (زر المجموعة)؛ لا تتكرر أيقونة رابط فيها. رؤوس الموسع نص فقط.
-interface NavGroup { key: string; title?: string; icon?: ReactNode; items: (NavItem | false)[] }
-interface VisibleGroup { key: string; title?: string; icon?: ReactNode; items: NavItem[] }
-
-// مجموعة واحدة مفتوحة في القائمة الجانبية (أكورديون)، ومفتاحها يحفظ في المتصفح؛ مجموعة الصفحة الحالية تتقدم عليه.
-const NAV_OPEN_KEY = "t1-nav-open";
-
-function readNavOpen(): string | null {
-  try {
-    const raw = localStorage.getItem(NAV_OPEN_KEY);
-    const value: unknown = raw ? JSON.parse(raw) : null;
-    // القيمة القديمة كانت قائمة مفاتيح؛ يؤخذ أولها.
-    const key = Array.isArray(value) ? value[0] : value;
-    return typeof key === "string" ? key : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeNavOpen(key: string | null) {
-  try {
-    localStorage.setItem(NAV_OPEN_KEY, JSON.stringify(key));
-  } catch {
-    // المتصفح يمنع التخزين؛ تبقى الحالة لهذه الجلسة فقط.
-  }
-}
-
-// الشريط الجانبي على الحاسوب يطوى إلى عمود أيقونات (72px)؛ الحالة تحفظ في المتصفح «1» مطوي و«0» موسع. درج الجوال لا يتأثر.
-const RAIL_KEY = "t1-side-rail";
-// مدة تغير العرض في nav.css (220ms) وهامش صغير: طوالها تبقى النصوص سطرًا واحدًا وتتلاشى ولا تلتف.
-const RAIL_MS = 240;
-
-function readRail(): boolean {
-  try {
-    return localStorage.getItem(RAIL_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function writeRail(on: boolean) {
-  try {
-    localStorage.setItem(RAIL_KEY, on ? "1" : "0");
-  } catch {
-    // المتصفح يمنع التخزين؛ تبقى الحالة لهذه الجلسة فقط.
-  }
-}
-
-type TipSide = "left" | "right";
-
-/**
- * تلميح الشريط المطوي بالمرور والتركيز، نحو المحتوى (antd لا يقلب يمين ويسار مع الاتجاه، والشريط يمين الشاشة في العربية).
- * يغلق عند الضغط: فتح مجموعة يطوي غيرها فيتحرك الزر، ولا يبقى التلميح معلقًا في المكان القديم.
- * بلا عنوان يعرض العنصر وحده، فالقائمة الموسعة والدرج كما هما.
- */
-function RailTip({ title, side, children }: {
-  title?: string;
-  side: TipSide;
-  children: ReactElement<{ onClick?: (event: ReactMouseEvent<HTMLElement>) => void }>;
-}) {
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    if (!title) setOpen(false);
-  }, [title]);
-  if (!title) return children;
-  const child = cloneElement(children, {
-    onClick: (event: ReactMouseEvent<HTMLElement>) => {
-      setOpen(false);
-      children.props.onClick?.(event);
-    },
-  });
-  return (
-    <Tooltip title={title} placement={side} trigger={["hover", "focus"]} mouseEnterDelay={0.15} open={open} onOpenChange={setOpen}>
-      {child}
-    </Tooltip>
-  );
-}
 
 /**
  * إطار المنظومة: قائمة جانبية داكنة مقسمة بحسب الصلاحيات (لا يرى المستخدم ما لا يملكه)، وبحث موحد أعلى كل صفحة
@@ -317,116 +237,5 @@ export function Shell({ children }: { children: ReactNode }) {
         {sideBody(false)}
       </Drawer>
     </div>
-  );
-}
-
-/**
- * روابط القائمة الجانبية. كل مجموعة بعنوان لوحة تطوى: الرأس زر يفتحها ويطويها، ويعرض وهي مطوية مجموع شارات روابطها.
- * تعرض القائمة مرتين (الشريط الجانبي ودرج الجوال)، فمعرفات الرؤوس واللوحات من useId لكل نسخة، والحالة المفتوحة مشتركة من Shell.
- * rail (الشريط المطوي، الحاسوب وحده): الأكورديون نفسه والحالة المفتوحة نفسها، لكن الرأس زر بأيقونة المجموعة واسمها في تلميح،
- * والروابط أيقونات تحته. active مفتاح مجموعة الصفحة الحالية: شريط ذهبي على زرها ولو كانت مطوية.
- */
-function SideNav({ groups, open, active, onToggle, onNavigate, rail }: {
-  groups: VisibleGroup[];
-  open: string | null;
-  active?: string;
-  onToggle: (key: string) => void;
-  onNavigate: () => void;
-  rail: boolean;
-}) {
-  const uid = useId();
-  const tipSide: TipSide = useLang() === "ar" ? "left" : "right";
-  return (
-    <nav className="lcp-nav" aria-label={L("القوائم الرئيسية", "Main menu")}>
-      {groups.map((g) => {
-        // اسم الرابط نصه (مخفي بصريًا في الشريط المطوي)؛ العدد نقطة على الأيقونة ورقم في التلميح.
-        const links = g.items.map((n) => (
-          <RailTip key={n.to} title={rail ? (n.badge ? `${n.label} · ${n.badge}` : n.label) : undefined} side={tipSide}>
-            <NavLink to={n.to} end={n.end} onClick={onNavigate}>
-              {n.icon}<span className="lcp-nav-label">{n.label}</span>
-              {!!n.badge && (
-                <>
-                  {rail ? <span className="lcp-rail-dot" aria-hidden /> : <span className="lcp-badge" aria-hidden>{n.badge}</span>}
-                  <span className="sr-only">{n.badgeText}</span>
-                </>
-              )}
-            </NavLink>
-          </RailTip>
-        ));
-        if (!g.title) return <div key={g.key} className="lcp-nav-sec" role="group">{links}</div>;
-
-        const isOpen = open === g.key;
-        const headId = `${uid}-${g.key}-head`;
-        const panelId = `${uid}-${g.key}-panel`;
-        const badged = g.items.filter((n) => !!n.badge);
-        const total = badged.reduce((sum, n) => sum + (n.badge ?? 0), 0);
-        const sep = L("، ", ", ");
-        const badgeTexts = badged.map((n) => n.badgeText).filter(Boolean).join(sep);
-        // الشريط المطوي: الاسم عنوان المجموعة، والعدد (والمجموعة مطوية) نقطة على الأيقونة ووصف لقارئ الشاشة ورقم في التلميح.
-        const badgeId = `${headId}-badges`;
-        const head = rail ? (
-          <RailTip title={total > 0 ? `${g.title} · ${total}` : g.title} side={tipSide}>
-            <button type="button" id={headId} className="lcp-nav-cat" aria-expanded={isOpen} aria-controls={panelId} aria-label={g.title}
-              aria-describedby={!isOpen && total > 0 ? badgeId : undefined} onClick={() => onToggle(g.key)}>
-              {g.icon}
-              {!isOpen && total > 0 && <><span className="lcp-rail-dot" aria-hidden /><span id={badgeId} className="sr-only">{badgeTexts}</span></>}
-            </button>
-          </RailTip>
-        ) : (
-          <button type="button" id={headId} className="lcp-nav-group lcp-nav-head" aria-expanded={isOpen} aria-controls={panelId} onClick={() => onToggle(g.key)}>
-            <span className="lcp-nav-title">{g.title}</span>
-            {!isOpen && total > 0 && (
-              <>
-                <span className="lcp-badge" aria-hidden>{total}</span>
-                <span className="sr-only">{sep}{badgeTexts}</span>
-              </>
-            )}
-            <DownOutlined className="lcp-nav-chev" aria-hidden />
-          </button>
-        );
-        return (
-          <div key={g.key} className="lcp-nav-sec lcp-nav-panel" data-open={isOpen ? "true" : "false"}
-            data-active={rail ? (active === g.key ? "true" : "false") : undefined}>
-            {head}
-            <div id={panelId} className="lcp-nav-body" role="group" aria-labelledby={headId}>
-              <div className="lcp-nav-inner">{links}</div>
-            </div>
-          </div>
-        );
-      })}
-    </nav>
-  );
-}
-
-/** بحث موحد: مؤشر بكوده أو اسمه، أو كلية باسمها، ثم الانتقال إليه مباشرة. */
-function GlobalSearch() {
-  const perms = usePermissions();
-  const navigate = useNavigate();
-  const [text, setText] = useState("");
-  const indicators = useQuery({ queryKey: ["indicators", "all"], queryFn: () => api.get<IndicatorRow[]>("/api/kpi/indicators"), enabled: perms.can("kpi.dictionary", "V"), staleTime: 300_000 });
-  const units = useUnits({ enabled: perms.can("org.units", "V"), staleTime: 300_000 });
-
-  const opensStructure = canOpen(perms, ROUTE_NEEDS["/structure"]);
-  const options = useMemo(() => {
-    const t = text.trim();
-    if (t.length < 2) return [];
-    const low = t.toLowerCase();
-    const ind = (indicators.data ?? []).filter((i) => i.code.toLowerCase().includes(low) || i.nameAr.includes(t)).slice(0, 8)
-      .map((i) => ({ value: `/indicators/${i.code}`, label: <span><code>{i.code}</code> {i.nameAr}</span> }));
-    // A college opens its structure page, so it is offered only to who may open that page (FE-11).
-    const col = (opensStructure ? units.data ?? [] : []).filter((u) => (u.kind === "College" || u.kind === "Institute") && (u.nameAr.includes(t) || u.code.toLowerCase().includes(low))).slice(0, 5)
-      .map((u) => ({ value: `/structure/${u.id}`, label: <span><ClusterOutlined aria-hidden /> {u.nameAr}</span> }));
-    return [
-      ...(ind.length ? [{ label: L("المؤشرات", "Indicators"), options: ind }] : []),
-      ...(col.length ? [{ label: L("الكليات", "Colleges"), options: col }] : []),
-    ];
-  }, [text, indicators.data, units.data, opensStructure]);
-
-  return (
-    <AutoComplete className="t1-search" options={options} value={text} onChange={setText}
-      onSelect={(to: string) => { setText(""); navigate(to); }} popupMatchSelectWidth={420} style={{ width: "min(420px, 46vw)" }}>
-      <Input prefix={<SearchOutlined aria-hidden />} allowClear placeholder={L("ابحث بكود المؤشر أو اسمه أو اسم الكلية", "Search an indicator code or name, or a college")}
-        aria-label={L("بحث", "Search")} />
-    </AutoComplete>
   );
 }
