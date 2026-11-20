@@ -76,12 +76,15 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
         var me = await access.RequireAsync(Feature, Cap.View, ct);
         var view = UnitScope.For(me, Feature, Cap.View);
         var edit = UnitScope.For(me, Feature, Cap.Edit);
-        var cycles = await db.Cycles.AsNoTracking().Where(c => c.Status == CycleStatus.Open || c.Status == CycleStatus.Closed)
-            .Where(c => cycleId == null || c.Id == cycleId).ToDictionaryAsync(c => c.Id, ct);
+        // PERF-B2/BE-17: a closed cycle's forms are listed only when that cycle is asked for. Without a cycle the list is the open
+        // cycles' forms, so it does not grow with every past quarter (and a closed cycle's form never awaits anyone).
+        var cycles = await db.Cycles.AsNoTracking()
+            .Where(c => cycleId == null ? c.Status == CycleStatus.Open : c.Id == cycleId && (c.Status == CycleStatus.Open || c.Status == CycleStatus.Closed))
+            .ToDictionaryAsync(c => c.Id, ct);
         var ids = cycles.Keys.ToList();
         var subs = await db.Submissions.AsNoTracking().Where(s => ids.Contains(s.CycleId)).ToListAsync(ct);
         var units = await db.OrgUnits.AsNoTracking().ToDictionaryAsync(u => u.Id, ct);
-        var cis = await db.CycleIndicators.AsNoTracking().Where(i => ids.Contains(i.CycleId)).ToListAsync(ct);
+        var cis = (await db.CycleIndicators.AsNoTracking().Where(i => ids.Contains(i.CycleId)).ToListAsync(ct)).ToLookup(i => i.CycleId);
         var subIds = subs.Select(s => s.Id).ToList();
         var counts = await db.SubmittedValues.AsNoTracking().Where(v => subIds.Contains(v.SubmissionId)).GroupBy(v => v.SubmissionId)
             .Select(g => new { g.Key, Count = g.Count() }).ToDictionaryAsync(x => x.Key, x => x.Count, ct);
@@ -103,7 +106,7 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
             {
                 var unit = units[s.UnitId];
                 var cycle = cycles[s.CycleId];
-                var required = cis.Count(ci => ci.CycleId == s.CycleId && Applies(ci, unit));
+                var required = cis[s.CycleId].Count(ci => Applies(ci, unit));
                 var waiting = cycle.Status == CycleStatus.Open && (
                     (s.IsEditable && edit.Covers(unit) && me.Has(Feature, Cap.Edit))
                     || (s.Status == SubmissionStatus.InReview && ApprovalRules.MayReview(me, unit, s.Step)
