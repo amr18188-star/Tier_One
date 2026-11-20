@@ -10,9 +10,9 @@ public static class SettingsEndpoints
     public static void MapSettings(this RouteGroupBuilder api)
     {
         var settings = api.MapGroup("/admin/settings");
-        settings.MapGet("/", async (SettingsService svc, CancellationToken ct) => Results.Ok(await svc.ListAsync(ct)))
+        settings.MapGet("/", async (SettingsService svc, CancellationToken ct) => TypedResults.Ok(await svc.ListAsync(ct)))
             .RequirePermission(SettingsService.Feature, Cap.View);
-        settings.MapPut("/{key}", async (string key, SaveSettingRequest body, SettingsService svc, CancellationToken ct) => Results.Ok(await svc.SaveAsync(key, body, ct)))
+        settings.MapPut("/{key}", async (string key, SaveSettingRequest body, SettingsService svc, CancellationToken ct) => TypedResults.Ok(await svc.SaveAsync(key, body, ct)))
             .RequirePermission(SettingsService.Feature, Cap.Edit);
     }
 }

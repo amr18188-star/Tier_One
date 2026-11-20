@@ -11,18 +11,18 @@ public static class NotificationEndpoints
     {
         var inbox = api.MapGroup("/notifications").RequireAuthorization(Policies.Staff);
         // The bell polls this; the X-Passive header keeps the poll from extending an idle session.
-        inbox.MapGet("/", async (InboxService svc, CancellationToken ct) => Results.Ok(await svc.ListAsync(ct)));
+        inbox.MapGet("/", async (InboxService svc, CancellationToken ct) => TypedResults.Ok(await svc.ListAsync(ct)));
         inbox.MapPost("/{id:guid}/read", async (Guid id, InboxService svc, CancellationToken ct) =>
         {
             await svc.ReadAsync(id, ct);
             return Results.NoContent();
         });
-        inbox.MapPost("/read-all", async (InboxService svc, CancellationToken ct) => Results.Ok(new { read = await svc.ReadAllAsync(ct) }));
+        inbox.MapPost("/read-all", async (InboxService svc, CancellationToken ct) => TypedResults.Ok(new { read = await svc.ReadAllAsync(ct) }));
 
         var mail = api.MapGroup("/admin/mail");
-        mail.MapGet("/", async (string? status, MailAdminService svc, CancellationToken ct) => Results.Ok(await svc.ListAsync(status, ct)))
+        mail.MapGet("/", async (string? status, MailAdminService svc, CancellationToken ct) => TypedResults.Ok(await svc.ListAsync(status, ct)))
             .RequirePermission(MailAdminService.Feature, Cap.View);
-        mail.MapPost("/{id:long}/resend", async (long id, MailAdminService svc, CancellationToken ct) => Results.Ok(await svc.ResendAsync(id, ct)))
+        mail.MapPost("/{id:long}/resend", async (long id, MailAdminService svc, CancellationToken ct) => TypedResults.Ok(await svc.ResendAsync(id, ct)))
             .RequirePermission(MailAdminService.Feature, Cap.Edit);
     }
 }

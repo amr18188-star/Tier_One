@@ -14,12 +14,12 @@ public static class LogEndpoints
     public static void MapLogs(this RouteGroupBuilder api)
     {
         var logs = api.MapGroup("/logs");
-        logs.MapGet("/status", async (int? days, LogsService svc, CancellationToken ct) => Results.Ok(await svc.StatusAsync(days ?? 14, ct)))
+        logs.MapGet("/status", async (int? days, LogsService svc, CancellationToken ct) => TypedResults.Ok(await svc.StatusAsync(days ?? 14, ct)))
             .RequireAnyPermission(AnyLog);
-        logs.MapPost("/verify", async (VerifyRequest req, LogsService svc, CancellationToken ct) => Results.Ok(await svc.VerifyAsync(req.From, req.To, ct)))
+        logs.MapPost("/verify", async (VerifyRequest req, LogsService svc, CancellationToken ct) => TypedResults.Ok(await svc.VerifyAsync(req.From, req.To, ct)))
             .RequireAnyPermission(AnyLog).RequireRateLimiting(ApiSetup.SensitiveLimit);
         logs.MapGet("/{collection}", async ([AsParameters] LogQuery q, string collection, LogsService svc, CancellationToken ct) =>
-            Results.Ok(await svc.SearchAsync(q.ToRequest(collection), ct))).RequireAnyPermission(AnyLog);
+            TypedResults.Ok(await svc.SearchAsync(q.ToRequest(collection), ct))).RequireAnyPermission(AnyLog);
         logs.MapGet("/{collection}/export", async ([AsParameters] LogQuery q, string collection, LogsService svc, CancellationToken ct) =>
         {
             var file = await svc.ExportAsync(q.ToRequest(collection), ct);

@@ -26,28 +26,28 @@ public static class CollectionEndpoints
 
     private static void MapCycles(RouteGroupBuilder g)
     {
-        g.MapGet("/", async (CyclesService svc, CancellationToken ct) => Results.Ok(await svc.ListAsync(ct)))
+        g.MapGet("/", async (CyclesService svc, CancellationToken ct) => TypedResults.Ok(await svc.ListAsync(ct)))
             .RequireAnyPermission($"{Features.Cycles}:V", $"{Features.Forms}:V", $"{Features.Results}:V");
-        g.MapPost("/", async (SaveCycleRequest req, CyclesService svc, CancellationToken ct) => Results.Ok(await svc.CreateAsync(req, ct)))
+        g.MapPost("/", async (SaveCycleRequest req, CyclesService svc, CancellationToken ct) => TypedResults.Ok(await svc.CreateAsync(req, ct)))
             .RequirePermission(Features.Cycles, Cap.Add);
-        g.MapPut("/{id:guid}", async (Guid id, SaveCycleRequest req, CyclesService svc, CancellationToken ct) => Results.Ok(await svc.UpdateAsync(id, req, ct)))
+        g.MapPut("/{id:guid}", async (Guid id, SaveCycleRequest req, CyclesService svc, CancellationToken ct) => TypedResults.Ok(await svc.UpdateAsync(id, req, ct)))
             .RequirePermission(Features.Cycles, Cap.Edit);
-        g.MapGet("/{id:guid}/preview", async (Guid id, CyclesService svc, CancellationToken ct) => Results.Ok(await svc.PreviewOpenAsync(id, ct)))
+        g.MapGet("/{id:guid}/preview", async (Guid id, CyclesService svc, CancellationToken ct) => TypedResults.Ok(await svc.PreviewOpenAsync(id, ct)))
             .RequirePermission(Features.Cycles, Cap.Edit);
-        g.MapPost("/{id:guid}/open", async (Guid id, CyclesService svc, CancellationToken ct) => Results.Ok(await svc.OpenAsync(id, ct)))
+        g.MapPost("/{id:guid}/open", async (Guid id, CyclesService svc, CancellationToken ct) => TypedResults.Ok(await svc.OpenAsync(id, ct)))
             .RequirePermission(Features.Cycles, Cap.Edit);
-        g.MapPost("/{id:guid}/close", async (Guid id, NoteRequest req, CyclesService svc, CancellationToken ct) => Results.Ok(await svc.CloseAsync(id, req.Note, ct)))
+        g.MapPost("/{id:guid}/close", async (Guid id, NoteRequest req, CyclesService svc, CancellationToken ct) => TypedResults.Ok(await svc.CloseAsync(id, req.Note, ct)))
             .RequirePermission(Features.Cycles, Cap.Delete);
     }
 
     private static void MapForms(RouteGroupBuilder g)
     {
         g.MapGet("/", async (Guid? cycleId, bool? awaitingMe, SubmissionStatus? status, string? q, FormsService svc, CancellationToken ct) =>
-                Results.Ok(await svc.ListAsync(cycleId, awaitingMe ?? false, status, q, ct)))
+                TypedResults.Ok(await svc.ListAsync(cycleId, awaitingMe ?? false, status, q, ct)))
             .RequirePermission(Features.Forms, Cap.View);
-        g.MapGet("/{id:guid}", async (Guid id, FormsService svc, CancellationToken ct) => Results.Ok(await svc.GetAsync(id, ct)))
+        g.MapGet("/{id:guid}", async (Guid id, FormsService svc, CancellationToken ct) => TypedResults.Ok(await svc.GetAsync(id, ct)))
             .RequirePermission(Features.Forms, Cap.View);
-        g.MapPut("/{id:guid}/values", async (Guid id, SaveValueRequest req, FormEntryService svc, CancellationToken ct) => Results.Ok(await svc.SaveValueAsync(id, req, ct)))
+        g.MapPut("/{id:guid}/values", async (Guid id, SaveValueRequest req, FormEntryService svc, CancellationToken ct) => TypedResults.Ok(await svc.SaveValueAsync(id, req, ct)))
             .RequirePermission(Features.Forms, Cap.Edit);
         g.MapDelete("/{id:guid}/values/{indicatorId:guid}", async (Guid id, Guid indicatorId, FormEntryService svc, CancellationToken ct) =>
             {
@@ -57,22 +57,22 @@ public static class CollectionEndpoints
             .RequirePermission(Features.Forms, Cap.Edit);
         // The body is optional on the wire: a submit without one is refused by the service (409 if locked, else 428), not by routing.
         g.MapPost("/{id:guid}/submit", async (Guid id, HttpRequest http, FormWorkflowService svc, CancellationToken ct) =>
-                Results.Ok(await svc.SubmitAsync(id, (await OptionalBodyAsync<FormTransitionRequest>(http, ct))?.Version, ct)))
+                TypedResults.Ok(await svc.SubmitAsync(id, (await OptionalBodyAsync<FormTransitionRequest>(http, ct))?.Version, ct)))
             .RequirePermission(Features.Forms, Cap.Edit);
         // المراجعة والاعتماد: الخدمة تفحص الإجراء الخاص لخطوة النموذج الحالية وفصل المهام.
-        g.MapPost("/{id:guid}/approve", async (Guid id, ApproveFormRequest req, FormWorkflowService svc, CancellationToken ct) => Results.Ok(await svc.ApproveAsync(id, req, ct)))
+        g.MapPost("/{id:guid}/approve", async (Guid id, ApproveFormRequest req, FormWorkflowService svc, CancellationToken ct) => TypedResults.Ok(await svc.ApproveAsync(id, req, ct)))
             .RequireAnyPermission([.. ReviewSpecials, $"{Features.Forms}:{ApprovalRules.ApproveDepartmentDirectly}", $"{Features.Forms}:{ApprovalRules.ApproveAsDeanDirectly}"]);
-        g.MapPost("/{id:guid}/return", async (Guid id, ReturnRequest req, FormWorkflowService svc, CancellationToken ct) => Results.Ok(await svc.ReturnAsync(id, req, ct)))
+        g.MapPost("/{id:guid}/return", async (Guid id, ReturnRequest req, FormWorkflowService svc, CancellationToken ct) => TypedResults.Ok(await svc.ReturnAsync(id, req, ct)))
             .RequireAnyPermission(ReviewSpecials);
         // إعادة فتح المعتمد بطلب وقرار (D4): الطلب ممن يملك «إعادة الفتح»، والقرار للجنة العليا برقم المحضر.
-        g.MapPost("/{id:guid}/reopen", async (Guid id, FormTransitionRequest req, FormWorkflowService svc, CancellationToken ct) => Results.Ok(await svc.RequestReopenAsync(id, req, ct)))
+        g.MapPost("/{id:guid}/reopen", async (Guid id, FormTransitionRequest req, FormWorkflowService svc, CancellationToken ct) => TypedResults.Ok(await svc.RequestReopenAsync(id, req, ct)))
             .RequireSpecial(Features.Cycles, ApprovalRules.Reopen);
-        g.MapPost("/{id:guid}/reopen/approve", async (Guid id, Tier1.Application.Kpi.CommitteeDecisionRequest req, FormWorkflowService svc, CancellationToken ct) => Results.Ok(await svc.ApproveReopenAsync(id, req, ct)))
+        g.MapPost("/{id:guid}/reopen/approve", async (Guid id, Tier1.Application.Kpi.CommitteeDecisionRequest req, FormWorkflowService svc, CancellationToken ct) => TypedResults.Ok(await svc.ApproveReopenAsync(id, req, ct)))
             .RequireSpecial(Features.Cycles, ApprovalRules.ApproveReopen);
-        g.MapPost("/{id:guid}/reopen/reject", async (Guid id, NoteRequest req, FormWorkflowService svc, CancellationToken ct) => Results.Ok(await svc.RejectReopenAsync(id, req, ct)))
+        g.MapPost("/{id:guid}/reopen/reject", async (Guid id, NoteRequest req, FormWorkflowService svc, CancellationToken ct) => TypedResults.Ok(await svc.RejectReopenAsync(id, req, ct)))
             .RequireSpecial(Features.Cycles, ApprovalRules.ApproveReopen);
 
-        g.MapPost("/{id:guid}/extend", async (Guid id, ExtendRequest req, FormWorkflowService svc, CancellationToken ct) => Results.Ok(await svc.ExtendAsync(id, req, ct)))
+        g.MapPost("/{id:guid}/extend", async (Guid id, ExtendRequest req, FormWorkflowService svc, CancellationToken ct) => TypedResults.Ok(await svc.ExtendAsync(id, req, ct)))
             .RequirePermission(Features.Cycles, Cap.Edit);
 
         g.MapGet("/{id:guid}/template.xlsx", async (Guid id, FormEntryService svc, ISpreadsheets sheets, CancellationToken ct) =>
@@ -87,7 +87,7 @@ public static class CollectionEndpoints
                 if (request.HttpContext.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit) limit.MaxRequestBodySize = max + 64 * 1024;
                 var file = await SingleFileAsync(request, max, ct);
                 await using var stream = file.OpenReadStream();
-                return Results.Ok(await svc.ImportAsync(id, stream, sheets, apply ?? false, ct));
+                return TypedResults.Ok(await svc.ImportAsync(id, stream, sheets, apply ?? false, ct));
             })
             // SEC-1: reading a workbook is heavy; repeated uploads are limited like the other sensitive actions.
             .RequirePermission(Features.Forms, Cap.Edit).RequireRateLimiting(ApiSetup.SensitiveLimit);
@@ -105,28 +105,28 @@ public static class CollectionEndpoints
             {
                 var (file, description) = await UploadAsync(request, svc.MaxBytes, ct);
                 await using var stream = file.OpenReadStream();
-                return Results.Ok(await svc.UploadEvidenceAsync(id, indicatorId, new UploadedFile(file.FileName, file.Length, stream, description), ct));
+                return TypedResults.Ok(await svc.UploadEvidenceAsync(id, indicatorId, new UploadedFile(file.FileName, file.Length, stream, description), ct));
             })
             .RequirePermission(Features.Forms, Cap.Edit);
 
-        api.MapGet("/structure/colleges/{id:guid}/documents", async (Guid id, DocumentsService svc, CancellationToken ct) => Results.Ok(await svc.StructureDocsAsync(id, ct)))
+        api.MapGet("/structure/colleges/{id:guid}/documents", async (Guid id, DocumentsService svc, CancellationToken ct) => TypedResults.Ok(await svc.StructureDocsAsync(id, ct)))
             .RequirePermission(Features.Structure, Cap.View);
         api.MapPost("/structure/colleges/{id:guid}/documents", async (Guid id, HttpRequest request, DocumentsService svc, CancellationToken ct) =>
             {
                 var (file, description) = await UploadAsync(request, svc.MaxBytes, ct);
                 await using var stream = file.OpenReadStream();
-                return Results.Ok(await svc.UploadStructureAsync(id, new UploadedFile(file.FileName, file.Length, stream, description), ct));
+                return TypedResults.Ok(await svc.UploadStructureAsync(id, new UploadedFile(file.FileName, file.Length, stream, description), ct));
             })
             .RequirePermission(Features.Structure, Cap.Add);
 
         // وثيقة الخطة الاستراتيجية: يطلع عليها كل من يرى الخطة، ويرفع إصداراتها من يضيف إلى الخطة.
-        api.MapGet("/strategy/documents", async (DocumentsService svc, CancellationToken ct) => Results.Ok(await svc.PlanDocsAsync(ct)))
+        api.MapGet("/strategy/documents", async (DocumentsService svc, CancellationToken ct) => TypedResults.Ok(await svc.PlanDocsAsync(ct)))
             .RequirePermission(Features.Strategy, Cap.View);
         api.MapPost("/strategy/documents", async (HttpRequest request, DocumentsService svc, CancellationToken ct) =>
             {
                 var (file, description) = await UploadAsync(request, DocumentsService.PlanMaxBytes, ct);
                 await using var stream = file.OpenReadStream();
-                return Results.Ok(await svc.UploadPlanAsync(new UploadedFile(file.FileName, file.Length, stream, description), ct));
+                return TypedResults.Ok(await svc.UploadPlanAsync(new UploadedFile(file.FileName, file.Length, stream, description), ct));
             })
             .RequirePermission(Features.Strategy, Cap.Add);
         // العرض داخل صفحة الخطة: الإطار مسموح من المنظومة نفسها فقط لهذا الرد.
@@ -149,17 +149,17 @@ public static class CollectionEndpoints
                 return show ? Results.Stream(file.Content, file.ContentType) : Results.File(file.Content, file.ContentType, file.FileName);
             })
             .RequireAnyPermission($"{Features.Forms}:V", $"{Features.Structure}:V", $"{Features.Strategy}:V");
-        api.MapPost("/documents/{id:guid}/void", async (Guid id, NoteRequest req, DocumentsService svc, CancellationToken ct) => Results.Ok(await svc.VoidAsync(id, req.Note, ct)))
+        api.MapPost("/documents/{id:guid}/void", async (Guid id, NoteRequest req, DocumentsService svc, CancellationToken ct) => TypedResults.Ok(await svc.VoidAsync(id, req.Note, ct)))
             .RequireAnyPermission($"{Features.Forms}:E", $"{Features.Structure}:D", $"{Features.Strategy}:D");
     }
 
     private static void MapResults(RouteGroupBuilder g)
     {
         g.MapGet("/", async (Guid? cycleId, Guid? unitId, ResultsService svc, CancellationToken ct) =>
-                await svc.OverviewAsync(cycleId, unitId, ct) is { } r ? Results.Ok(r) : Results.NoContent())
+                await svc.OverviewAsync(cycleId, unitId, ct) is { } r ? TypedResults.Ok(r) : Results.NoContent())
             .RequirePermission(Features.Results, Cap.View);
         g.MapGet("/{cycleId:guid}/indicators/{indicatorId:guid}", async (Guid cycleId, Guid indicatorId, Guid? unitId, ResultsService svc, CancellationToken ct) =>
-                Results.Ok(await svc.IndicatorAsync(cycleId, indicatorId, unitId, ct)))
+                TypedResults.Ok(await svc.IndicatorAsync(cycleId, indicatorId, unitId, ct)))
             .RequirePermission(Features.Results, Cap.View);
         g.MapGet("/{cycleId:guid}/export.xlsx", async (Guid cycleId, Guid? unitId, ResultsService svc, ISpreadsheets sheets, CancellationToken ct) =>
             {
@@ -190,7 +190,7 @@ public static class CollectionEndpoints
     /// <summary>بطاقة أداء الجامعة وفئتها، وتقويم الأرباع، وملف KPI.xlsx معبأ بقيم الأرباع لبوابة المجلس.</summary>
     private static void MapScorecard(RouteGroupBuilder api)
     {
-        api.MapGet("/scorecard", async (Tier1.Application.Scorecard.ScorecardService svc, CancellationToken ct) => Results.Ok(await svc.GetAsync(ct)))
+        api.MapGet("/scorecard", async (Tier1.Application.Scorecard.ScorecardService svc, CancellationToken ct) => TypedResults.Ok(await svc.GetAsync(ct)))
             .RequirePermission(Features.Results, Cap.View);
         api.MapGet("/scorecard/kpi.xlsx", async (Tier1.Application.Scorecard.ScorecardService svc, IKpiWorkbook workbook, CancellationToken ct) =>
             {
@@ -200,19 +200,19 @@ public static class CollectionEndpoints
             // ARCH-5: the endpoint declares what the service requires (the export special), as the results export does.
             .RequireSpecial(Features.Results, "export").RequireRateLimiting(ApiSetup.SensitiveLimit);
         // مراجعة مسئول ملف Tier 1 ونقل القيم إلى مؤشرات الجامعة.
-        api.MapGet("/review", async (Guid? cycleId, Tier1.Application.Scorecard.ReviewService svc, CancellationToken ct) => Results.Ok(await svc.GetAsync(cycleId, ct)))
+        api.MapGet("/review", async (Guid? cycleId, Tier1.Application.Scorecard.ReviewService svc, CancellationToken ct) => TypedResults.Ok(await svc.GetAsync(cycleId, ct)))
             .RequirePermission(Features.University, Cap.View);
         api.MapPost("/review/transfer", async (Tier1.Application.Scorecard.TransferRequest req, Tier1.Application.Scorecard.ReviewService svc, CancellationToken ct) =>
-                Results.Ok(await svc.TransferAsync(req, ct)))
+                TypedResults.Ok(await svc.TransferAsync(req, ct)))
             .RequirePermission(Features.University, Cap.Edit);
         api.MapPost("/review/transfer-all", async (Tier1.Application.Scorecard.TransferAllRequest req, Tier1.Application.Scorecard.ReviewService svc, CancellationToken ct) =>
-                Results.Ok(new { transferred = await svc.TransferAllAsync(req, ct) }))
+                TypedResults.Ok(new { transferred = await svc.TransferAllAsync(req, ct) }))
             .RequirePermission(Features.University, Cap.Edit);
         // تقدم الكلية مقابل مستهدف الجامعة، في نطاق المستخدم.
-        api.MapGet("/progress", async (Guid? unitId, Tier1.Application.Scorecard.ProgressService svc, CancellationToken ct) => Results.Ok(await svc.GetAsync(unitId, ct)))
+        api.MapGet("/progress", async (Guid? unitId, Tier1.Application.Scorecard.ProgressService svc, CancellationToken ct) => TypedResults.Ok(await svc.GetAsync(unitId, ct)))
             .RequirePermission(Features.Results, Cap.View);
         // تقويم الأرباع يلزم من ينشئ الدورات ومن يطالع النتائج والنماذج.
-        api.MapGet("/plan/calendar", async (Tier1.Application.Scorecard.ScorecardService svc, CancellationToken ct) => Results.Ok(await svc.CalendarAsync(ct)))
+        api.MapGet("/plan/calendar", async (Tier1.Application.Scorecard.ScorecardService svc, CancellationToken ct) => TypedResults.Ok(await svc.CalendarAsync(ct)))
             .RequireAnyPermission($"{Features.Cycles}:V", $"{Features.Forms}:V", $"{Features.Results}:V");
     }
 
