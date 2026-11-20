@@ -9,6 +9,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { api } from "../../api/client";
 import { invalidate } from "../../api/invalidate";
+import { useCoalesced } from "../../shared/useCoalesced";
 import type { Form, FormItem } from "../../api/collection";
 import { DecisionModal } from "../../shared/DecisionModal";
 import { errorText, formatDate, formatDateTime } from "../../shared/format";
@@ -51,12 +52,15 @@ export default function FormPage() {
   const { params, update } = useSearchState();
 
   const refresh = () => qc.invalidateQueries({ queryKey: key });
+  // FE-4: the saved row is patched at once; the form-wide parts (completed count, blocking list, version) refresh once the
+  // saves pause, not with a full GET after every autosave. Submit reads the form fresh before sending in any case.
+  const refreshSoon = useCoalesced(() => void refresh(), 1500);
   const onSaved = (item: FormItem) => {
     qc.setQueryData<Form>(key, (f) => f && {
       ...f,
       sections: f.sections.map((s) => ({ ...s, items: s.items.map((i) => (i.indicatorId === item.indicatorId ? item : i)) })),
     });
-    void refresh();
+    refreshSoon();
   };
 
   const submit = useMutation({
