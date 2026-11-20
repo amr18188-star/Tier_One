@@ -56,6 +56,7 @@ public static class DependencyInjection
         services.AddScoped<Collection.FormsService>();
         services.AddScoped<Collection.DocumentsService>();
         services.AddScoped<Collection.ResultsService>();
+        services.AddSingleton<Collection.CycleSnapshotCache>();
 
         // بطاقة أداء الجامعة وفئتها بمعادلات الإطار الشامل.
         services.AddScoped<Scorecard.ScorecardService>();

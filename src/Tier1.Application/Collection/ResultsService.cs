@@ -59,7 +59,7 @@ public sealed record IndicatorResultsDto(IndicatorResult University, IReadOnlyLi
 /// النتائج من القيم المعتمدة نهائيًا فقط: قيمة الكلية من أقسامها أو من نموذجها، وقيمة الجامعة من كلياتها أو من الجهة المركزية،
 /// بقاعدة تجميع المؤشر. من نطاقه الجامعة يرى الجامعة وكل الكليات؛ ومن نطاقه كليات يرى كلياته فقط.
 /// </summary>
-public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog audit, Settings.SettingsService settings)
+public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog audit, Settings.SettingsService settings, CycleSnapshotCache cache)
 {
     private const string Feature = Features.Results;
 
@@ -143,6 +143,7 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
                         && (c.OpensOn < cycle.OpensOn || (c.OpensOn == cycle.OpensOn && c.CreatedAt <= cycle.CreatedAt)))
             .OrderByDescending(c => c.OpensOn).ThenByDescending(c => c.CreatedAt).Take(8).ToListAsync(ct);
         var trend = new List<TrendPoint>();
+        await PrimeAsync(cycles, ct);
         foreach (var c in cycles.OrderBy(c => c.OpensOn).ThenBy(c => c.CreatedAt))
         {
             var s = c.Id == cycle.Id ? snap : await SnapshotAsync(c, ct);
@@ -224,6 +225,7 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
             .Where(c => c.Status != CycleStatus.Draft && !c.Trial && c.Quarter != null)
             .OrderBy(c => c.CreatedAt).ToListAsync(ct);
         var result = new Dictionary<(int, int), Dictionary<Guid, Aggregate>>();
+        await PrimeAsync(cycles, ct);
         foreach (var c in cycles)
         {
             var snap = await SnapshotAsync(c, ct);
@@ -274,16 +276,36 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
     }
 
     /// <summary>
-    /// PERF-B3: one snapshot per cycle per request. The service lives for one request, and the snapshot is read-only, so the
-    /// overview's previous cycle, the export's second pass and a trend's current cycle reuse it instead of re-reading 9 tables.
-    /// A cache across requests would need a fingerprint of targets and units too (they change after a cycle closes), so not here.
+    /// PERF-B3: one snapshot per cycle per request (the overview's previous cycle, the export's second pass and a trend's current
+    /// cycle reuse it), and across requests through <see cref="CycleSnapshotCache"/> while the cycle's fingerprint is unchanged.
+    /// The snapshot is read-only once built, so requests share it.
     /// </summary>
     private readonly Dictionary<Guid, Task<Snapshot>> snapshots = [];
 
+    private readonly Dictionary<Guid, string> fingerprints = [];
+
     private Task<Snapshot> SnapshotAsync(CollectionCycle cycle, CancellationToken ct)
     {
-        if (!snapshots.TryGetValue(cycle.Id, out var snapshot)) snapshots[cycle.Id] = snapshot = BuildSnapshotAsync(cycle, ct);
+        if (!snapshots.TryGetValue(cycle.Id, out var snapshot)) snapshots[cycle.Id] = snapshot = LoadSnapshotAsync(cycle, ct);
         return snapshot;
+    }
+
+    /// <summary>Reads the fingerprints of several cycles in one query before their snapshots are asked for.</summary>
+    private async Task PrimeAsync(IEnumerable<CollectionCycle> cycles, CancellationToken ct)
+    {
+        var missing = cycles.Select(c => c.Id).Where(id => !fingerprints.ContainsKey(id) && !snapshots.ContainsKey(id)).Distinct().ToArray();
+        if (missing.Length == 0) return;
+        foreach (var (id, fingerprint) in await CycleSnapshotCache.FingerprintsAsync(db, missing, ct)) fingerprints[id] = fingerprint;
+    }
+
+    private async Task<Snapshot> LoadSnapshotAsync(CollectionCycle cycle, CancellationToken ct)
+    {
+        await PrimeAsync([cycle], ct);
+        var fingerprint = fingerprints.GetValueOrDefault(cycle.Id);
+        if (fingerprint is not null && cache.TryGet(cycle.Id, fingerprint, out var hit)) return (Snapshot)hit;
+        var built = await BuildSnapshotAsync(cycle, ct);
+        if (fingerprint is not null) cache.Put(cycle.Id, fingerprint, built);
+        return built;
     }
 
     private async Task<Snapshot> BuildSnapshotAsync(CollectionCycle cycle, CancellationToken ct)
