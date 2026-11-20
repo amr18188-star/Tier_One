@@ -31,7 +31,7 @@ internal static class DemoData
     }
 
     /// <summary>The API may still be building or migrating (dotnet watch in the dev container): waits for /health/live.</summary>
-    private static async Task WaitForServerAsync(Uri server, TimeSpan wait, ILogger log)
+    internal static async Task WaitForServerAsync(Uri server, TimeSpan wait, ILogger log)
     {
         using var handler = new HttpClientHandler { CheckCertificateRevocationList = true };
         using var http = new HttpClient(handler) { BaseAddress = server, Timeout = TimeSpan.FromSeconds(5) };

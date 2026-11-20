@@ -32,6 +32,8 @@ const string Usage = """
     Development only:
       --demo-data [--base http://localhost:5150] [--password <demo password>] [--wait 300]
                                                            generated cycles, forms and values through the running API
+      --growth-data [--base http://localhost:5150] [--indicators 300] [--cycles 20] [--password <demo password>]
+                                                           the expected growth size for load tests (after --demo-data)
 
     Settings come from the API's appsettings files, user secrets (Development) and environment variables, as for the server.
     The environment is DOTNET_ENVIRONMENT, else ASPNETCORE_ENVIRONMENT, else Production.
@@ -85,6 +87,7 @@ async Task<int> RunAsync()
     using var host = builder.Build();
     var services = host.Services;
 
+    if (args.Contains("--growth-data")) return await GrowthData.RunAsync(args, config, builder.Environment, services);
     if (args.Contains("--data-fixes")) return await DataFixReport.WriteAsync(services, Console.Out);
     if (args.Contains("--apply-data-fixes"))
     {

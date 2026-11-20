@@ -197,7 +197,7 @@ public sealed class ResultsService(ICollectionStore db, IReadModel read, IAccess
         foreach (var i in snap.Indicators)
         {
             var uni = Actual(snap, i, snap.Root);
-            var uniTarget = Kpi.TargetLookup.University([.. snap.Targets[i.Ci.IndicatorId]], snap.Root.Id, cycle.TargetYear, snap.PlanStart.GetValueOrDefault(i.Ci.IndicatorId));
+            var uniTarget = Kpi.TargetLookup.University(snap.TargetsFor(i.Ci.IndicatorId), snap.Root.Id, cycle.TargetYear, snap.PlanStart.GetValueOrDefault(i.Ci.IndicatorId));
             IEnumerable<OrgUnit> contributors = i.Ci.Level == CollectionLevel.University
                 ? [snap.Units[i.Ci.CentralUnitId ?? snap.Root.Id]]
                 // الكليات المكلفة به (هي أو أقسامها) في هذه الدورة فقط.
@@ -273,6 +273,26 @@ public sealed class ResultsService(ICollectionStore db, IReadModel read, IAccess
 
         /// <summary>نماذج أعيد فتحها بقرار وتحتسب بقيمها المعتمدة السابقة حتى يعاد اعتمادها (D4).</summary>
         public IReadOnlySet<Guid> UnderCorrection { get; init; } = new HashSet<Guid>();
+
+        /// <summary>The units with a form in this cycle.</summary>
+        public required HashSet<Guid> FormUnits { get; init; }
+
+        /// <summary>The targets of each indicator, as an array (built once instead of on every lookup).</summary>
+        public required Dictionary<Guid, IndicatorTarget[]> TargetsOf { get; init; }
+
+        /// <summary>The cycle's indicators by id.</summary>
+        public required Dictionary<Guid, Ind> ById { get; init; }
+
+        /// <summary>
+        /// PERF: a unit's value and target in an indicator depend only on this snapshot, which is read-only and shared across
+        /// requests while its fingerprint holds. So each is computed once (the overview's heat map asks for every college in
+        /// every indicator on every request), and concurrent requests share the results.
+        /// </summary>
+        public System.Collections.Concurrent.ConcurrentDictionary<(Guid Indicator, Guid Unit), Aggregate> ActualMemo { get; } = new();
+
+        public System.Collections.Concurrent.ConcurrentDictionary<(Guid Indicator, Guid Unit), Kpi.TargetInfo> TargetMemo { get; } = new();
+
+        public IndicatorTarget[] TargetsFor(Guid indicatorId) => TargetsOf.GetValueOrDefault(indicatorId) ?? [];
     }
 
     /// <summary>
@@ -330,12 +350,16 @@ public sealed class ResultsService(ICollectionStore db, IReadModel read, IAccess
             values.AddRange((await db.ValueSnapshots.AsNoTracking().Where(v => official.Contains(v.RequestId)).ToListAsync(ct)).Select(ReopenRules.AsValue));
         var underCorrection = reopened.Select(r => r.SubmissionId).ToHashSet();
         var targets = await read.Query<Domain.Kpi.IndicatorTarget>().AsNoTracking().Where(t => indicatorIds.Contains(t.IndicatorId) && (t.Year <= cycle.TargetYear || t.Kind == TargetKind.Baseline)).ToListAsync(ct);
+        var inds = cis.Where(c => versions.ContainsKey(c.VersionId) && indicators.ContainsKey(c.IndicatorId))
+            .Select(c => new Ind(c, versions[c.VersionId], standards[indicators[c.IndicatorId].StandardId], indicators[c.IndicatorId].SortOrder))
+            .OrderBy(i => i.Standard.SortOrder).ThenBy(i => i.SortOrder).ToList();
         return new Snapshot
         {
             Cycle = cycle,
-            Indicators = cis.Where(c => versions.ContainsKey(c.VersionId) && indicators.ContainsKey(c.IndicatorId))
-                .Select(c => new Ind(c, versions[c.VersionId], standards[indicators[c.IndicatorId].StandardId], indicators[c.IndicatorId].SortOrder))
-                .OrderBy(i => i.Standard.SortOrder).ThenBy(i => i.SortOrder).ToList(),
+            Indicators = inds,
+            ById = inds.ToDictionary(i => i.Ci.IndicatorId),
+            FormUnits = subs.Select(x => x.UnitId).ToHashSet(),
+            TargetsOf = targets.GroupBy(t => t.IndicatorId).ToDictionary(g => g.Key, g => g.ToArray()),
             Units = units,
             Standards = standards.Values.ToDictionary(s => s.Id),
             Submissions = subs,
@@ -349,11 +373,14 @@ public sealed class ResultsService(ICollectionStore db, IReadModel read, IAccess
     }
 
     /// <summary>القيمة الفعلية لجهة: الجامعة من كلياتها أو أقسامها أو الجهة المركزية، والكلية من أقسامها أو نموذجها.</summary>
-    private static Aggregate Actual(Snapshot s, Ind i, OrgUnit unit)
+    private static Aggregate Actual(Snapshot s, Ind i, OrgUnit unit) =>
+        s.ActualMemo.GetOrAdd((i.Ci.IndicatorId, unit.Id), _ => ComputeActual(s, i, unit));
+
+    private static Aggregate ComputeActual(Snapshot s, Ind i, OrgUnit unit)
     {
         var spec = CycleSpec.Of(i.Version);
         var percent = ValueRules.IsPercent(spec);
-        var formUnits = s.Submissions.Select(x => x.UnitId).ToHashSet();
+        var formUnits = s.FormUnits;
 
         if (i.Ci.Level == CollectionLevel.University)
         {
@@ -395,7 +422,8 @@ public sealed class ResultsService(ICollectionStore db, IReadModel read, IAccess
             .Select(v => new UnitValue(Guid.Empty, v!.Kind, v.Value, v.Numerator, v.Denominator)).ToList();
 
     private static Kpi.TargetInfo TargetFor(Snapshot s, Ind i, OrgUnit unit) =>
-        Kpi.TargetLookup.For([.. s.Targets[i.Ci.IndicatorId]], unit, s.Root.Id, s.Cycle.TargetYear, s.PlanStart.GetValueOrDefault(i.Ci.IndicatorId), i.Version.Aggregation);
+        s.TargetMemo.GetOrAdd((i.Ci.IndicatorId, unit.Id), _ =>
+            Kpi.TargetLookup.For(s.TargetsFor(i.Ci.IndicatorId), unit, s.Root.Id, s.Cycle.TargetYear, s.PlanStart.GetValueOrDefault(i.Ci.IndicatorId), i.Version.Aggregation));
 
     private static decimal? BaselineFor(Snapshot s, Ind i, OrgUnit unit) =>
         s.Targets[i.Ci.IndicatorId].Where(t => t.UnitId == unit.Id && t.Kind == TargetKind.Baseline).OrderByDescending(t => t.Year).FirstOrDefault()?.Value;
@@ -412,16 +440,16 @@ public sealed class ResultsService(ICollectionStore db, IReadModel read, IAccess
         var target = TargetFor(s, i, unit);
         var baseline = BaselineFor(s, i, unit);
         decimal? prev = null;
-        if (previous?.Indicators.FirstOrDefault(x => x.Ci.IndicatorId == i.Ci.IndicatorId) is { } pi && previous.Units.TryGetValue(unit.Id, out var pu))
+        if (previous is not null && previous.ById.TryGetValue(i.Ci.IndicatorId, out var pi) && previous.Units.TryGetValue(unit.Id, out var pu))
             prev = Actual(previous, pi, pu).Value;
         var who = unit.Kind == OrgUnitKind.University ? "الجامعة" : unit.NameAr;
         // للكلية في نسبة أو متوسط: مستهدف الجامعة بجانب مستهدفها، لتعرف قربها من نسبة الجامعة المرجوة.
         var uniTarget = unit.Kind != OrgUnitKind.University && Kpi.TargetLookup.ComparableAcrossLevels(i.Version.Aggregation)
-            ? Kpi.TargetLookup.University([.. s.Targets[i.Ci.IndicatorId]], s.Root.Id, s.Cycle.TargetYear, s.PlanStart.GetValueOrDefault(i.Ci.IndicatorId))
+            ? Kpi.TargetLookup.University(s.TargetsFor(i.Ci.IndicatorId), s.Root.Id, s.Cycle.TargetYear, s.PlanStart.GetValueOrDefault(i.Ci.IndicatorId))
             : null;
         // للكلية في مؤشر مجموع (عدد): مستهدف الجامعة الكلي وحصتها منه، مستهدفًا وإنجازًا، لتعرف مساهمتها في رقم الجامعة.
         var universityTotal = unit.Kind != OrgUnitKind.University && i.Version.Aggregation == Aggregation.Sum
-            ? Kpi.TargetLookup.University([.. s.Targets[i.Ci.IndicatorId]], s.Root.Id, s.Cycle.TargetYear, s.PlanStart.GetValueOrDefault(i.Ci.IndicatorId))
+            ? Kpi.TargetLookup.University(s.TargetsFor(i.Ci.IndicatorId), s.Root.Id, s.Cycle.TargetYear, s.PlanStart.GetValueOrDefault(i.Ci.IndicatorId))
             : null;
         var note = target.NotStarted ? $"يبدأ مستهدف المؤشر في {target.Year}." : agg.Note;
         return new IndicatorResult(i.Ci.IndicatorId, i.Ci.Code, i.Version.NameAr, i.Standard.Code, i.Version.Unit, i.Version.Direction, i.Ci.Level,

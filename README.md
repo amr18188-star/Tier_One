@@ -43,7 +43,7 @@ docker compose -p tier1-dev -f docker-compose.dev.yml up      # أول مرة ب
 - الخادم في الحاوية يستمع على كل عناوينها (`ASPNETCORE_HTTP_PORTS`)، لأن حاجز التطوير في `StartupGuards` يمنع غير loopback في `ASPNETCORE_URLS`؛ والمنفذان منشوران على `127.0.0.1` فلا ينكشفان على الشبكة.
 - تُبنى الصورة من جديد (`up --build`) فقط عند تغيير `Dockerfile.dev`. لمخرجات بناء قديمة: `down` ثم `docker volume rm tier1-dev_tier1_api_out`.
 - الإيقاف: `docker compose -p tier1-dev -f docker-compose.dev.yml down` (البيانات تبقى)، ومع `-v` تحذف كل البيانات ويعاد ملؤها عند البدء التالي.
-- أوامر الصيانة في مشروع الأدوات `tools/Tier1.Tools`، خارج الخادم (ARCH-4، [ADR-0015](docs/adr/0015-tools-project.md)): `dotnet run --project tools/Tier1.Tools -- --reset-kpi --confirm` و`--load-structure --confirm` و`--backup <مجلد>` و`--restore-test <نسخة>` و`--data-fixes` و`--demo-data`. بلا وسائط يعرض القائمة كلها.
+- أوامر الصيانة في مشروع الأدوات `tools/Tier1.Tools`، خارج الخادم (ARCH-4، [ADR-0015](docs/adr/0015-tools-project.md)): `dotnet run --project tools/Tier1.Tools -- --reset-kpi --confirm` و`--load-structure --confirm` و`--backup <مجلد>` و`--restore-test <نسخة>` و`--data-fixes` و`--demo-data` و`--growth-data`. بلا وسائط يعرض القائمة كلها.
   الخادم نفسه لا ينفذ إلا `--migrate` و`--create-superadmin`.
 - هذا للتطوير فقط؛ الإنتاج في `deploy/` (راجع `docs/deployment.md`).
 
@@ -115,6 +115,16 @@ dotnet test tests/Tier1.E2E                                    # شاملة: و�
 
 - **بطاقة الأداء** (`ScorecardTests`) تحتاج قاعدة جديدة بالكليات التجريبية (`Seed__Structure=false`، ودون تشغيل `--demo-data`) لأنها تملأ كل النماذج بنفسها: `T1_E2E_SCORECARD=1 dotnet test tests/Tier1.E2E --filter Scorecard`.
 - **الحمل** (`LoadTests`): `T1_E2E_LOAD=1 T1_LOAD_USERS=100 T1_LOAD_SECONDS=60 dotnet test tests/Tier1.E2E --filter Load`. المقبول: p95 أقل من ثانيتين ولا أخطاء خادم.
+  - التقرير يذكر مجمع اتصالات PostgreSQL في الخادم أثناء التشغيل (`/api/logs/database`): أعلى عدد اتصالات مستعملة، والطلبات المنتظرة.
+  - **بحجم النمو المتوقع** (نحو 250 جهة و300 مؤشر و20 دورة): بعد البيانات التجريبية شغّل أمر الأدوات `--growth-data` على البيئة نفسها، ثم اختبار الحمل.
+    على بيئة E2E يعمل داخل شبكتها:
+    ```bash
+    docker compose -p tier1-e2e -f docker-compose.e2e.yml run --rm --no-deps \
+      -e "ConnectionStrings__Tier1=Host=postgres;Port=5432;Database=tier1;Username=tier1_dev;Password=tier1_dev" \
+      -e "ConnectionStrings__Mongo=mongodb://mongo:27017/tier1_logs" -e "DataProtection__KeysPath=/tmp/keys" \
+      demo-data dotnet run --project tools/Tier1.Tools --no-launch-profile -- --growth-data --base http://api:5150
+    ```
+    المؤشرات والدورات تُنشأ عبر الواجهة البرمجية (دورات تجريبية `growth-NN` لا تأخذ ربعًا رسميًا). أما قيم النماذج وحالات اعتمادها فتكتب مباشرة في القاعدة، بعد فحصها بقواعد القيم نفسها، لأن الهيكل الرسمي بلا حسابات إدخال. لذلك لا تدخل سجل التدقيق. للتطوير فقط، وإعادة تشغيله لا تكرر شيئًا.
 - البريد في التطوير يكتب ملفات `.eml` في `data/mail`.
 
 ## الإنتاج
