@@ -72,6 +72,26 @@ public sealed partial class Tier1DbContext(DbContextOptions<Tier1DbContext> opti
             e.Property(s => s.UserAgent).HasMaxLength(300);
             e.HasOne<AppUser>().WithMany().HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
         });
+        // Sign-in counters and attempts shared by every API instance (see PostgresLoginAttempts).
+        b.Entity<LoginCounter>(e =>
+        {
+            e.ToTable("login_counters", "iam");
+            e.HasKey(c => c.Key);
+            e.Property(c => c.Key).HasMaxLength(200);
+            e.HasIndex(c => c.BlockedUntil);
+        });
+        b.Entity<LoginAttempt>(e =>
+        {
+            e.ToTable("login_attempts", "iam");
+            e.Property(a => a.Surface).HasMaxLength(20);
+            e.Property(a => a.EmailHash).HasMaxLength(64);
+            e.Property(a => a.Ip).HasMaxLength(64);
+            e.Property(a => a.Outcome).HasMaxLength(16);
+            e.Property(a => a.Reason).HasMaxLength(40);
+            e.HasIndex(a => a.At);
+            e.HasIndex(a => new { a.UserId, a.Ip, a.At });
+            e.HasIndex(a => new { a.Ip, a.At });
+        });
         b.Entity<Role>(e =>
         {
             e.ToTable("roles", "iam");

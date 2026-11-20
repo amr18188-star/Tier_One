@@ -21,6 +21,20 @@ public sealed class AuthOptions
     /// <summary>المحاولات الفاشلة من كل العناوين قبل قفل الحساب نفسه؛ أعلى من حد العنوان فلا يقفله أحد من مكان واحد.</summary>
     public int MaxFailedLoginsPerAccount { get; set; } = 20;
 
+    /// <summary>
+    /// Failed sign-ins from one address across all accounts (unknown emails included) within AddressWindowMinutes before the
+    /// address is blocked for AddressBlockMinutes: password spraying and credential stuffing. High, because a whole campus can sit
+    /// behind one address; an account that signed in from that address within KnownAddressDays is not blocked by it.
+    /// </summary>
+    public int MaxFailedLoginsPerAddress { get; set; } = 100;
+
+    public int AddressWindowMinutes { get; set; } = 15;
+
+    public int AddressBlockMinutes { get; set; } = 15;
+
+    /// <summary>Days an address stays known for an account after a successful sign-in from it.</summary>
+    public int KnownAddressDays { get; set; } = 30;
+
     public int LockoutMinutes { get; set; } = 15;
 
     /// <summary>محاولات رمز TOTP الفاشلة قبل قفل التحقق الإضافي.</summary>

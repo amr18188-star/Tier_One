@@ -25,7 +25,7 @@ public sealed class SignInService(
     ISessionService sessions,
     IAuditLog audit,
     IQrCodes qr,
-    LoginThrottle throttle,
+    ILoginAttempts attempts,
     IOptions<AuthOptions> options,
     Access.IAccessService access,
     Settings.SettingsService settings)
@@ -43,21 +43,20 @@ public sealed class SignInService(
         // tx-exempt: attempt counters commit on their own, before the check, so parallel or failing requests cannot undo them (BE-4).
         var email = (cmd.Email ?? "").Trim().ToLowerInvariant();
         var now = clock.UtcNow;
+        var ip = current.Ip;
         var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
+        // Every refusal below answers like a wrong password and takes as long (a dummy hash), so it reveals neither the account
+        // nor the block. Counters and the attempt log are shared by every API instance (ILoginAttempts).
+        // An address that failed too often across accounts (spraying, stuffing) is refused, except for an account that signed in
+        // from it recently: the campus behind one address keeps working while someone there guesses other accounts.
+        if (await attempts.AddressBlockedAsync(Surface, ip, now, ct)
+            && !(user is not null && await attempts.KnownAddressAsync(user.Id, ip, now.AddDays(-options.Value.KnownAddressDays), ct)))
+            throw await RefuseAsync(user, email, "address_blocked", cmd.Password, counts: false, ct);
         if (user is null || !user.Active || user.PasswordHash is null)
-        {
-            hasher.Verify(_dummyHash ??= hasher.Hash("not-a-real-password"), cmd.Password ?? "");
-            await audit.RecordNowAsync(LoginDenied(user, email, user is null ? "unknown_email" : "inactive_or_unset"), ct);
-            throw BadCredentials;
-        }
+            throw await RefuseAsync(user, email, user is null ? "unknown_email" : "inactive_or_unset", cmd.Password, counts: true, ct);
         // العنوان المحجوب عن هذا الحساب (محاولات كثيرة منه) يرد كالخطأ العادي وبزمنه، ولا يمس دخول صاحب الحساب من مكان آخر.
-        var lockout = TimeSpan.FromMinutes(options.Value.LockoutMinutes);
-        if (throttle.IsBlocked(Surface, user.Id, current.Ip, now))
-        {
-            hasher.Verify(_dummyHash ??= hasher.Hash("not-a-real-password"), cmd.Password ?? "");
-            await audit.RecordNowAsync(LoginDenied(user, email, "address_blocked"), ct);
-            throw BadCredentials;
-        }
+        if (await attempts.AccountAddressBlockedAsync(Surface, user.Id, ip, now, ct))
+            throw await RefuseAsync(user, email, "account_address_blocked", cmd.Password, counts: false, ct);
         // حجز المحاولة ذريًا قبل التحقق: الحساب المقفل أو المستنفد لا يتحقق منه، فلا تتجاوز الطلبات المتوازية الحد.
         var max = options.Value.MaxFailedLoginsPerAccount;
         var reserved = await db.Users.Where(u => u.Id == user.Id && (u.LockedUntil == null || u.LockedUntil <= now) && u.FailedLogins < max)
@@ -72,28 +71,22 @@ public sealed class SignInService(
                 ActorOverride = user.Id,
             }, ct);
             // الرد نفسه للحساب المقفل وغير الموجود، وبالزمن نفسه (تجزئة وهمية)، فلا يكشف الرد وجود الحساب ولا قفله؛ القفل مسجل في السجل الأمني.
-            hasher.Verify(_dummyHash ??= hasher.Hash("not-a-real-password"), cmd.Password ?? "");
-            throw BadCredentials;
+            throw await RefuseAsync(user, email, "account_locked", cmd.Password, counts: false, ct);
         }
-        var (valid, rehash) = hasher.Verify(user.PasswordHash, cmd.Password ?? "");
+        var (valid, rehash) = hasher.Verify(user.PasswordHash!, cmd.Password ?? "");
         if (!valid)
         {
-            if (throttle.Fail(Surface, user.Id, current.Ip, now, options.Value.MaxFailedLogins, lockout))
-                await audit.RecordNowAsync(AuditEvents.Security("auth.locked", Features.Users, "حجب عنوان عن حساب بعد محاولات فاشلة", "Blocked an address from an account after failed attempts") with
-                {
-                    Outcome = "denied",
-                    Target = new AuditTarget("User", user.Id.ToString(), user.Email),
-                    Details = new { scope = "address", minutes = options.Value.LockoutMinutes },
-                    ActorOverride = user.Id,
-                }, ct);
+            await CountFailureAsync(user, email, ip, now, ct);
             var failed = await db.Users.Where(u => u.Id == user.Id).Select(u => u.FailedLogins).FirstAsync(ct);
             if (failed >= max)
                 await db.Users.Where(u => u.Id == user.Id).ExecuteUpdateAsync(s => s.SetProperty(u => u.LockedUntil, now.AddMinutes(options.Value.LockoutMinutes)).SetProperty(u => u.FailedLogins, 0), ct);
+            await attempts.RecordAsync(Surface, user.Id, email, ip, LoginOutcome.Failed, "wrong_password", now, ct);
             await audit.RecordNowAsync(LoginDenied(user, email, "wrong_password"), ct);
             throw BadCredentials;
         }
         await db.Users.Where(u => u.Id == user.Id).ExecuteUpdateAsync(s => s.SetProperty(u => u.FailedLogins, 0).SetProperty(u => u.LockedUntil, (DateTimeOffset?)null), ct);
-        throttle.Reset(Surface, user.Id, current.Ip);
+        await attempts.ClearAccountAddressAsync(Surface, user.Id, ip, ct);
+        await attempts.RecordAsync(Surface, user.Id, email, ip, LoginOutcome.Succeeded, "password", now, ct);
         db.Users.Entry(user).State = EntityState.Detached;
         user = await db.Users.FirstAsync(u => u.Id == user.Id, ct);
         if (rehash) user.PasswordHash = hasher.Hash(cmd.Password!);
@@ -187,12 +180,13 @@ public sealed class SignInService(
         // حجز المحاولة ذريًا كالدخول: جلسة مسروقة لا تخمن كلمة المرور الحالية بلا حد.
         var now = clock.UtcNow;
         var max = options.Value.MaxFailedLoginsPerAccount;
-        if (throttle.IsBlocked(Surface, user.Id, current.Ip, now)) throw BadCredentials;
+        if (await attempts.AccountAddressBlockedAsync(Surface, user.Id, current.Ip, now, ct)) throw BadCredentials;
         var reserved = await db.Users.Where(u => u.Id == user.Id && (u.LockedUntil == null || u.LockedUntil <= now) && u.FailedLogins < max)
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.FailedLogins, u => u.FailedLogins + 1), ct);
         if (reserved == 0 || user.PasswordHash is null || !hasher.Verify(user.PasswordHash, currentPassword ?? "").Valid)
         {
-            throttle.Fail(Surface, user.Id, current.Ip, now, options.Value.MaxFailedLogins, TimeSpan.FromMinutes(options.Value.LockoutMinutes));
+            await CountFailureAsync(user, user.Email, current.Ip, now, ct);
+            await attempts.RecordAsync(Surface, user.Id, user.Email, current.Ip, LoginOutcome.Failed, "change_password", now, ct);
             var failed = await db.Users.Where(u => u.Id == user.Id).Select(u => u.FailedLogins).FirstAsync(ct);
             if (reserved == 0 || failed >= max)
             {
@@ -220,6 +214,47 @@ public sealed class SignInService(
         foreach (var other in await db.Sessions.Where(s => s.UserId == user.Id && s.RevokedAt == null && s.Id != sessionId).Select(s => s.Id).ToListAsync(ct))
             await sessions.RevokeAsync(other, ct);
         return await sessions.RotateAsync(sessionId, ct);
+    }
+
+    private AttemptLimit AccountAddressLimit =>
+        new(options.Value.MaxFailedLogins, TimeSpan.FromMinutes(options.Value.LockoutMinutes), TimeSpan.FromMinutes(options.Value.LockoutMinutes));
+
+    private AttemptLimit AddressLimit =>
+        new(options.Value.MaxFailedLoginsPerAddress, TimeSpan.FromMinutes(options.Value.AddressWindowMinutes), TimeSpan.FromMinutes(options.Value.AddressBlockMinutes));
+
+    /// <summary>Counts a failure for the account at this address and for the address across accounts, and audits a block it set.</summary>
+    private async Task CountFailureAsync(AppUser? user, string email, string? ip, DateTimeOffset now, CancellationToken ct)
+    {
+        var result = await attempts.FailAsync(Surface, user?.Id, ip, AccountAddressLimit, AddressLimit, now, ct);
+        if (result.AccountAddressBlocked && user is not null)
+            await audit.RecordNowAsync(AuditEvents.Security("auth.locked", Features.Users, "حجب عنوان عن حساب بعد محاولات فاشلة", "Blocked an address from an account after failed attempts") with
+            {
+                Outcome = "denied",
+                Target = new AuditTarget("User", user.Id.ToString(), user.Email),
+                Details = new { scope = "address", minutes = options.Value.LockoutMinutes },
+                ActorOverride = user.Id,
+            }, ct);
+        if (result.AddressBlocked)
+            await audit.RecordNowAsync(AuditEvents.Security("auth.address_blocked", Features.Users, "حجب عنوان عن الدخول بعد محاولات فاشلة على حسابات كثيرة", "Blocked an address after failed sign-ins on many accounts") with
+            {
+                Outcome = "denied",
+                Target = new AuditTarget("Address", ip, ip),
+                Details = new { scope = "all_accounts", failures = options.Value.MaxFailedLoginsPerAddress, minutes = options.Value.AddressBlockMinutes, lastEmail = Mask.Email(email) },
+            }, ct);
+    }
+
+    /// <summary>
+    /// A refusal that answers like a wrong password and takes as long (a dummy hash), recorded in the attempt log and the security
+    /// log. counts: whether it adds to the counters (an unknown email counts against its address; a refusal by a block does not).
+    /// </summary>
+    private async Task<DomainException> RefuseAsync(AppUser? user, string email, string reason, string? password, bool counts, CancellationToken ct)
+    {
+        hasher.Verify(_dummyHash ??= hasher.Hash("not-a-real-password"), password ?? "");
+        var now = clock.UtcNow;
+        if (counts) await CountFailureAsync(user, email, current.Ip, now, ct);
+        await attempts.RecordAsync(Surface, user?.Id, email, current.Ip, counts ? LoginOutcome.Failed : LoginOutcome.Blocked, reason, now, ct);
+        await audit.RecordNowAsync(LoginDenied(user, email, reason), ct);
+        return BadCredentials;
     }
 
     private static AuditEntry LoginDenied(AppUser? user, string email, string reason) =>

@@ -36,6 +36,13 @@ public sealed class RetentionJob(IServiceScopeFactory scopes, IConfiguration con
     private const string InboxSql =
         "DELETE FROM notify.inbox WHERE id IN (SELECT id FROM notify.inbox WHERE created_at < {0} LIMIT {1})";
 
+    // Sign-in attempts are kept for Retention:LoginAttemptDays; a counter whose window and block are both a day past is spent.
+    private const string LoginAttemptSql =
+        "DELETE FROM iam.login_attempts WHERE id IN (SELECT id FROM iam.login_attempts WHERE at < {0} LIMIT {1})";
+
+    private const string LoginCounterSql =
+        "DELETE FROM iam.login_counters WHERE key IN (SELECT key FROM iam.login_counters WHERE window_start < {0} AND (blocked_until IS NULL OR blocked_until < {0}) LIMIT {1})";
+
     private const string MailSql =
         "DELETE FROM adm.mail_outbox WHERE id IN (SELECT id FROM adm.mail_outbox WHERE sent_at < {0} OR failed_at < {2} LIMIT {1})";
 
@@ -74,6 +81,9 @@ public sealed class RetentionJob(IServiceScopeFactory scopes, IConfiguration con
             [now.AddDays(-config.GetValue("Retention:MailSentDays", 180)), Batch, now.AddDays(-config.GetValue("Retention:MailFailedDays", 365))], ct);
         var events = await DeleteInBatchesAsync(db, EventSql, [now.AddDays(-config.GetValue("Retention:EventDays", 30)), Batch], ct);
         var inbox = await DeleteInBatchesAsync(db, InboxSql, [now.AddDays(-config.GetValue("Retention:InboxDays", 365)), Batch], ct);
+        var attempts = await DeleteInBatchesAsync(db, LoginAttemptSql, [now.AddDays(-config.GetValue("Retention:LoginAttemptDays", 90)), Batch], ct);
+        attempts += await DeleteInBatchesAsync(db, LoginCounterSql, [now.AddDays(-1), Batch], ct);
+        if (attempts > 0) log.LogInformation("Retention removed {Attempts} old sign-in attempts and spent counters.", attempts);
         if (outbox + mail + events + inbox > 0)
             log.LogInformation("Retention removed {Outbox} delivered audit copies, {Mail} old mail rows, {Events} handled events and {Inbox} old notifications.",
                 outbox, mail, events, inbox);

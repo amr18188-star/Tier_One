@@ -64,34 +64,5 @@ public class HardeningTests
         Assert.Equal(ok, StartupGuards.PublicUrlOk(value));
 }
 
-/// <summary>حجب التخمين لكل (حساب، عنوان): لا يقفل أحد حساب غيره من مكان واحد.</summary>
-public class LoginThrottleTests
-{
-    private static readonly DateTimeOffset Now = new(2026, 10, 29, 9, 0, 0, TimeSpan.Zero);
-    private static readonly TimeSpan Block = TimeSpan.FromMinutes(15);
-
-    [Fact]
-    public void An_address_is_blocked_for_one_account_only_after_the_limit()
-    {
-        var t = new Tier1.Application.Security.LoginThrottle(new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions()));
-        var account = Guid.NewGuid();
-        for (var i = 0; i < 4; i++) Assert.False(t.Fail("staff", account, "10.0.0.1", Now, 5, Block));
-        Assert.True(t.Fail("staff", account, "10.0.0.1", Now, 5, Block));
-        Assert.True(t.IsBlocked("staff", account, "10.0.0.1", Now));
-        Assert.False(t.IsBlocked("staff", account, "10.0.0.2", Now));
-        Assert.False(t.IsBlocked("portal", account, "10.0.0.1", Now));
-        Assert.False(t.IsBlocked("staff", Guid.NewGuid(), "10.0.0.1", Now));
-        Assert.False(t.IsBlocked("staff", account, "10.0.0.1", Now + Block + TimeSpan.FromSeconds(1)));
-    }
-
-    [Fact]
-    public void A_successful_sign_in_clears_the_count()
-    {
-        var t = new Tier1.Application.Security.LoginThrottle(new Microsoft.Extensions.Caching.Memory.MemoryCache(new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions()));
-        var account = Guid.NewGuid();
-        for (var i = 0; i < 4; i++) t.Fail("portal", account, "10.0.0.1", Now, 5, Block);
-        t.Reset("portal", account, "10.0.0.1");
-        Assert.False(t.Fail("portal", account, "10.0.0.1", Now, 5, Block));
-        Assert.False(t.IsBlocked("portal", account, "10.0.0.1", Now));
-    }
-}
+// The sign-in counters moved to PostgreSQL, shared by every API instance: their tests are in
+// tests/Tier1.IntegrationTests/LoginAttemptTests.cs, against a real database and a second instance.

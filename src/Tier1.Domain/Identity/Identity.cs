@@ -71,3 +71,41 @@ public sealed class UserSession
 
     public string? UserAgent { get; set; }
 }
+
+/// <summary>
+/// A shared sign-in counter (iam.login_counters): failures within a window for one key, and the block it earned. Keys are
+/// "{surface}|acct|{user}|{address}" (one account from one address) and "{surface}|addr|{address}" (all accounts from one
+/// address). Every API instance reads and writes the same row, so switching instances does not reset a count.
+/// </summary>
+public sealed class LoginCounter
+{
+    public string Key { get; set; } = "";
+
+    public int Failures { get; set; }
+
+    public DateTimeOffset WindowStart { get; set; }
+
+    public DateTimeOffset? BlockedUntil { get; set; }
+}
+
+/// <summary>One sign-in attempt (iam.login_attempts): who (the account if known, else a hash of the typed email), from where, and how it ended.</summary>
+public sealed class LoginAttempt
+{
+    public long Id { get; set; }
+
+    public DateTimeOffset At { get; set; }
+
+    public string Surface { get; set; } = "";
+
+    public Guid? UserId { get; set; }
+
+    /// <summary>SHA-256 of the normalised email typed, to see one address trying many emails without storing them.</summary>
+    public string EmailHash { get; set; } = "";
+
+    public string? Ip { get; set; }
+
+    /// <summary>succeeded, failed or blocked.</summary>
+    public string Outcome { get; set; } = "";
+
+    public string Reason { get; set; } = "";
+}

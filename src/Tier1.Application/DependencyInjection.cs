@@ -26,7 +26,6 @@ public static class DependencyInjection
         services.AddScoped<IAuditLog, AuditLog>();
         services.AddScoped<ISessionService, SessionService>();
         services.AddScoped<SignInService>();
-        services.AddSingleton<Security.LoginThrottle>();
         services.AddScoped<MeService>();
         services.AddScoped<RbacAdminService>();
         services.AddScoped<UsersAdminService>();

@@ -59,6 +59,9 @@ public sealed class Tier1App : IAsyncLifetime
             ["Email__PickupDirectory"] = Path.Combine(dataDir, "mail"),
             ["MongoLogs__CheckpointDirectory"] = Path.Combine(dataDir, "checkpoints"),
             ["App__PublicUrl"] = "http://127.0.0.1",
+            // Sign-in tests come from several addresses through X-Forwarded-For, and reach the address-wide limit without 100 tries.
+            ["Network__TrustedProxies__0"] = "127.0.0.1",
+            ["Auth__MaxFailedLoginsPerAddress"] = "12",
         };
         foreach (var (key, value) in environment) Environment.SetEnvironmentVariable(key, value);
         factory = new Factory();
@@ -112,6 +115,16 @@ public sealed class Tier1App : IAsyncLifetime
 
     /// <summary>A new session of a demo account, not shared with the other tests (for session timing checks).</summary>
     internal Task<DemoClient> NewSessionAsync(string name) => DemoClient.LoginAsync(Base, $"{name}@tier1.local", Password, CancellationToken.None);
+
+    /// <summary>A second API instance on the same databases, to show that what one instance counts the other sees.</summary>
+    internal static (Uri Base, IAsyncDisposable Instance) StartSecondInstance()
+    {
+        var second = new Factory();
+        second.UseKestrel(0);
+        second.StartServer();
+        var address = second.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.First();
+        return (new Uri(address.Replace("[::]", "127.0.0.1", StringComparison.Ordinal).Replace("localhost", "127.0.0.1", StringComparison.Ordinal)), second);
+    }
 
     private sealed class Factory : WebApplicationFactory<Program>
     {

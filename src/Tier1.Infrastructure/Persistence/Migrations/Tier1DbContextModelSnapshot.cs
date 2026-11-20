@@ -1268,6 +1268,95 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                     b.ToTable("users", "iam");
                 });
 
+            modelBuilder.Entity("Tier1.Domain.Identity.LoginAttempt", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("at");
+
+                    b.Property<string>("EmailHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("email_hash");
+
+                    b.Property<string>("Ip")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("ip");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("outcome");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("reason");
+
+                    b.Property<string>("Surface")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("surface");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_login_attempts");
+
+                    b.HasIndex("At")
+                        .HasDatabaseName("ix_login_attempts_at");
+
+                    b.HasIndex("Ip", "At")
+                        .HasDatabaseName("ix_login_attempts_ip_at");
+
+                    b.HasIndex("UserId", "Ip", "At")
+                        .HasDatabaseName("ix_login_attempts_user_id_ip_at");
+
+                    b.ToTable("login_attempts", "iam");
+                });
+
+            modelBuilder.Entity("Tier1.Domain.Identity.LoginCounter", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("key");
+
+                    b.Property<DateTimeOffset?>("BlockedUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("blocked_until");
+
+                    b.Property<int>("Failures")
+                        .HasColumnType("integer")
+                        .HasColumnName("failures");
+
+                    b.Property<DateTimeOffset>("WindowStart")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("window_start");
+
+                    b.HasKey("Key")
+                        .HasName("pk_login_counters");
+
+                    b.HasIndex("BlockedUntil")
+                        .HasDatabaseName("ix_login_counters_blocked_until");
+
+                    b.ToTable("login_counters", "iam");
+                });
+
             modelBuilder.Entity("Tier1.Domain.Identity.UserSession", b =>
                 {
                     b.Property<Guid>("Id")

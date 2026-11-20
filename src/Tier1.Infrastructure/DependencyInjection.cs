@@ -83,6 +83,7 @@ public static class DependencyInjection
         services.AddSingleton<JobLock>();
         services.AddSingleton<ITechnicalLog>(sp => sp.GetRequiredService<TechLogWriter>());
         services.AddSingleton<IDatabaseErrors, PostgresErrors>();
+        services.AddSingleton<ILoginAttempts, Security.PostgresLoginAttempts>();
         services.AddSingleton<ILogReader, MongoLogReader>();
         services.AddScoped<IChainVerifier, ChainVerifier>();
 
