@@ -6,9 +6,14 @@ import { api } from "../../api/client";
 import type { Form, FormItem } from "../../api/collection";
 import { errorText } from "../../shared/format";
 import { L } from "../../shared/i18n";
+import { DecisionModal } from "../../shared/DecisionModal";
+import { ImportModal } from "./ImportModal";
 import { skippedSteps } from "./model";
+import type { FormSubmit } from "./useFormPage";
+import type { ReturnMark } from "./ValueRow";
 
-/** The form page's dialogs: send for review, approve (normal or direct), and extend a unit's deadline. */
+/* The form page's dialogs: send for review, approve (normal or direct), return, reopen, extend a deadline, import from Excel. */
+
 /** ملخص ما سيرسل قبل التأكيد: كم قيمة وكم صفر وغير متاح ولا ينطبق، والتفسيرات والأدلة، وإلى من يذهب النموذج. */
 export function SubmitModal({ form, items, pending, error, onConfirm, onClose }: {
   form: Form; items: FormItem[]; pending: boolean; error: unknown; onConfirm: () => Promise<void>; onClose: () => void;
@@ -91,5 +96,71 @@ export function ExtendModal({ form, onClose, onDone }: { form: Form; onClose: ()
         </AntForm.Item>
       </AntForm>
     </Modal>
+  );
+}
+
+export type FormDialog = "submit" | "approve" | "direct" | "return" | "reopen" | "reopenApprove" | "reopenReject" | "import" | "extend";
+
+/** The open dialog of the form page, wired to its request and to what the decision changes (applyDecision). */
+export function FormDialogHost({ dialog, onClose, f, items, submit, flushAll, marks, clearMarks, applyDecision, refresh }: {
+  dialog: FormDialog | null;
+  onClose: () => void;
+  f: Form;
+  items: FormItem[];
+  submit: FormSubmit;
+  flushAll: () => Promise<void>;
+  marks: Record<string, ReturnMark>;
+  clearMarks: () => void;
+  applyDecision: (next: Form) => void;
+  refresh: () => void;
+}) {
+  const reopen = f.reopen ?? null;
+  const flaggedCount = Object.values(marks).filter((m) => m.checked).length;
+  return (
+    <>
+      {dialog === "submit" && (
+        <SubmitModal form={f} items={items} pending={submit.isPending} error={submit.error} onClose={onClose}
+          onConfirm={async () => { await flushAll(); await submit.mutateAsync(); onClose(); }} />
+      )}
+      {(dialog === "approve" || dialog === "direct") && (
+        <ApproveModal form={f} direct={dialog === "direct"} onClose={onClose} onDone={applyDecision} />
+      )}
+      {dialog === "return" && (
+        <DecisionModal title={L("إعادة النموذج للتصحيح", "Return the form")} field="note" label={L("الملاحظة العامة لمدخل البيانات", "Note to the data entry")} okText={L("إعادة", "Return")} danger
+          explain={flaggedCount > 0
+            ? L(`ستصل ملاحظاتك على ${flaggedCount} مؤشرًا مميزة في النموذج، مع هذه الملاحظة العامة.`, `${flaggedCount} indicator notes will be sent.`)
+            : L("لم تعلّم مؤشرات بعينها؛ تكفي ملاحظة عامة واضحة. يمكنك تعليم المؤشرات بخانة «يحتاج تصحيحًا».", "No indicator marked; write a clear note.")}
+          onSubmit={async (note) => {
+            const next = await api.post<Form>(`/api/forms/${f.id}/return`, {
+              note, items: Object.entries(marks).filter(([, m]) => m.checked).map(([indicatorId, m]) => ({ indicatorId, note: m.note || note })),
+              version: f.version,
+            });
+            clearMarks();
+            applyDecision(next);
+          }}
+          onClose={onClose} />
+      )}
+      {dialog === "reopen" && (
+        <DecisionModal title={L("طلب إعادة فتح نموذج معتمد", "Request reopening an approved form")} field="note" label={L("سبب إعادة الفتح", "Reason")} okText={L("إرسال الطلب", "Send request")}
+          explain={L("يرسل الطلب إلى اللجنة العليا ويبقى النموذج معتمدًا ومقفلًا حتى تعتمده برقم المحضر. عندها يعود إلى الإدخال ويمر بخطوات الاعتماد كلها من جديد، وتبقى قيمه المعتمدة الحالية رسمية في النتائج حتى يعاد اعتماده.",
+            "The request goes to the higher committee; the form stays approved and locked until it approves with a decision reference.")}
+          onSubmit={async (note) => applyDecision(await api.post<Form>(`/api/forms/${f.id}/reopen`, { note, version: f.version }))}
+          onClose={onClose} />
+      )}
+      {dialog === "reopenApprove" && (
+        <DecisionModal title={L("اعتماد إعادة فتح النموذج", "Approve reopening the form")} field="decisionRef" label={L("رقم محضر اللجنة العليا", "Committee decision reference")} okText={L("اعتماد وإعادة الفتح", "Approve and reopen")}
+          explain={<>{L("سبب الطلب:", "Reason:")} {reopen?.reason}<br />{L("يعود النموذج إلى الإدخال، وتحفظ قيمه المعتمدة الحالية وتبقى الرسمية في النتائج حتى يعاد اعتماده.", "The form returns to entry; its approved values are kept and stay official until re-approval.")}</>}
+          onSubmit={async (decisionRef) => applyDecision(await api.post<Form>(`/api/forms/${f.id}/reopen/approve`, { decisionRef, note: null }))}
+          onClose={onClose} />
+      )}
+      {dialog === "reopenReject" && (
+        <DecisionModal title={L("رفض طلب إعادة الفتح", "Reject the reopen request")} field="note" label={L("سبب الرفض", "Reason")} okText={L("رفض", "Reject")} danger
+          explain={<>{L("سبب الطلب:", "Reason:")} {reopen?.reason}<br />{L("يبقى النموذج معتمدًا ومقفلًا، ويرى مقدم الطلب سبب الرفض.", "The form stays approved; the requester sees the reason.")}</>}
+          onSubmit={async (note) => applyDecision(await api.post<Form>(`/api/forms/${f.id}/reopen/reject`, { note }))}
+          onClose={onClose} />
+      )}
+      {dialog === "extend" && <ExtendModal form={f} onClose={onClose} onDone={applyDecision} />}
+      {dialog === "import" && <ImportModal formId={f.id} onClose={onClose} onApplied={refresh} />}
+    </>
   );
 }

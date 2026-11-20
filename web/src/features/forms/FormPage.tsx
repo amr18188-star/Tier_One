@@ -1,30 +1,23 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, App, Button, Popover, Progress, Segmented, Space, Tag, Timeline, Tooltip } from "antd";
-import {
-  AimOutlined, CalendarOutlined, CheckOutlined, DownloadOutlined, FileExcelOutlined, HistoryOutlined, LoadingOutlined, RollbackOutlined, SendOutlined, UnlockOutlined, WarningOutlined,
-} from "@ant-design/icons";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useRef, useState } from "react";
+import { Alert, Button, Progress, Segmented, Space, Tag, Timeline } from "antd";
+import { CalendarOutlined, DownloadOutlined, FileExcelOutlined, HistoryOutlined, RollbackOutlined, UnlockOutlined } from "@ant-design/icons";
 import { useParams } from "react-router-dom";
-import { api } from "../../api/client";
-import { invalidate } from "../../api/invalidate";
-import { useCoalesced } from "../../shared/useCoalesced";
-import type { Form, FormItem } from "../../api/collection";
-import { DecisionModal } from "../../shared/DecisionModal";
-import { errorText, formatDate, formatDateTime } from "../../shared/format";
-import { L, useLang } from "../../shared/i18n";
+import type { FormItem } from "../../api/collection";
+import { formatDate, formatDateTime } from "../../shared/format";
+import { L } from "../../shared/i18n";
 import { dueText, submissionStatus, unitKind } from "../../shared/labels";
 import { stdLabel, tint, usePillarMap } from "../../shared/pillars";
 import { usePermissions } from "../../shared/session";
 import { EmptyNote, PageHeader, Panel, Stepper } from "../../shared/ui";
-import { useSearchState } from "../../shared/usePeriodParams";
-import { PillarCards, PillarHeader, PillarMobileBar, PillarStep, type PillarGroup } from "./FormPillars";
-import { ImportModal } from "./ImportModal";
+import { FormActionDock } from "./FormActionDock";
+import { FormDialogHost, type FormDialog } from "./FormDialogs";
+import { PillarCards, PillarHeader, PillarStep, type PillarGroup } from "./FormPillars";
 import { NoteCard } from "./NoteCard";
 import { formEventText } from "./model";
-import { usePillarSwipe, useReducedMotion } from "./usePillarSwipe";
+import { useFormPage } from "./useFormPage";
+import { usePillarNavigation } from "./usePillarNavigation";
 import { AutosaveContext, useAutosaveRegistry } from "./useValueAutosave";
-import { savedAt, ValueRow, type ReturnMark } from "./ValueRow";
-import { ApproveModal, ExtendModal, SubmitModal } from "./FormDialogs";
+import { ValueRow, type ReturnMark } from "./ValueRow";
 import "./form-page.css";
 
 type Filter = "all" | "missing" | "issues" | "flagged";
@@ -34,46 +27,19 @@ type Filter = "all" | "missing" | "issues" | "flagged";
  * ثم بطاقات الركائز (ما أدخل وما يمنع الإرسال في كل ركيزة)، ونموذج ركيزة واحدة في عمود بزري السابقة والتالية على جانبيه
  * (pillar= في الرابط). شريط الإجراء أسفلها ثابت (إرسال، أو اعتماد وإعادة)، والمرشحات تعرض الناقص أو ما به ملاحظات فقط.
  * القيم تحفظ أثناء الكتابة (useValueAutosave)، وكل ما لم يحفظ يحفظ قبل التنقل بين الركائز وقبل الإرسال.
+ * The data and its writes are in useFormPage, moving between pillars in usePillarNavigation, the bar in FormActionDock and the
+ * dialogs in FormDialogHost.
  */
 export default function FormPage() {
   const { id } = useParams<{ id: string }>();
-  const qc = useQueryClient();
-  const { message } = App.useApp();
-  const key = ["form", id];
-  const form = useQuery({ queryKey: key, queryFn: () => api.get<Form>(`/api/forms/${id}`) });
+  const { form, refresh, onSaved, submit, applyDecision } = useFormPage(id);
   const [filter, setFilter] = useState<Filter>("all");
   const [marks, setMarks] = useState<Record<string, ReturnMark>>({});
-  const [dialog, setDialog] = useState<"submit" | "approve" | "direct" | "return" | "reopen" | "reopenApprove" | "reopenReject" | "import" | "extend" | null>(null);
+  const [dialog, setDialog] = useState<FormDialog | null>(null);
   const canExtend = usePermissions().can("dc.cycles", "E");
   // الحفظ التلقائي في الصفوف: الجاري منه لشريط الحالة، وflushAll قبل التنقل والإرسال.
   const autosave = useAutosaveRegistry();
   const saving = autosave.saving;
-  const { params, update } = useSearchState();
-
-  const refresh = () => qc.invalidateQueries({ queryKey: key });
-  // FE-4: the saved row is patched at once; the form-wide parts (completed count, blocking list, version) refresh once the
-  // saves pause, not with a full GET after every autosave. Submit reads the form fresh before sending in any case.
-  const refreshSoon = useCoalesced(() => void refresh(), 1500);
-  const onSaved = (item: FormItem) => {
-    qc.setQueryData<Form>(key, (f) => f && {
-      ...f,
-      sections: f.sections.map((s) => ({ ...s, items: s.items.map((i) => (i.indicatorId === item.indicatorId ? item : i)) })),
-    });
-    refreshSoon();
-  };
-
-  const submit = useMutation({
-    // The autosaves just flushed move the form's version, so send from the version the server holds now (BE-2).
-    mutationFn: async () => {
-      const fresh = await qc.fetchQuery({ queryKey: key, queryFn: () => api.get<Form>(`/api/forms/${id}`), staleTime: 0 });
-      return api.post<Form>(`/api/forms/${id}/submit`, { version: fresh.version });
-    },
-    onSuccess: (f) => {
-      qc.setQueryData(key, f);
-      void invalidate.afterFormDecision(qc);
-      message.success(L(`أرسل النموذج إلى «${f.path.find((p) => p.state === "current")?.name ?? ""}»`, "Form sent for review"));
-    },
-  });
 
   const f = form.data;
   const items = useMemo(() => f?.sections.flatMap((s) => s.items) ?? [], [f]);
@@ -97,9 +63,7 @@ export default function FormPage() {
     return list;
   }, [f, pillarMap.pillars]);
 
-  // الركيزة المعروضة من الرابط (pillar=رمزها)، وإلا الأولى.
-  const position = Math.max(0, pillars.findIndex((p) => p.key === params.get("pillar")));
-  const pillar = pillars[position];
+  const { position, pillar, goPillar, enter, setStage } = usePillarNavigation(pillars, autosave.flushAll);
   // الصفوف التي عدلت في هذا العرض تبقى ظاهرة ولو لم تعد تطابق المرشح (الناقص يختفي بمجرد حفظه).
   const kept = useRef(new Set<string>());
   const viewKey = `${filter}|${pillar?.key}`;
@@ -110,41 +74,6 @@ export default function FormPage() {
   }
   for (const rowId of Object.keys(autosave.active)) kept.current.add(rowId);
 
-  // بعد الانتقال إلى ركيزة: أعلاها، أو معيار فيها، أو صف بعينه (التالي الناقص).
-  const scrollTo = useRef<{ id: string; focus?: boolean } | null>(null);
-  const [, setTick] = useState(0);
-  useEffect(() => {
-    const target = scrollTo.current;
-    if (!target) return;
-    scrollTo.current = null;
-    requestAnimationFrame(() => {
-      const el = document.getElementById(target.id);
-      if (!el) return;
-      el.scrollIntoView({ behavior: "smooth", block: target.focus ? "center" : "start" });
-      if (target.focus) el.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true });
-      else if (target.id === "fp-pillar") el.focus({ preventScroll: true });
-    });
-  });
-  /** ينتقل إلى ركيزة (بالأزرار أو البطاقات أو السحب أو شريط الجوال) بعد حفظ ما لم يحفظ، ثم إلى أعلاها. */
-  const [enter, setEnter] = useState<"next" | "prev" | null>(null);
-  const goPillar = async (key: string, scrollId = "fp-pillar", focus = false) => {
-    await autosave.flushAll();
-    scrollTo.current = { id: scrollId, focus };
-    const to = pillars.findIndex((p) => p.key === key);
-    if (key !== pillar?.key) {
-      setEnter(to > position ? "next" : "prev");
-      update({ pillar: key });
-    } else setTick((t) => t + 1);
-  };
-  // السحب بين الركائز على العمود (usePillarSwipe): التالية جهة نهاية السطر، يسارًا في العربية.
-  const [stage, setStage] = useState<HTMLElement | null>(null);
-  const rtl = useLang() === "ar";
-  const reduced = useReducedMotion();
-  usePillarSwipe(stage, {
-    rtl, reduced, hasPrev: position > 0, hasNext: position < pillars.length - 1,
-    onPrev: () => void goPillar(pillars[position - 1].key),
-    onNext: () => void goPillar(pillars[position + 1].key),
-  });
   const flaggedCount = Object.values(marks).filter((m) => m.checked).length;
   const visible = (i: FormItem) =>
     kept.current.has(i.indicatorId) ? true
@@ -318,125 +247,13 @@ export default function FormPage() {
         </Panel>
       )}
 
-      {(pillars.length > 1 || editable || reviewing || f.actions.canReopen || canDecideReopen) && (
-      <div className="fp-dock no-print">
-      {pillars.length > 1 && (
-        <PillarMobileBar position={position} total={pillars.length} hasPrev={position > 0} hasNext={position < pillars.length - 1}
-          onPrev={() => void goPillar(pillars[position - 1].key)} onNext={() => void goPillar(pillars[position + 1].key)} />
-      )}
-      {(editable || reviewing || f.actions.canReopen || canDecideReopen) && (
-        <div className="f-actions">
-          <span className="grow">
-            {editable && (
-              <span className="f-summary" aria-live="polite">
-                <span>{L("أدخلت", "Entered")} <b className="ltr">{f.completed}/{f.required}</b></span>
-                {missing.length > 0 && <span>{L("ناقص", "Missing")} <b className="ltr">{missing.length}</b></span>}
-                {saving > 0 ? <span><LoadingOutlined aria-hidden /> {L("جار الحفظ…", "Saving…")}</span>
-                  : lastSaved && <span>{L("آخر حفظ", "Last saved")} <b className="ltr">{savedAt(lastSaved)}</b></span>}
-                {f.blocking.length === 0
-                  ? <span className="f-issue" style={{ color: "var(--ok)" }}><CheckOutlined /> {L("مكتمل وجاهز للإرسال", "Complete and ready")}</span>
-                  : <Popover title={L("ما يمنع الإرسال", "What blocks sending")} content={<ul style={{ maxWidth: 420, maxHeight: 300, overflow: "auto" }}>{f.blocking.map((b) => <li key={b}>{b}</li>)}</ul>}>
-                      <Button type="link" size="small" className="f-issue warn" style={{ padding: 0 }}><WarningOutlined /> {L(`${f.blocking.length} أمر يمنع الإرسال`, `${f.blocking.length} items block sending`)}</Button>
-                    </Popover>}
-              </span>
-            )}
-            {canReturn && (flaggedCount > 0
-              ? L(`علّمت ${flaggedCount} مؤشرًا للتصحيح.`, `${flaggedCount} marked for correction.`)
-              : L("راجع القيم والأدلة، ثم اعتمد أو أعد.", "Review values and evidence, then approve or return."))}
-          </span>
-          {submit.error && <span className="f-issue err">{errorText(submit.error)}</span>}
-          {editable && missing.length > 0 && (
-            <Button size="large" icon={<AimOutlined />} onClick={goToMissing}>{L("التالي الناقص", "Next missing")}</Button>
-          )}
-          {editable && (
-            <Tooltip title={!f.actions.canSubmit ? L("يتفعل حين يكتمل النموذج؛ اعرض «ما يمنع الإرسال».", "Enabled once the form is complete.") : undefined}>
-              <Button type="primary" size="large" icon={<SendOutlined />} disabled={!f.actions.canSubmit} loading={submit.isPending}
-                onClick={async () => { await autosave.flushAll(); setDialog("submit"); }}>
-                {L("إرسال للمراجعة", "Send for review")}
-              </Button>
-            </Tooltip>
-          )}
-          {reviewing && (
-            <>
-              {canReturn && <Button danger size="large" icon={<RollbackOutlined />} onClick={() => setDialog("return")}>{L("إعادة للتصحيح", "Return")}</Button>}
-              {directApproval && (
-                <Button type={canApprove ? "default" : "primary"} size="large" icon={<CheckOutlined />} disabled={flaggedCount > 0} onClick={() => setDialog("direct")}>
-                  {directLabel}
-                </Button>
-              )}
-              {canApprove && (
-                <Button type="primary" size="large" icon={<CheckOutlined />} disabled={flaggedCount > 0} onClick={() => setDialog("approve")}>
-                  {f.nextStepName ? L("اعتماد وإحالة", "Approve") : L("اعتماد نهائي", "Final approval")}
-                </Button>
-              )}
-            </>
-          )}
-          {f.actions.canReopen && <Button icon={<UnlockOutlined />} onClick={() => setDialog("reopen")}>{L("طلب إعادة فتح للتصحيح", "Request reopening")}</Button>}
-          {canDecideReopen && (
-            <>
-              <Button danger size="large" onClick={() => setDialog("reopenReject")}>{L("رفض طلب إعادة الفتح", "Reject the request")}</Button>
-              <Button type="primary" size="large" icon={<UnlockOutlined />} onClick={() => setDialog("reopenApprove")}>{L("اعتماد إعادة الفتح", "Approve reopening")}</Button>
-            </>
-          )}
-        </div>
-      )}
-      </div>
-      )}
+      <FormActionDock f={f} rights={{ editable, reviewing, canReturn, canApprove, directApproval, directLabel, canDecideReopen }}
+        pillarCount={pillars.length} position={position} onPillar={(to) => void goPillar(pillars[to].key)}
+        missing={missing} saving={saving} lastSaved={lastSaved} flaggedCount={flaggedCount} submit={submit}
+        onNextMissing={goToMissing} onSend={async () => { await autosave.flushAll(); setDialog("submit"); }} onDialog={setDialog} />
 
-      {dialog === "submit" && (
-        <SubmitModal form={f} items={items} pending={submit.isPending} error={submit.error} onClose={() => setDialog(null)}
-          onConfirm={async () => { await autosave.flushAll(); await submit.mutateAsync(); setDialog(null); }} />
-      )}
-      {(dialog === "approve" || dialog === "direct") && (
-        <ApproveModal form={f} direct={dialog === "direct"} onClose={() => setDialog(null)}
-          onDone={(next) => { qc.setQueryData(key, next); void invalidate.afterFormDecision(qc); }} />
-      )}
-      {dialog === "return" && (
-        <DecisionModal title={L("إعادة النموذج للتصحيح", "Return the form")} field="note" label={L("الملاحظة العامة لمدخل البيانات", "Note to the data entry")} okText={L("إعادة", "Return")} danger
-          explain={flaggedCount > 0
-            ? L(`ستصل ملاحظاتك على ${flaggedCount} مؤشرًا مميزة في النموذج، مع هذه الملاحظة العامة.`, `${flaggedCount} indicator notes will be sent.`)
-            : L("لم تعلّم مؤشرات بعينها؛ تكفي ملاحظة عامة واضحة. يمكنك تعليم المؤشرات بخانة «يحتاج تصحيحًا».", "No indicator marked; write a clear note.")}
-          onSubmit={async (note) => {
-            const next = await api.post<Form>(`/api/forms/${f.id}/return`, {
-              note, items: Object.entries(marks).filter(([, m]) => m.checked).map(([indicatorId, m]) => ({ indicatorId, note: m.note || note })),
-              version: f.version,
-            });
-            setMarks({});
-            qc.setQueryData(key, next);
-            void invalidate.afterFormDecision(qc);
-          }}
-          onClose={() => setDialog(null)} />
-      )}
-      {dialog === "reopen" && (
-        <DecisionModal title={L("طلب إعادة فتح نموذج معتمد", "Request reopening an approved form")} field="note" label={L("سبب إعادة الفتح", "Reason")} okText={L("إرسال الطلب", "Send request")}
-          explain={L("يرسل الطلب إلى اللجنة العليا ويبقى النموذج معتمدًا ومقفلًا حتى تعتمده برقم المحضر. عندها يعود إلى الإدخال ويمر بخطوات الاعتماد كلها من جديد، وتبقى قيمه المعتمدة الحالية رسمية في النتائج حتى يعاد اعتماده.",
-            "The request goes to the higher committee; the form stays approved and locked until it approves with a decision reference.")}
-          onSubmit={async (note) => {
-            qc.setQueryData(key, await api.post<Form>(`/api/forms/${f.id}/reopen`, { note, version: f.version }));
-            void invalidate.afterFormDecision(qc);
-          }}
-          onClose={() => setDialog(null)} />
-      )}
-      {dialog === "reopenApprove" && (
-        <DecisionModal title={L("اعتماد إعادة فتح النموذج", "Approve reopening the form")} field="decisionRef" label={L("رقم محضر اللجنة العليا", "Committee decision reference")} okText={L("اعتماد وإعادة الفتح", "Approve and reopen")}
-          explain={<>{L("سبب الطلب:", "Reason:")} {reopen?.reason}<br />{L("يعود النموذج إلى الإدخال، وتحفظ قيمه المعتمدة الحالية وتبقى الرسمية في النتائج حتى يعاد اعتماده.", "The form returns to entry; its approved values are kept and stay official until re-approval.")}</>}
-          onSubmit={async (decisionRef) => {
-            qc.setQueryData(key, await api.post<Form>(`/api/forms/${f.id}/reopen/approve`, { decisionRef, note: null }));
-            void invalidate.afterFormDecision(qc);
-          }}
-          onClose={() => setDialog(null)} />
-      )}
-      {dialog === "reopenReject" && (
-        <DecisionModal title={L("رفض طلب إعادة الفتح", "Reject the reopen request")} field="note" label={L("سبب الرفض", "Reason")} okText={L("رفض", "Reject")} danger
-          explain={<>{L("سبب الطلب:", "Reason:")} {reopen?.reason}<br />{L("يبقى النموذج معتمدًا ومقفلًا، ويرى مقدم الطلب سبب الرفض.", "The form stays approved; the requester sees the reason.")}</>}
-          onSubmit={async (note) => {
-            qc.setQueryData(key, await api.post<Form>(`/api/forms/${f.id}/reopen/reject`, { note }));
-            void invalidate.afterFormDecision(qc);
-          }}
-          onClose={() => setDialog(null)} />
-      )}
-      {dialog === "extend" && <ExtendModal form={f} onClose={() => setDialog(null)} onDone={(next) => { qc.setQueryData(key, next); void invalidate.afterFormDecision(qc); }} />}
-      {dialog === "import" && <ImportModal formId={f.id} onClose={() => setDialog(null)} onApplied={() => void refresh()} />}
+      <FormDialogHost dialog={dialog} onClose={() => setDialog(null)} f={f} items={items} submit={submit} flushAll={autosave.flushAll}
+        marks={marks} clearMarks={() => setMarks({})} applyDecision={applyDecision} refresh={() => void refresh()} />
     </AutosaveContext.Provider>
   );
 }
