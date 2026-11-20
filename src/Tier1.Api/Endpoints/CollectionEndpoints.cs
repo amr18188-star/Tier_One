@@ -197,7 +197,8 @@ public static class CollectionEndpoints
                 var (rows, label) = await svc.ExportValuesAsync(ct);
                 return Results.File(workbook.Fill(rows), Xlsx, $"KPI-{label}.xlsx");
             })
-            .RequirePermission(Features.Results, Cap.View);
+            // ARCH-5: the endpoint declares what the service requires (the export special), as the results export does.
+            .RequireSpecial(Features.Results, "export").RequireRateLimiting(ApiSetup.SensitiveLimit);
         // مراجعة مسئول ملف Tier 1 ونقل القيم إلى مؤشرات الجامعة.
         api.MapGet("/review", async (Guid? cycleId, Tier1.Application.Scorecard.ReviewService svc, CancellationToken ct) => Results.Ok(await svc.GetAsync(cycleId, ct)))
             .RequirePermission(Features.University, Cap.View);

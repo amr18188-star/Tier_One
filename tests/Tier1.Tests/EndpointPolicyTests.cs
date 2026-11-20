@@ -42,6 +42,17 @@ public class EndpointPolicyTests
     private static string Name(RouteEndpoint e) =>
         $"{e.Metadata.GetMetadata<HttpMethodMetadata>()?.HttpMethods.FirstOrDefault()} {e.RoutePattern.RawText}".Replace("//", "/", StringComparison.Ordinal).TrimEnd('/');
 
+    /// <summary>ARCH-5: an export declares the export special at the endpoint, where the policy test sees it, not only in its service.</summary>
+    [Theory]
+    [InlineData("GET /api/results/{cycleId:guid}/export.xlsx")]
+    [InlineData("GET /api/scorecard/kpi.xlsx")]
+    public void Exports_require_the_export_special(string route)
+    {
+        var endpoint = Endpoints().Single(e => Name(e) == route);
+        var policies = endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>().Select(a => a.Policy).ToList();
+        Assert.Contains("perm:dc.results:export", policies);
+    }
+
     [Fact]
     public void Every_api_endpoint_declares_its_access()
     {
