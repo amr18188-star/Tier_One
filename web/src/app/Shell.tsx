@@ -145,7 +145,7 @@ export function Shell({ children }: { children: ReactNode }) {
     railTimer.current = window.setTimeout(() => setRailing(false), RAIL_MS);
   }
 
-  const canMatrix = perms.can("adm.roles", "V");
+  const canMatrix = canOpen(perms, ROUTE_NEEDS["/matrix"]);
   const pending = useQuery({
     queryKey: ["changes", "Pending"],
     queryFn: () => api.poll<RbacChange[]>("/api/iam/changes?status=Pending"),
@@ -153,7 +153,6 @@ export function Shell({ children }: { children: ReactNode }) {
     refetchInterval: 60_000,
   });
   const waiting = pending.data?.filter((c) => c.canDecide).length ?? 0;
-  const anyLog = ["log.audit", "log.security", "log.access", "log.tech"].some((f) => perms.can(f, "V"));
 
   // الأيقونات زخرفية؛ اسم الرابط نصه.
   const groups: NavGroup[] = [
@@ -161,39 +160,39 @@ export function Shell({ children }: { children: ReactNode }) {
     {
       key: "data", title: L("جمع البيانات والنتائج", "Data and results"), icon: <DatabaseOutlined aria-hidden />, items: [
         // بلا عداد في القائمة الجانبية (طلب المستخدم)؛ عدد النماذج المنتظرة يظهر في الرئيسية وصفحة النماذج.
-        perms.can("dc.forms", "V") && { to: "/forms", icon: <FormOutlined aria-hidden />, label: L("نماذج الجهات", "Unit forms"), tab: true },
+        canOpen(perms, ROUTE_NEEDS["/forms"]) && { to: "/forms", icon: <FormOutlined aria-hidden />, label: L("نماذج الجهات", "Unit forms"), tab: true },
         // بطاقة الجامعة كاملة لمن نطاقه الجامعة؛ مستخدم الكلية أو الإدارة يرى تقدم جهته.
-        canOpen(perms, ROUTE_NEEDS.scorecard) && { to: "/scorecard", icon: <TrophyOutlined aria-hidden />, label: L("بطاقة الأداء والتصنيف", "Scorecard and tier"), tab: true },
-        perms.can("dc.university", "V") && { to: "/review", icon: <FileDoneOutlined aria-hidden />, label: L("مراجعة مؤشرات الكليات", "Review college indicators"), tab: true },
-        perms.can("dc.results", "V") && { to: "/progress", icon: <RiseOutlined aria-hidden />, label: L("تقدم الكلية", "College progress") },
-        perms.can("dc.results", "V") && { to: "/results", icon: <BarChartOutlined aria-hidden />, label: L("النتائج والمقارنات", "Results") },
-        perms.can("dc.cycles", "E") && { to: "/cycles", icon: <CalendarOutlined aria-hidden />, label: L("دورات جمع البيانات", "Collection cycles") },
+        canOpen(perms, ROUTE_NEEDS["/scorecard"]) && { to: "/scorecard", icon: <TrophyOutlined aria-hidden />, label: L("بطاقة الأداء والتصنيف", "Scorecard and tier"), tab: true },
+        canOpen(perms, ROUTE_NEEDS["/review"]) && { to: "/review", icon: <FileDoneOutlined aria-hidden />, label: L("مراجعة مؤشرات الكليات", "Review college indicators"), tab: true },
+        canOpen(perms, ROUTE_NEEDS["/progress"]) && { to: "/progress", icon: <RiseOutlined aria-hidden />, label: L("تقدم الكلية", "College progress") },
+        canOpen(perms, ROUTE_NEEDS["/results"]) && { to: "/results", icon: <BarChartOutlined aria-hidden />, label: L("النتائج والمقارنات", "Results") },
+        canOpen(perms, ROUTE_NEEDS["/cycles"]) && { to: "/cycles", icon: <CalendarOutlined aria-hidden />, label: L("دورات جمع البيانات", "Collection cycles") },
       ],
     },
     {
       key: "plan", title: L("الخطة والمؤشرات", "Plan and indicators"), icon: <AimOutlined aria-hidden />, items: [
-        perms.can("kpi.strategy", "V") && { to: "/strategy", icon: <PartitionOutlined aria-hidden />, label: L("الخطة الاستراتيجية", "Strategic plan"), end: true },
-        perms.can("kpi.strategy", "V") && { to: "/strategy/document", icon: <FilePdfOutlined aria-hidden />, label: L("وثيقة الخطة الاستراتيجية", "Strategic plan document") },
-        perms.can("kpi.dictionary", "V") && { to: "/indicators", icon: <UnorderedListOutlined aria-hidden />, label: L("قاموس المؤشرات", "Indicators"), tab: true },
+        canOpen(perms, ROUTE_NEEDS["/strategy"]) && { to: "/strategy", icon: <PartitionOutlined aria-hidden />, label: L("الخطة الاستراتيجية", "Strategic plan"), end: true },
+        canOpen(perms, ROUTE_NEEDS["/strategy/document"]) && { to: "/strategy/document", icon: <FilePdfOutlined aria-hidden />, label: L("وثيقة الخطة الاستراتيجية", "Strategic plan document") },
+        canOpen(perms, ROUTE_NEEDS["/indicators"]) && { to: "/indicators", icon: <UnorderedListOutlined aria-hidden />, label: L("قاموس المؤشرات", "Indicators"), tab: true },
       ],
     },
     {
       key: "org", title: L("الجهات والهياكل", "Units and structures"), icon: <BankOutlined aria-hidden />, items: [
-        canOpen(perms, ROUTE_NEEDS.structure) && { to: "/structure", icon: <ClusterOutlined aria-hidden />, label: L("هياكل Tier 1 بالكليات", "College structures"), tab: true },
-        perms.can("org.units", "V") && { to: "/units", icon: <ApartmentOutlined aria-hidden />, label: L("الجهات", "Units") },
+        canOpen(perms, ROUTE_NEEDS["/structure"]) && { to: "/structure", icon: <ClusterOutlined aria-hidden />, label: L("هياكل Tier 1 بالكليات", "College structures"), tab: true },
+        canOpen(perms, ROUTE_NEEDS["/units"]) && { to: "/units", icon: <ApartmentOutlined aria-hidden />, label: L("الجهات", "Units") },
       ],
     },
     {
       key: "admin", title: L("الإدارة", "Administration"), icon: <ControlOutlined aria-hidden />, items: [
-        canMatrix && { to: "/matrix", icon: <SafetyCertificateOutlined aria-hidden />, label: L("مصفوفة الصلاحيات", "Permission matrix") },
-        canMatrix && {
+        canOpen(perms, ROUTE_NEEDS["/matrix"]) && { to: "/matrix", icon: <SafetyCertificateOutlined aria-hidden />, label: L("مصفوفة الصلاحيات", "Permission matrix") },
+        canOpen(perms, ROUTE_NEEDS["/changes"]) && {
           to: "/changes", icon: <BranchesOutlined aria-hidden />, label: L("طلبات التعديل", "Change requests"),
           badge: waiting, badgeText: L(`${waiting} ينتظر قرارك`, `${waiting} waiting for your decision`),
         },
-        (perms.can("adm.users", "V") || perms.can("adm.grants", "V")) && { to: "/users", icon: <TeamOutlined aria-hidden />, label: L("الحسابات والأدوار", "Accounts and roles") },
-        anyLog && { to: "/logs", icon: <AuditOutlined aria-hidden />, label: L("السجلات", "Logs") },
-        perms.can("adm.settings", "V") && { to: "/settings", icon: <SettingOutlined aria-hidden />, label: L("إعدادات النظام", "System settings") },
-        perms.can("adm.mail", "V") && { to: "/mail", icon: <MailOutlined aria-hidden />, label: L("البريد الصادر", "Outgoing mail") },
+        canOpen(perms, ROUTE_NEEDS["/users"]) && { to: "/users", icon: <TeamOutlined aria-hidden />, label: L("الحسابات والأدوار", "Accounts and roles") },
+        canOpen(perms, ROUTE_NEEDS["/logs"]) && { to: "/logs", icon: <AuditOutlined aria-hidden />, label: L("السجلات", "Logs") },
+        canOpen(perms, ROUTE_NEEDS["/settings"]) && { to: "/settings", icon: <SettingOutlined aria-hidden />, label: L("إعدادات النظام", "System settings") },
+        canOpen(perms, ROUTE_NEEDS["/mail"]) && { to: "/mail", icon: <MailOutlined aria-hidden />, label: L("البريد الصادر", "Outgoing mail") },
       ],
     },
   ];
@@ -407,7 +406,7 @@ function GlobalSearch() {
   const indicators = useQuery({ queryKey: ["indicators", "all"], queryFn: () => api.get<IndicatorRow[]>("/api/kpi/indicators"), enabled: perms.can("kpi.dictionary", "V"), staleTime: 300_000 });
   const units = useUnits({ enabled: perms.can("org.units", "V"), staleTime: 300_000 });
 
-  const opensStructure = canOpen(perms, ROUTE_NEEDS.structure);
+  const opensStructure = canOpen(perms, ROUTE_NEEDS["/structure"]);
   const options = useMemo(() => {
     const t = text.trim();
     if (t.length < 2) return [];

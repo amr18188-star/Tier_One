@@ -141,28 +141,28 @@ function Gate() {
         <Suspense fallback={pageFallback}>
           <Routes>
             <Route path="/" element={<HomePage />} />
-            <Route path="/strategy" element={<Guard need={["kpi.strategy:V"]}><StrategyPage /></Guard>} />
-            <Route path="/strategy/document" element={<Guard need={["kpi.strategy:V"]}><PlanDocumentPage /></Guard>} />
-            <Route path="/indicators" element={<Guard need={["kpi.dictionary:V"]}><IndicatorsPage /></Guard>} />
-            <Route path="/indicators/:code" element={<Guard need={["kpi.dictionary:V"]}><IndicatorPage /></Guard>} />
+            <Route path="/strategy" element={<Guard need={ROUTE_NEEDS["/strategy"]}><StrategyPage /></Guard>} />
+            <Route path="/strategy/document" element={<Guard need={ROUTE_NEEDS["/strategy/document"]}><PlanDocumentPage /></Guard>} />
+            <Route path="/indicators" element={<Guard need={ROUTE_NEEDS["/indicators"]}><IndicatorsPage /></Guard>} />
+            <Route path="/indicators/:code" element={<Guard need={ROUTE_NEEDS["/indicators/:code"]}><IndicatorPage /></Guard>} />
             {/* سجل التعارضات أخفي بعد اعتماد الإطار الشامل نهائيًا؛ روابطه القديمة تعود إلى الرئيسية. */}
-            <Route path="/scorecard" element={<Guard need={ROUTE_NEEDS.scorecard}><ScorecardPage /></Guard>} />
-            <Route path="/structure" element={<Guard need={ROUTE_NEEDS.structure}><StructurePage /></Guard>} />
-            <Route path="/structure/:id" element={<Guard need={ROUTE_NEEDS.structure}><CollegeStructurePage /></Guard>} />
-            <Route path="/review" element={<Guard need={["dc.university:V"]}><ReviewPage /></Guard>} />
-            <Route path="/progress" element={<Guard need={["dc.results:V"]}><ProgressPage /></Guard>} />
-            <Route path="/cycles"element={<Guard need={["dc.cycles:E"]}><CyclesPage /></Guard>} />
-            <Route path="/forms" element={<Guard need={["dc.forms:V"]}><FormsPage /></Guard>} />
-            <Route path="/forms/:id" element={<Guard need={["dc.forms:V"]}><FormPage /></Guard>} />
-            <Route path="/results" element={<Guard need={["dc.results:V"]}><ResultsPage /></Guard>} />
-            <Route path="/units" element={<Guard need={["org.units:V"]}><UnitsPage /></Guard>} />
-            <Route path="/matrix" element={<Guard need={["adm.roles:V"]}><MatrixPage /></Guard>} />
-            <Route path="/matrix/:roleId" element={<Guard need={["adm.roles:V"]}><MatrixPage /></Guard>} />
-            <Route path="/changes" element={<Guard need={["adm.roles:V"]}><ChangesPage /></Guard>} />
-            <Route path="/users" element={<Guard need={["adm.users:V", "adm.grants:V"]}><UsersPage /></Guard>} />
-            <Route path="/logs" element={<Guard need={["log.audit:V", "log.security:V", "log.access:V", "log.tech:V"]}><LogsPage /></Guard>} />
-            <Route path="/settings" element={<Guard need={["adm.settings:V"]}><SettingsPage /></Guard>} />
-            <Route path="/mail" element={<Guard need={["adm.mail:V"]}><MailPage /></Guard>} />
+            <Route path="/scorecard" element={<Guard need={ROUTE_NEEDS["/scorecard"]}><ScorecardPage /></Guard>} />
+            <Route path="/structure" element={<Guard need={ROUTE_NEEDS["/structure"]}><StructurePage /></Guard>} />
+            <Route path="/structure/:id" element={<Guard need={ROUTE_NEEDS["/structure/:id"]}><CollegeStructurePage /></Guard>} />
+            <Route path="/review" element={<Guard need={ROUTE_NEEDS["/review"]}><ReviewPage /></Guard>} />
+            <Route path="/progress" element={<Guard need={ROUTE_NEEDS["/progress"]}><ProgressPage /></Guard>} />
+            <Route path="/cycles" element={<Guard need={ROUTE_NEEDS["/cycles"]}><CyclesPage /></Guard>} />
+            <Route path="/forms" element={<Guard need={ROUTE_NEEDS["/forms"]}><FormsPage /></Guard>} />
+            <Route path="/forms/:id" element={<Guard need={ROUTE_NEEDS["/forms/:id"]}><FormPage /></Guard>} />
+            <Route path="/results" element={<Guard need={ROUTE_NEEDS["/results"]}><ResultsPage /></Guard>} />
+            <Route path="/units" element={<Guard need={ROUTE_NEEDS["/units"]}><UnitsPage /></Guard>} />
+            <Route path="/matrix" element={<Guard need={ROUTE_NEEDS["/matrix"]}><MatrixPage /></Guard>} />
+            <Route path="/matrix/:roleId" element={<Guard need={ROUTE_NEEDS["/matrix/:roleId"]}><MatrixPage /></Guard>} />
+            <Route path="/changes" element={<Guard need={ROUTE_NEEDS["/changes"]}><ChangesPage /></Guard>} />
+            <Route path="/users" element={<Guard need={ROUTE_NEEDS["/users"]}><UsersPage /></Guard>} />
+            <Route path="/logs" element={<Guard need={ROUTE_NEEDS["/logs"]}><LogsPage /></Guard>} />
+            <Route path="/settings" element={<Guard need={ROUTE_NEEDS["/settings"]}><SettingsPage /></Guard>} />
+            <Route path="/mail" element={<Guard need={ROUTE_NEEDS["/mail"]}><MailPage /></Guard>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
