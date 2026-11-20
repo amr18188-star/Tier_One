@@ -104,6 +104,7 @@ if (app.Configuration.GetValue("Database:MigrateOnStartup", app.Environment.IsDe
 app.UsePipeline();
 
 app.MapGroup("/api").MapApi();
+if (app.Environment.IsDevelopment()) app.MapOpenApi().AllowAnonymous();
 
 app.MapGet("/health/live", () => Results.Ok(new { status = "live" })).AllowAnonymous();
 // PostgreSQL down is 503; Mongo, backlogs and failed notifications degrade the answer (200) and name the check.
