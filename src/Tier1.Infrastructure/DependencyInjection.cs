@@ -55,6 +55,7 @@ public static class DependencyInjection
             return new MongoClient(settings);
         });
         services.AddSingleton<MongoLogContext>();
+        services.AddSingleton<Health.ReadinessProbe>();
         services.AddSingleton<ChainKeyHolder>();
         services.AddScoped<CheckpointPublisher>();
         services.Configure<EmailOptions>(config.GetSection("Email"));

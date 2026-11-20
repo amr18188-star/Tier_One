@@ -39,7 +39,7 @@ cp deploy/.env.example deploy/.env     # املأ كل القيم (كلمات م
    docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d
    ```
    كلمة المرور المؤقتة للمدير الأعلى تطبع مرة واحدة، وتغير عند أول دخول مع تفعيل التحقق بخطوتين.
-4. **التحقق**: `https://tier1.capu.edu.eg/health/ready` يعيد `ready`.
+4. **التحقق**: `https://tier1.capu.edu.eg/health/ready` يعيد `"status": "ready"`.
 
 **التحديث**: `git pull`، ثم `build app`، ثم `run --rm app --migrate`، ثم `up -d app`. الترحيل لا يجري تلقائيًا عند بدء الإنتاج عمدًا.
 
@@ -130,7 +130,13 @@ dotnet Tier1.Api.dll --restore-test E:\Backups\Tier1	ier1-YYYYMMDD-HHMMSS
 
 ## المراقبة
 
-- `GET /health/live` (التطبيق يعمل) و`GET /health/ready` (PostgreSQL متاح).
+- `GET /health/live`: التطبيق يعمل.
+- `GET /health/ready`: 503 إن تعذر PostgreSQL وحده. وفيما عداه 200 بحالة `ready` أو `degraded`، مع كل فحص وحالته وسببه دون أرقام:
+  - `mongo`: قاعدة السجلات غير متاحة (القيود تنتظر في `logs.outbox`).
+  - `audit`: قيود لم تصل MongoDB منذ أكثر من `Health:AuditBacklogMinutes` (15).
+  - `events`: حدث فشل نهائيًا في آخر يوم، أو معلق أكثر من `Health:EventBacklogMinutes` (15).
+  - `mail`: بريد فشل نهائيًا في آخر يوم (صفحة «البريد الصادر»).
+  - اربط التنبيه بحالة `degraded`، لا بالرمز 503 وحده.
 - الإشعارات تكتب بعد ثبوت العملية من أحداث `int.outbox_events`. حدث بقي معلقًا طويلًا أو فشل بعد عشر محاولات يعني أن الإشعارات متوقفة: راجع `last_error` فيه.
 - سجلات التدقيق والأمان والوصول في MongoDB، ويعرضها المراجع الرقابي من صفحة «السجلات»، والتحقق الليلي من سلامة السلسلة يرسل نقطة تثبيت بالبريد.
 - البريد الصادر في جدول `adm.mail_outbox` بحالته ومحاولاته، وتعرضه صفحة «البريد الصادر» لمن يملك `adm.mail` (مسؤول النظام افتراضيًا) مع إعادة إرسال الإشعار الفاشل؛ التذكيرات اليومية بالنماذج القريبة من موعدها تبدأ بعد الثامنة صباحًا بتوقيت القاهرة.

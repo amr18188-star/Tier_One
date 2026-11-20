@@ -106,8 +106,12 @@ app.UsePipeline();
 app.MapGroup("/api").MapApi();
 
 app.MapGet("/health/live", () => Results.Ok(new { status = "live" })).AllowAnonymous();
-app.MapGet("/health/ready", async (NpgsqlDataSource pg, CancellationToken ct) =>
-    await DatabaseMigrator.CanConnectAsync(pg, ct) ? Results.Ok(new { status = "ready" }) : Results.Json(new { status = "unavailable" }, statusCode: 503)).AllowAnonymous();
+// PostgreSQL down is 503; Mongo, backlogs and failed notifications degrade the answer (200) and name the check.
+app.MapGet("/health/ready", async (Tier1.Infrastructure.Health.ReadinessProbe probe, CancellationToken ct) =>
+{
+    var r = await probe.CheckAsync(ct);
+    return Results.Json(r, statusCode: r.Status == "unavailable" ? 503 : 200);
+}).AllowAnonymous();
 
 app.MapFallback("/api/{**rest}", () => Results.NotFound()).AllowAnonymous();
 var spa = new StaticFileOptions { OnPrepareResponse = c => c.Context.Response.Headers.CacheControl = "no-cache" };
