@@ -29,3 +29,27 @@
   font-weight: 600;
   line-height: 1.75;
 }
+
+/* FE-9: shown while the animation chunk loads; same box, so nothing shifts when it arrives. */
+.app-loading__ring {
+  display: grid;
+  place-items: center;
+}
+
+.app-loading__ring::before {
+  content: "";
+  inline-size: 40px;
+  block-size: 40px;
+  border-radius: 50%;
+  border: 3px solid color-mix(in srgb, var(--ds-heading) 18%, transparent);
+  border-block-start-color: var(--ds-heading);
+  animation: app-loading-spin 0.9s linear infinite;
+}
+
+@keyframes app-loading-spin {
+  to { transform: rotate(1turn); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-loading__ring::before { animation: none; }
+}
