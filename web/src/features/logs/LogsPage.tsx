@@ -97,22 +97,22 @@ function LogTable({ collection, feature }: { collection: string; feature: string
     <div className="stack">
       <div className="lcp-filters">
         <DatePicker.RangePicker value={draft.range as never} onChange={(v) => setDraft({ ...draft, range: v as Filters["range"] })} />
-        <Input placeholder={tech ? L("المسار أو المهمة", "Path or job") : L("رمز الإجراء، مثل iam.change_approve", "Action code, e.g. iam.change_approve")} value={draft.action} onChange={(e) => setDraft({ ...draft, action: e.target.value })} style={{ width: 240 }} dir="ltr" />
+        <Input placeholder={tech ? L("المسار أو المهمة", "Path or job") : L("رمز الإجراء، مثل iam.change_approve", "Action code, e.g. iam.change_approve")} aria-label={tech ? L("المسار أو المهمة", "Path or job") : L("رمز الإجراء، مثل iam.change_approve", "Action code, e.g. iam.change_approve")} value={draft.action} onChange={(e) => setDraft({ ...draft, action: e.target.value })} style={{ width: 240 }} dir="ltr" />
         {!tech && (
           <>
             <Select
               allowClear
-              placeholder={L("النتيجة", "Outcome")}
+              placeholder={L("النتيجة", "Outcome")} aria-label={L("النتيجة", "Outcome")}
               value={draft.outcome || undefined}
               onChange={(v) => setDraft({ ...draft, outcome: v ?? "" })}
               style={{ width: 140 }}
               options={[{ value: "success", label: L("نجاح", "Success") }, { value: "denied", label: L("مرفوض", "Denied") }, { value: "failure", label: L("فشل", "Failure") }]}
             />
-            <Input placeholder={L("المرجع أو البريد", "Reference or email")} value={draft.ref} onChange={(e) => setDraft({ ...draft, ref: e.target.value })} style={{ width: 180 }} />
-            <Input placeholder="IP" value={draft.ip} onChange={(e) => setDraft({ ...draft, ip: e.target.value })} style={{ width: 130 }} dir="ltr" />
+            <Input placeholder={L("المرجع أو البريد", "Reference or email")} aria-label={L("المرجع أو البريد", "Reference or email")} value={draft.ref} onChange={(e) => setDraft({ ...draft, ref: e.target.value })} style={{ width: 180 }} />
+            <Input placeholder="IP" aria-label="IP" value={draft.ip} onChange={(e) => setDraft({ ...draft, ip: e.target.value })} style={{ width: 130 }} dir="ltr" />
           </>
         )}
-        <Input placeholder={L("معرّف الارتباط", "Correlation ID")} value={draft.correlationId} onChange={(e) => setDraft({ ...draft, correlationId: e.target.value })} style={{ width: 200 }} dir="ltr" />
+        <Input placeholder={L("معرّف الارتباط", "Correlation ID")} aria-label={L("معرّف الارتباط", "Correlation ID")} value={draft.correlationId} onChange={(e) => setDraft({ ...draft, correlationId: e.target.value })} style={{ width: 200 }} dir="ltr" />
         <Button type="primary" onClick={() => { setFilters(draft); setPage(1); }}>{L("ابحث", "Search")}</Button>
         <Button onClick={() => { setDraft(EMPTY); setFilters(EMPTY); setPage(1); }}>{L("مسح", "Clear")}</Button>
         {perms.can(feature, "export") && <Button icon={<DownloadOutlined />} onClick={exportCsv}>{L("تصدير CSV", "Export CSV")}</Button>}

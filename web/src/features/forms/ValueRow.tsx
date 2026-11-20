@@ -1,5 +1,5 @@
-import { useRef, useState } from "react";
-import { Button, Checkbox, Input, InputNumber, Popover, Segmented, Tooltip, Upload } from "antd";
+import { useId, useRef, useState } from "react";
+import { App, Button, Checkbox, Input, InputNumber, Popover, Segmented, Tooltip, Upload } from "antd";
 import {
   CheckCircleOutlined, CloseCircleFilled, ExclamationCircleOutlined, InfoCircleOutlined, LoadingOutlined, MinusCircleOutlined, PaperClipOutlined, QuestionCircleOutlined,
   StopOutlined, UploadOutlined, WarningFilled,
@@ -10,8 +10,9 @@ import { errorText } from "../../shared/format";
 import { L } from "../../shared/i18n";
 import { direction as directionText, fileSize, num, withUnit } from "../../shared/labels";
 import { PendingTarget } from "../../shared/PendingTarget";
+import { DecisionModal } from "../../shared/DecisionModal";
 import { NoteCard } from "./NoteCard";
-import { useValueAutosave, type Draft, type SaveError, type SaveState } from "./useValueAutosave";
+import { incompleteReason, useValueAutosave, type Draft, type SaveError, type SaveState } from "./useValueAutosave";
 
 export interface ReturnMark { checked: boolean; note: string }
 
@@ -26,6 +27,10 @@ export function ValueRow({ formId, item, editable, reviewing, mark, onMark, onSa
 }) {
   const auto = useValueAutosave({ formId, item, editable, onSaved });
   const draft = auto.draft;
+  const uid = useId();
+  const ids = { reason: `${uid}-reason`, explanation: `${uid}-explanation`, note: `${uid}-note`, issues: `${uid}-issues`, incomplete: `${uid}-incomplete` };
+  // UX-3: a draft the server would refuse is not sent; say why instead of dropping it silently.
+  const incomplete = editable ? incompleteReason(item, draft) : null;
   const row = useRef<HTMLDivElement>(null);
   const pct = item.unit.trim() === "%";
   const weighted = item.aggregation === "WeightedAverage";
@@ -120,24 +125,36 @@ export function ValueRow({ formId, item, editable, reviewing, mark, onMark, onSa
                 </div>
               )
             ) : (
-              <Input value={draft.reason} onChange={(e) => update({ reason: e.target.value })} maxLength={500}
-                placeholder={draft.kind === "NotAvailable" ? L("لماذا لا تتوفر القيمة؟", "Why is the value unavailable?") : L("لماذا لا ينطبق المؤشر على الجهة؟", "Why does it not apply?")}
-                onPressEnter={() => commit()} />
+              <div className="f-field">
+                {/* A11Y-2: a visible label, not a placeholder only; the save rule and the server issues are read with it. */}
+                <label htmlFor={ids.reason} className="f-label">
+                  {draft.kind === "NotAvailable" ? L("سبب عدم التوفر", "Why it is not available") : L("سبب عدم الانطباق", "Why it does not apply")}
+                </label>
+                <Input id={ids.reason} value={draft.reason} onChange={(e) => update({ reason: e.target.value })} maxLength={500}
+                  placeholder={draft.kind === "NotAvailable" ? L("لماذا لا تتوفر القيمة؟", "Why is the value unavailable?") : L("لماذا لا ينطبق المؤشر على الجهة؟", "Why does it not apply?")}
+                  aria-describedby={`${ids.incomplete} ${ids.issues}`} onPressEnter={() => commit()} />
+              </div>
             )}
             {(warnings.length > 0 || draft.explanation) && (
-              <Input.TextArea rows={1} autoSize={{ minRows: 1, maxRows: 4 }} value={draft.explanation} onChange={(e) => update({ explanation: e.target.value })} maxLength={1000}
-                placeholder={L("تفسير للمراجع (مطلوب عند الاختلاف الكبير عن العام السابق)", "Explanation for the reviewer")} />
+              <div className="f-field">
+                <label htmlFor={ids.explanation} className="f-label">{L("تفسير للمراجع", "Explanation for the reviewer")}</label>
+                <Input.TextArea id={ids.explanation} rows={1} autoSize={{ minRows: 1, maxRows: 4 }} value={draft.explanation} onChange={(e) => update({ explanation: e.target.value })} maxLength={1000}
+                  placeholder={L("مطلوب عند الاختلاف الكبير عن العام السابق", "Required when far from last year")} aria-describedby={ids.issues} />
+              </div>
             )}
+            {incomplete && <span id={ids.incomplete} className="f-issue warn" role="status"><WarningFilled aria-hidden /> {L("لم يحفظ بعد:", "Not saved yet:")} {incomplete}</span>}
           </>
         ) : (
           <ReadValue item={item} />
         )}
 
         {editable && <SaveStatus state={auto.state} error={auto.error} onRetry={auto.retry} onDiscard={auto.discard} />}
-        {!auto.error && errors.map((i) => <span key={i.code} className="f-issue err"><CloseCircleFilled /> {i.messageAr}</span>)}
-        {warnings.map((i) => <span key={i.code} className="f-issue warn"><WarningFilled /> {i.messageAr}</span>)}
+        <span id={ids.issues}>
+          {!auto.error && errors.map((i) => <span key={i.code} className="f-issue err"><CloseCircleFilled aria-hidden /> {i.messageAr}</span>)}
+          {warnings.map((i) => <span key={i.code} className="f-issue warn"><WarningFilled aria-hidden /> {i.messageAr}</span>)}
+        </span>
 
-        <Evidence formId={formId} item={item} editable={editable && !!item.value} docs={liveEvidence} onSaved={onSaved} />
+        <Evidence formId={formId} item={item} editable={editable} hasValue={!!item.value} docs={liveEvidence} onSaved={onSaved} />
 
         {reviewing && onMark && (
           <div className="f-review">
@@ -145,8 +162,11 @@ export function ValueRow({ formId, item, editable, reviewing, mark, onMark, onSa
               {L("يحتاج تصحيحًا", "Needs correction")}
             </Checkbox>
             {mark?.checked && (
-              <Input className="mt" value={mark.note} onChange={(e) => onMark({ checked: true, note: e.target.value })} maxLength={1000} autoFocus
-                placeholder={L("ما المطلوب تصحيحه في هذا المؤشر؟", "What needs correcting?")} />
+              <div className="f-field mt">
+                <label htmlFor={ids.note} className="f-label">{L("ما المطلوب تصحيحه", "What needs correcting")}</label>
+                <Input id={ids.note} value={mark.note} onChange={(e) => onMark({ checked: true, note: e.target.value })} maxLength={1000} autoFocus
+                  placeholder={L("ما المطلوب تصحيحه في هذا المؤشر؟", "What needs correcting?")} />
+              </div>
             )}
           </div>
         )}
@@ -217,25 +237,58 @@ function ReadValue({ item }: { item: FormItem }) {
   );
 }
 
-function Evidence({ formId, item, editable, docs, onSaved }: { formId: string; item: FormItem; editable: boolean; docs: Doc[]; onSaved: (item: FormItem) => void }) {
+/** Evidence types and size the server accepts (DocumentsService.Allowed, Files:MaxMb). */
+const EVIDENCE_TYPES = [".pdf", ".png", ".jpg", ".jpeg", ".docx", ".xlsx", ".pptx"];
+const EVIDENCE_MAX_MB = 20;
+
+/**
+ * UX-2: evidence of a value. The types and size limit are shown and checked before uploading; a wrong file is voided with a
+ * reason (it stays in the log); before a value exists the button says why it waits; upload errors are announced.
+ */
+function Evidence({ formId, item, editable, hasValue, docs, onSaved }: {
+  formId: string; item: FormItem; editable: boolean; hasValue: boolean; docs: Doc[]; onSaved: (item: FormItem) => void;
+}) {
+  const { message } = App.useApp();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [voiding, setVoiding] = useState<Doc | null>(null);
   if (!item.evidenceRequired && docs.length === 0 && !editable) return null;
   const refresh = async () => {
     const form = await api.get<{ sections: { items: FormItem[] }[] }>(`/api/forms/${formId}`);
     const fresh = form.sections.flatMap((s) => s.items).find((i) => i.indicatorId === item.indicatorId);
     if (fresh) onSaved(fresh);
   };
+  const check = (file: File): string | null => {
+    const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
+    if (!EVIDENCE_TYPES.includes(ext)) return L("نوع الملف غير مقبول. المقبول: PDF وصور PNG/JPG وWord وExcel وPowerPoint.", "File type not accepted: PDF, PNG/JPG, Word, Excel or PowerPoint.");
+    if (file.size > EVIDENCE_MAX_MB * 1024 * 1024) return L(`الملف أكبر من ${EVIDENCE_MAX_MB} ميجابايت.`, `The file is larger than ${EVIDENCE_MAX_MB} MB.`);
+    return null;
+  };
+  const hint = hasValue
+    ? L(`PDF أو صورة أو Word/Excel/PowerPoint، حتى ${EVIDENCE_MAX_MB} ميجابايت.`, `PDF, image, Word, Excel or PowerPoint, up to ${EVIDENCE_MAX_MB} MB.`)
+    : L("أدخل القيمة أولًا ثم أرفق الدليل.", "Enter the value first, then attach the evidence.");
   return (
     <div className="f-ev">
       {docs.map((d) => (
-        <a key={d.id} href={`/api/documents/${d.id}?inline=true`} target="_blank" rel="noreferrer" title={d.description ?? d.fileName}>
-          <PaperClipOutlined /> {d.fileName} <small className="muted ltr">{fileSize(d.sizeBytes)}</small>
-        </a>
+        <span key={d.id} className="f-ev-doc">
+          <a href={`/api/documents/${d.id}?inline=true`} target="_blank" rel="noreferrer" title={d.description ?? d.fileName}>
+            <PaperClipOutlined aria-hidden /> {d.fileName} <small className="muted ltr">{fileSize(d.sizeBytes)}</small>
+          </a>
+          {editable && (
+            <Button size="small" type="link" danger onClick={() => setVoiding(d)} aria-label={L(`إبطال الدليل ${d.fileName}`, `Void evidence ${d.fileName}`)}>
+              {L("إبطال", "Void")}
+            </Button>
+          )}
+        </span>
       ))}
-      {item.evidenceRequired && docs.length === 0 && <span className="need"><WarningFilled /> {L("الدليل مطلوب", "Evidence required")}</span>}
-      {editable && (
-        <Upload showUploadList={false} accept=".pdf,.png,.jpg,.jpeg,.docx,.xlsx,.pptx"
+      {item.evidenceRequired && docs.length === 0 && <span className="need"><WarningFilled aria-hidden /> {L("الدليل مطلوب", "Evidence required")}</span>}
+      {editable && (hasValue ? (
+        <Upload showUploadList={false} accept={EVIDENCE_TYPES.join(",")}
+          beforeUpload={(file) => {
+            const problem = check(file as File);
+            setError(problem);
+            return problem ? Upload.LIST_IGNORE : true;
+          }}
           customRequest={async ({ file }) => {
             setBusy(true);
             setError(null);
@@ -250,8 +303,22 @@ function Evidence({ formId, item, editable, docs, onSaved }: { formId: string; i
           }}>
           <Button size="small" icon={busy ? <LoadingOutlined /> : <UploadOutlined />} disabled={busy}>{L("إرفاق دليل", "Attach evidence")}</Button>
         </Upload>
+      ) : (
+        <Button size="small" icon={<UploadOutlined />} disabled>{L("إرفاق دليل", "Attach evidence")}</Button>
+      ))}
+      {editable && <small className="muted f-ev-hint">{hint}</small>}
+      {error && <span className="f-issue err" role="alert"><CloseCircleFilled aria-hidden /> {error}</span>}
+      {voiding && (
+        <DecisionModal title={L("إبطال دليل", "Void evidence")} field="note" label={L("سبب الإبطال", "Reason")} okText={L("إبطال", "Void")} danger
+          explain={L(`يبطل «${voiding.fileName}» فلا يراه المراجع دليلًا، ويبقى في سجل النموذج بسببه. ارفع الملف الصحيح بعده.`,
+            `"${voiding.fileName}" is voided: reviewers no longer see it, and it stays in the form's log with the reason.`)}
+          onSubmit={async (note) => {
+            await api.post(`/api/documents/${voiding.id}/void`, { note });
+            await refresh();
+            message.success(L("أبطل الدليل.", "Evidence voided."));
+          }}
+          onClose={() => setVoiding(null)} />
       )}
-      {error && <span className="f-issue err"><CloseCircleFilled /> {error}</span>}
     </div>
   );
 }

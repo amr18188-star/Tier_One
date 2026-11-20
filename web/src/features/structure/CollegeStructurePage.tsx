@@ -87,7 +87,7 @@ export default function CollegeStructurePage() {
               subtitle={asOf ? L(`الهيكل كما كان في ${formatDate(asOf)}`, `As of ${formatDate(asOf)}`) : L("الهيكل الحالي", "Current structure")}
               extra={
                 <div className="t1-sticky-actions no-print">
-                  <DatePicker allowClear placeholder={L("عرض في تاريخ سابق", "View as of a date")} onChange={(d) => setAsOf(d ? d.format("YYYY-MM-DD") : null)}
+                  <DatePicker allowClear placeholder={L("عرض في تاريخ سابق", "View as of a date")} aria-label={L("عرض في تاريخ سابق", "View as of a date")} onChange={(d) => setAsOf(d ? d.format("YYYY-MM-DD") : null)}
                     disabledDate={(d) => d.isAfter(dayjs(), "day")} />
                   <Button icon={<PrinterOutlined />} onClick={() => window.print()}>{L("طباعة", "Print")}</Button>
                 </div>

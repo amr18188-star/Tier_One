@@ -92,7 +92,7 @@ export default function UnitIndicatorsDrawer({ unit, onClose }: { unit: OrgUnit;
                 {L("تخصيص مؤشرات هذه الجهة", "Customise this unit's indicators")}
               </label>
             )}
-            <Input allowClear prefix={<SearchOutlined />} placeholder={L("بحث بالكود أو الاسم", "Search code or name")} value={q} onChange={(e) => setQ(e.target.value)} className="un-search" />
+            <Input allowClear prefix={<SearchOutlined />} placeholder={L("بحث بالكود أو الاسم", "Search code or name")} aria-label={L("بحث بالكود أو الاسم", "Search code or name")} value={q} onChange={(e) => setQ(e.target.value)} className="un-search" />
             {editable && (
               <span className="un-bulk">
                 <Button size="small" onClick={() => toggle(groups.flatMap((g) => g.indicators.filter(free).map((i) => i.id)), true)}>{L("تحديد الظاهر", "Select shown")}</Button>

@@ -98,7 +98,7 @@ export default function IndicatorsPage() {
             options={stdOptions.map((s) => ({ value: s.code, label: `${stdLabel(s.code)} — ${s.nameAr} (${s.indicatorCount})` }))} />
           <Segmented value={status ?? "all"} onChange={(v) => set("status", v === "all" ? undefined : String(v))}
             options={[{ value: "all", label: L("الكل", "All") }, ...STATUSES.map((s) => ({ value: s, label: definitionStatus[s].text }))]} />
-          <Input.Search key={q} allowClear defaultValue={q} placeholder={L("كود المؤشر أو اسمه", "Code or name")} onSearch={(v) => set("q", v || undefined)} />
+          <Input.Search key={q} allowClear defaultValue={q} placeholder={L("كود المؤشر أو اسمه", "Code or name")} aria-label={L("كود المؤشر أو اسمه", "Code or name")} onSearch={(v) => set("q", v || undefined)} />
           <label className="lcp-switch">
             <Switch size="small" checked={withConflicts} onChange={(v) => set("conflicts", v ? "1" : undefined)} /> {L("بتعارضات مفتوحة فقط", "Open conflicts only")}
           </label>
@@ -117,6 +117,7 @@ export default function IndicatorsPage() {
           data={indicators}
           resetKey={`${s.code}|${standard}|${status}|${q}|${withConflicts}|${pillar}`}
           onRowClick={(r) => navigate(`/indicators/${r.code}`)}
+          rowLabel={(r) => L(`فتح المؤشر ${r.code} ${r.nameAr}`, `Open indicator ${r.code}`)}
           pageSizes={[20, 50, 120]}
           columns={[
             { title: L("الكود", "Code"), dataIndex: "code", width: 96, render: (c: string, r) => <StdCode code={c} standard={r.standardCode} map={pillarMap.map} /> },

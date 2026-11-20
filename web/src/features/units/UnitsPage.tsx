@@ -96,7 +96,7 @@ export default function UnitsPage() {
           )}
         </>} />
       <div className="un-tools">
-        <Input allowClear prefix={<SearchOutlined />} placeholder={L("ابحث باسم الجهة أو رمزها", "Search by name or code")} value={q} onChange={(e) => setQ(e.target.value)} />
+        <Input allowClear prefix={<SearchOutlined />} placeholder={L("ابحث باسم الجهة أو رمزها", "Search by name or code")} aria-label={L("ابحث باسم الجهة أو رمزها", "Search by name or code")} value={q} onChange={(e) => setQ(e.target.value)} />
         <span className="un-legend" aria-label={L("ألوان الأنواع", "Kind colours")}>
           {LEGEND.filter((k) => list.some((u) => u.kind === k)).map((k) => <span key={k} className={`un-chip un-k-${k}`}><i />{unitKind[k]}</span>)}
         </span>

@@ -1,4 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { App } from "antd";
 import { SaveQueue, type QueueState } from "./saveQueue";
 import { api, ApiError } from "../../api/client";
 import type { Form, FormItem, SaveValue, ValueKind } from "../../api/collection";
@@ -66,7 +68,8 @@ function complete(item: FormItem, d: Draft, saved: Draft) {
 
 // ----- سجل الصفوف في الصفحة: الحفظ المعلق قبل التنقل أو الإرسال، ومنع مغادرة الصفحة بقيم لم تحفظ -----
 
-export interface RowStatus { saving: boolean; unsaved: boolean }
+/** unsaved: a complete change not saved yet; incomplete: a change the server would refuse (UX-3), never sent. */
+export interface RowStatus { saving: boolean; unsaved: boolean; incomplete?: boolean }
 interface Registry {
   register: (id: string, flush: () => Promise<void>) => () => void;
   report: (id: string, status: RowStatus) => void;
@@ -90,9 +93,10 @@ export function useAutosaveRegistry() {
     },
     report: (id, s) => setStatus((prev) => {
       const p = prev[id];
-      if (p ? p.saving === s.saving && p.unsaved === s.unsaved : !s.saving && !s.unsaved) return prev;
+      const any = s.saving || s.unsaved || !!s.incomplete;
+      if (p ? p.saving === s.saving && p.unsaved === s.unsaved && !!p.incomplete === !!s.incomplete : !any) return prev;
       const next = { ...prev };
-      if (s.saving || s.unsaved) next[id] = s;
+      if (any) next[id] = s;
       else delete next[id];
       return next;
     }),
@@ -103,7 +107,43 @@ export function useAutosaveRegistry() {
   const list = Object.values(status);
   const saving = list.filter((s) => s.saving).length;
   const unsaved = list.filter((s) => s.unsaved).length;
-  const busy = saving + unsaved > 0;
+  const incomplete = list.filter((s) => s.incomplete).length;
+  const busy = saving + unsaved + incomplete > 0;
+  const leftRef = useRef(0);
+  leftRef.current = unsaved + incomplete;
+  const navigate = useNavigate();
+  const { modal } = App.useApp();
+
+  // UX-3: leaving by a link inside the app (sidebar, back link) saves what can be saved first; what cannot (an incomplete
+  // reason or ratio) is not dropped silently: the user is asked whether to stay.
+  useEffect(() => {
+    if (!busy) return;
+    const onClick = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = (e.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!a || a.target === "_blank" || a.hasAttribute("download")) return;
+      const url = new URL(a.href, window.location.href);
+      if (url.origin !== window.location.origin || url.pathname.startsWith("/api/")) return;
+      const to = url.pathname + url.search + url.hash;
+      if (to === window.location.pathname + window.location.search + window.location.hash) return;
+      e.preventDefault();
+      e.stopPropagation();
+      void (async () => {
+        await flushAll();
+        await new Promise((r) => setTimeout(r, 0));
+        if (leftRef.current === 0) return navigate(to);
+        modal.confirm({
+          title: L("قيم لم تحفظ", "Unsaved values"),
+          content: L(`في النموذج ${leftRef.current} قيمة لم تحفظ (سبب أقصر من 5 أحرف، أو نسبة بلا بسط أو مقام، أو حفظ لم ينجح). إن غادرت ضاعت.`,
+            `${leftRef.current} values are not saved (a short reason, a ratio missing a part, or a failed save). Leaving loses them.`),
+          okText: L("غادر دون حفظها", "Leave without them"), cancelText: L("ابق وأكملها", "Stay and complete them"), okButtonProps: { danger: true },
+          onOk: () => navigate(to),
+        });
+      })();
+    };
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, [busy, flushAll, navigate, modal]);
   useEffect(() => {
     if (!busy) return;
     const warn = (e: BeforeUnloadEvent) => {
@@ -113,7 +153,7 @@ export function useAutosaveRegistry() {
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [busy]);
-  return { registry, flushAll, saving, unsaved, active: status };
+  return { registry, flushAll, saving, unsaved, incomplete, active: status };
 }
 
 // ----- الحفظ التلقائي لصف -----
@@ -183,7 +223,7 @@ export function useValueAutosave({ formId, item, editable, onSaved, delay = 800 
       ready: (d, saved) => editableRef.current && complete(itemRef.current, d, saved),
       onSaved: (r) => onSavedRef.current(r),
       onState: (s, e) => show(s, s === "error" ? saveError(e) : null),
-      onBusy: () => registryRef.current?.report(id, { saving: q.saving, unsaved: q.unsaved }),
+      onBusy: () => registryRef.current?.report(id, { saving: q.saving, unsaved: q.unsaved, incomplete: q.dirty && !q.unsaved && !q.saving }),
     });
     queue.current = q;
   }
@@ -256,7 +296,7 @@ export function useValueAutosave({ formId, item, editable, onSaved, delay = 800 
       if (q.saving || q.unsaved) void q.flush().finally(() => unregister?.());
       else {
         unregister?.();
-        registry?.report(id, { saving: false, unsaved: false });
+        registry?.report(id, { saving: false, unsaved: false, incomplete: false });
       }
     };
   }, []);

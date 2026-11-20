@@ -222,6 +222,10 @@ a.lcp-list-item:hover { background: var(--teal-50); color: var(--ink); }
 .dt .ant-table-tbody > tr.dt-click { cursor: pointer; }
 .dt .ant-table-tbody > tr.dt-click:hover > td { background: var(--teal-50) !important; }
 .dt-idx { color: var(--muted); font-variant-numeric: tabular-nums; }
+/* A11Y-1: the row number of an openable row is its keyboard entry; it looks like the number, with a visible focus ring. */
+.dt-idx-open { background: none; border: 0; padding: 2px 6px; font: inherit; cursor: pointer; border-radius: var(--ds-radius-sm, 4px); text-decoration: underline dotted; }
+.dt-idx-open:hover { color: var(--ds-link, var(--navy)); }
+.dt-idx-open:focus-visible { outline: 2px solid var(--ds-focus, var(--navy)); outline-offset: 1px; }
 .dt-service { display: grid; gap: 3px; min-width: 220px; }
 .dt-service small { font-size: 12.5px; line-height: 1.6; }
 .dt-ref { font-family: var(--font-mono); color: var(--navy); font-weight: 600; direction: ltr; unicode-bidi: isolate; white-space: nowrap; }

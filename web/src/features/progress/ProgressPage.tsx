@@ -109,7 +109,7 @@ export default function ProgressPage() {
                   </div>,
                 }))} />
             <div className="rv-filter pg-filter">
-              <Input.Search allowClear value={q} placeholder={L("كود المؤشر أو اسمه", "Code or name")} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 280 }} />
+              <Input.Search allowClear value={q} placeholder={L("كود المؤشر أو اسمه", "Code or name")} aria-label={L("كود المؤشر أو اسمه", "Code or name")} onChange={(e) => setQ(e.target.value)} style={{ maxWidth: 280 }} />
               {(["all", "Below", "InLevel", "NoData"] as Filter[]).map((f) => (
                 <button key={f} type="button" className={filter === f ? "on" : ""} onClick={() => setFilter(f)}>
                   {f === "all" ? L("الكل", "All") : L(LEVEL[f].ar, LEVEL[f].en)}

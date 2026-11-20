@@ -124,7 +124,7 @@ function UploadPlan({ onClose, onDone }: { onClose: () => void; onDone: () => Pr
         <p>{L("اسحب ملف الخطة هنا أو اضغط للاختيار", "Drop the plan PDF here or click to choose")}</p>
       </Upload.Dragger>
       <label className="pd-label">{L("العنوان المعروض", "Display title")}</label>
-      <Input value={title} maxLength={300} onChange={(e) => setTitle(e.target.value)} placeholder={L("الخطة الاستراتيجية لجامعة العاصمة 2026–2030", "Strategic plan")} />
+      <Input value={title} maxLength={300} onChange={(e) => setTitle(e.target.value)} placeholder={L("الخطة الاستراتيجية لجامعة العاصمة 2026–2030", "Strategic plan")} aria-label={L("الخطة الاستراتيجية لجامعة العاصمة 2026–2030", "Strategic plan")} />
     </Modal>
   );
 }
@@ -137,7 +137,7 @@ function VoidPlan({ doc, onClose, onDone }: { doc: DocDto; onClose: () => void; 
       cancelText={L("إلغاء", "Cancel")} confirmLoading={save.isPending} onOk={() => save.mutate()} onCancel={onClose} destroyOnHidden>
       <Alert type="warning" showIcon className="mb" message={L("يختفي الإصدار عن أصحاب الحسابات ويبقى في السجل؛ يعرض الإصدار السابق إن وجد.", "The version is hidden but kept in the record.")} />
       {save.error && <Alert type="error" showIcon className="mb" message={errorText(save.error)} />}
-      <Input.TextArea rows={2} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} placeholder={L("السبب (مثل: صدر إصدار معدل بقرار مجلس الجامعة)", "Reason")} />
+      <Input.TextArea rows={2} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} placeholder={L("السبب (مثل: صدر إصدار معدل بقرار مجلس الجامعة)", "Reason")} aria-label={L("السبب (مثل: صدر إصدار معدل بقرار مجلس الجامعة)", "Reason")} />
     </Modal>
   );
 }

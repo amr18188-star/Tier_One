@@ -75,9 +75,9 @@ export default function ConflictsPage() {
         <div className="lcp-filters">
           <Segmented value={status ?? "all"} onChange={(v) => set("status", v === "all" ? undefined : String(v))}
             options={[{ value: "all", label: L("الكل", "All") }, ...STATUSES.map((s) => ({ value: s, label: conflictStatus[s].text }))]} />
-          <Select allowClear placeholder={L("كل درجات الخطورة", "All severities")} value={severity} onChange={(v) => set("severity", v)} style={{ minWidth: 170 }}
+          <Select allowClear placeholder={L("كل درجات الخطورة", "All severities")} aria-label={L("كل درجات الخطورة", "All severities")} value={severity} onChange={(v) => set("severity", v)} style={{ minWidth: 170 }}
             options={SEVERITIES.map((s) => ({ value: s, label: conflictSeverity[s].text }))} />
-          <Input.Search key={q} allowClear defaultValue={q} placeholder={L("رقم التعارض أو كلمة من وصفه", "Code or a word from the description")} onSearch={(v) => set("q", v || undefined)} />
+          <Input.Search key={q} allowClear defaultValue={q} placeholder={L("رقم التعارض أو كلمة من وصفه", "Code or a word from the description")} aria-label={L("رقم التعارض أو كلمة من وصفه", "Code or a word from the description")} onSearch={(v) => set("q", v || undefined)} />
           <FilterMeta shown={list.data?.items.length ?? 0} total={all.data?.items.length} noun={L("تعارض", "conflicts")} active={!!(status || severity || q)}
             onReset={() => setParams({}, { replace: true })} />
         </div>
@@ -87,6 +87,7 @@ export default function ConflictsPage() {
           loading={list.isLoading}
           resetKey={`${status}|${severity}|${q}`}
           onRowClick={(c) => set("open", c.code)}
+          rowLabel={(c) => L(`فتح التعارض ${c.code}`, `Open conflict ${c.code}`)}
           pageSizes={[20, 50]}
           columns={[
             { title: L("الرقم", "No."), dataIndex: "code", width: 80, render: (c: string) => <code>{c}</code> },

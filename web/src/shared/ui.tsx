@@ -159,13 +159,18 @@ export interface ServerPaging { page: number; size: number; total: number; onPag
  * على الشاشات الضيقة يعرض البطاقات بدل الصفوف إن أعطيت renderCard.
  */
 export function DataTable<T extends object>({
-  rowKey, columns, data, loading, onRowClick, empty, renderCard, pageSizes = [10, 20, 50], resetKey, minWidth = 880, expandable, paging, rowClassName,
+  rowKey, columns, data, loading, onRowClick, rowLabel, empty, renderCard, pageSizes = [10, 20, 50], resetKey, minWidth = 880, expandable, paging, rowClassName,
 }: {
   rowKey: (row: T) => string;
   columns: ColumnsType<T>;
   data: T[];
   loading?: boolean;
   onRowClick?: (row: T) => void;
+  /**
+   * A11Y-1: with onRowClick, the row number becomes a real button named by this text ("open …"), so keyboard and
+   * screen-reader users reach every row; the mouse still clicks anywhere on the row.
+   */
+  rowLabel?: (row: T) => string;
   empty?: ReactNode;
   renderCard?: (row: T) => ReactNode;
   pageSizes?: number[];
@@ -191,7 +196,12 @@ export function DataTable<T extends object>({
   const cards = !!renderCard && screens.md === false;
 
   const indexed: ColumnsType<T> = [
-    { title: "#", key: "__idx", width: 56, align: "center", render: (_, __, i) => <span className="dt-idx">{(current - 1) * size + i + 1}</span> },
+    {
+      title: "#", key: "__idx", width: 56, align: "center",
+      render: (_, r, i) => onRowClick && rowLabel
+        ? <button type="button" className="dt-idx dt-idx-open" aria-label={rowLabel(r)} onClick={(e) => { e.stopPropagation(); onRowClick(r); }}>{(current - 1) * size + i + 1}</button>
+        : <span className="dt-idx">{(current - 1) * size + i + 1}</span>,
+    },
     ...columns,
   ];
 

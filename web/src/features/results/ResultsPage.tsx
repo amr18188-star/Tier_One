@@ -101,6 +101,7 @@ export default function ResultsPage() {
       loading={res.isLoading}
       resetKey={resetKey}
       onRowClick={setOpen}
+      rowLabel={(i) => L(`تفاصيل نتيجة ${i.code} ${i.name}`, `Result details ${i.code}`)}
       pageSizes={[20, 50, 100]}
       columns={[
         { title: L("الرمز", "Code"), dataIndex: "code", width: 96, render: (c: string, i) => <StdCode code={c} standard={i.standardCode} map={pillarMap.map} /> },
@@ -234,7 +235,7 @@ export default function ResultsPage() {
         <div className="lcp-filters">
           <Segmented value={perf ?? "all"} onChange={(v) => set("perf", v === "all" ? undefined : String(v))}
             options={[{ value: "all", label: L("الكل", "All") }, ...PERF.map((p) => ({ value: p, label: perfText[p].text }))]} />
-          <Input.Search key={q} allowClear defaultValue={q} placeholder={L("رمز المؤشر أو اسمه", "Code or name")} onSearch={(v) => set("q", v || undefined)} />
+          <Input.Search key={q} allowClear defaultValue={q} placeholder={L("رمز المؤشر أو اسمه", "Code or name")} aria-label={L("رمز المؤشر أو اسمه", "Code or name")} onSearch={(v) => set("q", v || undefined)} />
           {std && <Tag closable onClose={() => set("std", undefined)}>{L("المعيار", "Standard")} {std}</Tag>}
           <FilterMeta shown={rows.length} total={r?.indicators.length} noun={L("مؤشر", "indicators")} active={!!(perf || std || q)}
             onReset={() => update({ perf: undefined, std: undefined, q: undefined })} />

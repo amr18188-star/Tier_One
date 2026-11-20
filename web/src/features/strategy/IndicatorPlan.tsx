@@ -130,15 +130,15 @@ export function IndicatorPlan({ node, tree, actual }: { node: IndicatorNode; tre
       <label className="t1-field">
         <span>{L("شرح المستهدف ومراحله", "Explanation of the target")}</span>
         <Input.TextArea rows={3} maxLength={2000} showCount value={note} disabled={!canEdit} onChange={(ev) => setNote(ev.target.value)}
-          placeholder={L("لماذا هذه القيم، وما المرحلة المطلوبة كل سنة، ومن أين جاءت (قرار أو ملف Tier 1).", "Why these values and where they come from.")} />
+          placeholder={L("لماذا هذه القيم، وما المرحلة المطلوبة كل سنة، ومن أين جاءت (قرار أو ملف Tier 1).", "Why these values and where they come from.")} aria-label={L("لماذا هذه القيم، وما المرحلة المطلوبة كل سنة، ومن أين جاءت (قرار أو ملف Tier 1).", "Why these values and where they come from.")} />
       </label>
 
       {canEdit && changedApproved.length > 0 && (
         <Alert type="warning" showIcon className="mt" message={L(`عدلت مستهدفًا معتمدًا (${changedApproved.join("، ")})`, `You changed approved targets (${changedApproved.join(", ")})`)}
           description={(
             <div className="lcp-grid-2 mt">
-              <Input value={reason} onChange={(ev) => setReason(ev.target.value)} placeholder={L("سبب التعديل", "Reason")} maxLength={500} />
-              <Input value={decisionRef} onChange={(ev) => setDecisionRef(ev.target.value)} placeholder={L("رقم قرار اللجنة العليا", "Decision reference")} maxLength={200} />
+              <Input value={reason} onChange={(ev) => setReason(ev.target.value)} placeholder={L("سبب التعديل", "Reason")} aria-label={L("سبب التعديل", "Reason")} maxLength={500} />
+              <Input value={decisionRef} onChange={(ev) => setDecisionRef(ev.target.value)} placeholder={L("رقم قرار اللجنة العليا", "Decision reference")} aria-label={L("رقم قرار اللجنة العليا", "Decision reference")} maxLength={200} />
             </div>
           )} />
       )}

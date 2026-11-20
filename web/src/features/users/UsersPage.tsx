@@ -25,7 +25,7 @@ export default function UsersPage() {
         stats={users.data && !search ? [{ label: L("حسابات", "Accounts"), value: users.data.length }] : undefined}
         extra={perms.can("adm.users", "A") && <Button type="primary" size="large" icon={<PlusOutlined aria-hidden />} onClick={() => setCreating(true)}>{L("حساب موظف جديد", "New staff account")}</Button>} />
       <div className="lcp-filters">
-        <Input.Search allowClear placeholder={L("ابحث بالاسم أو البريد", "Search by name or email")} onSearch={setSearch} />
+        <Input.Search allowClear placeholder={L("ابحث بالاسم أو البريد", "Search by name or email")} aria-label={L("ابحث بالاسم أو البريد", "Search by name or email")} onSearch={setSearch} />
       </div>
       <QueryState query={users}>
         <DataTable<UserListItem>

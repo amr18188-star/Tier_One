@@ -126,7 +126,7 @@ function ChangeCard({ change: c, catalog }: { change: RbacChange; catalog: Catal
         onCancel={() => setRejecting(false)}
         onOk={() => act(`/api/iam/changes/${c.id}/reject`, { note }, L("رُفض الطلب.", "Request rejected."))}
       >
-        <Input.TextArea rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder={L("سبب الرفض (5 أحرف على الأقل)", "Reason for rejecting (at least 5 characters)")} />
+        <Input.TextArea rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder={L("سبب الرفض (5 أحرف على الأقل)", "Reason for rejecting (at least 5 characters)")} aria-label={L("سبب الرفض (5 أحرف على الأقل)", "Reason for rejecting (at least 5 characters)")} />
       </Modal>
     </Panel>
   );

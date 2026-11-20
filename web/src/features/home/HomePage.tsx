@@ -274,7 +274,7 @@ function AdminHome() {
           </div>
           <div className="home-admin-tools">
             <label className="home-admin-search"><SearchOutlined aria-hidden /><span className="sr-only">{L("ابحث في النماذج", "Search forms")}</span>
-              <input type="search" value={search} onChange={(event) => changeSearch(event.target.value)} placeholder={L("ابحث عن جهة أو دورة…", "Search unit or cycle…")} /></label>
+              <input type="search" value={search} onChange={(event) => changeSearch(event.target.value)} placeholder={L("ابحث عن جهة أو دورة…", "Search unit or cycle…")} aria-label={L("ابحث عن جهة أو دورة…", "Search unit or cycle…")} /></label>
             <label className="home-admin-sort"><span className="sr-only">{L("ترتيب النماذج", "Sort forms")}</span>
               <select value={sort} onChange={(event) => changeSort(event.target.value as DueSort)}>
                 <option value="nearest">{L("الأقرب موعدًا", "Nearest due")}</option><option value="farthest">{L("الأبعد موعدًا", "Farthest due")}</option>

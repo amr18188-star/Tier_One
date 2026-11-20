@@ -126,10 +126,10 @@ function RoleEditor({ roleId, catalog, roles }: { roleId: string; catalog: Catal
       )}
       <div className="lcp-filters mb">
         <Select value={module} onChange={setModule} style={{ minWidth: 220 }} options={[{ value: "all", label: L("كل الوحدات", "All modules") }, ...catalog.modules.map((m) => ({ value: m.key, label: m.name }))]} aria-label={L("الوحدة", "Module")} />
-        <Input.Search allowClear placeholder={L("ابحث في الخصائص ومعانيها", "Search features and meanings")} value={search} onChange={(e) => setSearch(e.target.value)} />
+        <Input.Search allowClear placeholder={L("ابحث في الخصائص ومعانيها", "Search features and meanings")} aria-label={L("ابحث في الخصائص ومعانيها", "Search features and meanings")} value={search} onChange={(e) => setSearch(e.target.value)} />
         <Select
           allowClear
-          placeholder={L("قارن بدور آخر", "Compare with another role")}
+          placeholder={L("قارن بدور آخر", "Compare with another role")} aria-label={L("قارن بدور آخر", "Compare with another role")}
           value={compareId}
           onChange={setCompareId}
           style={{ minWidth: 220 }}
