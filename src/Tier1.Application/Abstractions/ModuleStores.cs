@@ -81,3 +81,26 @@ public interface ICollectionStore : IUnitOfWork
 
     DbSet<Domain.Collection.StoredDocument> Documents { get; }
 }
+
+/// <summary>
+/// BE-14: the tables the indicators module owns: the strategy tree (pillars, standards, initiatives), the indicator dictionary with
+/// its definition versions, targets with their revisions, and data conflicts.
+/// </summary>
+public interface IKpiStore : IUnitOfWork
+{
+    DbSet<Domain.Kpi.Pillar> Pillars { get; }
+
+    DbSet<Domain.Kpi.Standard> Standards { get; }
+
+    DbSet<Domain.Kpi.Initiative> Initiatives { get; }
+
+    DbSet<Domain.Kpi.Indicator> Indicators { get; }
+
+    DbSet<Domain.Kpi.IndicatorVersion> IndicatorVersions { get; }
+
+    DbSet<Domain.Kpi.IndicatorTarget> Targets { get; }
+
+    DbSet<Domain.Kpi.TargetRevision> TargetRevisions { get; }
+
+    DbSet<Domain.Kpi.DataConflict> Conflicts { get; }
+}

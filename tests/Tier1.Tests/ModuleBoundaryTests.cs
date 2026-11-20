@@ -14,9 +14,9 @@ public sealed class ModuleBoundaryTests
     /// <summary>Services not yet moved to module stores. Remove a name when its service moves; never add one.</summary>
     private static readonly HashSet<string> StillOnSharedDb =
     [
-        "AccessService", "AuditLog", "ConflictsService", "DictionaryService", "HomeService", "IamPolicy", "LogsService", "MeService",
-        "OrgUnitsService", "RbacAdminService", "RoleAssignmentService", "SessionService", "SignInService", "StrategyService",
-        "StructureService", "TargetsService", "UnitIndicatorsService", "UserAccountsService", "UserOverridesService", "UsersAdminService",
+        "AccessService", "AuditLog", "HomeService", "IamPolicy", "LogsService", "MeService",
+        "OrgUnitsService", "RbacAdminService", "RoleAssignmentService", "SessionService", "SignInService",
+        "StructureService", "UnitIndicatorsService", "UserAccountsService", "UserOverridesService", "UsersAdminService",
     ];
 
     /// <summary>Each module store, and the namespace of the only module that may write through it.</summary>
@@ -27,6 +27,7 @@ public sealed class ModuleBoundaryTests
         [typeof(IEventStore)] = "Tier1.Application.Integration",
         [typeof(IScorecardStore)] = "Tier1.Application.Scorecard",
         [typeof(ICollectionStore)] = "Tier1.Application.Collection",
+        [typeof(IKpiStore)] = "Tier1.Application.Kpi",
     };
 
     private static IEnumerable<(Type Type, Type Parameter)> ConstructorDependencies() =>

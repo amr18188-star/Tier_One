@@ -46,7 +46,7 @@ public sealed record DeleteTargetRequest(string? Reason, string? DecisionRef);
 /// خط الأساس والمستهدفات: مستهدفات الجامعة (من ملف Tier 1) وتوزيعها على الكليات (من ملف الكليات)، والاعتماد بقرار،
 /// وتعديل المعتمد بسبب ورقم قرار مع حفظ القيمة السابقة.
 /// </summary>
-public sealed class TargetsService(IAppDb db, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit)
+public sealed class TargetsService(IKpiStore db, IReadModel read,  IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit)
 {
     public const int PlanStart = 2026;
     public const int PlanEnd = 2031;
@@ -58,7 +58,7 @@ public sealed class TargetsService(IAppDb db, IClock clock, ICurrentUser current
         var (indicator, version) = await LoadIndicatorAsync(code, ct);
         var university = await UniversityAsync(ct);
         var viewScope = UnitScope.For(me, Feature, Cap.View);
-        var units = await db.OrgUnits.AsNoTracking().ToDictionaryAsync(u => u.Id, ct);
+        var units = await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().ToDictionaryAsync(u => u.Id, ct);
         var targets = await db.Targets.AsNoTracking().Where(t => t.IndicatorId == indicator.Id).ToListAsync(ct);
         // سجل المؤشر كله، ومنه المستهدفات المحذوفة (D8)؛ لكل مستخدم ما في نطاقه وحده، ومستهدفات الجامعة للجميع.
         var revisions = (await db.TargetRevisions.AsNoTracking().Where(r => r.IndicatorId == indicator.Id).OrderByDescending(r => r.ChangedAt).Take(200).ToListAsync(ct))
@@ -82,7 +82,7 @@ public sealed class TargetsService(IAppDb db, IClock clock, ICurrentUser current
     {
         var me = await access.RequireAsync(Feature, Cap.Edit, ct);
         var (indicator, version) = await LoadIndicatorAsync(code, ct);
-        var unit = await db.OrgUnits.AsNoTracking().FirstOrDefaultAsync(u => u.Id == req.UnitId, ct) ?? throw DomainException.NotFound();
+        var unit = await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().FirstOrDefaultAsync(u => u.Id == req.UnitId, ct) ?? throw DomainException.NotFound();
         UnitScope.For(me, Feature, Cap.Edit).Require(unit);
         var value = TargetRules.Validate(req, unit, version);
 
@@ -203,7 +203,7 @@ public sealed class TargetsService(IAppDb db, IClock clock, ICurrentUser current
     {
         var me = await access.RequireAsync(Feature, Cap.Delete, ct);
         var target = await db.Targets.FirstOrDefaultAsync(t => t.Id == id, ct) ?? throw DomainException.NotFound();
-        var unit = await db.OrgUnits.AsNoTracking().FirstAsync(u => u.Id == target.UnitId, ct);
+        var unit = await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().FirstAsync(u => u.Id == target.UnitId, ct);
         UnitScope.For(me, Feature, Cap.Delete).Require(unit);
         var why = Require.Reason(req.Reason);
         Remove(target, me, why, req.DecisionRef, clock.UtcNow);
@@ -275,7 +275,7 @@ public sealed class TargetsService(IAppDb db, IClock clock, ICurrentUser current
         target.ApprovedAt = clock.UtcNow;
         target.DecisionRef = Require.Optional(req.DecisionRef, 200)
             ?? throw new DomainException("decision_ref_required", "اكتب رقم محضر اللجنة العليا.", "Enter the committee minutes reference.", 400);
-        var unit = await db.OrgUnits.AsNoTracking().FirstAsync(u => u.Id == target.UnitId, ct);
+        var unit = await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().FirstAsync(u => u.Id == target.UnitId, ct);
         audit.Record(AuditEvents.Audit("kpi", Feature, "kpi.target_approved", "اعتماد مستهدف مؤشر", "Approved an indicator target") with
         {
             Target = new AuditTarget("indicator_target", target.Id.ToString(), $"{target.Year}", unit.Code),
@@ -292,7 +292,7 @@ public sealed class TargetsService(IAppDb db, IClock clock, ICurrentUser current
         var scope = UnitScope.For(me, Feature, Cap.View);
         var (indicator, version) = await LoadIndicatorAsync(code, ct);
         var university = await UniversityAsync(ct);
-        var colleges = await db.OrgUnits.AsNoTracking()
+        var colleges = await read.Query<Domain.Organization.OrgUnit>().AsNoTracking()
             .Where(u => u.Active && (u.Kind == OrgUnitKind.College || u.Kind == OrgUnitKind.Institute))
             .OrderBy(u => u.SortOrder).ThenBy(u => u.NameAr).ToListAsync(ct);
         var targets = await db.Targets.AsNoTracking().Where(t => t.IndicatorId == indicator.Id).ToListAsync(ct);
@@ -323,7 +323,7 @@ public sealed class TargetsService(IAppDb db, IClock clock, ICurrentUser current
     }
 
     private async Task<OrgUnit> UniversityAsync(CancellationToken ct) =>
-        await db.OrgUnits.AsNoTracking().FirstOrDefaultAsync(u => u.Kind == OrgUnitKind.University, ct)
+        await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().FirstOrDefaultAsync(u => u.Kind == OrgUnitKind.University, ct)
         ?? throw new InvalidOperationException("The university root unit is missing.");
 
     private static TargetDto ToDto(IndicatorTarget t, OrgUnit u) =>

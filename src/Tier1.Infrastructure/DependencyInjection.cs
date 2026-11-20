@@ -33,6 +33,7 @@ public static class DependencyInjection
         services.AddScoped<IEventStore>(sp => sp.GetRequiredService<Tier1DbContext>());
         services.AddScoped<IScorecardStore>(sp => sp.GetRequiredService<Tier1DbContext>());
         services.AddScoped<ICollectionStore>(sp => sp.GetRequiredService<Tier1DbContext>());
+        services.AddScoped<IKpiStore>(sp => sp.GetRequiredService<Tier1DbContext>());
         services.AddScoped<IIamLock, PostgresIamLock>();
 
         services.AddHttpContextAccessor();

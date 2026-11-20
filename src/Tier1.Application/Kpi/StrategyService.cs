@@ -51,7 +51,7 @@ public sealed record DeleteRequest(string? Reason);
 /// إضافة الركائز والمعايير والمبادرات وتعديلها وحذفها بصلاحية «الخطة الاستراتيجية»؛ المؤشرات وتعريفاتها ومستهدفاتها بصلاحياتها في القاموس والمستهدفات.
 /// لا يحذف ما يقوم عليه غيره: الركيزة بمعاييرها والمعيار بمؤشراته ومبادراته تنقل أو تحذف أولًا.
 /// </summary>
-public sealed class StrategyService(IAppDb db, IClock clock, IAccessService access, IAuditLog audit)
+public sealed class StrategyService(IKpiStore db, IReadModel read,  IClock clock, IAccessService access, IAuditLog audit)
 {
     private const string Feature = Features.Strategy;
 
@@ -62,10 +62,10 @@ public sealed class StrategyService(IAppDb db, IClock clock, IAccessService acce
         var standards = await db.Standards.AsNoTracking().OrderBy(s => s.SortOrder).ThenBy(s => s.Code).ToListAsync(ct);
         var initiatives = await db.Initiatives.AsNoTracking().OrderBy(i => i.SortOrder).ThenBy(i => i.Code).ToListAsync(ct);
         var indicators = await db.Indicators.AsNoTracking().Include(i => i.Versions).OrderBy(i => i.SortOrder).ToListAsync(ct);
-        var university = await db.OrgUnits.AsNoTracking().Where(u => u.Kind == OrgUnitKind.University).Select(u => u.Id).FirstOrDefaultAsync(ct);
+        var university = await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().Where(u => u.Kind == OrgUnitKind.University).Select(u => u.Id).FirstOrDefaultAsync(ct);
         var targets = (await db.Targets.AsNoTracking().Where(t => t.UnitId == university).ToListAsync(ct)).ToLookup(t => t.IndicatorId);
         var ownerIds = initiatives.Where(i => i.OwnerUnitId != null).Select(i => i.OwnerUnitId!.Value).Distinct().ToList();
-        var owners = await db.OrgUnits.AsNoTracking().Where(u => ownerIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.NameAr, ct);
+        var owners = await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().Where(u => ownerIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.NameAr, ct);
 
         StandardNode Node(Standard s) => new(s.Id, s.Code, s.NameAr, s.NameEn, s.Description, s.PillarId, s.SortOrder, s.Version,
             initiatives.Where(i => i.StandardId == s.Id).Select(i => new InitiativeNode(i.Id, i.Code, i.NameAr, i.Description, i.ExpectedOutcome, i.OwnerUnitId,
@@ -253,7 +253,7 @@ public sealed class StrategyService(IAppDb db, IClock clock, IAccessService acce
     {
         initiative.NameAr = Name(req.NameAr, 300, "اسم المبادرة");
         PlanRules.ValidateYears(req.StartYear, req.EndYear, TargetsService.PlanStart, "مدة المبادرة");
-        if (req.OwnerUnitId is { } owner && !await db.OrgUnits.AnyAsync(u => u.Id == owner && u.Active, ct))
+        if (req.OwnerUnitId is { } owner && !await read.Query<Domain.Organization.OrgUnit>().AnyAsync(u => u.Id == owner && u.Active, ct))
             throw new DomainException("owner_not_found", "الجهة المسؤولة غير موجودة أو معطلة.", "The owner unit was not found.", 400);
         var codes = (req.IndicatorCodes ?? []).Select(c => c.Trim().ToUpperInvariant()).Where(c => c.Length > 0).Distinct().ToList();
         var known = await db.Indicators.Where(i => codes.Contains(i.Code)).Select(i => i.Code).ToListAsync(ct);
@@ -272,7 +272,7 @@ public sealed class StrategyService(IAppDb db, IClock clock, IAccessService acce
 
     private async Task<InitiativeNode> InitiativeDtoAsync(Initiative i, CancellationToken ct)
     {
-        var owner = i.OwnerUnitId is { } o ? await db.OrgUnits.AsNoTracking().Where(u => u.Id == o).Select(u => u.NameAr).FirstOrDefaultAsync(ct) : null;
+        var owner = i.OwnerUnitId is { } o ? await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().Where(u => u.Id == o).Select(u => u.NameAr).FirstOrDefaultAsync(ct) : null;
         return new InitiativeNode(i.Id, i.Code, i.NameAr, i.Description, i.ExpectedOutcome, i.OwnerUnitId, owner, i.StartYear, i.EndYear, i.Status, i.IndicatorCodes, i.Version);
     }
 

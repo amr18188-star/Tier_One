@@ -51,7 +51,7 @@ public sealed record CommitteeDecisionRequest(string? DecisionRef, string? Note)
 /// قاموس المؤشرات: القراءة للجميع بصلاحية العرض، والتعديل ينشئ إصدارًا جديدًا للمعتمد، والاعتماد بقرار اللجنة العليا
 /// من غير من أعدّ التعريف.
 /// </summary>
-public sealed class DictionaryService(IAppDb db, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit)
+public sealed class DictionaryService(IKpiStore db, IReadModel read,  IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit)
 {
     private const string Feature = Features.Dictionary;
 
@@ -78,7 +78,7 @@ public sealed class DictionaryService(IAppDb db, IClock clock, ICurrentUser curr
         await access.RequireAsync(Feature, Cap.View, ct);
         var standards = await db.Standards.AsNoTracking().ToDictionaryAsync(s => s.Id, s => s.Code, ct);
         var indicators = await db.Indicators.AsNoTracking().Include(i => i.Versions).OrderBy(i => i.SortOrder).ToListAsync(ct);
-        var university = await db.OrgUnits.AsNoTracking().Where(u => u.Kind == Domain.Organization.OrgUnitKind.University).Select(u => u.Id).FirstOrDefaultAsync(ct);
+        var university = await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().Where(u => u.Kind == Domain.Organization.OrgUnitKind.University).Select(u => u.Id).FirstOrDefaultAsync(ct);
         var targets = await db.Targets.AsNoTracking().Where(t => t.UnitId == university).ToListAsync(ct);
         var openConflicts = await OpenConflictScopesAsync(ct);
         var term = q?.Trim();
@@ -181,7 +181,7 @@ public sealed class DictionaryService(IAppDb db, IClock clock, ICurrentUser curr
         var createsVersion = indicator.Working is null;
         var v = IndicatorRules.EditableVersion(indicator, now, req.ChangeReason);
         if (!createsVersion) Concurrency.Expect(db, v, req.Version);
-        if (req.OwnerUnitId is { } owner && !await db.OrgUnits.AnyAsync(u => u.Id == owner && u.Active, ct))
+        if (req.OwnerUnitId is { } owner && !await read.Query<Domain.Organization.OrgUnit>().AnyAsync(u => u.Id == owner && u.Active, ct))
             throw new DomainException("owner_not_found", "الجهة المالكة غير موجودة أو معطلة.", "The owner unit was not found.", 400);
 
         var changes = new ChangeSet()
@@ -295,7 +295,7 @@ public sealed class DictionaryService(IAppDb db, IClock clock, ICurrentUser curr
         await access.RequireAsync(Feature, Cap.Delete, ct);
         var why = Require.Reason(req.Reason);
         var indicator = await LoadAsync(code, tracking: true, ct);
-        if (await db.CycleIndicators.AnyAsync(c => c.IndicatorId == indicator.Id, ct))
+        if (await read.Query<Domain.Collection.CycleIndicator>().AnyAsync(c => c.IndicatorId == indicator.Id, ct))
             throw new DomainException("indicator_measured", "المؤشر دخل دورة قياس ونتائجه قائمة عليه، فلا يحذف. أوقفه بدلًا من ذلك.",
                 "The indicator was measured in a cycle; suspend it instead.", 409);
         var targets = await db.Targets.Where(t => t.IndicatorId == indicator.Id).ToListAsync(ct);
@@ -331,7 +331,7 @@ public sealed class DictionaryService(IAppDb db, IClock clock, ICurrentUser curr
     private async Task<Dictionary<Guid, string>> UnitNamesAsync(IEnumerable<Guid?> ids, CancellationToken ct)
     {
         var list = ids.Where(i => i is not null).Select(i => i!.Value).Distinct().ToList();
-        return await db.OrgUnits.AsNoTracking().Where(u => list.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.NameAr, ct);
+        return await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().Where(u => list.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.NameAr, ct);
     }
 
     private static string? Text(string? value, int max, string field)

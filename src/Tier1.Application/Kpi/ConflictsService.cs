@@ -26,7 +26,7 @@ public sealed record DecideConflictRequest(bool Defer, string? Decision, DateOnl
 /// سجل التعارضات: يجهز مدير متابعة الخطة الحالة والبدائل، ويسجل قرار اللجنة العليا لـ Tier 1 برقم المحضر وتاريخه.
 /// القرار لا يغير الأرقام تلقائيًا؛ تطبيقه تعديل مسجل في القاموس أو المستهدفات.
 /// </summary>
-public sealed class ConflictsService(IAppDb db, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit)
+public sealed class ConflictsService(IKpiStore db,  IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit)
 {
     private const string Feature = Features.Conflicts;
 
