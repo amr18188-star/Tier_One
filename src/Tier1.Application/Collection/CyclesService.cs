@@ -198,7 +198,7 @@ public sealed class CyclesService(IAppDb db, IClock clock, ICurrentUser current,
             });
         }
         // نموذج لكل جهة تدخل مؤشرًا واحدًا على الأقل.
-        var needed = units.Where(u => u.Kind != OrgUnitKind.University && picked.Any(p => FormsService.Applies(p, u))).ToList();
+        var needed = units.Where(u => u.Kind != OrgUnitKind.University && picked.Any(p => FormAssignmentRules.Applies(p, u))).ToList();
         foreach (var c in picked.Where(p => p.CentralUnitId is not null).Select(p => p.CentralUnitId!.Value).Distinct())
             if (needed.All(u => u.Id != c)) needed.Add(units.First(u => u.Id == c));
         return new Plan(picked, needed, skipped);

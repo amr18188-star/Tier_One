@@ -254,7 +254,7 @@ public class CollectionRulesTests
     public void Excel_cells_accept_arabic_digits(string text, double expected)
     {
         var issues = new List<IssueDto>();
-        Assert.Equal((decimal)expected, FormsService.Parse(text, "القيمة", issues));
+        Assert.Equal((decimal)expected, FormEntryService.Parse(text, "القيمة", issues));
         Assert.Empty(issues);
     }
 
@@ -262,7 +262,7 @@ public class CollectionRulesTests
     public void Non_numeric_cells_are_reported()
     {
         var issues = new List<IssueDto>();
-        Assert.Null(FormsService.Parse("abc", "القيمة", issues));
+        Assert.Null(FormEntryService.Parse("abc", "القيمة", issues));
         Assert.Equal("not_a_number", Assert.Single(issues).Code);
     }
 }

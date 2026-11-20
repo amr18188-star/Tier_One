@@ -20,12 +20,12 @@ public sealed record ApprovedValueDto(ValueKind Kind, decimal? Value, decimal? N
 /// إعادة فتح النموذج المعتمد بطلب وقرار (D4، ADR-0004): من يملك «إعادة الفتح» يطلب بسبب والنموذج باق معتمدًا؛
 /// واللجنة العليا تعتمد برقم المحضر فيفتح وتحفظ قيمه المعتمدة في لقطة، أو ترفض بسبب. لا يقرر الطلب مقدمه.
 /// </summary>
-public sealed partial class FormsService
+public sealed partial class FormWorkflowService
 {
     public async Task<FormDto> RequestReopenAsync(Guid id, FormTransitionRequest req, CancellationToken ct)
     {
         await access.RequireSpecialAsync(Features.Cycles, ApprovalRules.Reopen, ct);
-        var ctx = await LoadAsync(id, Cap.View, tracking: true, ct);
+        var ctx = await reader.LoadAsync(id, Cap.View, tracking: true, ct);
         Concurrency.Transition(ctx.Submission.Version, req.Version);
         var reason = Require.Reason(req.Note, 5, "reason_required", 2000);
         var pending = await db.ReopenRequests.AnyAsync(r => r.SubmissionId == id && r.Status == ReopenRequestStatus.Pending, ct);
@@ -42,13 +42,13 @@ public sealed partial class FormsService
             Reason = reason,
         });
         await db.SaveChangesAsync(ct);
-        return await BuildAsync(ctx, ct);
+        return await reader.BuildAsync(ctx, ct);
     }
 
     public async Task<FormDto> ApproveReopenAsync(Guid id, Kpi.CommitteeDecisionRequest req, CancellationToken ct)
     {
         await access.RequireSpecialAsync(Features.Cycles, ApprovalRules.ApproveReopen, ct);
-        var ctx = await LoadAsync(id, Cap.View, tracking: true, ct);
+        var ctx = await reader.LoadAsync(id, Cap.View, tracking: true, ct);
         var request = await PendingRequestAsync(id, ct);
         ReopenRules.EnsureCanDecide(request, current.UserId!.Value);
         var decision = Require.Optional(req.DecisionRef, 200)
@@ -77,13 +77,13 @@ public sealed partial class FormsService
         });
         RaiseMoved(ctx);
         await db.SaveChangesAsync(ct);
-        return await BuildAsync(ctx, ct);
+        return await reader.BuildAsync(ctx, ct);
     }
 
     public async Task<FormDto> RejectReopenAsync(Guid id, NoteRequest req, CancellationToken ct)
     {
         await access.RequireSpecialAsync(Features.Cycles, ApprovalRules.ApproveReopen, ct);
-        var ctx = await LoadAsync(id, Cap.View, tracking: true, ct);
+        var ctx = await reader.LoadAsync(id, Cap.View, tracking: true, ct);
         var request = await PendingRequestAsync(id, ct);
         ReopenRules.EnsureCanDecide(request, current.UserId!.Value);
         request.Status = ReopenRequestStatus.Rejected;
@@ -98,25 +98,10 @@ public sealed partial class FormsService
             Reason = request.DecisionNote,
         });
         await db.SaveChangesAsync(ct);
-        return await BuildAsync(ctx, ct);
+        return await reader.BuildAsync(ctx, ct);
     }
 
     private async Task<ReopenRequest> PendingRequestAsync(Guid formId, CancellationToken ct) =>
         await db.ReopenRequests.FirstOrDefaultAsync(r => r.SubmissionId == formId && r.Status == ReopenRequestStatus.Pending, ct)
         ?? throw new DomainException("no_pending_reopen", "لا طلب إعادة فتح معلقًا لهذا النموذج.", "This form has no pending reopen request.", 409);
-
-    /// <summary>آخر طلب للنموذج، وقيمه المعتمدة قبل إعادة الفتح إن كان قيد التصحيح.</summary>
-    private async Task<(FormReopenDto? Latest, Guid? PendingBy, Dictionary<Guid, ApprovedValueDto> Before)> ReopenStateAsync(Submission s, CancellationToken ct)
-    {
-        var requests = await db.ReopenRequests.AsNoTracking().Where(r => r.SubmissionId == s.Id).ToListAsync(ct);
-        var latest = requests.OrderByDescending(r => r.RequestedAt).FirstOrDefault();
-        var official = ReopenRules.OfficialSnapshot(s, requests);
-        var before = official is { } rid
-            ? await db.ValueSnapshots.AsNoTracking().Where(v => v.RequestId == rid)
-                .ToDictionaryAsync(v => v.IndicatorId, v => new ApprovedValueDto(v.Kind, v.Value, v.Numerator, v.Denominator, v.Reason, v.ApprovedAt), ct)
-            : [];
-        return (latest is null ? null : new FormReopenDto(latest.Id, latest.Status, latest.Reason, latest.RequestedByName, latest.RequestedAt,
-            latest.DecidedByName, latest.DecidedAt, latest.DecisionRef, latest.DecisionNote),
-            latest?.Status == ReopenRequestStatus.Pending ? latest.RequestedBy : null, before);
-    }
 }

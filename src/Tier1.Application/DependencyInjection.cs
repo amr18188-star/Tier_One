@@ -53,7 +53,13 @@ public static class DependencyInjection
         services.AddScoped<Collection.FormNotifier>();
         services.AddScoped<Integration.IEventHandler, Collection.FormMovedNotifications>();
         services.AddScoped<Collection.CyclesService>();
+        services.AddScoped<Collection.FormReader>();
+        services.AddScoped<Collection.FormReader>();
         services.AddScoped<Collection.FormsService>();
+        services.AddScoped<Collection.FormEntryService>();
+        services.AddScoped<Collection.FormWorkflowService>();
+        services.AddScoped<Collection.FormEntryService>();
+        services.AddScoped<Collection.FormWorkflowService>();
         services.AddScoped<Collection.DocumentsService>();
         services.AddScoped<Collection.ResultsService>();
         services.AddSingleton<Collection.CycleSnapshotCache>();

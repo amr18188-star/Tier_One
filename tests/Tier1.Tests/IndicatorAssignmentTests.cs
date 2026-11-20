@@ -83,13 +83,13 @@ public class IndicatorAssignmentTests
     public void Forms_follow_the_units_tasked_when_the_cycle_opened()
     {
         var ci = new CycleIndicator { Level = CollectionLevel.College, UnitIds = [Com.Id] };
-        Assert.True(FormsService.Applies(ci, Com));
-        Assert.False(FormsService.Applies(ci, Eng));
+        Assert.True(FormAssignmentRules.Applies(ci, Com));
+        Assert.False(FormAssignmentRules.Applies(ci, Eng));
         // دورة فتحت قبل التكليف (بلا قائمة): كل كليات المستوى.
-        Assert.True(FormsService.Applies(new CycleIndicator { Level = CollectionLevel.College }, Eng));
+        Assert.True(FormAssignmentRules.Applies(new CycleIndicator { Level = CollectionLevel.College }, Eng));
         var central = new CycleIndicator { Level = CollectionLevel.University, CentralUnitId = Spu.Id };
-        Assert.True(FormsService.Applies(central, Spu));
-        Assert.False(FormsService.Applies(central, Eng));
+        Assert.True(FormAssignmentRules.Applies(central, Spu));
+        Assert.False(FormAssignmentRules.Applies(central, Eng));
     }
 
     [Fact]

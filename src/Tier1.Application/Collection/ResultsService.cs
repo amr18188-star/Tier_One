@@ -202,7 +202,7 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
                 ? [snap.Units[i.Ci.CentralUnitId ?? snap.Root.Id]]
                 // الكليات المكلفة به (هي أو أقسامها) في هذه الدورة فقط.
                 : colleges.Where(c => snap.Submissions.Any(s => snap.Units[s.UnitId] is var su && su.Path.StartsWith(c.Path, StringComparison.Ordinal)
-                                                                && (su.Kind == OrgUnitKind.Department || su.IsCollegeLevel) && FormsService.Applies(i.Ci, su)));
+                                                                && (su.Kind == OrgUnitKind.Department || su.IsCollegeLevel) && FormAssignmentRules.Applies(i.Ci, su)));
             var units = contributors.Select(u =>
             {
                 var a = u.Kind == OrgUnitKind.University ? uni : Actual(snap, i, u);
@@ -380,7 +380,7 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
         var contributors = s.Units.Values
             .Where(u => formUnits.Contains(u.Id) && u.Path.StartsWith(unit.Path, StringComparison.Ordinal)
                         && (level == OrgUnitKind.Department ? u.Kind == OrgUnitKind.Department : u.IsCollegeLevel)
-                        && FormsService.Applies(i.Ci, u))
+                        && FormAssignmentRules.Applies(i.Ci, u))
             .Select(u => u.Id).ToList();
         var values = Values(s, i, contributors);
         // قيمة جهة واحدة (كلية لمؤشر على مستوى الكلية) تؤخذ كما هي.

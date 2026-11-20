@@ -15,7 +15,7 @@ public sealed record ImportPreview(int Rows, int Changes, int Errors, int Warnin
 /// إدخال النموذج من Excel: قالب خاص بكل نموذج فيه مؤشراته فقط، ثم معاينة كل صف بقواعد الإدخال نفسها، ثم تطبيق كامل أو لا شيء.
 /// الخلية الفارغة لا تغير القيمة المحفوظة؛ والحالة «غير متاح» أو «لا ينطبق» تحتاج سببًا.
 /// </summary>
-public sealed partial class FormsService
+public sealed partial class FormEntryService
 {
     private static readonly string[] Columns =
         ["الرمز", "المؤشر", "المعيار", "الوحدة", "المستهدف", "القيمة السابقة", "الحالة", "القيمة", "البسط", "المقام", "السبب", "التفسير"];
@@ -25,8 +25,8 @@ public sealed partial class FormsService
 
     public async Task<(byte[] Content, string FileName)> TemplateAsync(Guid id, ISpreadsheets sheets, CancellationToken ct)
     {
-        var ctx = await LoadAsync(id, Cap.View, tracking: false, ct);
-        var targets = await TargetsAsync(ctx, ct);
+        var ctx = await reader.LoadAsync(id, Cap.View, tracking: false, ct);
+        var targets = await reader.TargetsAsync(ctx, ct);
         // بترتيب النموذج نفسه: الركيزة ثم المعيار ثم المؤشر.
         var rows = ctx.Indicators.Select(i =>
         {
@@ -47,8 +47,8 @@ public sealed partial class FormsService
     /// <summary>معاينة ملف مرفوع؛ apply=true يطبقه إن خلا من الأخطاء، في حفظ واحد.</summary>
     public async Task<ImportPreview> ImportAsync(Guid id, Stream content, ISpreadsheets sheets, bool apply, CancellationToken ct)
     {
-        var ctx = await LoadAsync(id, Cap.Edit, tracking: apply, ct);
-        EnsureEditable(ctx);
+        var ctx = await reader.LoadAsync(id, Cap.Edit, tracking: apply, ct);
+        FormReader.EnsureEditable(ctx);
         var (headers, rows) = sheets.Read(content, 500);
         var col = Columns.ToDictionary(c => c, c => headers.ToList().FindIndex(h => h.Trim() == c));
         if (col["الرمز"] < 0 || (col["القيمة"] < 0 && col["البسط"] < 0))

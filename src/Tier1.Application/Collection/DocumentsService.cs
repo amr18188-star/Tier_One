@@ -56,7 +56,7 @@ public sealed record PlanDocDto(DocDto Document, string? UploadedBy);
 /// المستندات: أدلة قيم المؤشرات (في نموذج الجهة)، ومستندات هيكل الكلية (الهيكل المعتمد وقرارات التشكيل).
 /// لا حذف نهائيًا: الإبطال بسبب يبقي المستند في السجل، والتنزيل بصلاحية الاطلاع على مالكه.
 /// </summary>
-public sealed class DocumentsService(IAppDb db, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, IFileStore files, FormsService forms)
+public sealed class DocumentsService(IAppDb db, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, IFileStore files, FormReader forms)
 {
     public long MaxBytes => files.MaxBytes;
 
@@ -74,7 +74,7 @@ public sealed class DocumentsService(IAppDb db, IClock clock, ICurrentUser curre
             Related = [new AuditTarget("submission", formId.ToString(), ctx.Unit.Code)],
         });
         await db.SaveChangesAsync(ct);
-        return FormsService.ToDoc(doc);
+        return FormReader.ToDoc(doc);
     }
 
     public async Task<IReadOnlyList<DocDto>> StructureDocsAsync(Guid collegeId, CancellationToken ct)
@@ -83,7 +83,7 @@ public sealed class DocumentsService(IAppDb db, IClock clock, ICurrentUser curre
         var college = await db.OrgUnits.AsNoTracking().FirstOrDefaultAsync(u => u.Id == collegeId, ct) ?? throw DomainException.NotFound();
         UnitScope.For(me, Features.Structure, Cap.View).Require(college);
         return await db.Documents.AsNoTracking().Where(d => d.OwnerType == StoredDocument.StructureOwner && d.OwnerId == collegeId)
-            .OrderByDescending(d => d.UploadedAt).Select(d => FormsService.ToDoc(d)).ToListAsync(ct);
+            .OrderByDescending(d => d.UploadedAt).Select(d => FormReader.ToDoc(d)).ToListAsync(ct);
     }
 
     public async Task<DocDto> UploadStructureAsync(Guid collegeId, UploadedFile file, CancellationToken ct)
@@ -98,7 +98,7 @@ public sealed class DocumentsService(IAppDb db, IClock clock, ICurrentUser curre
             Target = new AuditTarget("document", doc.Id.ToString(), doc.FileName, college.Code),
         });
         await db.SaveChangesAsync(ct);
-        return FormsService.ToDoc(doc);
+        return FormReader.ToDoc(doc);
     }
 
     /// <summary>وثيقة الخطة الاستراتيجية بإصداراتها، الأحدث أولًا؛ يطلع عليها كل من يرى الخطة.</summary>
@@ -112,7 +112,7 @@ public sealed class DocumentsService(IAppDb db, IClock clock, ICurrentUser curre
         var users = docs.Select(d => d.UploadedBy).Distinct().ToList();
         var names = await db.Users.AsNoTracking().Where(u => users.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.FullNameAr, ct);
         return docs.Where(d => manager || d.VoidedAt is null)
-            .Select(d => new PlanDocDto(FormsService.ToDoc(d), names.GetValueOrDefault(d.UploadedBy))).ToList();
+            .Select(d => new PlanDocDto(FormReader.ToDoc(d), names.GetValueOrDefault(d.UploadedBy))).ToList();
     }
 
     /// <summary>رفع إصدار من وثيقة الخطة (PDF فقط، لأنها تعرض في الصفحة). الإصدار الأحدث هو المعروض.</summary>
@@ -128,7 +128,7 @@ public sealed class DocumentsService(IAppDb db, IClock clock, ICurrentUser curre
             Target = new AuditTarget("document", doc.Id.ToString(), doc.FileName),
         });
         await db.SaveChangesAsync(ct);
-        return FormsService.ToDoc(doc);
+        return FormReader.ToDoc(doc);
     }
 
     /// <summary>وثيقة الخطة قد تكون أكبر من المستندات المعتادة.</summary>
@@ -178,7 +178,7 @@ public sealed class DocumentsService(IAppDb db, IClock clock, ICurrentUser curre
                 Reason = why,
             });
         await db.SaveChangesAsync(ct);
-        return FormsService.ToDoc(doc);
+        return FormReader.ToDoc(doc);
     }
 
     /// <summary>صلاحية المستند من صلاحية مالكه: نموذج الجهة أو هيكل الكلية، في نطاق المستخدم.</summary>

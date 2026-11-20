@@ -47,41 +47,41 @@ public static class CollectionEndpoints
             .RequirePermission(Features.Forms, Cap.View);
         g.MapGet("/{id:guid}", async (Guid id, FormsService svc, CancellationToken ct) => Results.Ok(await svc.GetAsync(id, ct)))
             .RequirePermission(Features.Forms, Cap.View);
-        g.MapPut("/{id:guid}/values", async (Guid id, SaveValueRequest req, FormsService svc, CancellationToken ct) => Results.Ok(await svc.SaveValueAsync(id, req, ct)))
+        g.MapPut("/{id:guid}/values", async (Guid id, SaveValueRequest req, FormEntryService svc, CancellationToken ct) => Results.Ok(await svc.SaveValueAsync(id, req, ct)))
             .RequirePermission(Features.Forms, Cap.Edit);
-        g.MapDelete("/{id:guid}/values/{indicatorId:guid}", async (Guid id, Guid indicatorId, FormsService svc, CancellationToken ct) =>
+        g.MapDelete("/{id:guid}/values/{indicatorId:guid}", async (Guid id, Guid indicatorId, FormEntryService svc, CancellationToken ct) =>
             {
                 await svc.ClearValueAsync(id, indicatorId, ct);
                 return Results.NoContent();
             })
             .RequirePermission(Features.Forms, Cap.Edit);
         // The body is optional on the wire: a submit without one is refused by the service (409 if locked, else 428), not by routing.
-        g.MapPost("/{id:guid}/submit", async (Guid id, HttpRequest http, FormsService svc, CancellationToken ct) =>
+        g.MapPost("/{id:guid}/submit", async (Guid id, HttpRequest http, FormWorkflowService svc, CancellationToken ct) =>
                 Results.Ok(await svc.SubmitAsync(id, (await OptionalBodyAsync<FormTransitionRequest>(http, ct))?.Version, ct)))
             .RequirePermission(Features.Forms, Cap.Edit);
         // المراجعة والاعتماد: الخدمة تفحص الإجراء الخاص لخطوة النموذج الحالية وفصل المهام.
-        g.MapPost("/{id:guid}/approve", async (Guid id, ApproveFormRequest req, FormsService svc, CancellationToken ct) => Results.Ok(await svc.ApproveAsync(id, req, ct)))
+        g.MapPost("/{id:guid}/approve", async (Guid id, ApproveFormRequest req, FormWorkflowService svc, CancellationToken ct) => Results.Ok(await svc.ApproveAsync(id, req, ct)))
             .RequireAnyPermission([.. ReviewSpecials, $"{Features.Forms}:{ApprovalRules.ApproveDepartmentDirectly}", $"{Features.Forms}:{ApprovalRules.ApproveAsDeanDirectly}"]);
-        g.MapPost("/{id:guid}/return", async (Guid id, ReturnRequest req, FormsService svc, CancellationToken ct) => Results.Ok(await svc.ReturnAsync(id, req, ct)))
+        g.MapPost("/{id:guid}/return", async (Guid id, ReturnRequest req, FormWorkflowService svc, CancellationToken ct) => Results.Ok(await svc.ReturnAsync(id, req, ct)))
             .RequireAnyPermission(ReviewSpecials);
         // إعادة فتح المعتمد بطلب وقرار (D4): الطلب ممن يملك «إعادة الفتح»، والقرار للجنة العليا برقم المحضر.
-        g.MapPost("/{id:guid}/reopen", async (Guid id, FormTransitionRequest req, FormsService svc, CancellationToken ct) => Results.Ok(await svc.RequestReopenAsync(id, req, ct)))
+        g.MapPost("/{id:guid}/reopen", async (Guid id, FormTransitionRequest req, FormWorkflowService svc, CancellationToken ct) => Results.Ok(await svc.RequestReopenAsync(id, req, ct)))
             .RequireSpecial(Features.Cycles, ApprovalRules.Reopen);
-        g.MapPost("/{id:guid}/reopen/approve", async (Guid id, Tier1.Application.Kpi.CommitteeDecisionRequest req, FormsService svc, CancellationToken ct) => Results.Ok(await svc.ApproveReopenAsync(id, req, ct)))
+        g.MapPost("/{id:guid}/reopen/approve", async (Guid id, Tier1.Application.Kpi.CommitteeDecisionRequest req, FormWorkflowService svc, CancellationToken ct) => Results.Ok(await svc.ApproveReopenAsync(id, req, ct)))
             .RequireSpecial(Features.Cycles, ApprovalRules.ApproveReopen);
-        g.MapPost("/{id:guid}/reopen/reject", async (Guid id, NoteRequest req, FormsService svc, CancellationToken ct) => Results.Ok(await svc.RejectReopenAsync(id, req, ct)))
+        g.MapPost("/{id:guid}/reopen/reject", async (Guid id, NoteRequest req, FormWorkflowService svc, CancellationToken ct) => Results.Ok(await svc.RejectReopenAsync(id, req, ct)))
             .RequireSpecial(Features.Cycles, ApprovalRules.ApproveReopen);
 
-        g.MapPost("/{id:guid}/extend", async (Guid id, ExtendRequest req, FormsService svc, CancellationToken ct) => Results.Ok(await svc.ExtendAsync(id, req, ct)))
+        g.MapPost("/{id:guid}/extend", async (Guid id, ExtendRequest req, FormWorkflowService svc, CancellationToken ct) => Results.Ok(await svc.ExtendAsync(id, req, ct)))
             .RequirePermission(Features.Cycles, Cap.Edit);
 
-        g.MapGet("/{id:guid}/template.xlsx", async (Guid id, FormsService svc, ISpreadsheets sheets, CancellationToken ct) =>
+        g.MapGet("/{id:guid}/template.xlsx", async (Guid id, FormEntryService svc, ISpreadsheets sheets, CancellationToken ct) =>
             {
                 var (content, name) = await svc.TemplateAsync(id, sheets, ct);
                 return Results.File(content, Xlsx, name);
             })
             .RequirePermission(Features.Forms, Cap.View);
-        g.MapPost("/{id:guid}/import", async (Guid id, bool? apply, HttpRequest request, FormsService svc, ISpreadsheets sheets, CancellationToken ct) =>
+        g.MapPost("/{id:guid}/import", async (Guid id, bool? apply, HttpRequest request, FormEntryService svc, ISpreadsheets sheets, CancellationToken ct) =>
             {
                 const long max = 5 * 1024 * 1024;
                 if (request.HttpContext.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit) limit.MaxRequestBodySize = max + 64 * 1024;

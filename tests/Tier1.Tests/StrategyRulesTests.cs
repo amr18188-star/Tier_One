@@ -197,10 +197,10 @@ public class StrategyRulesTests
         var departmentLevel = new CycleIndicator { Level = CollectionLevel.Department, CentralUnitId = central.Id, CollegeEntry = true };
         var distinct = new IndicatorVersion { Aggregation = Aggregation.DistinctCount };
 
-        Assert.True(FormsService.Applies(collegeLevel, College) && FormsService.Applies(collegeLevel, central));
-        Assert.True(FormsService.Applies(departmentLevel, department) && FormsService.Applies(departmentLevel, College));
-        Assert.Contains("الجامعة كلها", FormsService.EntryNote(collegeLevel, distinct, central));
-        Assert.Contains("بين أقسامها", FormsService.EntryNote(departmentLevel, distinct, College));
-        Assert.Null(FormsService.EntryNote(collegeLevel, distinct, College));
+        Assert.True(FormAssignmentRules.Applies(collegeLevel, College) && FormAssignmentRules.Applies(collegeLevel, central));
+        Assert.True(FormAssignmentRules.Applies(departmentLevel, department) && FormAssignmentRules.Applies(departmentLevel, College));
+        Assert.Contains("الجامعة كلها", FormAssignmentRules.EntryNote(collegeLevel, distinct, central));
+        Assert.Contains("بين أقسامها", FormAssignmentRules.EntryNote(departmentLevel, distinct, College));
+        Assert.Null(FormAssignmentRules.EntryNote(collegeLevel, distinct, College));
     }
 }
