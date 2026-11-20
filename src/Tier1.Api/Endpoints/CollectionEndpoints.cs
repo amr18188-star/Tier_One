@@ -89,7 +89,8 @@ public static class CollectionEndpoints
                 await using var stream = file.OpenReadStream();
                 return Results.Ok(await svc.ImportAsync(id, stream, sheets, apply ?? false, ct));
             })
-            .RequirePermission(Features.Forms, Cap.Edit);
+            // SEC-1: reading a workbook is heavy; repeated uploads are limited like the other sensitive actions.
+            .RequirePermission(Features.Forms, Cap.Edit).RequireRateLimiting(ApiSetup.SensitiveLimit);
     }
 
     private static readonly string[] ReviewSpecials =

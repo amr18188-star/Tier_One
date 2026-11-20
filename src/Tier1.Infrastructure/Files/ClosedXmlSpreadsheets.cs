@@ -33,12 +33,17 @@ public sealed class ClosedXmlSpreadsheets : ISpreadsheets
         return stream.ToArray();
     }
 
+    /// <summary>SEC-1: an upload has a handful of columns; anything wider is refused before reading its cells.</summary>
+    public const int MaxColumns = 60;
+
     public (IReadOnlyList<string> Headers, IReadOnlyList<IReadOnlyList<string>> Rows) Read(Stream content, int maxRows = 2000)
     {
+        // SEC-1: the zip is inflated against hard caps first, so a zip bomb is refused before ClosedXML loads it whole.
+        using var checkedContent = ZipGuard.Check(content);
         XLWorkbook book;
         try
         {
-            book = new XLWorkbook(content);
+            book = new XLWorkbook(checkedContent);
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
@@ -52,6 +57,7 @@ public sealed class ClosedXmlSpreadsheets : ISpreadsheets
             var lastCol = used.LastColumn().ColumnNumber();
             var lastRow = used.LastRow().RowNumber();
             if (lastRow - 1 > maxRows) throw new DomainException("too_many_rows", $"الملف أكثر من {maxRows} صف.", $"The file has more than {maxRows} rows.", 400);
+            if (lastCol > MaxColumns) throw new DomainException("too_many_columns", $"الملف أكثر من {MaxColumns} عمودًا؛ استخدم قالب النموذج كما نزل.", $"The file has more than {MaxColumns} columns.", 400);
             var headers = Enumerable.Range(1, lastCol).Select(c => ws.Cell(1, c).GetFormattedString().Trim()).ToList();
             var rows = new List<IReadOnlyList<string>>();
             for (var r = 2; r <= lastRow; r++)
