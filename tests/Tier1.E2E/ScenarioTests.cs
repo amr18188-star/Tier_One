@@ -114,7 +114,19 @@ public sealed class ScenarioTests(ITestOutputHelper output)
             var free = Enumerable.Range(2027, 5).FirstOrDefault(y => !existing.Contains(y));
             if (free != 0) { code2 = candidate; year = free; break; }
         }
-        Assert.True(code2 is not null, "Every sum indicator already has engineering targets; reset the data.");
+        if (code2 is null)
+        {
+            // Earlier runs used every year. Free the first indicator's engineering targets that this test itself left ("خطة الكلية").
+            var cleaner = await Env.As("sa1");
+            var first = sums.Contains("4.09") ? "4.09" : sums.First();
+            foreach (var old in (await planner.Get($"/api/kpi/indicators/{first}/targets"))!["colleges"].Items()
+                         .Where(x => x["unitId"].Str() == eng["id"].Str() && x["source"].Str() == "خطة الكلية").ToList())
+                await cleaner.Ok("POST", $"/api/kpi/targets/{old["id"].Str()}/delete", Scenario.O(("reason", "إزالة مستهدف تركه تشغيل اختبار سابق"), ("decisionRef", "اختبار")), expect: 204);
+            var left = (await planner.Get($"/api/kpi/indicators/{first}/targets"))!["colleges"].Items().Where(x => x["unitId"].Str() == eng["id"].Str()).Select(x => (int)x["year"].Num()!).ToHashSet();
+            year = Enumerable.Range(2027, 5).FirstOrDefault(y => !left.Contains(y));
+            if (year != 0) code2 = first;
+        }
+        Assert.True(code2 is not null, "Every sum indicator already has engineering targets that this test did not make; reset the data.");
         output.WriteLine($"  (indicator {code2}, year {year})");
         var dist = (await planner.Get($"/api/kpi/indicators/{code2}/distribution?year={year}"))!;
         t.Check(dist["result"]!["status"].Str() is "Covers" or "Short" or "Incomplete", $"Distribution: {dist["result"]!["summaryAr"].Str()}");
@@ -173,13 +185,19 @@ public sealed class ScenarioTests(ITestOutputHelper output)
         t.Step("6. 'Required from you' by role");
         var taken = (await planner.Get($"/api/kpi/indicators/{code2}/targets"))!["colleges"].Items().Where(x => x["unitId"].Str() == eng["id"].Str()).Select(x => (int)x["year"].Num()!).ToHashSet();
         var spare = Enumerable.Range(2027, 5).FirstOrDefault(y => !taken.Contains(y));
-        if (spare != 0) await dean.Ok("PUT", $"/api/kpi/indicators/{code2}/targets", Scenario.O(("unitId", eng["id"]), ("year", spare), ("kind", "Target"), ("value", 2), ("source", "خطة الكلية")));
+        var spareTarget = spare == 0 ? null
+            : await dean.Ok("PUT", $"/api/kpi/indicators/{code2}/targets", Scenario.O(("unitId", eng["id"]), ("year", spare), ("kind", "Target"), ("value", 2), ("source", "خطة الكلية")));
         var home = (await committee.Get("/api/home"))!;
         t.Check(home["tasks"].Items().Any(x => x["key"].Str() == "targets_proposed"), "The committee sees the proposed targets waiting for it");
         home = (await planner.Get("/api/home"))!;
         t.Check(!home["tasks"].Items().Any(x => x["key"].Str() == "definitions_review"), "The plan manager does not see the approval task");
         (status, _) = await viewer.Call("PUT", $"/api/kpi/indicators/{code}/definition", member);
         t.Check(status == 403, "The viewer cannot edit");
+
+        // Leave the targets as they were, so the next run finds a free year again.
+        var sa = await Env.As("sa1");
+        foreach (var made in new[] { target, spareTarget }.Where(x => x is not null))
+            await sa.Ok("POST", $"/api/kpi/targets/{made!["id"].Str()}/delete", Scenario.O(("reason", "تنظيف بيانات الاختبار"), ("decisionRef", "اختبار")), expect: 204);
         t.Finish();
     }
 }
