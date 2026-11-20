@@ -264,4 +264,203 @@ public sealed class LoadTests(ITestOutputHelper output)
         output.WriteLine($"{total} requests, {total / (double)seconds:0.0} req/s, worst p95 {worst * 1000:0} ms, server errors {failed}");
         Assert.True(worst < 2.0 && failed == 0, $"p95 {worst * 1000:0} ms (limit 2000), server errors {failed}.");
     }
+
+    /// <summary>
+    /// PERF-B11: deadline day, with writes. In a trial cycle of its own:
+    /// - 70% of the virtual users are data entry: many at once on the same college form, each autosaving its own share of the
+    ///   indicators. Their shares do not overlap, so a 409 here would be a false conflict (DB-1) and fails the test.
+    /// - 10% are reviewers approving, step by step, the department forms filled and sent before the clock starts.
+    /// - 20% open the dashboards: home, the forms list, results, an indicator's trend, and a college's progress.
+    /// p50, p95 and p99, server errors and conflicts are reported per route. Accepted: p95 under two seconds on every route,
+    /// no server error, and no conflict on saves. Opt in with T1_E2E_LOAD=1 (T1_LOAD_USERS default 60, T1_LOAD_SECONDS default 60).
+    /// </summary>
+    [LoadFact]
+    public async Task Deadline_day_saves_approvals_and_dashboards_stay_under_two_seconds()
+    {
+        var users = int.Parse(Environment.GetEnvironmentVariable("T1_LOAD_USERS") ?? "60", System.Globalization.CultureInfo.InvariantCulture);
+        var seconds = int.Parse(Environment.GetEnvironmentVariable("T1_LOAD_SECONDS") ?? "60", System.Globalization.CultureInfo.InvariantCulture);
+        var stats = new LoadStats();
+
+        // The cycle, and the department forms filled and sent for review before the clock starts.
+        var planner = await Env.As("planner");
+        var tag = Calls.Tag();
+        var created = await planner.Ok("POST", "/api/cycles", Scenario.O(("name", $"اختبار الحمل {tag}"), ("periodLabel", $"load-{tag}"), ("targetYear", 2027),
+            ("opensOn", Calls.Today()), ("dueOn", Calls.Today(14)), ("trial", true), ("version", null)));
+        var cycleId = created["id"].Str()!;
+        await planner.Ok("POST", $"/api/cycles/{cycleId}/open");
+        try
+        {
+            // A department form is entered by the college's data entry and reviewed first by the department representative.
+            output.WriteLine("Filling and sending the department forms…");
+            var writerAccounts = new[] { "entry", "entry.cs", "entry.com" };
+            foreach (var account in writerAccounts)
+            {
+                var client = await TryLoginAsync(account);
+                if (client is null) continue;
+                foreach (var row in (await client.Get($"/api/forms?cycleId={cycleId}&awaitingMe=true")).Items().Where(r => r["unitKind"].Str() == "Department"))
+                {
+                    var form = await client.Fill((await client.Get($"/api/forms/{row["id"].Str()}"))!, tag);
+                    await client.Ok("POST", $"/api/forms/{form["id"].Str()}/submit", Scenario.O(("version", form["version"])));
+                }
+            }
+
+            // Every step of the path has its reviewer: department representatives, college committees, deans, central quality.
+            var reviewerAccounts = new[] { "deptrep", "rep.ele", "rep.mec", "rep.se", "rep.ai", "rep.acc", "rep.bus", "college", "college.cs", "college.com", "dean", "dean.cs", "dean.com", "quality" };
+            var dashboardAccounts = new[] { "president", "vp", "planner", "viewer" };
+            var writers = (int)Math.Round(users * 0.7);
+            var reviewers = Math.Clamp((int)Math.Round(users * 0.1), 1, reviewerAccounts.Length);
+            var dashboards = users - writers - reviewers;
+            output.WriteLine($"Logging in {users} virtual users ({writers} entering, {reviewers} reviewing, {dashboards} on dashboards)…");
+            var writing = await LoginAllAsync(Enumerable.Range(0, writers).Select(i => writerAccounts[i % writerAccounts.Length]));
+            var reviewing = await LoginAllAsync(reviewerAccounts);
+            var watching = await LoginAllAsync(Enumerable.Range(0, dashboards).Select(i => dashboardAccounts[i % dashboardAccounts.Length]));
+            stats.Error("login", writing.Concat(reviewing).Concat(watching).Count(c => c is null));
+
+            var until = DateTime.UtcNow.AddSeconds(seconds);
+            output.WriteLine($"Running for {seconds}s…");
+            await Task.WhenAll(
+            [
+                // Users of one account share its form: the k-th of n autosaves every n-th indicator, from k.
+                .. writing.Select((c, i) => (c, i)).Where(x => x.c is not null).Select(x =>
+                    WriteAsync(x.c!, stats, cycleId, x.i / writerAccounts.Length, (writers - 1 - x.i % writerAccounts.Length) / writerAccounts.Length + 1, until)),
+                // Each reviewing user acts for its share of the reviewer accounts, so no two users approve the same form.
+                .. Enumerable.Range(0, reviewers).Select(r =>
+                    ReviewAsync(reviewing.Where((c, i) => c is not null && i % reviewers == r).Select(c => c!).ToList(), stats, cycleId, until)),
+                .. watching.Where(c => c is not null).Select(c => DashboardsAsync(c!, stats, cycleId, until)),
+            ]);
+        }
+        finally
+        {
+            await planner.Call("POST", $"/api/cycles/{cycleId}/close", Scenario.O(("note", "انتهى اختبار الحمل")));
+        }
+
+        var (worst, failed, conflicts) = stats.Report(output, seconds);
+        Assert.True(worst < 2.0 && failed == 0 && conflicts == 0, $"p95 {worst * 1000:0} ms (limit 2000), server errors {failed}, conflicts on saves {conflicts}.");
+    }
+
+    private static async Task<DemoClient?[]> LoginAllAsync(IEnumerable<string> accounts)
+    {
+        var list = accounts.ToList();
+        var clients = new DemoClient?[list.Count];
+        await Parallel.ForEachAsync(Enumerable.Range(0, list.Count), new ParallelOptions { MaxDegreeOfParallelism = 10 }, async (i, _) => clients[i] = await TryLoginAsync(list[i]));
+        return clients;
+    }
+
+    private static async Task<DemoClient?> TryLoginAsync(string account)
+    {
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            try { return await DemoClient.LoginAsync(Env.Base, $"{account}@tier1.local", Env.Password, default); }
+            catch (InvalidOperationException) { await Task.Delay(1000 * (attempt + 1)); } // simultaneous logins can hit the rate limit
+        }
+        return null;
+    }
+
+    /// <summary>Autosaves this user's share of the indicators of the college form awaiting the account, as the entry screen does.</summary>
+    private static async Task WriteAsync(DemoClient c, LoadStats stats, string cycleId, int index, int of, DateTime until)
+    {
+        var rnd = new Random();
+        var (_, list) = await stats.Timed(c, "forms", HttpMethod.Get, $"/api/forms?cycleId={cycleId}&awaitingMe=true");
+        var row = list.Items().FirstOrDefault(r => r["unitKind"].Str() != "Department");
+        if (row is null) return;
+        var path = $"/api/forms/{row["id"].Str()}";
+        var (_, form) = await stats.Timed(c, "form", HttpMethod.Get, path);
+        var mine = (form?.ItemsOf() ?? []).Where((_, n) => n % of == index).ToList();
+        if (mine.Count == 0) return;
+        var versions = mine.ToDictionary(item => item["indicatorId"].Str()!, item => item["value"].Truthy() ? item["value"]!["version"].Copy() : null);
+        var step = 0;
+        while (DateTime.UtcNow < until)
+        {
+            var item = mine[step % mine.Count];
+            var body = Calls.InputFor(item);
+            body["version"] = versions[item["indicatorId"].Str()!]?.DeepClone();
+            if (body["value"] is not null && !item["usesRatio"].Truthy()) body["value"] = 10 + step % 5;
+            var (status, saved) = await stats.Timed(c, "save", HttpMethod.Put, $"{path}/values", body);
+            if (status == 200) versions[item["indicatorId"].Str()!] = saved!["value"]!["version"].Copy();
+            if (++step % 8 == 0) await stats.Timed(c, "form", HttpMethod.Get, path);
+            await Task.Delay(rnd.Next(300, 1500)); // typing between two autosaves
+        }
+    }
+
+    /// <summary>Approves, one decision at a time, a form awaiting one of the user's reviewer accounts at that account's step.</summary>
+    private static async Task ReviewAsync(List<DemoClient> accounts, LoadStats stats, string cycleId, DateTime until)
+    {
+        var rnd = new Random();
+        for (var turn = 0; accounts.Count > 0 && DateTime.UtcNow < until; turn++)
+        {
+            var c = accounts[turn % accounts.Count];
+            var (_, list) = await stats.Timed(c, "forms", HttpMethod.Get, $"/api/forms?cycleId={cycleId}&awaitingMe=true");
+            var waiting = list.Items().Where(r => r["status"].Str() == "InReview").ToList();
+            // A form can await the account for a direct approval past an earlier step; the reviewer approves only at its own step.
+            foreach (var row in waiting)
+            {
+                var path = $"/api/forms/{row["id"].Str()}";
+                var (_, form) = await stats.Timed(c, "form", HttpMethod.Get, path);
+                if (!form?["actions"]?["canApprove"].Truthy() ?? true) continue;
+                await stats.Timed(c, "approve", HttpMethod.Post, $"{path}/approve", Scenario.O(("note", "مراجعة اختبار الحمل"), ("version", form!["version"].Copy()), ("direct", false)));
+                break;
+            }
+            await Task.Delay(rnd.Next(2000, 5000)); // reading the form before the next decision
+        }
+    }
+
+    private static async Task DashboardsAsync(DemoClient c, LoadStats stats, string cycleId, DateTime until)
+    {
+        var rnd = new Random();
+        while (DateTime.UtcNow < until)
+        {
+            await stats.Timed(c, "home", HttpMethod.Get, "/api/home");
+            await stats.Timed(c, "forms", HttpMethod.Get, $"/api/forms?cycleId={cycleId}");
+            var (status, results) = await stats.Timed(c, "results", HttpMethod.Get, $"/api/results?cycleId={cycleId}");
+            if (status == 200 && results?["indicators"].Items().ElementAtOrDefault(rnd.Next(10)) is { } indicator)
+                await stats.Timed(c, "trend", HttpMethod.Get, $"/api/results/{cycleId}/indicators/{indicator["indicatorId"].Str()}");
+            await stats.Timed(c, "progress", HttpMethod.Get, "/api/progress");
+            await Task.Delay(rnd.Next(500, 2000));
+        }
+    }
+
+    /// <summary>Times per route, with server errors and conflicts (409 on a save means two users' edits collided).</summary>
+    private sealed class LoadStats
+    {
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, System.Collections.Concurrent.ConcurrentBag<double>> timings = new();
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, int> errors = new();
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, int> conflicts = new();
+
+        /// <summary>Business refusals by route, status and code, so an unexpected 4xx is explained in the report.</summary>
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, int> refusals = new();
+
+        public void Error(string route, int count)
+        {
+            if (count > 0) errors.AddOrUpdate(route, count, (_, n) => n + count);
+        }
+
+        public async Task<(int Status, JsonNode? Body)> Timed(DemoClient c, string route, HttpMethod method, string path, JsonNode? body = null)
+        {
+            var start = Stopwatch.GetTimestamp();
+            var result = await c.CallAsync(method, path, body, null, default);
+            timings.GetOrAdd(route, _ => []).Add(Stopwatch.GetElapsedTime(start).TotalSeconds);
+            if (result.Status >= 500) Error(route, 1);
+            if (result.Status == 409) conflicts.AddOrUpdate(route, 1, (_, n) => n + 1);
+            if (result.Status is >= 400 and < 500) refusals.AddOrUpdate($"{route} {result.Status} {result.Body.Code()}", 1, (_, n) => n + 1);
+            return result;
+        }
+
+        public (double WorstP95, int ServerErrors, int SaveConflicts) Report(ITestOutputHelper output, int seconds)
+        {
+            static double At(List<double> v, double q) => v[Math.Min(v.Count - 1, (int)(v.Count * q))] * 1000;
+            var total = timings.Values.Sum(v => v.Count);
+            output.WriteLine($"{"route",-10}{"requests",10}{"p50 ms",9}{"p95 ms",9}{"p99 ms",9}{"max ms",9}{"5xx",6}{"409",6}");
+            var worst = 0.0;
+            foreach (var (route, bag) in timings.OrderBy(t => t.Key, StringComparer.Ordinal))
+            {
+                var v = bag.Order().ToList();
+                worst = Math.Max(worst, At(v, 0.95) / 1000);
+                output.WriteLine($"{route,-10}{v.Count,10}{At(v, 0.5),9:0}{At(v, 0.95),9:0}{At(v, 0.99),9:0}{v[^1] * 1000,9:0}{errors.GetValueOrDefault(route),6}{conflicts.GetValueOrDefault(route),6}");
+            }
+            foreach (var (refusal, count) in refusals.OrderBy(r => r.Key, StringComparer.Ordinal)) output.WriteLine($"  refused: {refusal} x{count}");
+            var failed = errors.Values.Sum();
+            output.WriteLine($"{total} requests, {total / (double)seconds:0.0} req/s, worst p95 {worst * 1000:0} ms, server errors {failed}, conflicts {conflicts.Values.Sum()}");
+            return (worst, failed, conflicts.GetValueOrDefault("save"));
+        }
+    }
 }
