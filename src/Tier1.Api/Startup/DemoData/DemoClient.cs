@@ -91,6 +91,9 @@ internal sealed class DemoClient : IDisposable
         return (status, parsed);
     }
 
+    /// <summary>A request as built by the caller (custom headers, e.g. X-Passive), on this session's cookies.</summary>
+    public Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) => http.SendAsync(request, ct);
+
     public void Dispose() => http.Dispose();
 }
 

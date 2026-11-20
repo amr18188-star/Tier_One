@@ -91,6 +91,21 @@ public sealed class Tier1App : IAsyncLifetime
         return Convert.ToInt64(await command.ExecuteScalarAsync(), System.Globalization.CultureInfo.InvariantCulture);
     }
 
+    /// <summary>A scalar from SQL with parameters (a timestamp, a count), or the rows changed by an UPDATE.</summary>
+    public async Task<object?> ScalarAsync(string sql, params (string Name, object Value)[] parameters)
+    {
+        await using var connection = new NpgsqlConnection(ConnectionString);
+        await connection.OpenAsync();
+#pragma warning disable CA2100 // The SQL is a constant in the test; values go in as parameters.
+        await using var command = new NpgsqlCommand(sql, connection);
+#pragma warning restore CA2100
+        foreach (var (name, value) in parameters) command.Parameters.AddWithValue(name, value);
+        return sql.TrimStart().StartsWith("UPDATE", StringComparison.OrdinalIgnoreCase) ? await command.ExecuteNonQueryAsync() : await command.ExecuteScalarAsync();
+    }
+
+    /// <summary>A new session of a demo account, not shared with the other tests (for session timing checks).</summary>
+    internal Task<DemoClient> NewSessionAsync(string name) => DemoClient.LoginAsync(Base, $"{name}@tier1.local", Password, CancellationToken.None);
+
     private sealed class Factory : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder) => builder.UseEnvironment("Development");

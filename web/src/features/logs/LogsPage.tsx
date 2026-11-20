@@ -173,7 +173,7 @@ const CHAIN_PAGE = 8;
 function IntegrityPanel() {
   const qc = useQueryClient();
   const { message } = App.useApp();
-  const status = useQuery({ queryKey: ["logs-status"], queryFn: () => api.get<LogsStatus>("/api/logs/status?days=14"), refetchInterval: 15_000 });
+  const status = useQuery({ queryKey: ["logs-status"], queryFn: () => api.poll<LogsStatus>("/api/logs/status?days=14"), refetchInterval: 15_000 });
   const [busy, setBusy] = useState(false);
   const days = status.data?.days ?? [];
   const pagedDays = usePaged(days, CHAIN_PAGE);

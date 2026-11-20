@@ -35,7 +35,9 @@ public sealed class SessionAuthenticationHandler(
     {
         if (!Request.Cookies.TryGetValue(cookies.Value.Session, out var token) || string.IsNullOrEmpty(token))
             return AuthenticateResult.NoResult();
-        var principal = await sessions.ValidateAsync(token, Context.RequestAborted);
+        // FE-2: background polls say so (X-Passive: 1), so an unattended open tab still reaches the idle timeout.
+        var passive = Request.Headers["X-Passive"] == "1";
+        var principal = await sessions.ValidateAsync(token, Context.RequestAborted, passive);
         if (principal is null) return AuthenticateResult.Fail("invalid_session");
         var claims = new List<Claim>
         {

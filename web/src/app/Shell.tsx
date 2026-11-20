@@ -145,7 +145,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const canMatrix = perms.can("adm.roles", "V");
   const pending = useQuery({
     queryKey: ["changes", "Pending"],
-    queryFn: () => api.get<RbacChange[]>("/api/iam/changes?status=Pending"),
+    queryFn: () => api.poll<RbacChange[]>("/api/iam/changes?status=Pending"),
     enabled: canMatrix,
     refetchInterval: 60_000,
   });

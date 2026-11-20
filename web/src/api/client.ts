@@ -28,6 +28,8 @@ async function readJson(r: Response): Promise<{ code?: string; title?: string; t
 
 export interface ApiClient {
   get: <T>(path: string) => Promise<T>;
+  /** A background poll (FE-2): the server reads the session without extending its idle window. */
+  poll: <T>(path: string) => Promise<T>;
   post: <T>(path: string, body?: unknown) => Promise<T>;
   put: <T>(path: string, body?: unknown) => Promise<T>;
   del: <T>(path: string) => Promise<T>;
@@ -41,7 +43,11 @@ export interface ApiClient {
  * عميل الواجهة: رمز CSRF من csrfUrl مرتبط بالجلسة، وكوكي الجلسة HttpOnly يرسله المتصفح وحده. لا رموز في التخزين المحلي.
  * الكتابات الأولى المتزامنة تنتظر طلب رمز واحدًا، ورفض الرمز يجدده مرة واحدة ثم يعاد الطلب.
  */
-export function createApiClient({ csrfUrl }: { csrfUrl: string }): ApiClient {
+export function createApiClient({ csrfUrl, onUnauthorized }: {
+  csrfUrl: string;
+  /** UX-1: a 401 from any call except the session check and sign-in itself means the session ended under the user. */
+  onUnauthorized?: (path: string) => void;
+}): ApiClient {
   let token: string | null = null;
   let pending: Promise<string> | null = null;
 
@@ -79,7 +85,7 @@ export function createApiClient({ csrfUrl }: { csrfUrl: string }): ApiClient {
     await pending;
   }
 
-  async function finish<T>(r: Response, retry: boolean, again: () => Promise<T>): Promise<T> {
+  async function finish<T>(path: string, r: Response, retry: boolean, again: () => Promise<T>): Promise<T> {
     // 204 بلا جسم: null لا undefined، لأن react-query يرفض undefined بيانات استعلام (مثل /api/results قبل أول دورة).
     if (r.status === 204) return null as T;
     const data = await readJson(r);
@@ -89,17 +95,19 @@ export function createApiClient({ csrfUrl }: { csrfUrl: string }): ApiClient {
         await refreshCsrf();
         return again();
       }
+      if (r.status === 401 && path !== "/api/me" && !path.startsWith("/api/auth/")) onUnauthorized?.(path);
       throw new ApiError(r.status, data?.code ?? "error", data?.title ?? `HTTP ${r.status}`);
     }
     return data as T;
   }
 
-  async function request<T>(method: string, path: string, body?: unknown, retry = true): Promise<T> {
+  async function request<T>(method: string, path: string, body?: unknown, retry = true, passive = false): Promise<T> {
     const headers: Record<string, string> = { "Accept-Language": getLang() };
+    if (passive) headers["X-Passive"] = "1";
     if (body !== undefined) headers["Content-Type"] = "application/json";
     if (method !== "GET") headers["X-XSRF-TOKEN"] = await csrf();
     const r = await send(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
-    return finish<T>(r, retry, () => request<T>(method, path, body, false));
+    return finish<T>(path, r, retry, () => request<T>(method, path, body, false, passive));
   }
 
   async function upload<T>(path: string, file: File, fields?: Record<string, string>, retry = true): Promise<T> {
@@ -107,11 +115,12 @@ export function createApiClient({ csrfUrl }: { csrfUrl: string }): ApiClient {
     body.append("file", file, file.name);
     for (const [k, v] of Object.entries(fields ?? {})) body.append(k, v);
     const r = await send(path, { method: "POST", headers: { "Accept-Language": getLang(), "X-XSRF-TOKEN": await csrf() }, body });
-    return finish<T>(r, retry, () => upload<T>(path, file, fields, false));
+    return finish<T>(path, r, retry, () => upload<T>(path, file, fields, false));
   }
 
   return {
     get: <T>(path: string) => request<T>("GET", path),
+    poll: <T>(path: string) => request<T>("GET", path, undefined, true, true),
     post: <T>(path: string, body: unknown = {}) => request<T>("POST", path, body),
     put: <T>(path: string, body: unknown = {}) => request<T>("PUT", path, body),
     del: <T>(path: string) => request<T>("DELETE", path),
@@ -120,9 +129,15 @@ export function createApiClient({ csrfUrl }: { csrfUrl: string }): ApiClient {
   };
 }
 
-const staff = createApiClient({ csrfUrl: "/api/auth/csrf" });
+/** UX-1: who hears that the session ended mid-task (the session provider registers itself). */
+let sessionEnded: ((path: string) => void) | null = null;
+export function onSessionEnded(handler: ((path: string) => void) | null) {
+  sessionEnded = handler;
+}
 
-export const api = { get: staff.get, post: staff.post, put: staff.put, del: staff.del };
+const staff = createApiClient({ csrfUrl: "/api/auth/csrf", onUnauthorized: (path) => sessionEnded?.(path) });
+
+export const api = { get: staff.get, poll: staff.poll, post: staff.post, put: staff.put, del: staff.del };
 export const uploadFile = staff.upload;
 export const refreshCsrf = staff.refreshCsrf;
 

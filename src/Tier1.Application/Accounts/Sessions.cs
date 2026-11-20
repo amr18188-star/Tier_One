@@ -46,7 +46,8 @@ public interface ISessionService
 {
     Task<(string Token, UserSession Session)> CreateAsync(AppUser user, bool mfaRequired, CancellationToken ct);
 
-    Task<SessionPrincipal?> ValidateAsync(string token, CancellationToken ct);
+    /// <param name="passive">A background poll (FE-2): it reads the session without extending the idle window.</param>
+    Task<SessionPrincipal?> ValidateAsync(string token, CancellationToken ct, bool passive = false);
 
     Task MarkMfaVerifiedAsync(Guid sessionId, CancellationToken ct);
 
@@ -88,7 +89,7 @@ public sealed class SessionService(IAppDb db, IClock clock, ICurrentUser current
         return (token, session);
     }
 
-    public async Task<SessionPrincipal?> ValidateAsync(string token, CancellationToken ct)
+    public async Task<SessionPrincipal?> ValidateAsync(string token, CancellationToken ct, bool passive = false)
     {
         var hash = Tokens.Hash(token);
         if (cache.TryGetValue<SessionPrincipal>(Key(hash), out var cached)) return cached;
@@ -102,6 +103,8 @@ public sealed class SessionService(IAppDb db, IClock clock, ICurrentUser current
         var s = row.Session;
         var principal = new SessionPrincipal(s.Id, row.User.Id, Lang.Name(row.User.FullNameAr, row.User.FullNameEn), row.User.PreferredLanguage,
             s.MfaRequired && s.MfaVerifiedAt is null, row.User.MustChangePassword, s.MfaVerifiedAt is not null);
+        // FE-2: a background poll neither slides the idle window nor fills the cache (the next real request must still slide it).
+        if (passive) return principal;
         if (now - s.LastSeenAt > TimeSpan.FromMinutes(1))
             await db.Sessions.Where(x => x.Id == s.Id).ExecuteUpdateAsync(u => u.SetProperty(x => x.LastSeenAt, now), ct);
         cache.Set(Key(hash), principal, CacheFor);

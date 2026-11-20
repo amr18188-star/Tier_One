@@ -8,6 +8,7 @@ import { onLangChange, useLang, type Lang } from "../shared/i18n";
 import { AppLoading } from "../shared/AppLoading";
 import { ErrorScreen, NoAccess } from "../shared/QueryState";
 import { SessionProvider, usePermissions, useSession } from "../shared/session";
+import { SessionExpiredDialog } from "../shared/SessionExpiredDialog";
 import { AppearanceProvider } from "../styles/design-system/appearance";
 
 /**
@@ -165,6 +166,7 @@ function Gate() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
+        <SessionExpiredDialog />
       </Shell>
     </Suspense>
   );

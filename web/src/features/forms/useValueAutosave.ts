@@ -4,6 +4,7 @@ import { api, ApiError } from "../../api/client";
 import type { Form, FormItem, SaveValue, ValueKind } from "../../api/collection";
 import { errorText } from "../../shared/format";
 import { L } from "../../shared/i18n";
+import { SESSION_RESUMED } from "../../shared/session";
 
 // ----- المسودة -----
 
@@ -36,6 +37,23 @@ export function saveBody(item: FormItem, d: Draft, version: number | null): Save
     denominator: d.kind === "Number" && (item.usesRatio || weighted) ? d.denominator : null,
     reason: d.kind === "Number" ? null : d.reason || null, explanation: d.explanation || null, version,
   };
+}
+
+/**
+ * UX-3: why a draft is not sent yet, in the user's words; null when it is complete (or untouched).
+ * The same rules as complete() below.
+ */
+export function incompleteReason(item: FormItem, d: Draft): string | null {
+  if (d.kind !== "Number") {
+    const n = d.reason.trim().length;
+    if (n >= 5) return null;
+    return n === 0 ? L("اكتب السبب لحفظه.", "Write the reason to save it.") : L("اكتب سببًا من 5 أحرف على الأقل لحفظه.", "Write a reason of at least 5 characters to save it.");
+  }
+  if (item.usesRatio && (d.numerator === null) !== (d.denominator === null))
+    return d.numerator === null
+      ? L("أدخل البسط لحساب النسبة وحفظها.", "Enter the numerator to compute and save the ratio.")
+      : L("أدخل المقام لحساب النسبة وحفظها.", "Enter the denominator to compute and save the ratio.");
+  return null;
 }
 
 /** يحفظ فقط ما يقبله الخادم كاملًا (القاعدة نفسها قبل الحفظ التلقائي): النسبة ببسطها ومقامها، وغير المتاح بسبب من 5 أحرف. */
@@ -107,7 +125,9 @@ function saveError(e: unknown): SaveError {
   const conflict = e instanceof ApiError && e.status === 409;
   return {
     conflict,
-    text: conflict
+    text: e instanceof ApiError && e.status === 401
+      ? L("انتهت الجلسة قبل الحفظ؛ القيمة باقية وتحفظ بعد تسجيل الدخول.", "The session ended before saving; the value stays and is saved after you sign in.")
+      : conflict
       ? L("تغيرت هذه القيمة من مكان آخر (مستخدم آخر أو استيراد) بعد أن فتحت النموذج، فلم تحفظ قيمتك.",
         "This value changed elsewhere (another user or an import) after you opened the form, so yours was not saved.")
       : errorText(e),
@@ -213,6 +233,15 @@ export function useValueAutosave({ formId, item, editable, onSaved, delay = 800 
     const before = q.latest;
     if (q.adopt(server, serverVersion) && !sameDraft(before, server)) setDraft(server);
   }, [serverVersion, item.value?.editedAt]);
+
+  // UX-1: back from an ended session, a row whose save failed sends it again.
+  useEffect(() => {
+    const resumed = () => {
+      if (q.unsaved && !q.saving) void q.run();
+    };
+    window.addEventListener(SESSION_RESUMED, resumed);
+    return () => window.removeEventListener(SESSION_RESUMED, resumed);
+  }, [q]);
 
   useEffect(() => {
     alive.current = true;
