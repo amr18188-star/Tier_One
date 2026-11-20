@@ -49,7 +49,7 @@ export default function ResultsPage() {
   const cycles = useCycles();
   const res = useQuery({
     queryKey: ["results", cycleParam, unitParam],
-    queryFn: () => api.get<Results | null>(`/api/results${query({ cycleId: cycleParam, unitId: unitParam })}`),
+    queryFn: ({ signal }) => api.get<Results | null>(`/api/results${query({ cycleId: cycleParam, unitId: unitParam })}`, { signal }),
   });
   const r = res.data;
   useLayoutEffect(() => {
@@ -376,7 +376,7 @@ function IndicatorDrawer({ cycleId, unitId, university, item, onClose }: { cycle
   const uniTarget = university ? item.target : item.universityTarget;
   const d = useQuery({
     queryKey: ["results", cycleId, "indicator", item.indicatorId, unitId],
-    queryFn: () => api.get<IndicatorResults>(`/api/results/${cycleId}/indicators/${item.indicatorId}${query({ unitId })}`),
+    queryFn: ({ signal }) => api.get<IndicatorResults>(`/api/results/${cycleId}/indicators/${item.indicatorId}${query({ unitId })}`, { signal }),
   });
   return (
     <Drawer open width={640} onClose={onClose} title={<span className="t1-code-title"><code className="ltr">{item.code}</code> {item.name}</span>}>

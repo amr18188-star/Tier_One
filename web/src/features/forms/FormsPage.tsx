@@ -58,7 +58,7 @@ export default function FormsPage() {
 
   const all = useQuery({
     queryKey: ["forms", cycleId],
-    queryFn: () => api.get<FormRow[]>(`/api/forms${query({ cycleId })}`),
+    queryFn: ({ signal }) => api.get<FormRow[]>(`/api/forms${query({ cycleId })}`, { signal }),
     enabled: !!cycleId,
   });
   const rows = useMemo(() => [...(all.data ?? [])].sort(byPriority), [all.data]);

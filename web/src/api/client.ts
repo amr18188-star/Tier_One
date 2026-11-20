@@ -52,7 +52,8 @@ async function readJson(r: Response): Promise<{ code?: string; title?: string; t
 }
 
 export interface ApiClient {
-  get: <T>(path: string) => Promise<T>;
+  /** FE-12: `signal` (react-query passes one) cancels a request whose answer is no longer wanted. */
+  get: <T>(path: string, options?: { signal?: AbortSignal }) => Promise<T>;
   /** A background poll (FE-2): the server reads the session without extending its idle window. */
   poll: <T>(path: string) => Promise<T>;
   post: <T>(path: string, body?: unknown) => Promise<T>;
@@ -145,13 +146,13 @@ export function createApiClient({ csrfUrl, onUnauthorized }: {
     return once(`${method} ${path} ${JSON.stringify(body ?? null)}`, () => request<T>(method, path, body));
   }
 
-  async function request<T>(method: string, path: string, body?: unknown, retry = true, passive = false): Promise<T> {
+  async function request<T>(method: string, path: string, body?: unknown, retry = true, passive = false, signal?: AbortSignal): Promise<T> {
     const headers: Record<string, string> = { "Accept-Language": getLang() };
     if (passive) headers["X-Passive"] = "1";
     if (body !== undefined) headers["Content-Type"] = "application/json";
     if (method !== "GET") headers["X-XSRF-TOKEN"] = await csrf();
-    const r = await send(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
-    return finish<T>(path, r, retry, () => request<T>(method, path, body, false, passive));
+    const r = await send(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), signal });
+    return finish<T>(path, r, retry, () => request<T>(method, path, body, false, passive, signal));
   }
 
   async function upload<T>(path: string, file: File, fields?: Record<string, string>, retry = true): Promise<T> {
@@ -163,7 +164,7 @@ export function createApiClient({ csrfUrl, onUnauthorized }: {
   }
 
   return {
-    get: <T>(path: string) => request<T>("GET", path),
+    get: <T>(path: string, options?: { signal?: AbortSignal }) => request<T>("GET", path, undefined, true, false, options?.signal),
     poll: <T>(path: string) => request<T>("GET", path, undefined, true, true),
     post: <T>(path: string, body: unknown = {}) => write<T>("POST", path, body),
     put: <T>(path: string, body: unknown = {}) => write<T>("PUT", path, body),

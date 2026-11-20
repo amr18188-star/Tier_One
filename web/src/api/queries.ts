@@ -22,17 +22,17 @@ export interface SharedQueryOptions {
 }
 
 export function useCycles(options: SharedQueryOptions = {}) {
-  return useQuery({ queryKey: queryKeys.cycles, queryFn: () => api.get<Cycle[]>("/api/cycles"), ...options });
+  return useQuery({ queryKey: queryKeys.cycles, queryFn: ({ signal }) => api.get<Cycle[]>("/api/cycles", { signal }), ...options });
 }
 
 export function useUnits(options: SharedQueryOptions = {}) {
-  return useQuery({ queryKey: queryKeys.units, queryFn: () => api.get<OrgUnit[]>("/api/org/units"), ...options });
+  return useQuery({ queryKey: queryKeys.units, queryFn: ({ signal }) => api.get<OrgUnit[]>("/api/org/units", { signal }), ...options });
 }
 
 export function useStrategyTree(options: SharedQueryOptions = {}) {
-  return useQuery({ queryKey: queryKeys.strategy, queryFn: () => api.get<StrategyTree>("/api/strategy/tree"), ...options });
+  return useQuery({ queryKey: queryKeys.strategy, queryFn: ({ signal }) => api.get<StrategyTree>("/api/strategy/tree", { signal }), ...options });
 }
 
 export function useLatestResults(options: SharedQueryOptions = {}) {
-  return useQuery({ queryKey: queryKeys.latestResults, queryFn: () => api.get<Results | null>("/api/results"), ...options });
+  return useQuery({ queryKey: queryKeys.latestResults, queryFn: ({ signal }) => api.get<Results | null>("/api/results", { signal }), ...options });
 }

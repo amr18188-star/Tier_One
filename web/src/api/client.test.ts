@@ -133,3 +133,14 @@ describe("duplicate writes (BE-8)", () => {
     expect(writes).toHaveLength(3);
   });
 });
+
+describe("cancellation (FE-12)", () => {
+  it("passes the caller's signal to fetch, so an answer no longer wanted is cancelled", async () => {
+    const fetchMock = vi.fn(async () => json(200, { ok: true }));
+    vi.stubGlobal("fetch", fetchMock);
+    const c = createApiClient({ csrfUrl: "/csrf" });
+    const controller = new AbortController();
+    await c.get("/api/forms", { signal: controller.signal });
+    expect((fetchMock.mock.calls[0] as unknown[])[1]).toMatchObject({ signal: controller.signal });
+  });
+});
