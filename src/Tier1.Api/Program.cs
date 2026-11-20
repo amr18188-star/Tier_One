@@ -103,7 +103,7 @@ if (app.Configuration.GetValue("Database:MigrateOnStartup", app.Environment.IsDe
 
 app.UsePipeline();
 
-app.MapGroup("/api").MapApi();
+app.MapGroup("/api").AddEndpointFilter<DefinedEnumsFilter>().MapApi();
 if (app.Environment.IsDevelopment()) app.MapOpenApi().AllowAnonymous();
 
 app.MapGet("/health/live", () => Results.Ok(new { status = "live" })).AllowAnonymous();
@@ -114,7 +114,7 @@ app.MapGet("/health/ready", async (Tier1.Infrastructure.Health.ReadinessProbe pr
     return Results.Json(r, statusCode: r.Status == "unavailable" ? 503 : 200);
 }).AllowAnonymous();
 
-app.MapFallback("/api/{**rest}", () => Results.NotFound()).AllowAnonymous();
+app.MapFallback("/api/{**rest}", (HttpContext ctx) => ApiErrors.WriteAsync(ctx, 404, "not_found", Tier1.Domain.Common.Lang.Pick("المسار غير موجود.", "Not found."))).AllowAnonymous();
 var spa = new StaticFileOptions { OnPrepareResponse = c => c.Context.Response.Headers.CacheControl = "no-cache" };
 app.MapFallbackToFile("index.html", spa).AllowAnonymous();
 // أكواد المؤشرات فيها نقطة (1.01) فيظنها المسار العام ملفًا؛ صفحة المؤشر تعاد إلى الواجهة صراحة.

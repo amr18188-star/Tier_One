@@ -1,3 +1,4 @@
+using Tier1.Api.Startup;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Tier1.Application.Accounts;
@@ -55,23 +56,18 @@ public sealed class SessionAuthenticationHandler(
 
     protected override async Task HandleChallengeAsync(AuthenticationProperties properties)
     {
-        Response.StatusCode = StatusCodes.Status401Unauthorized;
-        await Response.WriteAsJsonAsync(new { status = 401, code = "unauthenticated", title = Lang.Pick("انتهت الجلسة. سجّل الدخول مرة أخرى.", "Your session has ended. Sign in again.") });
+        await ApiErrors.WriteAsync(Context, StatusCodes.Status401Unauthorized, "unauthenticated", Lang.Pick("انتهت الجلسة. سجّل الدخول مرة أخرى.", "Your session has ended. Sign in again."));
     }
 
     protected override async Task HandleForbiddenAsync(AuthenticationProperties properties)
     {
-        Response.StatusCode = StatusCodes.Status403Forbidden;
         var mfa = Context.User.HasClaim(ClaimNames.MfaPending, "true");
         var pwd = Context.User.HasClaim(ClaimNames.PasswordChangePending, "true");
-        await Response.WriteAsJsonAsync(new
-        {
-            status = 403,
-            code = mfa ? "mfa_required" : pwd ? "password_change_required" : "forbidden",
-            title = mfa ? Lang.Pick("أكمل التحقق بخطوتين أولًا.", "Complete two-step verification first.")
+        await ApiErrors.WriteAsync(Context, StatusCodes.Status403Forbidden,
+            mfa ? "mfa_required" : pwd ? "password_change_required" : "forbidden",
+            mfa ? Lang.Pick("أكمل التحقق بخطوتين أولًا.", "Complete two-step verification first.")
                 : pwd ? Lang.Pick("غيّر كلمة المرور المؤقتة أولًا.", "Change your temporary password first.")
-                : Lang.Pick("ليست لديك صلاحية لهذا الإجراء.", "You are not allowed to do this."),
-        });
+                : Lang.Pick("ليست لديك صلاحية لهذا الإجراء.", "You are not allowed to do this."));
     }
 }
 

@@ -1,3 +1,4 @@
+using Tier1.Api.Startup;
 using Tier1.Application.Abstractions;
 using System.Diagnostics;
 using System.Globalization;
@@ -20,8 +21,7 @@ public sealed class CsrfMiddleware(RequestDelegate next, IAntiforgery antiforger
         var unsafeMethod = !HttpMethods.IsGet(method) && !HttpMethods.IsHead(method) && !HttpMethods.IsOptions(method);
         if (unsafeMethod && ctx.Request.Path.StartsWithSegments("/api") && !await antiforgery.IsRequestValidAsync(ctx))
         {
-            ctx.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await ctx.Response.WriteAsJsonAsync(new { status = 400, code = "csrf", title = Lang.Pick("انتهت صلاحية الصفحة. حدّث الصفحة وحاول مرة أخرى.", "This page has expired. Refresh and try again.") });
+            await ApiErrors.WriteAsync(ctx, StatusCodes.Status400BadRequest, "csrf", Lang.Pick("انتهت صلاحية الصفحة. حدّث الصفحة وحاول مرة أخرى.", "This page has expired. Refresh and try again."));
             return;
         }
         await next(ctx);

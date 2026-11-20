@@ -29,9 +29,12 @@ public static class ApiSetup
             services.AddHostedService<Tier1.Api.Startup.DemoData.DemoDataSeeder>();
         services.ConfigureHttpJsonOptions(o =>
         {
-            o.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+            o.SerializerOptions.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: false)); // BE-7: names only
             o.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.Never;
         });
+        // BE-6: malformed JSON, an unparsable id or a missing body reach the exception handler in every environment, so they get
+        // the JSON error with a code and trace id, not a bodiless 400 (the default outside Development).
+        services.Configure<RouteHandlerOptions>(o => o.ThrowOnBadRequest = true);
         services.AddAuthentication(SessionAuthenticationHandler.SchemeName)
             .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, SessionAuthenticationHandler>(SessionAuthenticationHandler.SchemeName, null);
         services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
@@ -59,8 +62,7 @@ public static class ApiSetup
             o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             o.OnRejected = async (ctx, ct) =>
             {
-                ctx.HttpContext.Response.StatusCode = 429;
-                await ctx.HttpContext.Response.WriteAsJsonAsync(new { status = 429, code = "rate_limited", title = Lang.Pick("طلبات كثيرة. انتظر قليلًا ثم أعد المحاولة.", "Too many requests. Wait a moment and retry.") }, ct);
+                await ApiErrors.WriteAsync(ctx.HttpContext, 429, "rate_limited", Lang.Pick("طلبات كثيرة. انتظر قليلًا ثم أعد المحاولة.", "Too many requests. Wait a moment and retry."), ct);
             };
             // الدخول والتحقق بخطوتين: حد لكل عنوان يتسع لشبكة الجامعة خلف عنوان واحد؛ الحماية لكل حساب بقفله بعد المحاولات الفاشلة.
             o.AddPolicy(LoginLimit, ctx => RateLimitPartition.GetFixedWindowLimiter("login:" + Ip(ctx), _ => new FixedWindowRateLimiterOptions { PermitLimit = limits.GetValue("LoginPerMinute", 30), Window = TimeSpan.FromMinutes(1) }));
@@ -85,6 +87,7 @@ public static class ApiSetup
     public static WebApplication UsePipeline(this WebApplication app)
     {
         app.UseForwardedHeaders();
+        app.UseTraceIdHeader();
         app.UseExceptionHandler();
         app.UseSecurityHeaders();
         app.UseMiddleware<RequestLanguageMiddleware>();
@@ -140,7 +143,7 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> log, ITechn
             System.Text.Json.JsonException => (400, "bad_request", Lang.Pick("الطلب غير صالح.", "Invalid request.")),
             _ => (500, "server_error", Lang.Pick("حدث خطأ غير متوقع. أعد المحاولة، وإن تكرر أبلغ الدعم الفني.", "An unexpected error occurred. Retry; if it persists, contact support.")),
         };
-        var traceId = Activity.Current?.TraceId.ToString() ?? ctx.TraceIdentifier;
+        var traceId = ApiErrors.TraceId(ctx);
         if (status >= 500)
         {
             log.LogError(exception, "Unhandled error on {Path}", ctx.Request.Path);
@@ -149,8 +152,7 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> log, ITechn
                 (ctx.GetEndpoint() as RouteEndpoint)?.RoutePattern.RawText ?? ctx.Request.Path.Value ?? "", ctx.Request.Method,
                 ctx.User.FindFirst(ClaimNames.UserId)?.Value, traceId));
         }
-        ctx.Response.StatusCode = status;
-        await ctx.Response.WriteAsJsonAsync(new { status, code, title, traceId }, ct);
+        await ApiErrors.WriteAsync(ctx, status, code, title, ct);
         return true;
     }
 }
