@@ -15,8 +15,8 @@ public sealed class ModuleBoundaryTests
     private static readonly HashSet<string> StillOnSharedDb =
     [
         "AccessService", "AuditLog", "HomeService", "IamPolicy", "LogsService", "MeService",
-        "OrgUnitsService", "RbacAdminService", "RoleAssignmentService", "SessionService", "SignInService",
-        "StructureService", "UnitIndicatorsService", "UserAccountsService", "UserOverridesService", "UsersAdminService",
+        "RbacAdminService", "RoleAssignmentService", "SessionService", "SignInService",
+        "UserAccountsService", "UserOverridesService", "UsersAdminService",
     ];
 
     /// <summary>Each module store, and the namespace of the only module that may write through it.</summary>
@@ -28,6 +28,8 @@ public sealed class ModuleBoundaryTests
         [typeof(IScorecardStore)] = "Tier1.Application.Scorecard",
         [typeof(ICollectionStore)] = "Tier1.Application.Collection",
         [typeof(IKpiStore)] = "Tier1.Application.Kpi",
+        [typeof(IOrgStore)] = "Tier1.Application.Organization",
+        [typeof(IStructureStore)] = "Tier1.Application.Structure",
     };
 
     private static IEnumerable<(Type Type, Type Parameter)> ConstructorDependencies() =>

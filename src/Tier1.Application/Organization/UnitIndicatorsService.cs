@@ -23,7 +23,7 @@ public sealed record SaveUnitIndicatorsRequest(bool Custom, IReadOnlyList<Guid>?
 /// <summary>
 /// تكليف كل جهة بالمؤشرات التي تدخل بياناتها. يسري على الدورات التي تفتح بعده؛ نماذج الدورة المفتوحة تبقى كما فتحت.
 /// </summary>
-public sealed class UnitIndicatorsService(IAppDb db, IAccessService access, IAuditLog audit)
+public sealed class UnitIndicatorsService(IOrgStore db, IReadModel read, ITransactionLock locks,  IAccessService access, IAuditLog audit)
 {
     private const string Feature = Features.Units;
 
@@ -35,8 +35,8 @@ public sealed class UnitIndicatorsService(IAppDb db, IAccessService access, IAud
         UnitScope.For(me, Feature, Cap.View).Require(unit);
         var map = new AssignmentMap(units, await db.UnitIndicators.AsNoTracking().ToListAsync(ct));
         var indicators = await IndicatorsAsync(ct);
-        var standards = await db.Standards.AsNoTracking().OrderBy(s => s.SortOrder).ToListAsync(ct);
-        var pillars = await db.Pillars.AsNoTracking().ToDictionaryAsync(p => p.Id, ct);
+        var standards = await read.Query<Domain.Kpi.Standard>().AsNoTracking().OrderBy(s => s.SortOrder).ToListAsync(ct);
+        var pillars = await read.Query<Domain.Kpi.Pillar>().AsNoTracking().ToDictionaryAsync(p => p.Id, ct);
 
         var groups = standards.Select(s => new UnitIndicatorStandard(s.Code, s.NameAr,
                 s.PillarId is { } p && pillars.TryGetValue(p, out var pillar) ? pillar.Code : "", s.PillarId is { } q && pillars.TryGetValue(q, out var pl) ? pl.NameAr : "",
@@ -47,7 +47,7 @@ public sealed class UnitIndicatorsService(IAppDb db, IAccessService access, IAud
                         return new UnitIndicatorItem(i.Ref.Id, i.Code, i.NameAr, i.Ref.Level, i.Aggregation, map.Selected(unit, i.Ref), taken);
                     }).ToList()))
             .Where(g => g.Indicators.Count > 0).ToList();
-        var open = await db.Cycles.CountAsync(c => c.Status == Domain.Collection.CycleStatus.Open, ct);
+        var open = await read.Query<Domain.Collection.CollectionCycle>().CountAsync(c => c.Status == Domain.Collection.CycleStatus.Open, ct);
         // مؤشر مسند إلى جهة خارج نطاق المستخدم: يظهر مشغولًا دون اسم الجهة.
         var view = UnitScope.For(me, Feature, Cap.View);
         if (!view.All)
@@ -72,8 +72,7 @@ public sealed class UnitIndicatorsService(IAppDb db, IAccessService access, IAud
 
         // BE-4: removals, additions and the audit row commit together. BE-5: one assignment at a time, so two units cannot
         // both take the same university-level indicator between the check below and the insert.
-        await using var tx = await db.Database.BeginTransactionAsync(ct);
-        await db.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock({AssignmentLockKey})", ct);
+        await using var tx = await locks.BeginAsync(AssignmentLockKey, ct);
         var indicators = (await IndicatorsAsync(ct)).ToDictionary(i => i.Ref.Id);
         var ids = (req.IndicatorIds ?? []).Distinct().ToList();
         // الجهة المركزية لا افتراضي لها: ما يختار لها هو قائمتها، ولا شيء إن لم يختر شيء.
@@ -138,7 +137,7 @@ public sealed class UnitIndicatorsService(IAppDb db, IAccessService access, IAud
 
     private async Task<List<Item>> IndicatorsAsync(CancellationToken ct)
     {
-        var list = await db.Indicators.AsNoTracking().Include(i => i.Versions).Where(i => !i.Suspended).OrderBy(i => i.SortOrder).ToListAsync(ct);
+        var list = await read.Query<Domain.Kpi.Indicator>().AsNoTracking().Include(i => i.Versions).Where(i => !i.Suspended).OrderBy(i => i.SortOrder).ToListAsync(ct);
         return list.Select(i => (i, v: i.Effective ?? i.Current))
             .Select(x => new Item(new IndicatorRef(x.i.Id, x.v.Level, x.v.Aggregation == Aggregation.DistinctCount), x.i.Code, x.v.NameAr, x.v.Aggregation, x.i.StandardId, x.i.SortOrder))
             .ToList();

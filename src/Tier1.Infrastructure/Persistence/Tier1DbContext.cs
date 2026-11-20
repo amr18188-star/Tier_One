@@ -13,7 +13,7 @@ namespace Tier1.Infrastructure.Persistence;
 /// بيانات العمل في PostgreSQL. لكل وحدة schema خاص بها: iam للهوية والصلاحيات، وlogs للصندوق الصادر ومراسي السلاسل،
 /// وadm للإعدادات والبريد، وorg للجهات والهيكل، وkpi للمؤشرات والمستهدفات. السجلات نفسها في MongoDB منفصلة.
 /// </summary>
-public sealed partial class Tier1DbContext(DbContextOptions<Tier1DbContext> options) : DbContext(options), IAppDb, IReadModel, INotificationStore, ISettingsStore, IEventStore, IScorecardStore, ICollectionStore, IKpiStore
+public sealed partial class Tier1DbContext(DbContextOptions<Tier1DbContext> options) : DbContext(options), IAppDb, IReadModel, INotificationStore, ISettingsStore, IEventStore, IScorecardStore, ICollectionStore, IKpiStore, IOrgStore, IStructureStore
 {
     /// <summary>BE-14: other modules' rows, read only and untracked.</summary>
     public IQueryable<TEntity> Query<TEntity>() where TEntity : class => Set<TEntity>().AsNoTracking();

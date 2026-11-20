@@ -104,3 +104,25 @@ public interface IKpiStore : IUnitOfWork
 
     DbSet<Domain.Kpi.DataConflict> Conflicts { get; }
 }
+
+/// <summary>BE-14: the tables the units module owns: the unit tree, its change history, and which unit enters each indicator.</summary>
+public interface IOrgStore : IUnitOfWork
+{
+    DbSet<Domain.Organization.OrgUnit> OrgUnits { get; }
+
+    DbSet<Domain.Organization.OrgUnitChange> OrgUnitChanges { get; }
+
+    DbSet<Domain.Organization.UnitIndicator> UnitIndicators { get; }
+}
+
+/// <summary>BE-14: the tables the structures module owns: Tier 1 structures of colleges, their positions and members, and industry partners.</summary>
+public interface IStructureStore : IUnitOfWork
+{
+    DbSet<Domain.Structure.StructureUnit> StructureUnits { get; }
+
+    DbSet<Domain.Structure.StructurePosition> StructurePositions { get; }
+
+    DbSet<Domain.Structure.StructureMember> StructureMembers { get; }
+
+    DbSet<Domain.Structure.IndustryPartner> IndustryPartners { get; }
+}

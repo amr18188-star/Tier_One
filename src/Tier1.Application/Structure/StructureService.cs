@@ -45,7 +45,7 @@ public sealed record SavePartnerRequest(
 /// هيكل Tier 1 بالكليات: الرسم التنظيمي بأعضائه كما هو في أي تاريخ، والعضويات بتاريخ بداية ونهاية (لا حذف)،
 /// والشريك الصناعي لكل قسم، ولوحة الاكتمال. كل ذلك في نطاق المستخدم على الكليات.
 /// </summary>
-public sealed class StructureService(IAppDb db, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit)
+public sealed class StructureService(IStructureStore db, IReadModel read,  IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit)
 {
     private const string Feature = Features.Structure;
 
@@ -84,11 +84,11 @@ public sealed class StructureService(IAppDb db, IClock clock, ICurrentUser curre
         var me = await access.RequireAsync(Feature, Cap.View, ct);
         var scope = UnitScope.For(me, Feature, Cap.View);
         var today = CairoTime.DateOf(clock.UtcNow);
-        var colleges = (await db.OrgUnits.AsNoTracking().Where(u => u.Active && (u.Kind == OrgUnitKind.College || u.Kind == OrgUnitKind.Institute)).ToListAsync(ct))
+        var colleges = (await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().Where(u => u.Active && (u.Kind == OrgUnitKind.College || u.Kind == OrgUnitKind.Institute)).ToListAsync(ct))
             .Where(scope.Covers).ToList();
         var ids = colleges.Select(c => c.Id).ToList();
         var template = await LoadTemplateAsync(ct);
-        var departments = await db.OrgUnits.AsNoTracking().Where(u => u.Active && u.Kind == OrgUnitKind.Department && u.ParentId != null && ids.Contains(u.ParentId.Value)).ToListAsync(ct);
+        var departments = await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().Where(u => u.Active && u.Kind == OrgUnitKind.Department && u.ParentId != null && ids.Contains(u.ParentId.Value)).ToListAsync(ct);
         var members = (await db.StructureMembers.AsNoTracking().Where(m => ids.Contains(m.CollegeId)).ToListAsync(ct)).Where(m => m.IsActiveOn(today)).ToList();
         var partners = (await db.IndustryPartners.AsNoTracking().Where(p => ids.Contains(p.CollegeId)).ToListAsync(ct)).Where(p => p.IsActiveOn(today)).ToList();
 
@@ -190,7 +190,7 @@ public sealed class StructureService(IAppDb db, IClock clock, ICurrentUser curre
     public async Task<PartnerDto> AddPartnerAsync(SavePartnerRequest req, CancellationToken ct)
     {
         var me = await access.RequireAsync(Feature, Cap.Add, ct);
-        var department = await db.OrgUnits.FirstOrDefaultAsync(u => u.Id == req.DepartmentId && u.Kind == OrgUnitKind.Department && u.Active, ct) ?? throw DomainException.NotFound();
+        var department = await read.Query<Domain.Organization.OrgUnit>().FirstOrDefaultAsync(u => u.Id == req.DepartmentId && u.Kind == OrgUnitKind.Department && u.Active, ct) ?? throw DomainException.NotFound();
         UnitScope.For(me, Feature, Cap.Add).Require(department);
         var partner = new IndustryPartner { CollegeId = department.ParentId!.Value, DepartmentId = department.Id, CreatedAt = clock.UtcNow };
         Apply(partner, req);
@@ -240,11 +240,11 @@ public sealed class StructureService(IAppDb db, IClock clock, ICurrentUser curre
     }
 
     private async Task<OrgUnit> LoadCollegeAsync(Guid id, CancellationToken ct) =>
-        await db.OrgUnits.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id && (u.Kind == OrgUnitKind.College || u.Kind == OrgUnitKind.Institute), ct)
+        await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().FirstOrDefaultAsync(u => u.Id == id && (u.Kind == OrgUnitKind.College || u.Kind == OrgUnitKind.Institute), ct)
         ?? throw DomainException.NotFound();
 
     private async Task<List<OrgUnit>> DepartmentsAsync(Guid collegeId, CancellationToken ct) =>
-        await db.OrgUnits.AsNoTracking().Where(u => u.ParentId == collegeId && u.Kind == OrgUnitKind.Department && u.Active)
+        await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().Where(u => u.ParentId == collegeId && u.Kind == OrgUnitKind.Department && u.Active)
             .OrderBy(u => u.SortOrder).ThenBy(u => u.NameAr).ToListAsync(ct);
 
     private async Task<(StructureUnit Unit, StructurePosition Position)> LoadPositionAsync(Guid positionId, CancellationToken ct)
@@ -257,7 +257,7 @@ public sealed class StructureService(IAppDb db, IClock clock, ICurrentUser curre
     private async Task ValidateDepartmentAsync(StructureUnit unit, Guid? departmentId, Guid collegeId, CancellationToken ct)
     {
         if (!unit.PerDepartment) return;
-        if (departmentId is not { } id || !await db.OrgUnits.AnyAsync(u => u.Id == id && u.ParentId == collegeId && u.Kind == OrgUnitKind.Department && u.Active, ct))
+        if (departmentId is not { } id || !await read.Query<Domain.Organization.OrgUnit>().AnyAsync(u => u.Id == id && u.ParentId == collegeId && u.Kind == OrgUnitKind.Department && u.Active, ct))
             throw new DomainException("department_required", "اختر القسم العلمي لهذا المنصب.", "Choose the department for this position.", 400);
     }
 
@@ -274,7 +274,7 @@ public sealed class StructureService(IAppDb db, IClock clock, ICurrentUser curre
     {
         var me = await access.RequireAsync(Feature, cap, ct);
         var partner = await db.IndustryPartners.FirstOrDefaultAsync(p => p.Id == id, ct) ?? throw DomainException.NotFound();
-        var department = await db.OrgUnits.AsNoTracking().FirstAsync(u => u.Id == partner.DepartmentId, ct);
+        var department = await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().FirstAsync(u => u.Id == partner.DepartmentId, ct);
         UnitScope.For(me, Feature, cap).Require(department);
         return (partner, department);
     }

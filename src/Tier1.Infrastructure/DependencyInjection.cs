@@ -34,6 +34,9 @@ public static class DependencyInjection
         services.AddScoped<IScorecardStore>(sp => sp.GetRequiredService<Tier1DbContext>());
         services.AddScoped<ICollectionStore>(sp => sp.GetRequiredService<Tier1DbContext>());
         services.AddScoped<IKpiStore>(sp => sp.GetRequiredService<Tier1DbContext>());
+        services.AddScoped<IOrgStore>(sp => sp.GetRequiredService<Tier1DbContext>());
+        services.AddScoped<IStructureStore>(sp => sp.GetRequiredService<Tier1DbContext>());
+        services.AddScoped<ITransactionLock, PostgresTransactionLock>();
         services.AddScoped<IIamLock, PostgresIamLock>();
 
         services.AddHttpContextAccessor();

@@ -30,7 +30,9 @@ public partial class TransactionRulesTests
                 var body = text[starts[i]..starts[i + 1]];
                 var bulk = body.Contains("ExecuteUpdateAsync(", StringComparison.Ordinal) || body.Contains("ExecuteDeleteAsync(", StringComparison.Ordinal);
                 var saves = body.Contains("SaveChangesAsync(", StringComparison.Ordinal);
-                var transaction = body.Contains("BeginTransactionAsync(", StringComparison.Ordinal) || body.Contains("BeginLockedAsync(", StringComparison.Ordinal);
+                // A lock port (ITransactionLock, IIamLock) opens the transaction itself: locks.BeginAsync(...), iamLock.BeginAsync(...).
+                var transaction = body.Contains("BeginTransactionAsync(", StringComparison.Ordinal) || body.Contains("BeginLockedAsync(", StringComparison.Ordinal)
+                                  || body.Contains("locks.BeginAsync(", StringComparison.Ordinal) || body.Contains("iamLock.BeginAsync(", StringComparison.Ordinal);
                 // A method may opt out with a "tx-exempt:" comment that says why (sign-in attempt counters must commit on their own).
                 var exempt = body.Contains("tx-exempt:", StringComparison.Ordinal);
                 if (bulk && saves && !transaction && !exempt)
