@@ -3,7 +3,7 @@ import { Skeleton } from "antd";
 import { ApartmentOutlined, InboxOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { api, query } from "../../api/client";
-import type { Cycle, FormRow, SubmissionStatus } from "../../api/collection";
+import type { FormRow, SubmissionStatus } from "../../api/collection";
 import { formatDate } from "../../shared/format";
 import { L } from "../../shared/i18n";
 import { slotName } from "../../shared/period";
@@ -16,6 +16,7 @@ import { byPriority, formModes, type Filters, type Mode } from "./model";
 import { MonitorView } from "./MonitorView";
 import { TasksView } from "./TasksView";
 import "./forms.css";
+import { useCycles } from "../../api/queries";
 
 const STATUSES = ["NotStarted", "InProgress", "InReview", "Returned", "Approved"] as const satisfies readonly SubmissionStatus[];
 const MODES = ["tasks", "monitor"] as const satisfies readonly Mode[];
@@ -45,7 +46,7 @@ export default function FormsPage() {
   const { params, update } = search;
   const perms = usePermissions();
 
-  const cycles = useQuery({ queryKey: ["cycles"], queryFn: () => api.get<Cycle[]>("/api/cycles") });
+  const cycles = useCycles();
   const period = usePeriodParams({ mode: "cycle", cycles: cycles.data, search });
   const ready = cycles.isSuccess && period.ready;
   const timeline = period.timeline;

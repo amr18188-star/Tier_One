@@ -4,7 +4,7 @@ import { CheckOutlined, EditOutlined, FileTextOutlined, HistoryOutlined, Partiti
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../../api/client";
-import type { IndicatorDetail, OrgUnit, Version } from "../../api/tier1";
+import type { IndicatorDetail, Version } from "../../api/tier1";
 import { howCalculated } from "../../shared/calc";
 import { DecisionModal } from "../../shared/DecisionModal";
 import { formatDate } from "../../shared/format";
@@ -16,6 +16,7 @@ import { QueryState } from "../../shared/QueryState";
 import { DefinitionDrawer } from "./DefinitionDrawer";
 import { DistributionPanel } from "./DistributionPanel";
 import { TargetsPanel } from "./TargetsPanel";
+import { useUnits } from "../../api/queries";
 
 /**
  * صفحة المؤشر الواحدة: الحالة والخطوة التالية مكتوبتان أعلاها، ثم التعريف، والمستهدفات، والتوزيع على الكليات،
@@ -29,7 +30,7 @@ export default function IndicatorPage() {
   const [editing, setEditing] = useState(() => new URLSearchParams(window.location.search).get("edit") === "1");
   const [decision, setDecision] = useState<"approve" | "return" | null>(null);
   const detail = useQuery({ queryKey: ["indicator", code], queryFn: () => api.get<IndicatorDetail>(`/api/kpi/indicators/${code}`) });
-  const units = useQuery({ queryKey: ["units"], queryFn: () => api.get<OrgUnit[]>("/api/org/units") });
+  const units = useUnits();
   const university = units.data?.find((u) => u.kind === "University");
   const d = detail.data;
   const pillarMap = usePillarMap();

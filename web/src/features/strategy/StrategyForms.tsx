@@ -1,19 +1,20 @@
 import { useEffect } from "react";
 import { Alert, Button, Drawer, Form, Input, InputNumber, Select, Space } from "antd";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import type { InitiativeNode, InitiativeStatus, OrgUnit, PillarNode, StandardNode, StrategyTree } from "../../api/tier1";
+import type { InitiativeNode, InitiativeStatus, PillarNode, StandardNode, StrategyTree } from "../../api/tier1";
 import { errorText } from "../../shared/format";
 import { L, useLang } from "../../shared/i18n";
 import { initiativeStatus, options } from "../../shared/labels";
 import { stdLabel } from "../../shared/pillars";
 import { pillarNum } from "./model";
+import { queryKeys, useUnits } from "../../api/queries";
 
 /** بعد أي تعديل في الخطة: الشجرة والقاموس وقوائم المعايير كلها من جديد. */
 export function useRefreshPlan() {
   const qc = useQueryClient();
   return async () => {
-    await qc.invalidateQueries({ queryKey: ["strategy"] });
+    await qc.invalidateQueries({ queryKey: queryKeys.strategy });
     await qc.invalidateQueries({ queryKey: ["indicators"] });
     await qc.invalidateQueries({ queryKey: ["standards"] });
   };
@@ -109,7 +110,7 @@ interface InitiativeFields {
 export function InitiativeDrawer({ initiative, standardId, tree, onClose }: { initiative?: InitiativeNode; standardId: string; tree: StrategyTree; onClose: () => void }) {
   const [form] = Form.useForm<InitiativeFields>();
   const refresh = useRefreshPlan();
-  const units = useQuery({ queryKey: ["units"], queryFn: () => api.get<OrgUnit[]>("/api/org/units") });
+  const units = useUnits();
   const standards = [...tree.pillars.flatMap((p) => p.standards), ...tree.unassigned];
   const chosen = Form.useWatch("standardId", form) ?? standardId;
   const first = tree.years[0];

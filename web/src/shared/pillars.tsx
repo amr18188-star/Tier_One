@@ -1,8 +1,6 @@
 import { useMemo, type CSSProperties, type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { api } from "../api/client";
-import type { StrategyTree } from "../api/tier1";
 import { usePermissions } from "./session";
+import { useStrategyTree } from "../api/queries";
 
 /**
  * لون كل ركيزة في كل الشاشات (الخطة، والقاموس، والنتائج، والنماذج): المعيار يأخذ لون ركيزته،
@@ -47,12 +45,7 @@ export interface PillarInfo { index: number; id: string; code: string; name: str
  */
 export function usePillarMap(): { map: Map<string, PillarInfo>; pillars: PillarInfo[] } {
   const perms = usePermissions();
-  const tree = useQuery({
-    queryKey: ["strategy"],
-    queryFn: () => api.get<StrategyTree>("/api/strategy/tree"),
-    enabled: perms.can("kpi.strategy", "V"),
-    staleTime: 60_000,
-  });
+  const tree = useStrategyTree({ enabled: perms.can("kpi.strategy", "V"), staleTime: 60_000 });
   return useMemo(() => {
     const map = new Map<string, PillarInfo>();
     const pillars: PillarInfo[] = [];

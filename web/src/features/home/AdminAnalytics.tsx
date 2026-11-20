@@ -9,7 +9,7 @@ import {
 import { api, query } from "../../api/client";
 import type { Cycle, Results } from "../../api/collection";
 import type { Scorecard } from "../../api/scorecard";
-import type { Home, StrategyTree } from "../../api/tier1";
+import type { Home } from "../../api/tier1";
 import { L, useLang } from "../../shared/i18n";
 import { StdCode, tint, usePillarMap } from "../../shared/pillars";
 import { QueryState } from "../../shared/QueryState";
@@ -20,6 +20,7 @@ import { DotLegend, StateBar } from "../strategy/PlanMap";
 import "../strategy/strategy.css";
 import "./analytics.css";
 import { approvalState, resultPeriods, shareOf, type ApprovalState } from "./adminModel";
+import { useCycles, useStrategyTree } from "../../api/queries";
 
 // ---------------------------------------------------------------- shared parts
 
@@ -204,7 +205,7 @@ function ScoreRow() {
 
 function PlanCard({ results }: { results: Results | null | undefined }) {
   const navigate = useNavigate();
-  const tree = useQuery({ queryKey: ["strategy"], queryFn: () => api.get<StrategyTree>("/api/strategy/tree") });
+  const tree = useStrategyTree();
   const map: ResultMap = useMemo(() => new Map((results?.indicators ?? []).map((i) => [i.code, i])), [results]);
   const t = tree.data;
   const ctx: PlanContext | null = t ? {
@@ -358,7 +359,7 @@ export function AdminAnalytics() {
   const planning = perms.can("kpi.dictionary", "E") || perms.can("kpi.dictionary", "approve");
   const [period, setPeriod] = useState<string | undefined>(undefined);
   const home = useHome();
-  const cycles = useQuery({ queryKey: ["cycles"], queryFn: () => api.get<Cycle[]>("/api/cycles"), enabled: seesResults });
+  const cycles = useCycles({ enabled: seesResults });
   const results = useResults(period, seesResults);
   const periods = useMemo(() => resultPeriods(cycles.data ?? []), [cycles.data]);
 

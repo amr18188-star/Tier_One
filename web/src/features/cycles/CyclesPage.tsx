@@ -17,6 +17,7 @@ import { usePermissions } from "../../shared/session";
 import { EmptyNote, PageHeader, Panel } from "../../shared/ui";
 import enUS from "antd/locale/en_US";
 import "./cycles.css";
+import { queryKeys, useCycles } from "../../api/queries";
 
 // Range picker forced to LTR with English day/month names, whatever the app's language.
 // Wrapped in a component so Form.Item still injects value/onChange into the picker itself.
@@ -41,7 +42,7 @@ export default function CyclesPage() {
   const canAdd = perms.can("dc.cycles", "A");
   const canEdit = perms.can("dc.cycles", "E");
   const canClose = perms.can("dc.cycles", "D");
-  const cycles = useQuery({ queryKey: ["cycles"], queryFn: () => api.get<Cycle[]>("/api/cycles") });
+  const cycles = useCycles();
   const [editing, setEditing] = useState<Cycle | "new" | null>(null);
   const [opening, setOpening] = useState<Cycle | null>(null);
   const [closing, setClosing] = useState<Cycle | null>(null);
@@ -106,7 +107,7 @@ export default function CyclesPage() {
             "After closing nothing can be entered or approved; results use approved forms only.")}
           onSubmit={async (note) => {
             await api.post(`/api/cycles/${closing.id}/close`, { note });
-            await qc.invalidateQueries({ queryKey: ["cycles"] });
+            await qc.invalidateQueries({ queryKey: queryKeys.cycles });
           }}
           onClose={() => setClosing(null)} />
       )}
@@ -177,7 +178,7 @@ function CycleDrawer({ cycle, onClose }: { cycle: Cycle | null; onClose: () => v
   const qc = useQueryClient();
   const { message } = App.useApp();
   const calendar = useQuery({ queryKey: ["plan", "calendar"], queryFn: () => api.get<PlanQuarter[]>("/api/plan/calendar") });
-  const cycles = useQuery({ queryKey: ["cycles"], queryFn: () => api.get<Cycle[]>("/api/cycles") });
+  const cycles = useCycles();
   const quarters = calendar.data ?? [];
   const taken = new Set((cycles.data ?? []).filter((x) => x.id !== cycle?.id && !x.trial && x.quarter).map((x) => `${x.targetYear}-${x.quarter}`));
   const suggest = (q: PlanQuarter) => {
@@ -194,7 +195,7 @@ function CycleDrawer({ cycle, onClose }: { cycle: Cycle | null; onClose: () => v
       return cycle ? api.put<Cycle>(`/api/cycles/${cycle.id}`, body) : api.post<Cycle>("/api/cycles", body);
     },
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["cycles"] });
+      await qc.invalidateQueries({ queryKey: queryKeys.cycles });
       message.success(L("حفظت الدورة", "Cycle saved"));
       onClose();
     },
@@ -248,7 +249,7 @@ function OpenModal({ cycle, onClose }: { cycle: Cycle; onClose: () => void }) {
   const open = useMutation({
     mutationFn: () => api.post<Cycle>(`/api/cycles/${cycle.id}/open`),
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["cycles"] });
+      await qc.invalidateQueries({ queryKey: queryKeys.cycles });
       message.success(L("فتحت الدورة ووصلت النماذج للجهات", "The cycle is open"));
       onClose();
     },

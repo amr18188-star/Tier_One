@@ -6,6 +6,7 @@ import type { CollectionLevel, IndicatorDetail, Standard } from "../../api/tier1
 import { errorText } from "../../shared/format";
 import { L } from "../../shared/i18n";
 import { level, options } from "../../shared/labels";
+import { queryKeys } from "../../api/queries";
 
 interface Fields { standardCode: string; nameAr: string; unit: string; level: CollectionLevel; reason?: string }
 
@@ -19,7 +20,7 @@ export function NewIndicatorModal({ standards, standard, onClose }: { standards:
     onSuccess: async (d) => {
       await qc.invalidateQueries({ queryKey: ["indicators"] });
       await qc.invalidateQueries({ queryKey: ["standards"] });
-      await qc.invalidateQueries({ queryKey: ["strategy"] });
+      await qc.invalidateQueries({ queryKey: queryKeys.strategy });
       navigate(`/indicators/${d.code}?edit=1`);
     },
   });

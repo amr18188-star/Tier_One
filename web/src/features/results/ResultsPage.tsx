@@ -3,7 +3,7 @@ import { Alert, Button, Drawer, Input, Segmented, Select, Space, Tag, Tooltip } 
 import { DownloadOutlined, PrinterOutlined, QuestionCircleOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { api, query } from "../../api/client";
-import type { Cycle, HeatCell, IndicatorResult, IndicatorResults, Performance, Results, StandardResult } from "../../api/collection";
+import type { HeatCell, IndicatorResult, IndicatorResults, Performance, Results, StandardResult } from "../../api/collection";
 import { PillarBand, StdCode, stdLabel, tint, usePillarMap, type PillarInfo } from "../../shared/pillars";
 import { AccordionPanel } from "../../shared/AccordionPanel";
 import { HBarChart, ProgressToTarget, SegmentBar } from "../../shared/charts";
@@ -16,6 +16,7 @@ import { usePeriodParams, useSearchState } from "../../shared/usePeriodParams";
 import { ReportView } from "./ReportView";
 import { groupResultIndicators } from "./indicatorGroups";
 import "./results.css";
+import { useCycles } from "../../api/queries";
 
 const PERF: Performance[] = ["Achieved", "Near", "Behind", "NoData", "NoTarget", "Incomplete", "NotStarted"];
 
@@ -45,7 +46,7 @@ export default function ResultsPage() {
 
   const set = (key: string, value: string | undefined) => update({ [key]: value });
 
-  const cycles = useQuery({ queryKey: ["cycles"], queryFn: () => api.get<Cycle[]>("/api/cycles") });
+  const cycles = useCycles();
   const res = useQuery({
     queryKey: ["results", cycleParam, unitParam],
     queryFn: () => api.get<Results | null>(`/api/results${query({ cycleId: cycleParam, unitId: unitParam })}`),

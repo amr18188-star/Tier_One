@@ -1,16 +1,13 @@
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { PartitionOutlined } from "@ant-design/icons";
 import { Link, useNavigate } from "react-router-dom";
-import { api } from "../../api/client";
-import type { Results } from "../../api/collection";
-import type { StrategyTree } from "../../api/tier1";
 import { L } from "../../shared/i18n";
 import { usePermissions } from "../../shared/session";
 import { Panel } from "../../shared/ui";
 import { PlanCtx, tint, type PlanContext, type ResultMap } from "./model";
 import { DotLegend, StateBar } from "./PlanMap";
 import "./strategy.css";
+import { useLatestResults, useStrategyTree } from "../../api/queries";
 
 /**
  * الخطة في لمحة للصفحة الأولى: كل ركيزة بلونها وعدد معاييرها ومؤشراتها، وشريط حالة مؤشراتها
@@ -19,8 +16,8 @@ import "./strategy.css";
 export function PlanGlance() {
   const perms = usePermissions();
   const navigate = useNavigate();
-  const tree = useQuery({ queryKey: ["strategy"], queryFn: () => api.get<StrategyTree>("/api/strategy/tree"), enabled: perms.can("kpi.strategy", "V") });
-  const results = useQuery({ queryKey: ["results", undefined, undefined], queryFn: () => api.get<Results | null>("/api/results"), enabled: perms.can("dc.results", "V") });
+  const tree = useStrategyTree({ enabled: perms.can("kpi.strategy", "V") });
+  const results = useLatestResults({ enabled: perms.can("dc.results", "V") });
   const r = results.data;
   const map: ResultMap = useMemo(() => new Map((r?.indicators ?? []).map((i) => [i.code, i])), [r]);
   const t = tree.data;

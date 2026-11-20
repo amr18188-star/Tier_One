@@ -13,6 +13,7 @@ import { usePermissions } from "../../shared/session";
 import { PageHeader, Panel } from "../../shared/ui";
 import UnitIndicatorsDrawer from "./UnitIndicatorsDrawer";
 import "./units.css";
+import { queryKeys } from "../../api/queries";
 
 type Row = OrgUnit & { children?: Row[] };
 
@@ -154,7 +155,7 @@ export default function UnitsPage() {
 function useRefresh() {
   const qc = useQueryClient();
   return async () => {
-    await qc.invalidateQueries({ queryKey: ["units"] });
+    await qc.invalidateQueries({ queryKey: queryKeys.units });
     await qc.invalidateQueries({ queryKey: ["structure"] });
   };
 }

@@ -4,13 +4,13 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Dayjs } from "dayjs";
 import { api } from "../../api/client";
 import { CAPS, type Assignment, type Catalog, type Effective, type GrantView, type Override, type RoleSummary, type UserDetail } from "../../api/types";
-import type { OrgUnit } from "../../api/tier1";
 import { errorText, formatDate, formatDateTime } from "../../shared/format";
 import { dirArrow, L, useLang } from "../../shared/i18n";
 import { QueryError } from "../../shared/QueryState";
 import { usePermissions, useSession } from "../../shared/session";
 import { ReasonModal } from "../matrix/MatrixPage";
 import { capName, MatrixTable } from "../matrix/MatrixTable";
+import { useUnits } from "../../api/queries";
 
 // أدوار لا يسندها إلا المدير الأعلى (SOD-9)، كما في كتالوج الخادم.
 const RESERVED = ["SA", "SYS", "AUD", "PRES", "HC"];
@@ -161,7 +161,7 @@ function Assignments({ user, self, onChanged, setReasonFor, onError }: { user: U
   const perms = usePermissions();
   const roles = useQuery({ queryKey: ["roles"], queryFn: () => api.get<RoleSummary[]>("/api/iam/roles") });
   // «نطاقه» في Tier 1 جهات: الكلية تغطي أقسامها، فيكفي اختيار الكلية لعميدها.
-  const units = useQuery({ queryKey: ["units"], queryFn: () => api.get<OrgUnit[]>("/api/org/units") });
+  const units = useUnits();
   const unitName = (code: string) => units.data?.find((u) => u.code === code)?.nameAr ?? code;
   const [form] = Form.useForm<{ roleId: string; scopeValues: string[]; validTo?: Dayjs; reason: string }>();
   const [busy, setBusy] = useState(false);

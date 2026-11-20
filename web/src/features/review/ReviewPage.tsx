@@ -5,7 +5,6 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { Link } from "react-router-dom";
 import { api } from "../../api/client";
 import { invalidate } from "../../api/invalidate";
-import type { Cycle } from "../../api/collection";
 import type { Review, ReviewCycle, ReviewRow, ReviewState } from "../../api/scorecard";
 import { AccordionPanel, Reveal, useSingleOpen } from "../../shared/AccordionPanel";
 import { howCalculated } from "../../shared/calc";
@@ -22,6 +21,7 @@ import { pillarNum } from "../strategy/model";
 import { latestCycle, ReviewPeriod, reviewable } from "./ReviewPeriod";
 import "./review.css";
 import "./review-redesign.css";
+import { useCycles } from "../../api/queries";
 
 /**
  * مراجعة مسئول ملف Tier 1: لكل مؤشر في الربع قائمة بتقدم الكليات (قيمة كل كلية ونسبتها من مستهدف الجامعة)، وحساب الجامعة منها
@@ -70,7 +70,7 @@ export default function ReviewPage() {
   const perms = usePermissions();
   // الربع من الشريط المشترك: دورات المراجعة من /api/cycles (الاستعلام نفسه في صفحة النماذج)، وافتراضها أحدث دورة كما في الخادم.
   const canCycles = perms.can("dc.cycles", "V");
-  const cyclesQ = useQuery({ queryKey: ["cycles"], queryFn: () => api.get<Cycle[]>("/api/cycles"), enabled: canCycles });
+  const cyclesQ = useCycles({ enabled: canCycles });
   const navMode = canCycles && !cyclesQ.isError;
   const navCycles = useMemo(() => cyclesQ.data?.filter(reviewable), [cyclesQ.data]);
   const fallbackDefault = latestCycle(navCycles);

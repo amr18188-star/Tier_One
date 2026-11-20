@@ -7,7 +7,7 @@ import {
   SearchOutlined, WarningOutlined, EditOutlined, ArrowLeftOutlined, ArrowRightOutlined, CalendarOutlined,
 } from "@ant-design/icons";
 import { api } from "../../api/client";
-import type { Cycle, FormRow, Results } from "../../api/collection";
+import type { FormRow } from "../../api/collection";
 import type { Home } from "../../api/tier1";
 import { ProgressToTarget, SegmentBar } from "../../shared/charts";
 import { formatDate } from "../../shared/format";
@@ -52,6 +52,7 @@ function ScoreGlance() {
   );
 }
 import { EmptyNote, firstName, greeting, Hero, Panel, StatTile } from "../../shared/ui";
+import { useCycles, useLatestResults } from "../../api/queries";
 
 /**
  * الصفحة الأولى بحسب الدور، والأهم أولًا:
@@ -65,7 +66,7 @@ function GeneralHome() {
   const seesForms = perms.can("dc.forms", "V");
   const seesResults = perms.can("dc.results", "V");
   const mine = useQuery({ queryKey: ["forms", "mine"], queryFn: () => api.get<FormRow[]>("/api/forms?awaitingMe=true"), enabled: seesForms });
-  const results = useQuery({ queryKey: ["results", undefined, undefined], queryFn: () => api.get<Results | null>("/api/results"), enabled: seesResults });
+  const results = useLatestResults({ enabled: seesResults });
   const d = home.data;
   const pillarMap = usePillarMap();
   const approved = d?.definitionStatus.find((s) => s.key === "Approved")?.count ?? 0;
@@ -201,7 +202,7 @@ function AdminHome() {
   const Forward = lang === "ar" ? ArrowLeftOutlined : ArrowRightOutlined;
   const home = useQuery({ queryKey: ["home"], queryFn: () => api.get<Home>("/api/home") });
   const mine = useQuery({ queryKey: ["forms", "mine"], queryFn: () => api.get<FormRow[]>("/api/forms?awaitingMe=true") });
-  const cycles = useQuery({ queryKey: ["cycles"], queryFn: () => api.get<Cycle[]>("/api/cycles") });
+  const cycles = useCycles();
   const [filter, setFilter] = useState<WorkFilter>("all");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<DueSort>("nearest");

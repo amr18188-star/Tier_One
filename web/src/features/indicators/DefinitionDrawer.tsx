@@ -1,11 +1,12 @@
 import { useEffect } from "react";
 import { Alert, App, Button, Drawer, Form, Input, Select, Space } from "antd";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import type { IndicatorDetail, OrgUnit, Version } from "../../api/tier1";
+import type { IndicatorDetail, Version } from "../../api/tier1";
 import { errorText } from "../../shared/format";
 import { L, useLang } from "../../shared/i18n";
 import { aggregation, direction, frequency, level, options } from "../../shared/labels";
+import { useUnits } from "../../api/queries";
 
 type FormValues = Pick<Version, "nameAr" | "nameEn" | "definition" | "purpose" | "exclusions" | "numerator" | "denominator" | "unit" | "direction"
   | "frequency" | "level" | "aggregation" | "aggregationNote" | "dataSource" | "ownerUnitId" | "evidenceRequired" | "formula" | "accumulation"> & { changeReason?: string };
@@ -35,7 +36,7 @@ export function DefinitionDrawer({ detail, onClose }: { detail: IndicatorDetail;
   const v = detail.current;
   const createsVersion = detail.actions.editCreatesVersion;
   const agg = Form.useWatch("aggregation", form);
-  const units = useQuery({ queryKey: ["units"], queryFn: () => api.get<OrgUnit[]>("/api/org/units") });
+  const units = useUnits();
 
   useEffect(() => {
     // سبب الإصدار السابق لا يعبأ: كل إصدار جديد يكتب سببه.

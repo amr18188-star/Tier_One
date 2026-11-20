@@ -7,6 +7,7 @@ import type { OrgUnit, UnitIndicatorItem, UnitIndicators } from "../../api/tier1
 import { errorText } from "../../shared/format";
 import { L } from "../../shared/i18n";
 import "./units.css";
+import { queryKeys } from "../../api/queries";
 
 const LEVEL: Record<UnitIndicatorItem["level"], { text: string; color: string }> = {
   College: { text: "تدخله الكلية", color: "blue" },
@@ -37,7 +38,7 @@ export default function UnitIndicatorsDrawer({ unit, onClose }: { unit: OrgUnit;
     mutationFn: () => api.put<UnitIndicators>(`/api/org/units/${unit.id}/indicators`, { custom, indicatorIds: custom ? [...picked] : [] }),
     onSuccess: async (d) => {
       qc.setQueryData(["unit-indicators", unit.id], d);
-      await qc.invalidateQueries({ queryKey: ["units"] });
+      await qc.invalidateQueries({ queryKey: queryKeys.units });
       message.success(L(`حفظت مؤشرات «${unit.nameAr}».`, "Saved."));
       onClose();
     },

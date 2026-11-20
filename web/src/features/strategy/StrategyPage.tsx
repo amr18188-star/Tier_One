@@ -1,10 +1,7 @@
 import { useMemo, useState } from "react";
 import { App } from "antd";
-import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../../api/client";
-import type { Results } from "../../api/collection";
-import type { StrategyTree } from "../../api/tier1";
 import { DecisionModal } from "../../shared/DecisionModal";
 import { L } from "../../shared/i18n";
 import { QueryState } from "../../shared/QueryState";
@@ -17,6 +14,7 @@ import { PlanHero, PlanMap, ViewTabs, type PlanView } from "./PlanMap";
 import { Roadmap } from "./Roadmap";
 import { InitiativeDrawer, PillarDrawer, StandardDrawer, useRefreshPlan } from "./StrategyForms";
 import "./strategy.css";
+import { useLatestResults, useStrategyTree } from "../../api/queries";
 
 /**
  * الخطة الاستراتيجية بثلاثة عروض في التبويبات:
@@ -29,9 +27,9 @@ import "./strategy.css";
  */
 export default function StrategyPage() {
   const perms = usePermissions();
-  const tree = useQuery({ queryKey: ["strategy"], queryFn: () => api.get<StrategyTree>("/api/strategy/tree") });
+  const tree = useStrategyTree();
   const seesResults = perms.can("dc.results", "V");
-  const results = useQuery({ queryKey: ["results", undefined, undefined], queryFn: () => api.get<Results | null>("/api/results"), enabled: seesResults });
+  const results = useLatestResults({ enabled: seesResults });
   const [params, setParams] = useSearchParams();
   const [editing, setEditing] = useState<Editing | null>(null);
 

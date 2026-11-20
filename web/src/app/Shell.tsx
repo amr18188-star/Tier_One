@@ -8,7 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, NavLink, matchPath, useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import type { RbacChange } from "../api/types";
-import type { IndicatorRow, OrgUnit } from "../api/tier1";
+import type { IndicatorRow } from "../api/tier1";
 import { DevRoleTabs } from "../shared/DevRoleTabs";
 import { L, setLang, useLang } from "../shared/i18n";
 import { prefersReducedMotion } from "../shared/entrance";
@@ -16,6 +16,7 @@ import { usePermissions, useSession } from "../shared/session";
 import { initials } from "../shared/ui";
 import { AppearanceButton } from "./AppearanceMenu";
 import { NotificationBell } from "../features/notifications/NotificationBell";
+import { useUnits } from "../api/queries";
 import { canOpen, ROUTE_NEEDS } from "./routeAccess";
 // شعار الجامعة للترويسة الفاتحة، وشعار الخطة للشريط الجانبي الكحلي.
 import logoOnWhite from "../assets/brand/capital-university-logo-light.png";
@@ -404,7 +405,7 @@ function GlobalSearch() {
   const navigate = useNavigate();
   const [text, setText] = useState("");
   const indicators = useQuery({ queryKey: ["indicators", "all"], queryFn: () => api.get<IndicatorRow[]>("/api/kpi/indicators"), enabled: perms.can("kpi.dictionary", "V"), staleTime: 300_000 });
-  const units = useQuery({ queryKey: ["units"], queryFn: () => api.get<OrgUnit[]>("/api/org/units"), enabled: perms.can("org.units", "V"), staleTime: 300_000 });
+  const units = useUnits({ enabled: perms.can("org.units", "V"), staleTime: 300_000 });
 
   const opensStructure = canOpen(perms, ROUTE_NEEDS.structure);
   const options = useMemo(() => {
