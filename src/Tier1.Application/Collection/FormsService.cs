@@ -69,7 +69,7 @@ public sealed record ExtendRequest(DateOnly DueOn, string? Reason);
 /// ARCH-1: this class lists forms and shows one. Entry is <see cref="FormEntryService"/>, the path is <see cref="FormWorkflowService"/>,
 /// loading and building a form is <see cref="FormReader"/>, and which indicators a unit enters is <see cref="FormAssignmentRules"/>.
 /// </summary>
-public sealed class FormsService(ICollectionStore db, IReadModel read,  IClock clock, ICurrentUser current, IAccessService access, FormReader reader)
+public sealed class FormsService(ICollectionStore db, IReadModel read, IClock clock, ICurrentUser current, IAccessService access, FormReader reader)
 {
     private const string Feature = Features.Forms;
 

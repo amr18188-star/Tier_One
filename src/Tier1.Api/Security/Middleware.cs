@@ -1,11 +1,10 @@
+using Tier1.Application.Abstractions;
 using System.Diagnostics;
 using System.Globalization;
 using Tier1.Domain.Common;
 using Tier1.Domain.Logging;
-using Tier1.Infrastructure.Logging;
 using Tier1.Infrastructure.Security;
 using Microsoft.AspNetCore.Antiforgery;
-using MongoDB.Bson;
 
 namespace Tier1.Api.Security;
 
@@ -47,7 +46,7 @@ public sealed class RequestLanguageMiddleware(RequestDelegate next)
 /// سجل الطلبات التقني في MongoDB (http_requests): الطريقة والمسار القالبي والحالة والمدة والمستخدم والعنوان،
 /// بلا أجسام الطلبات ولا سلاسل الاستعلام. يكتب عبر طابور غير متزامن فلا يبطئ الطلب.
 /// </summary>
-public sealed class RequestLoggingMiddleware(RequestDelegate next, TechLogWriter tech)
+public sealed class RequestLoggingMiddleware(RequestDelegate next, ITechnicalLog tech)
 {
     public async Task InvokeAsync(HttpContext ctx)
     {
@@ -64,18 +63,8 @@ public sealed class RequestLoggingMiddleware(RequestDelegate next, TechLogWriter
         finally
         {
             var route = (ctx.GetEndpoint() as RouteEndpoint)?.RoutePattern.RawText;
-            tech.Write(LogCollections.HttpRequests, new BsonDocument
-            {
-                { "_id", Guid.CreateVersion7().ToString() },
-                { "ts", DateTime.UtcNow },
-                { "method", ctx.Request.Method },
-                { "path", route ?? ctx.Request.Path.Value ?? "" },
-                { "status", ctx.Response.StatusCode },
-                { "durationMs", watch.ElapsedMilliseconds },
-                { "userId", (BsonValue?)ctx.User.FindFirst(ClaimNames.UserId)?.Value ?? BsonNull.Value },
-                { "ip", (BsonValue?)ctx.Connection.RemoteIpAddress?.ToString() ?? BsonNull.Value },
-                { "correlationId", Activity.Current?.TraceId.ToString() ?? ctx.TraceIdentifier },
-            });
+            tech.Request(new HttpRequestRecord(ctx.Request.Method, route ?? ctx.Request.Path.Value ?? "", ctx.Response.StatusCode, watch.ElapsedMilliseconds,
+                ctx.User.FindFirst(ClaimNames.UserId)?.Value, ctx.Connection.RemoteIpAddress?.ToString(), Activity.Current?.TraceId.ToString() ?? ctx.TraceIdentifier));
         }
     }
 }

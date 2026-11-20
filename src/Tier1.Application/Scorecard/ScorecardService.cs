@@ -50,7 +50,7 @@ public sealed record ScorecardDto(
 /// بطاقة أداء الجامعة وفئتها بمعادلات الإطار الشامل (ScorecardRules)، من القيم الرسمية للجامعة في كل ربع (ينقلها مسئول ملف Tier 1).
 /// تعرض لمن يرى النتائج.
 /// </summary>
-public sealed class ScorecardService(IScorecardStore db, IReadModel read,  IAccessService access, IClock clock, IAuditLog audit, Settings.SettingsService settings)
+public sealed class ScorecardService(IScorecardStore db, IReadModel read, IAccessService access, IClock clock, IAuditLog audit, Settings.SettingsService settings)
 {
     private const string Feature = Features.Results;
     private static readonly int[] Years = PlanCalendar.Years;

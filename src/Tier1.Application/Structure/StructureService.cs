@@ -45,7 +45,7 @@ public sealed record SavePartnerRequest(
 /// هيكل Tier 1 بالكليات: الرسم التنظيمي بأعضائه كما هو في أي تاريخ، والعضويات بتاريخ بداية ونهاية (لا حذف)،
 /// والشريك الصناعي لكل قسم، ولوحة الاكتمال. كل ذلك في نطاق المستخدم على الكليات.
 /// </summary>
-public sealed class StructureService(IStructureStore db, IReadModel read,  IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit)
+public sealed class StructureService(IStructureStore db, IReadModel read, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit)
 {
     private const string Feature = Features.Structure;
 

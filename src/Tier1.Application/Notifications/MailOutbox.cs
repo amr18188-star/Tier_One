@@ -10,7 +10,7 @@ public interface IMailSignal
 }
 
 /// <summary>يضيف الرسالة إلى الصندوق الصادر في معاملة العملية؛ النص مشفر حتى يرسل ثم يمحى.</summary>
-public sealed class MailOutbox(INotificationStore db,  IClock clock, ICurrentUser current, ISecretProtector protector, IMailSignal signal) : IMailOutbox
+public sealed class MailOutbox(INotificationStore db, IClock clock, ICurrentUser current, ISecretProtector protector, IMailSignal signal) : IMailOutbox
 {
     public void Enqueue(string kind, string to, string subject, string body, string? dedupKey = null, string? relatedType = null, Guid? relatedId = null, long? resentFromId = null)
     {

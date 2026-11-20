@@ -46,7 +46,7 @@ public sealed record DeleteTargetRequest(string? Reason, string? DecisionRef);
 /// خط الأساس والمستهدفات: مستهدفات الجامعة (من ملف Tier 1) وتوزيعها على الكليات (من ملف الكليات)، والاعتماد بقرار،
 /// وتعديل المعتمد بسبب ورقم قرار مع حفظ القيمة السابقة.
 /// </summary>
-public sealed class TargetsService(IKpiStore db, IReadModel read,  IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit)
+public sealed class TargetsService(IKpiStore db, IReadModel read, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit)
 {
     public const int PlanStart = 2026;
     public const int PlanEnd = 2031;

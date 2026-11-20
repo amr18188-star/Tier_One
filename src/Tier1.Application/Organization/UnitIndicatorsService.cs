@@ -23,7 +23,7 @@ public sealed record SaveUnitIndicatorsRequest(bool Custom, IReadOnlyList<Guid>?
 /// <summary>
 /// تكليف كل جهة بالمؤشرات التي تدخل بياناتها. يسري على الدورات التي تفتح بعده؛ نماذج الدورة المفتوحة تبقى كما فتحت.
 /// </summary>
-public sealed class UnitIndicatorsService(IOrgStore db, IReadModel read, ITransactionLock locks,  IAccessService access, IAuditLog audit)
+public sealed class UnitIndicatorsService(IOrgStore db, IReadModel read, ITransactionLock locks, IAccessService access, IAuditLog audit)
 {
     private const string Feature = Features.Units;
 

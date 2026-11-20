@@ -28,7 +28,7 @@ public sealed class FormMovedNotifications(FormNotifier notifier) : Integration.
 /// إشعارات مسار النماذج بالبريد: من عليه الإجراء التالي يصله رابط النموذج مباشرة. المستلمون يحسبون من الصلاحيات الفعلية:
 /// مراجع الخطوة (إجراؤها الخاص ونطاقه يغطي الجهة)، أو مدخلو البيانات عند الإعادة. الرسالة تضاف بعد ثبوت الانتقال، من معالج حدث form.moved.
 /// </summary>
-public sealed class FormNotifier(ICollectionStore db, IReadModel read,  IAccessService access, INotificationPublisher notifications)
+public sealed class FormNotifier(ICollectionStore db, IReadModel read, IAccessService access, INotificationPublisher notifications)
 {
     /// <summary>
     /// Runs in the form.moved handler, after the transition committed. The message describes the form as the event saw it (its step

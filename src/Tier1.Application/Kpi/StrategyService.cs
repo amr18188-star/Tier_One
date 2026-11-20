@@ -51,7 +51,7 @@ public sealed record DeleteRequest(string? Reason);
 /// إضافة الركائز والمعايير والمبادرات وتعديلها وحذفها بصلاحية «الخطة الاستراتيجية»؛ المؤشرات وتعريفاتها ومستهدفاتها بصلاحياتها في القاموس والمستهدفات.
 /// لا يحذف ما يقوم عليه غيره: الركيزة بمعاييرها والمعيار بمؤشراته ومبادراته تنقل أو تحذف أولًا.
 /// </summary>
-public sealed class StrategyService(IKpiStore db, IReadModel read,  IClock clock, IAccessService access, IAuditLog audit)
+public sealed class StrategyService(IKpiStore db, IReadModel read, IClock clock, IAccessService access, IAuditLog audit)
 {
     private const string Feature = Features.Strategy;
 

@@ -149,8 +149,34 @@ public sealed class OutboxDirectWriter(NpgsqlDataSource dataSource) : IOutboxDir
 /// السجلات التقنية (الطلبات والأخطاء وتشغيل المهام) تكتب مباشرة بلا سلسلة ولا صندوق صادر.
 /// الطابور محدود؛ عند الامتلاء يسقط الأقدم، وفقد بعضها عند العطل مقبول.
 /// </summary>
-public sealed class TechLogWriter
+public sealed class TechLogWriter : Tier1.Application.Abstractions.ITechnicalLog
 {
+    public void Request(Tier1.Application.Abstractions.HttpRequestRecord r) => Write(LogCollections.HttpRequests, new BsonDocument
+    {
+        { "_id", Guid.CreateVersion7().ToString() },
+        { "ts", DateTime.UtcNow },
+        { "method", r.Method },
+        { "path", r.Path },
+        { "status", r.Status },
+        { "durationMs", r.DurationMs },
+        { "userId", (BsonValue?)r.UserId ?? BsonNull.Value },
+        { "ip", (BsonValue?)r.Ip ?? BsonNull.Value },
+        { "correlationId", r.CorrelationId },
+    });
+
+    public void Error(Tier1.Application.Abstractions.AppErrorRecord e) => Write(LogCollections.AppErrors, new BsonDocument
+    {
+        { "_id", Guid.CreateVersion7().ToString() },
+        { "ts", DateTime.UtcNow },
+        { "type", e.Type },
+        { "message", e.Message },
+        { "stack", e.Stack },
+        { "path", e.Path },
+        { "method", e.Method },
+        { "userId", (BsonValue?)e.UserId ?? BsonNull.Value },
+        { "correlationId", e.CorrelationId },
+    });
+
     private readonly Channel<(string Collection, BsonDocument Doc)> _channel =
         Channel.CreateBounded<(string, BsonDocument)>(new BoundedChannelOptions(10_000) { FullMode = BoundedChannelFullMode.DropOldest, SingleReader = true });
 

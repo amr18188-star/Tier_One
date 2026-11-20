@@ -41,6 +41,14 @@ public sealed class ModuleBoundaryTests
     }
 
     [Fact]
+    public void The_web_layer_does_not_reference_the_log_store_driver()
+    {
+        var api = typeof(Tier1.Api.Startup.ApiExceptionHandler).Assembly;
+        var mongo = api.GetReferencedAssemblies().Select(a => a.Name ?? "").Where(n => n.StartsWith("MongoDB", StringComparison.Ordinal)).ToList();
+        Assert.True(mongo.Count == 0, $"Tier1.Api references {string.Join(", ", mongo)}; write technical logs through ITechnicalLog.");
+    }
+
+    [Fact]
     public void Every_module_store_has_an_owner_and_the_whole_database_has_no_port()
     {
         var stores = Application.GetTypes().Where(t => t.IsInterface && t != typeof(IUnitOfWork) && typeof(IUnitOfWork).IsAssignableFrom(t)).ToList();

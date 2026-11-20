@@ -65,7 +65,7 @@ public sealed record TransferAllRequest(Guid CycleId);
 /// مراجعة مسئول ملف Tier 1: كل مؤشر في الربع بقيمة كل كلية وحساب الجامعة منها، ثم نقل القيمة إلى مؤشر الجامعة.
 /// القيمة المنقولة وحدها تدخل بطاقة الأداء والفئة وملف المجلس. تعديلها عن المحسوبة، أو نقلها قبل اكتمال الجهات، بسبب مكتوب.
 /// </summary>
-public sealed class ReviewService(IScorecardStore db, IReadModel read,  IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, ResultsService results)
+public sealed class ReviewService(IScorecardStore db, IReadModel read, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, ResultsService results)
 {
     private const string Feature = Features.University;
 

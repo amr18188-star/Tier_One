@@ -9,7 +9,7 @@ public sealed record InboxItemDto(Guid Id, string Kind, string Title, string Bod
 public sealed record InboxDto(IReadOnlyList<InboxItemDto> Items, int Unread);
 
 /// <summary>The signed-in user's own notifications (requirement 4-15). Nobody reads another user's inbox, so there is no permission beyond the session.</summary>
-public sealed class InboxService(INotificationStore db,  ICurrentUser current, IClock clock)
+public sealed class InboxService(INotificationStore db, ICurrentUser current, IClock clock)
 {
     public const int Shown = 50;
 

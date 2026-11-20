@@ -22,7 +22,7 @@ public sealed record OpenCyclePreview(int Indicators, int Forms, int Departments
 /// دورات جمع البيانات: الإنشاء والفتح والإغلاق. الفتح يأخذ لقطة من التعريفات المعتمدة (أو قيد العمل في الدورة التجريبية)،
 /// وينشئ نموذجًا لكل جهة تنطبق عليها مؤشرات بحسب مستوى جمع بياناتها: القسم، أو الكلية، أو الجهة المالكة للمؤشر المركزي.
 /// </summary>
-public sealed class CyclesService(ICollectionStore db, IReadModel read,  IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit)
+public sealed class CyclesService(ICollectionStore db, IReadModel read, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit)
 {
     private const string Feature = Features.Cycles;
 

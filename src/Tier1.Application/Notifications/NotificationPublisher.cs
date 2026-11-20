@@ -18,7 +18,7 @@ public interface INotificationPublisher
     void Publish(Recipient to, string kind, string title, string body, string? link, string? dedupKey = null);
 }
 
-public sealed class NotificationPublisher(INotificationStore db,  IClock clock, IMailOutbox mail, IConfiguration config) : INotificationPublisher
+public sealed class NotificationPublisher(INotificationStore db, IClock clock, IMailOutbox mail, IConfiguration config) : INotificationPublisher
 {
     public const string RelatedType = "notification";
 

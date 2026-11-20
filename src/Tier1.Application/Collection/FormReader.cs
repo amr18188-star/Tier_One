@@ -27,7 +27,7 @@ internal sealed class FormContext
 /// ARCH-1: one form as its screen shows it. Loads the form's context (unit, cycle, indicators, values, previous values) in the
 /// user's scope, and builds the form, an item, the blocking list, targets and documents. Shared by the list, entry and workflow.
 /// </summary>
-public sealed class FormReader(ICollectionStore db, IReadModel read,  IClock clock, ICurrentUser current, IAccessService access, Settings.SettingsService settings)
+public sealed class FormReader(ICollectionStore db, IReadModel read, IClock clock, ICurrentUser current, IAccessService access, Settings.SettingsService settings)
 {
     private const string Feature = Features.Forms;
 

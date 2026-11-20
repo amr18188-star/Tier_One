@@ -59,7 +59,7 @@ public sealed record IndicatorResultsDto(IndicatorResult University, IReadOnlyLi
 /// النتائج من القيم المعتمدة نهائيًا فقط: قيمة الكلية من أقسامها أو من نموذجها، وقيمة الجامعة من كلياتها أو من الجهة المركزية،
 /// بقاعدة تجميع المؤشر. من نطاقه الجامعة يرى الجامعة وكل الكليات؛ ومن نطاقه كليات يرى كلياته فقط.
 /// </summary>
-public sealed class ResultsService(ICollectionStore db, IReadModel read,  IAccessService access, IAuditLog audit, Settings.SettingsService settings, CycleSnapshotCache cache)
+public sealed class ResultsService(ICollectionStore db, IReadModel read, IAccessService access, IAuditLog audit, Settings.SettingsService settings, CycleSnapshotCache cache)
 {
     private const string Feature = Features.Results;
 

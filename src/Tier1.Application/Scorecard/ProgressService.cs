@@ -33,7 +33,7 @@ public sealed record ProgressDto(
 /// درجتها بقواعد بطاقة الجامعة نفسها (الإنجاز من المستهدف النهائي، والمعيار متوسط مؤشراته، والركيزة متوسط معاييرها) فتقارن بدرجة الجامعة.
 /// كل مستخدم يرى كليات نطاقه فقط.
 /// </summary>
-public sealed class ProgressService(IScorecardStore db, IReadModel read,  IAccessService access, IClock clock, ResultsService results, ScorecardService scorecard, Settings.SettingsService settings,
+public sealed class ProgressService(IScorecardStore db, IReadModel read, IAccessService access, IClock clock, ResultsService results, ScorecardService scorecard, Settings.SettingsService settings,
     Organization.UnitIndicatorsService assignments)
 {
     private static readonly int[] Years = PlanCalendar.Years;

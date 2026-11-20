@@ -14,7 +14,7 @@ namespace Tier1.Application.Collection;
 /// ARCH-1: the form's path. Submit, approve (normal or direct), return with notes, extend a deadline and reopen by decision;
 /// each move is recorded, audited and raised as form.moved (BE-3) in the same save.
 /// </summary>
-public sealed partial class FormWorkflowService(ICollectionStore db,  IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, Integration.IEventOutbox events, FormReader reader)
+public sealed partial class FormWorkflowService(ICollectionStore db, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, Integration.IEventOutbox events, FormReader reader)
 {
     private const string Feature = Features.Forms;
 

@@ -56,7 +56,7 @@ public sealed record PlanDocDto(DocDto Document, string? UploadedBy);
 /// المستندات: أدلة قيم المؤشرات (في نموذج الجهة)، ومستندات هيكل الكلية (الهيكل المعتمد وقرارات التشكيل).
 /// لا حذف نهائيًا: الإبطال بسبب يبقي المستند في السجل، والتنزيل بصلاحية الاطلاع على مالكه.
 /// </summary>
-public sealed class DocumentsService(ICollectionStore db, IReadModel read,  IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, IFileStore files, FormReader forms)
+public sealed class DocumentsService(ICollectionStore db, IReadModel read, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, IFileStore files, FormReader forms)
 {
     public long MaxBytes => files.MaxBytes;
 

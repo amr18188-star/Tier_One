@@ -51,7 +51,7 @@ public sealed record CommitteeDecisionRequest(string? DecisionRef, string? Note)
 /// قاموس المؤشرات: القراءة للجميع بصلاحية العرض، والتعديل ينشئ إصدارًا جديدًا للمعتمد، والاعتماد بقرار اللجنة العليا
 /// من غير من أعدّ التعريف.
 /// </summary>
-public sealed class DictionaryService(IKpiStore db, IReadModel read,  IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit)
+public sealed class DictionaryService(IKpiStore db, IReadModel read, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit)
 {
     private const string Feature = Features.Dictionary;
 

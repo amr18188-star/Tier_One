@@ -11,7 +11,7 @@ using Tier1.Domain.Organization;
 namespace Tier1.Application.Collection;
 
 /// <summary>ARCH-1: value entry in a unit form (save, clear, the Excel template and import), each change audited.</summary>
-public sealed partial class FormEntryService(ICollectionStore db,  IClock clock, ICurrentUser current, IAuditLog audit, Settings.SettingsService settings, FormReader reader)
+public sealed partial class FormEntryService(ICollectionStore db, IClock clock, ICurrentUser current, IAuditLog audit, Settings.SettingsService settings, FormReader reader)
 {
     private const string Feature = Features.Forms;
 

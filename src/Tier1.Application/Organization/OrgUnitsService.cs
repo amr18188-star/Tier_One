@@ -63,7 +63,7 @@ public static partial class OrgRules
 }
 
 /// <summary>الجهات: الإنشاء وتعديل الاسم بتاريخ سريان، والإغلاق أو الدمج بدل الحذف، وتاريخ كل جهة.</summary>
-public sealed class OrgUnitsService(IOrgStore db,  IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, UnitIndicatorsService assignments)
+public sealed class OrgUnitsService(IOrgStore db, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, UnitIndicatorsService assignments)
 {
     private const string Feature = Features.Units;
 

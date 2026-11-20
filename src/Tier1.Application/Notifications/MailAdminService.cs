@@ -16,7 +16,7 @@ public sealed record MailRow(
 /// masked. A failed notification is resent from its inbox item, to the user's current address; an account mail (a sign-in link)
 /// is not, since the user asks for a new one.
 /// </summary>
-public sealed class MailAdminService(INotificationStore db, IReadModel read,  IAccessService access, IAuditLog audit, IMailOutbox mail, NotificationPublisher publisher)
+public sealed class MailAdminService(INotificationStore db, IReadModel read, IAccessService access, IAuditLog audit, IMailOutbox mail, NotificationPublisher publisher)
 {
     public const string Feature = Features.Mail;
 
