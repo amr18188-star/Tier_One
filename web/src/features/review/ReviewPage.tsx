@@ -4,6 +4,7 @@ import { CheckCircleOutlined, DownOutlined, SearchOutlined, SendOutlined, SwapOu
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { api } from "../../api/client";
+import { invalidate } from "../../api/invalidate";
 import type { Cycle } from "../../api/collection";
 import type { Review, ReviewCycle, ReviewRow, ReviewState } from "../../api/scorecard";
 import { AccordionPanel, Reveal, useSingleOpen } from "../../shared/AccordionPanel";
@@ -102,8 +103,7 @@ export default function ReviewPage() {
     mutationFn: () => api.post<{ transferred: number }>("/api/review/transfer-all", { cycleId: r!.cycle!.id }),
     onSuccess: async (res) => {
       message.success(L(`نقلت ${res.transferred} قيمة إلى مؤشرات الجامعة.`, `${res.transferred} values transferred.`));
-      await qc.invalidateQueries({ queryKey: ["review"] });
-      await qc.invalidateQueries({ queryKey: ["scorecard"] });
+      await invalidate.afterTransfer(qc);
     },
   });
 
@@ -344,8 +344,7 @@ function Detail({ row, cycleId, canTransfer }: { row: ReviewRow; cycleId: string
     mutationFn: () => api.post<ReviewRow>("/api/review/transfer", { cycleId, indicatorId: row.indicatorId, value, note: note.trim() || null, version: row.official?.version ?? null }),
     onSuccess: async () => {
       message.success(L(`نقلت قيمة ${row.code} إلى مؤشر الجامعة.`, "Transferred."));
-      await qc.invalidateQueries({ queryKey: ["review"] });
-      await qc.invalidateQueries({ queryKey: ["scorecard"] });
+      await invalidate.afterTransfer(qc);
     },
   });
   // عناوين الأعمدة؛ على الجوال تصير الصفوف بطاقات وكل خلية تحمل عنوانها (data-label).

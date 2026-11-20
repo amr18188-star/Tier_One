@@ -8,6 +8,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
 import { api } from "../../api/client";
+import { invalidate } from "../../api/invalidate";
 import type { Form, FormItem } from "../../api/collection";
 import { DecisionModal } from "../../shared/DecisionModal";
 import { errorText, formatDate, formatDateTime } from "../../shared/format";
@@ -66,7 +67,7 @@ export default function FormPage() {
     },
     onSuccess: (f) => {
       qc.setQueryData(key, f);
-      void qc.invalidateQueries({ queryKey: ["forms"] });
+      void invalidate.afterFormDecision(qc);
       message.success(L(`أرسل النموذج إلى «${f.path.find((p) => p.state === "current")?.name ?? ""}»`, "Form sent for review"));
     },
   });
@@ -385,7 +386,7 @@ export default function FormPage() {
       )}
       {(dialog === "approve" || dialog === "direct") && (
         <ApproveModal form={f} direct={dialog === "direct"} onClose={() => setDialog(null)}
-          onDone={(next) => { qc.setQueryData(key, next); void qc.invalidateQueries({ queryKey: ["forms"] }); }} />
+          onDone={(next) => { qc.setQueryData(key, next); void invalidate.afterFormDecision(qc); }} />
       )}
       {dialog === "return" && (
         <DecisionModal title={L("إعادة النموذج للتصحيح", "Return the form")} field="note" label={L("الملاحظة العامة لمدخل البيانات", "Note to the data entry")} okText={L("إعادة", "Return")} danger
@@ -399,7 +400,7 @@ export default function FormPage() {
             });
             setMarks({});
             qc.setQueryData(key, next);
-            void qc.invalidateQueries({ queryKey: ["forms"] });
+            void invalidate.afterFormDecision(qc);
           }}
           onClose={() => setDialog(null)} />
       )}
@@ -409,7 +410,7 @@ export default function FormPage() {
             "The request goes to the higher committee; the form stays approved and locked until it approves with a decision reference.")}
           onSubmit={async (note) => {
             qc.setQueryData(key, await api.post<Form>(`/api/forms/${f.id}/reopen`, { note, version: f.version }));
-            void qc.invalidateQueries({ queryKey: ["forms"] });
+            void invalidate.afterFormDecision(qc);
           }}
           onClose={() => setDialog(null)} />
       )}
@@ -418,8 +419,7 @@ export default function FormPage() {
           explain={<>{L("سبب الطلب:", "Reason:")} {reopen?.reason}<br />{L("يعود النموذج إلى الإدخال، وتحفظ قيمه المعتمدة الحالية وتبقى الرسمية في النتائج حتى يعاد اعتماده.", "The form returns to entry; its approved values are kept and stay official until re-approval.")}</>}
           onSubmit={async (decisionRef) => {
             qc.setQueryData(key, await api.post<Form>(`/api/forms/${f.id}/reopen/approve`, { decisionRef, note: null }));
-            void qc.invalidateQueries({ queryKey: ["forms"] });
-            void qc.invalidateQueries({ queryKey: ["results"] });
+            void invalidate.afterFormDecision(qc);
           }}
           onClose={() => setDialog(null)} />
       )}
@@ -428,11 +428,11 @@ export default function FormPage() {
           explain={<>{L("سبب الطلب:", "Reason:")} {reopen?.reason}<br />{L("يبقى النموذج معتمدًا ومقفلًا، ويرى مقدم الطلب سبب الرفض.", "The form stays approved; the requester sees the reason.")}</>}
           onSubmit={async (note) => {
             qc.setQueryData(key, await api.post<Form>(`/api/forms/${f.id}/reopen/reject`, { note }));
-            void qc.invalidateQueries({ queryKey: ["forms"] });
+            void invalidate.afterFormDecision(qc);
           }}
           onClose={() => setDialog(null)} />
       )}
-      {dialog === "extend" && <ExtendModal form={f} onClose={() => setDialog(null)} onDone={(next) => { qc.setQueryData(key, next); void qc.invalidateQueries({ queryKey: ["forms"] }); }} />}
+      {dialog === "extend" && <ExtendModal form={f} onClose={() => setDialog(null)} onDone={(next) => { qc.setQueryData(key, next); void invalidate.afterFormDecision(qc); }} />}
       {dialog === "import" && <ImportModal formId={f.id} onClose={() => setDialog(null)} onApplied={() => void refresh()} />}
     </AutosaveContext.Provider>
   );
