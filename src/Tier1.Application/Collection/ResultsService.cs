@@ -273,7 +273,20 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
         public IReadOnlySet<Guid> UnderCorrection { get; init; } = new HashSet<Guid>();
     }
 
-    private async Task<Snapshot> SnapshotAsync(CollectionCycle cycle, CancellationToken ct)
+    /// <summary>
+    /// PERF-B3: one snapshot per cycle per request. The service lives for one request, and the snapshot is read-only, so the
+    /// overview's previous cycle, the export's second pass and a trend's current cycle reuse it instead of re-reading 9 tables.
+    /// A cache across requests would need a fingerprint of targets and units too (they change after a cycle closes), so not here.
+    /// </summary>
+    private readonly Dictionary<Guid, Task<Snapshot>> snapshots = [];
+
+    private Task<Snapshot> SnapshotAsync(CollectionCycle cycle, CancellationToken ct)
+    {
+        if (!snapshots.TryGetValue(cycle.Id, out var snapshot)) snapshots[cycle.Id] = snapshot = BuildSnapshotAsync(cycle, ct);
+        return snapshot;
+    }
+
+    private async Task<Snapshot> BuildSnapshotAsync(CollectionCycle cycle, CancellationToken ct)
     {
         var cis = await db.CycleIndicators.AsNoTracking().Where(c => c.CycleId == cycle.Id).ToListAsync(ct);
         var versionIds = cis.Select(c => c.VersionId).ToList();
