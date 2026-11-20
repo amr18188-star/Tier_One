@@ -80,6 +80,7 @@ public static class DependencyInjection
         services.AddSingleton<IOutboxSignal>(sp => sp.GetRequiredService<OutboxSignal>());
         services.AddSingleton<IOutboxDirectWriter, OutboxDirectWriter>();
         services.AddSingleton<TechLogWriter>();
+        services.AddSingleton<JobLock>();
         services.AddSingleton<ITechnicalLog>(sp => sp.GetRequiredService<TechLogWriter>());
         services.AddSingleton<IDatabaseErrors, PostgresErrors>();
         services.AddSingleton<ILogReader, MongoLogReader>();

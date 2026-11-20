@@ -14,7 +14,7 @@ namespace Tier1.Infrastructure.Persistence;
 /// Phase 3: business events whose handlers ran, after Retention:EventDays, and in-app notifications after Retention:InboxDays.
 /// BE-19: الملفات التي لا مستند لها (رفع فشل حفظه) بعد ساعة.
 /// </summary>
-public sealed class RetentionJob(IServiceScopeFactory scopes, IConfiguration config, ILogger<RetentionJob> log) : BackgroundService
+public sealed class RetentionJob(IServiceScopeFactory scopes, IConfiguration config, JobLock jobs, ILogger<RetentionJob> log) : BackgroundService
 {
     private static readonly TimeSpan Every = TimeSpan.FromHours(6);
 
@@ -46,7 +46,7 @@ public sealed class RetentionJob(IServiceScopeFactory scopes, IConfiguration con
             try
             {
                 await Task.Delay(TimeSpan.FromMinutes(2), stoppingToken);
-                await RunOnceAsync(stoppingToken);
+                await jobs.RunExclusiveAsync(JobLock.Retention, RunOnceAsync, stoppingToken);
                 await Task.Delay(Every, stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)

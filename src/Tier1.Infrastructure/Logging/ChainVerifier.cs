@@ -142,7 +142,7 @@ public sealed class ChainVerifier(Tier1DbContext db, MongoLogContext mongo, Tech
 }
 
 /// <summary>فحص ليلي لأيام الأسبوع الأخير في الساعة المحددة بتوقيت القاهرة.</summary>
-public sealed class NightlyChainVerification(IServiceScopeFactory scopes, IOptions<MongoLogOptions> options, ILogger<NightlyChainVerification> log) : BackgroundService
+public sealed class NightlyChainVerification(IServiceScopeFactory scopes, IOptions<MongoLogOptions> options, Persistence.JobLock jobs, ILogger<NightlyChainVerification> log) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -155,13 +155,16 @@ public sealed class NightlyChainVerification(IServiceScopeFactory scopes, IOptio
             await Task.Delay(next - now, stoppingToken);
             try
             {
-                await using var scope = scopes.CreateAsyncScope();
-                var verifier = scope.ServiceProvider.GetRequiredService<IChainVerifier>();
-                var day = CairoTime.DateOf(DateTimeOffset.UtcNow);
-                var result = await verifier.VerifyAsync(day.AddDays(-7), day, stoppingToken);
-                var broken = result.Where(r => r.Intact == false).ToList();
-                if (broken.Count > 0)
-                    log.LogError("Log integrity check found {Count} broken day(s): {Days}", broken.Count, string.Join(", ", broken.Select(b => $"{b.Chain}/{b.Day}@{b.BrokenAtSeq}")));
+                await jobs.RunExclusiveAsync(Persistence.JobLock.NightlyChain, async ct =>
+                {
+                    await using var scope = scopes.CreateAsyncScope();
+                    var verifier = scope.ServiceProvider.GetRequiredService<IChainVerifier>();
+                    var day = CairoTime.DateOf(DateTimeOffset.UtcNow);
+                    var result = await verifier.VerifyAsync(day.AddDays(-7), day, ct);
+                    var broken = result.Where(r => r.Intact == false).ToList();
+                    if (broken.Count > 0)
+                        log.LogError("Log integrity check found {Count} broken day(s): {Days}", broken.Count, string.Join(", ", broken.Select(b => $"{b.Chain}/{b.Day}@{b.BrokenAtSeq}")));
+                }, stoppingToken);
             }
             catch (Exception e) when (!stoppingToken.IsCancellationRequested)
             {

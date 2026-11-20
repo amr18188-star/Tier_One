@@ -12,7 +12,7 @@ namespace Tier1.Infrastructure.Email;
 /// تذكير يومي بنماذج الدورات المفتوحة التي اقترب موعدها أو تجاوزته، لمن عليه الإجراء الآن (المدخل أو المراجع).
 /// يفحص كل ساعة ويرسل بعد الثامنة صباحًا بتوقيت القاهرة، ومفتاح منع التكرار يجعل التذكير مرة واحدة في اليوم لكل نموذج ولو تعددت النسخ.
 /// </summary>
-public sealed class FormReminderJob(IServiceScopeFactory scopes, IClock clock, ILogger<FormReminderJob> log) : BackgroundService
+public sealed class FormReminderJob(IServiceScopeFactory scopes, IClock clock, Persistence.JobLock jobs, ILogger<FormReminderJob> log) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -21,7 +21,7 @@ public sealed class FormReminderJob(IServiceScopeFactory scopes, IClock clock, I
             try
             {
                 await Task.Delay(TimeSpan.FromMinutes(3), stoppingToken);
-                await RunOnceAsync(stoppingToken);
+                await jobs.RunExclusiveAsync(Persistence.JobLock.Reminders, RunOnceAsync, stoppingToken);
                 await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)

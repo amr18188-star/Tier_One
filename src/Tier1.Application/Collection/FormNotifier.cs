@@ -76,7 +76,7 @@ public sealed class FormNotifier(ICollectionStore db, IReadModel read, IAccessSe
                 notifications.Publish(recipient, "dc.reminder",
                     late ? $"نموذج {unit.NameAr} متأخر عن موعده — {open[s.CycleId].Name}" : $"تذكير: موعد نموذج {unit.NameAr} يقترب — {open[s.CycleId].Name}",
                     $"نموذج {unit.NameAr} عند «{ApprovalRules.StepName(s.Step)}»، والموعد النهائي {s.DueOn:yyyy-MM-dd}{(late ? " وقد مضى" : "")}.",
-                    $"/forms/{s.Id}", $"{key}:{sent}");
+                    $"/forms/{s.Id}", $"{key}:{recipient.UserId:N}");
                 sent++;
             }
         }
