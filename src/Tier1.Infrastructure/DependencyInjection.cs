@@ -27,6 +27,11 @@ public static class DependencyInjection
         services.AddNpgsqlDataSource(pg);
         services.AddDbContext<Tier1DbContext>((sp, o) => o.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>(), x => x.MigrationsHistoryTable("__ef_migrations", "iam")).UseSnakeCaseNamingConvention());
         services.AddScoped<IAppDb>(sp => sp.GetRequiredService<Tier1DbContext>());
+        services.AddScoped<IReadModel>(sp => sp.GetRequiredService<Tier1DbContext>());
+        services.AddScoped<INotificationStore>(sp => sp.GetRequiredService<Tier1DbContext>());
+        services.AddScoped<ISettingsStore>(sp => sp.GetRequiredService<Tier1DbContext>());
+        services.AddScoped<IEventStore>(sp => sp.GetRequiredService<Tier1DbContext>());
+        services.AddScoped<IScorecardStore>(sp => sp.GetRequiredService<Tier1DbContext>());
         services.AddScoped<IIamLock, PostgresIamLock>();
 
         services.AddHttpContextAccessor();

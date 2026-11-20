@@ -50,7 +50,7 @@ public abstract class DomainEventHandler<TEvent> : IEventHandler where TEvent : 
     protected abstract Task HandleAsync(TEvent evt, DomainEventRecord record, CancellationToken ct);
 }
 
-public sealed class EventOutbox(IAppDb db, IClock clock, ICurrentUser current, IEventSignal signal) : IEventOutbox
+public sealed class EventOutbox(IEventStore db,  IClock clock, ICurrentUser current, IEventSignal signal) : IEventOutbox
 {
     /// <summary>Enums by name, so reordering an enum never changes what a stored event means.</summary>
     internal static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } };

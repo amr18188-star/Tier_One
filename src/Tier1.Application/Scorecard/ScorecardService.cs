@@ -50,7 +50,7 @@ public sealed record ScorecardDto(
 /// بطاقة أداء الجامعة وفئتها بمعادلات الإطار الشامل (ScorecardRules)، من القيم الرسمية للجامعة في كل ربع (ينقلها مسئول ملف Tier 1).
 /// تعرض لمن يرى النتائج.
 /// </summary>
-public sealed class ScorecardService(IAppDb db, IAccessService access, IClock clock, IAuditLog audit, Settings.SettingsService settings)
+public sealed class ScorecardService(IScorecardStore db, IReadModel read,  IAccessService access, IClock clock, IAuditLog audit, Settings.SettingsService settings)
 {
     private const string Feature = Features.Results;
     private static readonly int[] Years = PlanCalendar.Years;
@@ -93,12 +93,12 @@ public sealed class ScorecardService(IAppDb db, IAccessService access, IClock cl
     {
         var thresholds = await ThresholdsAsync(ct);
         var quarters = await CalendarAsync(ct);
-        var pillars = await db.Pillars.AsNoTracking().OrderBy(p => p.SortOrder).ToListAsync(ct);
-        var standards = await db.Standards.AsNoTracking().OrderBy(s => s.SortOrder).ToListAsync(ct);
-        var indicators = await db.Indicators.AsNoTracking().Include(i => i.Versions).Where(i => !i.Suspended).OrderBy(i => i.SortOrder).ToListAsync(ct);
-        var university = await db.OrgUnits.AsNoTracking().Where(u => u.Kind == OrgUnitKind.University).Select(u => u.Id).FirstOrDefaultAsync(ct);
+        var pillars = await read.Query<Pillar>().AsNoTracking().OrderBy(p => p.SortOrder).ToListAsync(ct);
+        var standards = await read.Query<Standard>().AsNoTracking().OrderBy(s => s.SortOrder).ToListAsync(ct);
+        var indicators = await read.Query<Indicator>().AsNoTracking().Include(i => i.Versions).Where(i => !i.Suspended).OrderBy(i => i.SortOrder).ToListAsync(ct);
+        var university = await read.Query<OrgUnit>().AsNoTracking().Where(u => u.Kind == OrgUnitKind.University).Select(u => u.Id).FirstOrDefaultAsync(ct);
         // بطاقة الأداء تقاس بالمستهدفات المعتمدة وحدها (D3).
-        var targets = (await db.Targets.AsNoTracking().Where(t => t.UnitId == university && t.Kind == TargetKind.Target && t.Status == TargetStatus.Approved).ToListAsync(ct)).ToLookup(t => t.IndicatorId);
+        var targets = (await read.Query<IndicatorTarget>().AsNoTracking().Where(t => t.UnitId == university && t.Kind == TargetKind.Target && t.Status == TargetStatus.Approved).ToListAsync(ct)).ToLookup(t => t.IndicatorId);
         // القيم الرسمية التي نقلها مسئول ملف Tier 1 بعد مراجعة الكليات، لا المحسوبة لحظيًا: لا يدخل البطاقة رقم لم يراجع.
         var values = (await db.UniversityValues.AsNoTracking().ToListAsync(ct))
             .GroupBy(v => (v.Year, v.Quarter))

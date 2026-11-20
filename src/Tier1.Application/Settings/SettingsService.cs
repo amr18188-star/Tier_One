@@ -17,7 +17,7 @@ public sealed record SettingDto(string Key, int Value, int DefaultValue, int Min
 public sealed record SaveSettingRequest(int Value, string? Reason);
 
 /// <summary>إعدادات النظام التشغيلية (adm.settings): القيم المحفوظة أو الافتراضية بحدودها، والتعديل بسبب مسجل.</summary>
-public sealed class SettingsService(IAppDb db, IClock clock, ICurrentUser current, IAuditLog audit, IAccessService access, IMemoryCache cache)
+public sealed class SettingsService(ISettingsStore db,  IClock clock, ICurrentUser current, IAuditLog audit, IAccessService access, IMemoryCache cache)
 {
     public const string Feature = "adm.settings";
 

@@ -16,7 +16,7 @@ public sealed record MailRow(
 /// masked. A failed notification is resent from its inbox item, to the user's current address; an account mail (a sign-in link)
 /// is not, since the user asks for a new one.
 /// </summary>
-public sealed class MailAdminService(IAppDb db, IAccessService access, IAuditLog audit, IMailOutbox mail, NotificationPublisher publisher)
+public sealed class MailAdminService(INotificationStore db, IReadModel read,  IAccessService access, IAuditLog audit, IMailOutbox mail, NotificationPublisher publisher)
 {
     public const string Feature = Features.Mail;
 
@@ -60,7 +60,7 @@ public sealed class MailAdminService(IAppDb db, IAccessService access, IAuditLog
             throw new DomainException("already_resent", "أعيد إرسال هذه الرسالة من قبل.", "This mail was already resent.", 409);
         var item = await db.Inbox.AsNoTracking().FirstOrDefaultAsync(i => i.Id == itemId, ct)
             ?? throw new DomainException("not_resendable", "لم يعد الإشعار موجودًا.", "The notification no longer exists.", 409);
-        var to = await db.Users.AsNoTracking().Where(u => u.Id == item.UserId && u.Active).Select(u => u.Email).FirstOrDefaultAsync(ct)
+        var to = await read.Query<Domain.Identity.AppUser>().AsNoTracking().Where(u => u.Id == item.UserId && u.Active).Select(u => u.Email).FirstOrDefaultAsync(ct)
             ?? throw new DomainException("recipient_inactive", "صاحب الإشعار موقوف أو محذوف.", "The recipient is no longer active.", 409);
         mail.Enqueue(item.Kind, to, item.Title, publisher.MailBody(item), null, NotificationPublisher.RelatedType, item.Id, resentFromId: id);
         audit.Record(AuditEvents.Audit("adm", Feature, "adm.mail_resent", "إعادة إرسال بريد فاشل", "Resent a failed mail") with

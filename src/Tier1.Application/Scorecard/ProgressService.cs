@@ -33,7 +33,7 @@ public sealed record ProgressDto(
 /// درجتها بقواعد بطاقة الجامعة نفسها (الإنجاز من المستهدف النهائي، والمعيار متوسط مؤشراته، والركيزة متوسط معاييرها) فتقارن بدرجة الجامعة.
 /// كل مستخدم يرى كليات نطاقه فقط.
 /// </summary>
-public sealed class ProgressService(IAppDb db, IAccessService access, IClock clock, ResultsService results, ScorecardService scorecard, Settings.SettingsService settings,
+public sealed class ProgressService(IScorecardStore db, IReadModel read,  IAccessService access, IClock clock, ResultsService results, ScorecardService scorecard, Settings.SettingsService settings,
     Organization.UnitIndicatorsService assignments)
 {
     private static readonly int[] Years = PlanCalendar.Years;
@@ -42,7 +42,7 @@ public sealed class ProgressService(IAppDb db, IAccessService access, IClock clo
     {
         var me = await access.RequireAsync(Features.Results, Cap.View, ct);
         var scope = UnitScope.For(me, Features.Results, Cap.View);
-        var all = await db.OrgUnits.AsNoTracking().ToListAsync(ct);
+        var all = await read.Query<OrgUnit>().AsNoTracking().ToListAsync(ct);
         var root = all.First(u => u.Kind == OrgUnitKind.University);
         var colleges = all.Where(u => u.IsCollegeLevel && u.Active && scope.Covers(u)).OrderBy(u => u.SortOrder).ThenBy(u => u.NameAr).ToList();
         if (colleges.Count == 0) return null;
@@ -51,10 +51,10 @@ public sealed class ProgressService(IAppDb db, IAccessService access, IClock clo
         var quarters = PlanCalendar.Quarters(await settings.IntAsync(SettingKeys.PlanStartYear, ct), await settings.IntAsync(SettingKeys.PlanStartMonth, ct), CairoTime.DateOf(clock.UtcNow));
         var values = await results.UnitQuartersAsync(unit.Id, ct);
         var official = (await db.UniversityValues.AsNoTracking().ToListAsync(ct)).ToLookup(v => v.IndicatorId);
-        var pillars = await db.Pillars.AsNoTracking().OrderBy(p => p.SortOrder).ToListAsync(ct);
-        var standards = await db.Standards.AsNoTracking().OrderBy(s => s.SortOrder).ToListAsync(ct);
-        var indicators = await db.Indicators.AsNoTracking().Include(i => i.Versions).Where(i => !i.Suspended).OrderBy(i => i.SortOrder).ToListAsync(ct);
-        var targets = (await db.Targets.AsNoTracking().ToListAsync(ct)).ToLookup(t => t.IndicatorId);
+        var pillars = await read.Query<Pillar>().AsNoTracking().OrderBy(p => p.SortOrder).ToListAsync(ct);
+        var standards = await read.Query<Standard>().AsNoTracking().OrderBy(s => s.SortOrder).ToListAsync(ct);
+        var indicators = await read.Query<Indicator>().AsNoTracking().Include(i => i.Versions).Where(i => !i.Suspended).OrderBy(i => i.SortOrder).ToListAsync(ct);
+        var targets = (await read.Query<IndicatorTarget>().AsNoTracking().ToListAsync(ct)).ToLookup(t => t.IndicatorId);
         // درجة الجامعة الرسمية لكل ركيزة (من القيم المنقولة) للمقارنة: رقم مجمع يراه كل من يرى تقدم كليته، لتعرف أين تقف منه.
         var uniCard = await scorecard.ComputeAsync(false, ct);
         var map = await assignments.MapAsync(ct);

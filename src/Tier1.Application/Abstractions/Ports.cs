@@ -12,7 +12,7 @@ using Tier1.Domain.Structure;
 namespace Tier1.Application.Abstractions;
 
 /// <summary>قاعدة بيانات العمل (PostgreSQL) كما تراها طبقة التطبيق.</summary>
-public interface IAppDb
+public interface IAppDb : IUnitOfWork
 {
     DbSet<AppUser> Users { get; }
 
@@ -107,10 +107,6 @@ public interface IAppDb
     /// <summary>لمحو ما تتبعه العملية بعد خطوة فاشلة اختيارية، فتكمل بحالة القاعدة.</summary>
     Microsoft.EntityFrameworkCore.ChangeTracking.ChangeTracker ChangeTracker { get; }
 
-    /// <summary>لضبط الإصدار المتوقع لصف قبل حفظه (التعديل المتزامن).</summary>
-    Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<TEntity> Entry<TEntity>(TEntity entity) where TEntity : class;
-
-    Task<int> SaveChangesAsync(CancellationToken ct = default);
 }
 
 public interface IClock

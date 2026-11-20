@@ -65,7 +65,7 @@ public sealed record TransferAllRequest(Guid CycleId);
 /// مراجعة مسئول ملف Tier 1: كل مؤشر في الربع بقيمة كل كلية وحساب الجامعة منها، ثم نقل القيمة إلى مؤشر الجامعة.
 /// القيمة المنقولة وحدها تدخل بطاقة الأداء والفئة وملف المجلس. تعديلها عن المحسوبة، أو نقلها قبل اكتمال الجهات، بسبب مكتوب.
 /// </summary>
-public sealed class ReviewService(IAppDb db, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, ResultsService results)
+public sealed class ReviewService(IScorecardStore db, IReadModel read,  IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, ResultsService results)
 {
     private const string Feature = Features.University;
 
@@ -149,7 +149,7 @@ public sealed class ReviewService(IAppDb db, IClock clock, ICurrentUser current,
     }
 
     private async Task<List<CollectionCycle>> QuarterlyCyclesAsync(CancellationToken ct) =>
-        await db.Cycles.AsNoTracking().Where(c => c.Status != CycleStatus.Draft && !c.Trial && c.Quarter != null)
+        await read.Query<Domain.Collection.CollectionCycle>().AsNoTracking().Where(c => c.Status != CycleStatus.Draft && !c.Trial && c.Quarter != null)
             .OrderByDescending(c => c.TargetYear).ThenByDescending(c => c.Quarter).ToListAsync(ct);
 
     private static ReviewCycle Dto(CollectionCycle c) => new(c.Id, c.Name, c.TargetYear, c.Quarter!.Value, PlanCalendar.Label(c.TargetYear, c.Quarter!.Value), c.Status);
@@ -161,8 +161,8 @@ public sealed class ReviewService(IAppDb db, IClock clock, ICurrentUser current,
         var history = (await db.UniversityValueChanges.AsNoTracking().Where(h => h.Year == cycle.TargetYear && h.Quarter == cycle.Quarter)
                 .OrderByDescending(h => h.ChangedAt).ToListAsync(ct))
             .ToLookup(h => h.IndicatorId, h => new ValueChangeDto(h.OldValue, h.NewValue, h.ComputedValue, h.Reported, h.Expected, h.Reason, h.ChangedByName, h.ChangedAt));
-        var pillars = await db.Pillars.AsNoTracking().OrderBy(p => p.SortOrder).ToListAsync(ct);
-        var standards = await db.Standards.AsNoTracking().ToDictionaryAsync(s => s.Code, ct);
+        var pillars = await read.Query<Pillar>().AsNoTracking().OrderBy(p => p.SortOrder).ToListAsync(ct);
+        var standards = await read.Query<Standard>().AsNoTracking().ToDictionaryAsync(s => s.Code, ct);
 
         return breakdown.Select(b =>
         {

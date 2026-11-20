@@ -63,13 +63,13 @@ public static class People
 public static class Concurrency
 {
     /// <summary>تعديل صف قائم أو نقله: الإصدار إلزامي.</summary>
-    public static void Expect<TEntity>(IAppDb db, TEntity entity, uint? version) where TEntity : class =>
+    public static void Expect<TEntity>(IUnitOfWork db, TEntity entity, uint? version) where TEntity : class =>
         db.Entry(entity).Property("Version").OriginalValue = Require(version);
 
     /// <summary>
     /// حفظ ينشئ الصف أو يعدله: الإصدار الفارغ يعني «لم أر صفًا»، فإن وجد الصف الآن فقد أنشأه غيره بعد فتح الشاشة (409).
     /// </summary>
-    public static void ExpectUpsert<TEntity>(IAppDb db, TEntity existing, uint? version) where TEntity : class =>
+    public static void ExpectUpsert<TEntity>(IUnitOfWork db, TEntity existing, uint? version) where TEntity : class =>
         db.Entry(existing).Property("Version").OriginalValue = version ?? throw DomainException.Conflict();
 
     /// <summary>الانتقال من الإصدار الذي رآه المستخدم: الغائب 428، والمختلف 409.</summary>
