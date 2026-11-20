@@ -1,4 +1,5 @@
-import { getLang } from "./i18n";
+import { ApiError } from "../api/client";
+import { getLang, L } from "./i18n";
 
 /**
  * لغة العرض العربية: أسماء الأشهر والأيام بالعربية، والأرقام لاتينية (0-9) دائمًا.
@@ -41,5 +42,7 @@ export function formatDate(iso: string | null | undefined): string {
 }
 
 export function errorText(e: unknown): string {
+  // FE-12: a server error names its reference, which the support team finds in the logs.
+  if (e instanceof ApiError && e.status >= 500 && e.traceId) return `${e.message} ${L(`(المرجع: ${e.traceId})`, `(Reference: ${e.traceId})`)}`;
   return e instanceof Error ? e.message : String(e);
 }

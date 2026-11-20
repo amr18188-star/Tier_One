@@ -1,14 +1,31 @@
 import { getLang, L } from "../shared/i18n";
 
-/** خطأ من الخادم برمزه الثابت ورسالته بلغة الطلب. الحالة 0 تعني أن الطلب لم يصل إلى الخادم أصلًا. */
+/**
+ * خطأ من الخادم برمزه الثابت ورسالته بلغة الطلب. الحالة 0 تعني أن الطلب لم يصل إلى الخادم أصلًا.
+ * traceId (FE-12، BE-6): مرجع الطلب في سجلات الخادم، يذكره المستخدم للدعم الفني.
+ */
 export class ApiError extends Error {
   constructor(
     public status: number,
     public code: string,
     message: string,
+    public traceId?: string,
   ) {
     super(message);
   }
+}
+
+/** FE-12: a 4xx answer will not change on retry (no access, not found, conflict, invalid input); a network or server error may. */
+export function shouldRetry(failureCount: number, error: unknown): boolean {
+  if (error instanceof ApiError && error.status >= 400 && error.status < 500) return false;
+  return failureCount < 1;
+}
+
+/** FE-12: the message when the answer is not the API's JSON (a proxy's 502 or 504 page, or an empty body). */
+function fallbackTitle(status: number): string {
+  return status >= 500
+    ? L("الخادم غير متاح الآن. أعد المحاولة بعد قليل.", "The server is not available right now. Try again shortly.")
+    : L(`تعذر تنفيذ الطلب (رمز ${status}).`, `The request could not be completed (code ${status}).`);
 }
 
 /** fetch يرمي TypeError حين تنقطع الشبكة أو يتوقف الخادم؛ يتحول إلى خطأ مفهوم بلغة الواجهة. */
@@ -22,8 +39,16 @@ async function send(path: string, init: RequestInit): Promise<Response> {
   }
 }
 
-async function readJson(r: Response): Promise<{ code?: string; title?: string; token?: string } | null> {
-  return r.headers.get("content-type")?.includes("json") ? await r.json() : null;
+async function readJson(r: Response): Promise<{ code?: string; title?: string; token?: string; traceId?: string } | null> {
+  if (!r.headers.get("content-type")?.includes("json")) return null;
+  // FE-12: a JSON content type with an empty or broken body is "no answer", not a SyntaxError shown to the user.
+  const text = await r.text();
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
 }
 
 export interface ApiClient {
@@ -55,7 +80,8 @@ export function createApiClient({ csrfUrl, onUnauthorized }: {
     const p: Promise<string> = (async () => {
       const r = await send(csrfUrl, { headers: { "Accept-Language": getLang() } });
       const data = await readJson(r);
-      if (!r.ok || typeof data?.token !== "string" || !data.token) throw new ApiError(r.status, data?.code ?? "csrf", data?.title ?? `HTTP ${r.status}`);
+      if (!r.ok || typeof data?.token !== "string" || !data.token)
+        throw new ApiError(r.status, data?.code ?? "csrf", data?.title ?? fallbackTitle(r.status), data?.traceId ?? r.headers.get("X-Trace-Id") ?? undefined);
       return data.token;
     })().then(
       (t) => {
@@ -96,7 +122,8 @@ export function createApiClient({ csrfUrl, onUnauthorized }: {
         return again();
       }
       if (r.status === 401 && path !== "/api/me" && !path.startsWith("/api/auth/")) onUnauthorized?.(path);
-      throw new ApiError(r.status, data?.code ?? "error", data?.title ?? `HTTP ${r.status}`);
+      throw new ApiError(r.status, data?.code ?? (r.status >= 500 ? "server_unavailable" : "error"), data?.title ?? fallbackTitle(r.status),
+        data?.traceId ?? r.headers.get("X-Trace-Id") ?? undefined);
     }
     return data as T;
   }

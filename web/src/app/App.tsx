@@ -1,3 +1,4 @@
+import { shouldRetry } from "../api/client";
 import { lazy, Suspense, useEffect, useState, type ComponentType, type ReactNode } from "react";
 import { App as AntApp, ConfigProvider, type ThemeConfig } from "antd";
 import type { Locale } from "antd/es/locale";
@@ -59,7 +60,7 @@ const SettingsPage = load(() => import("../features/settings/SettingsPage"));
 const MailPage = load(() => import("../features/mail/MailPage"));
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
+  defaultOptions: { queries: { retry: shouldRetry, refetchOnWindowFocus: false } },
 });
 
 // ردود الخادم بلغة الطلب: تغيير اللغة يجعل كل ما في الذاكرة قديمًا فيعاد طلبه.

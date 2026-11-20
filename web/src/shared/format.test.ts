@@ -95,3 +95,13 @@ describe("source guard", () => {
     expect(hits).toEqual([]);
   });
 });
+
+describe("errorText (FE-12)", () => {
+  it("names the reference of a server error so support can find it, and only then", async () => {
+    const { ApiError } = await import("../api/client");
+    const { errorText } = await import("./format");
+    expect(errorText(new ApiError(500, "server_error", "خطأ", "abc123"))).toContain("abc123");
+    expect(errorText(new ApiError(409, "conflict", "تعارض", "abc123"))).toBe("تعارض");
+    expect(errorText(new ApiError(500, "server_error", "خطأ"))).toBe("خطأ");
+  });
+});

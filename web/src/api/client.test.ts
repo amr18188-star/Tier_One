@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, createApiClient } from "./client";
+import { ApiError, createApiClient, shouldRetry } from "./client";
 
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
@@ -75,5 +75,36 @@ describe("createApiClient 204", () => {
     await expect(c.get("/api/me")).rejects.toMatchObject({ status: 401 });
     await expect(c.get("/api/auth/csrf")).rejects.toMatchObject({ status: 401 });
     expect(ended.mock.calls).toEqual([["/api/forms/1"]]);
+  });
+});
+
+describe("API errors (FE-12)", () => {
+  it("keeps the trace id from the body, or from the header when the body has none", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => url === "/a"
+      ? json(500, { status: 500, code: "server_error", title: "boom", traceId: "abc123" })
+      : new Response("<html>bad gateway</html>", { status: 502, headers: { "content-type": "text/html", "X-Trace-Id": "def456" } })));
+    const c = createApiClient({ csrfUrl: "/csrf" });
+    await expect(c.get("/a")).rejects.toMatchObject({ status: 500, code: "server_error", traceId: "abc123" });
+    await expect(c.get("/b")).rejects.toMatchObject({ status: 502, code: "server_unavailable", traceId: "def456" });
+  });
+
+  it("explains a proxy page or an empty JSON body instead of showing HTTP codes or a SyntaxError", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => url === "/a"
+      ? new Response("<html>gateway timeout</html>", { status: 504, headers: { "content-type": "text/html" } })
+      : new Response("", { status: 400, headers: { "content-type": "application/json" } })));
+    const c = createApiClient({ csrfUrl: "/csrf" });
+    const proxy = await c.get("/a").catch((e: unknown) => e);
+    expect(proxy).toBeInstanceOf(ApiError);
+    expect((proxy as ApiError).message).not.toMatch(/HTTP/);
+    const empty = await c.get("/b").catch((e: unknown) => e);
+    expect(empty).toBeInstanceOf(ApiError);
+    expect(empty).toMatchObject({ status: 400 });
+  });
+
+  it("does not retry an answer that will not change (4xx), and retries a network or server error once", () => {
+    for (const status of [400, 401, 403, 404, 409, 422]) expect(shouldRetry(0, new ApiError(status, "x", "x"))).toBe(false);
+    expect(shouldRetry(0, new ApiError(0, "network", "x"))).toBe(true);
+    expect(shouldRetry(0, new ApiError(503, "x", "x"))).toBe(true);
+    expect(shouldRetry(1, new ApiError(503, "x", "x"))).toBe(false);
   });
 });
