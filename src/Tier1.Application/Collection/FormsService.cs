@@ -82,12 +82,23 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
             .Where(c => cycleId == null ? c.Status == CycleStatus.Open : c.Id == cycleId && (c.Status == CycleStatus.Open || c.Status == CycleStatus.Closed))
             .ToDictionaryAsync(c => c.Id, ct);
         var ids = cycles.Keys.ToList();
-        var subs = await db.Submissions.AsNoTracking().Where(s => ids.Contains(s.CycleId)).ToListAsync(ct);
+        // PERF-B2/BE-17: scope and search are decided on the unit tree (a few hundred rows, needed for the names anyway) and reach
+        // SQL as unit ids with the status, so only the forms the user may see and asked for are read. The list stays whole per cycle:
+        // it is bounded by the number of units, and the page groups colleges with their departments and counts over all of them.
         var units = await db.OrgUnits.AsNoTracking().ToDictionaryAsync(u => u.Id, ct);
-        var cis = (await db.CycleIndicators.AsNoTracking().Where(i => ids.Contains(i.CycleId)).ToListAsync(ct)).ToLookup(i => i.CycleId);
+        var term = q?.Trim();
+        var forms = db.Submissions.AsNoTracking().Where(s => ids.Contains(s.CycleId));
+        if (!view.All || !string.IsNullOrEmpty(term))
+        {
+            var unitIds = units.Values
+                .Where(u => view.Covers(u) && (string.IsNullOrEmpty(term) || u.NameAr.Contains(term, StringComparison.Ordinal)
+                                               || (u.ParentId is { } parent && units[parent].NameAr.Contains(term, StringComparison.Ordinal))))
+                .Select(u => u.Id).ToList();
+            forms = forms.Where(s => unitIds.Contains(s.UnitId));
+        }
+        if (status is { } wanted) forms = forms.Where(s => s.Status == wanted);
+        var subs = await forms.ToListAsync(ct);
         var subIds = subs.Select(s => s.Id).ToList();
-        var counts = await db.SubmittedValues.AsNoTracking().Where(v => subIds.Contains(v.SubmissionId)).GroupBy(v => v.SubmissionId)
-            .Select(g => new { g.Key, Count = g.Count() }).ToDictionaryAsync(x => x.Key, x => x.Count, ct);
         var editors = await db.SubmittedValues.AsNoTracking().Where(v => subIds.Contains(v.SubmissionId) && v.EditedBy == current.UserId)
             .Select(v => v.SubmissionId).Distinct().ToListAsync(ct);
         var approvedByMe = await db.SubmissionEvents.AsNoTracking().Where(e => subIds.Contains(e.SubmissionId) && e.By == current.UserId && e.Action == SubmissionAction.Approved)
@@ -98,27 +109,32 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
                 .Select(r => r.SubmissionId).ToListAsync(ct)).ToHashSet()
             : [];
         var today = CairoTime.DateOf(clock.UtcNow);
-        var term = q?.Trim();
 
-        return subs
-            .Where(s => view.Covers(units[s.UnitId]))
-            .Select(s =>
+        bool Waiting(Submission s) => cycles[s.CycleId].Status == CycleStatus.Open && (
+            (s.IsEditable && edit.Covers(units[s.UnitId]) && me.Has(Feature, Cap.Edit))
+            || (s.Status == SubmissionStatus.InReview && ApprovalRules.MayReview(me, units[s.UnitId], s.Step)
+                && !editors.Contains(s.Id) && !approvedByMe.Contains(s.Id))
+            || reopenPending.Contains(s.Id));
+        var listed = subs.Select(s => (Form: s, Waiting: Waiting(s))).Where(x => !awaitingMe || x.Waiting).ToList();
+
+        // Entered and required counts only for the forms returned (the home page asks for the few awaiting the user).
+        var listedIds = listed.Select(x => x.Form.Id).ToList();
+        Dictionary<Guid, int> counts = listedIds.Count == 0 ? [] : await db.SubmittedValues.AsNoTracking().Where(v => listedIds.Contains(v.SubmissionId)).GroupBy(v => v.SubmissionId)
+            .Select(g => new { g.Key, Count = g.Count() }).ToDictionaryAsync(x => x.Key, x => x.Count, ct);
+        var listedCycles = listed.Select(x => x.Form.CycleId).Distinct().ToList();
+        var cis = listedCycles.Count == 0 ? Enumerable.Empty<CycleIndicator>().ToLookup(i => i.CycleId)
+            : (await db.CycleIndicators.AsNoTracking().Where(i => listedCycles.Contains(i.CycleId)).ToListAsync(ct)).ToLookup(i => i.CycleId);
+
+        return listed
+            .Select(x =>
             {
+                var s = x.Form;
                 var unit = units[s.UnitId];
                 var cycle = cycles[s.CycleId];
-                var required = cis[s.CycleId].Count(ci => Applies(ci, unit));
-                var waiting = cycle.Status == CycleStatus.Open && (
-                    (s.IsEditable && edit.Covers(unit) && me.Has(Feature, Cap.Edit))
-                    || (s.Status == SubmissionStatus.InReview && ApprovalRules.MayReview(me, unit, s.Step)
-                        && !editors.Contains(s.Id) && !approvedByMe.Contains(s.Id))
-                    || reopenPending.Contains(s.Id));
                 return new FormRow(s.Id, s.CycleId, cycle.Name, unit.Id, unit.NameAr, unit.Kind, unit.ParentId is { } p ? units[p].NameAr : null,
                     s.Step, ApprovalRules.StepName(s.Step), s.Status, s.DueOn, s.Status != SubmissionStatus.Approved && s.DueOn < today && cycle.Status == CycleStatus.Open,
-                    counts.GetValueOrDefault(s.Id), required, waiting);
+                    counts.GetValueOrDefault(s.Id), cis[s.CycleId].Count(ci => Applies(ci, unit)), x.Waiting);
             })
-            .Where(r => !awaitingMe || r.AwaitingMe)
-            .Where(r => status is null || r.Status == status)
-            .Where(r => string.IsNullOrEmpty(term) || r.UnitName.Contains(term, StringComparison.Ordinal) || (r.ParentName ?? "").Contains(term, StringComparison.Ordinal))
             .OrderByDescending(r => r.AwaitingMe).ThenBy(r => r.Status == SubmissionStatus.Approved).ThenBy(r => r.DueOn).ThenBy(r => r.ParentName).ThenBy(r => r.UnitName)
             .ToList();
     }

@@ -21,4 +21,34 @@ public sealed class FormsListTests(Tier1App app)
         Assert.All(closedForms, f => Assert.Equal(closed.Id, f["cycleId"].Str()));
         Assert.All(closedForms, f => Assert.False(f["awaitingMe"].Truthy(), "A closed cycle's form awaits no one"));
     }
+
+    [Fact]
+    public async Task Scope_search_and_status_filtered_in_sql_match_the_whole_list()
+    {
+        var cycle = await Flow.OpenCycleAsync(app);
+        var planner = await app.As("planner");
+        var all = (await planner.Get($"/api/forms?cycleId={cycle.Id}")).Items().ToList();
+        Assert.NotEmpty(all);
+        string Ids(IEnumerable<JsonNode> rows) => string.Join(",", rows.Select(r => r["id"].Str()).Order(StringComparer.Ordinal));
+
+        // A college user sees part of the university's forms, and nothing outside it.
+        var college = (await (await app.As("entry")).Get($"/api/forms?cycleId={cycle.Id}")).Items().ToList();
+        Assert.NotEmpty(college);
+        Assert.True(college.Count < all.Count);
+        Assert.Subset(all.Select(r => r["id"].Str()).ToHashSet(), college.Select(r => r["id"].Str()).ToHashSet());
+
+        // The search matches the unit or its parent, as the in-memory filter did.
+        var term = college[0]["parentName"].Str() ?? college[0]["unitName"].Str()!;
+        var searched = (await planner.Get($"/api/forms?cycleId={cycle.Id}&q={Uri.EscapeDataString(term)}")).Items().ToList();
+        Assert.NotEmpty(searched);
+        Assert.Equal(Ids(all.Where(r => r["unitName"].Str()!.Contains(term, StringComparison.Ordinal) || (r["parentName"].Str() ?? "").Contains(term, StringComparison.Ordinal))), Ids(searched));
+
+        var notStarted = (await planner.Get($"/api/forms?cycleId={cycle.Id}&status=NotStarted")).Items().ToList();
+        Assert.Equal(Ids(all.Where(r => r["status"].Str() == "NotStarted")), Ids(notStarted));
+        Assert.Empty((await planner.Get($"/api/forms?cycleId={cycle.Id}&status=Approved")).Items());
+
+        // Counts are computed for the rows returned: each form's required count is unchanged by the filters.
+        var required = all.ToDictionary(r => r["id"].Str()!, r => r["required"]!.GetValue<int>());
+        Assert.All(searched, r => Assert.Equal(required[r["id"].Str()!], r["required"]!.GetValue<int>()));
+    }
 }

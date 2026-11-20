@@ -35,23 +35,26 @@ public sealed class CyclesService(IAppDb db, IClock clock, ICurrentUser current,
         // مدخلو البيانات لا يرون الدورة قيد الإعداد.
         if (!me.Has(Feature, Cap.Edit)) cycles = cycles.Where(c => c.Status != CycleStatus.Draft).ToList();
         var ids = cycles.Select(c => c.Id).ToList();
-        var forms = await db.Submissions.AsNoTracking().Where(s => ids.Contains(s.CycleId)).Select(s => new { s.CycleId, s.UnitId, s.Status, s.DueOn }).ToListAsync(ct);
         // أعداد النماذج لمستخدم الكلية أو الإدارة من نماذج جهته وحدها، لا الجامعة كلها.
         var scope = me.Has(Features.Forms, Cap.View) ? UnitScope.For(me, Features.Forms, Cap.View) : UnitScope.For(me, Feature, Cap.View);
+        var forms = db.Submissions.AsNoTracking().Where(s => ids.Contains(s.CycleId));
         if (!scope.All)
         {
-            var visible = (await db.OrgUnits.AsNoTracking().Select(u => new { u.Id, u.Path }).ToListAsync(ct)).Where(u => scope.Covers(u.Path)).Select(u => u.Id).ToHashSet();
-            forms = forms.Where(f => visible.Contains(f.UnitId)).ToList();
+            var visible = (await db.OrgUnits.AsNoTracking().Select(u => new { u.Id, u.Path }).ToListAsync(ct)).Where(u => scope.Covers(u.Path)).Select(u => u.Id).ToList();
+            forms = forms.Where(s => visible.Contains(s.UnitId));
         }
-        var indicators = await db.CycleIndicators.AsNoTracking().Where(i => ids.Contains(i.CycleId)).GroupBy(i => i.CycleId).Select(g => new { g.Key, Count = g.Count() }).ToListAsync(ct);
+        // PERF-B2: counted in SQL per cycle, status and lateness, instead of reading every form of every cycle.
         var today = CairoTime.DateOf(clock.UtcNow);
+        var counts = await forms.GroupBy(s => new { s.CycleId, s.Status, Late = s.DueOn < today })
+            .Select(g => new { g.Key.CycleId, g.Key.Status, g.Key.Late, Count = g.Count() }).ToListAsync(ct);
+        var indicators = await db.CycleIndicators.AsNoTracking().Where(i => ids.Contains(i.CycleId)).GroupBy(i => i.CycleId).Select(g => new { g.Key, Count = g.Count() }).ToListAsync(ct);
         return cycles.Select(c =>
         {
-            var mine = forms.Where(f => f.CycleId == c.Id).ToList();
+            var mine = counts.Where(f => f.CycleId == c.Id).ToList();
             return new CycleDto(c.Id, c.Name, c.PeriodLabel, c.TargetYear, c.OpensOn, c.DueOn, c.Status, c.Trial,
-                indicators.FirstOrDefault(i => i.Key == c.Id)?.Count ?? 0, mine.Count,
-                mine.GroupBy(f => f.Status.ToString()).ToDictionary(g => g.Key, g => g.Count()),
-                c.Status == CycleStatus.Open ? mine.Count(f => f.Status != SubmissionStatus.Approved && f.DueOn < today) : 0,
+                indicators.FirstOrDefault(i => i.Key == c.Id)?.Count ?? 0, mine.Sum(f => f.Count),
+                mine.GroupBy(f => f.Status.ToString()).ToDictionary(g => g.Key, g => g.Sum(f => f.Count)),
+                c.Status == CycleStatus.Open ? mine.Where(f => f.Status != SubmissionStatus.Approved && f.Late).Sum(f => f.Count) : 0,
                 c.Version, c.Quarter);
         }).ToList();
     }
