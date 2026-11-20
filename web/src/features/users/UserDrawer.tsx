@@ -7,6 +7,7 @@ import { CAPS, type Assignment, type Catalog, type Effective, type GrantView, ty
 import type { OrgUnit } from "../../api/tier1";
 import { errorText, formatDate, formatDateTime } from "../../shared/format";
 import { dirArrow, L, useLang } from "../../shared/i18n";
+import { QueryError } from "../../shared/QueryState";
 import { usePermissions, useSession } from "../../shared/session";
 import { ReasonModal } from "../matrix/MatrixPage";
 import { capName, MatrixTable } from "../matrix/MatrixTable";
@@ -38,7 +39,10 @@ export function UserDrawer({ userId, onClose }: { userId: string; onClose: () =>
   const locked = self || (!!u?.holdsReservedRole && !perms.isSuperAdmin);
   return (
     <Drawer open onClose={onClose} width={Math.min(1100, window.innerWidth)} placement={lang === "ar" ? "left" : "right"} title={u ? `${u.fullNameAr}` : L("الحساب", "Account")} destroyOnHidden>
-      {!u || !catalog.data ? (
+      {/* FE-10: a 403, a 404 (deleted in another tab) or a 500 shows why, with a retry, instead of an endless spinner. */}
+      {(user.isError && !u) || (catalog.isError && !catalog.data) ? (
+        <QueryError error={user.error ?? catalog.error} onRetry={() => { void user.refetch(); void catalog.refetch(); }} />
+      ) : !u || !catalog.data ? (
         <div className="center-screen"><Spin /></div>
       ) : (
         <>
@@ -350,6 +354,7 @@ function Overrides({ user, catalog, self, onChanged, setReasonFor, onError }: { 
 function EffectiveView({ userId, catalog }: { userId: string; catalog: Catalog }) {
   const eff = useQuery({ queryKey: ["effective", userId], queryFn: () => api.get<Effective>(`/api/iam/users/${userId}/effective`) });
   const [module, setModule] = useState("all");
+  if (eff.isError && !eff.data) return <QueryError error={eff.error} onRetry={() => void eff.refetch()} />;
   if (!eff.data) return <Spin />;
   // عرض الصلاحيات الفعلية بالشبكة نفسها؛ النطاق المعروض أوسع نطاق بين إمكانيات الخاصية.
   const order = ["O", "S", "U", "A"];

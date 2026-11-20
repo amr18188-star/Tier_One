@@ -16,6 +16,7 @@ import { usePermissions } from "../../shared/session";
 import { EmptyNote, PageHeader, Panel } from "../../shared/ui";
 import { pillarNum } from "../strategy/model";
 import "../strategy/strategy.css";
+import "../../shared/score.css";
 import "./scorecard.css";
 import "./scorecard-accordion.css";
 

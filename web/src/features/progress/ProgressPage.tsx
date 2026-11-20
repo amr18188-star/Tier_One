@@ -12,6 +12,7 @@ import { AccordionPanel } from "../../shared/AccordionPanel";
 import { PillarCarousel, type CarouselSlide } from "../strategy/PillarCarousel";
 import { QueryState } from "../../shared/QueryState";
 import { EmptyNote, FilterMeta, PageHeader } from "../../shared/ui";
+import "../../shared/score.css";
 import "./progress.css";
 
 /**

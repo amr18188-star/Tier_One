@@ -2,15 +2,7 @@
 .sc-tabs button { min-width: 140px; }
 .sc-tabs button b { font-size: 13.5px; }
 
-/* ألوان خلايا الإنجاز كما في ملف الإطار */
-.c100 { background: var(--ds-score-full-soft); color: var(--ds-score-full-ink); }
-.c90 { background: var(--ds-score-high-soft); color: var(--ds-score-high-ink); }
-.c70 { background: var(--ds-score-mid-soft); color: var(--ds-score-mid-ink); }
-.clow { background: var(--ds-score-low-soft); color: var(--ds-score-low-ink); }
-
 .sc-ring text { font-family: var(--font-display); font-size: 17px; font-weight: 700; fill: var(--navy); }
-.sc-bar { display: inline-block; width: 90px; height: 8px; border-radius: var(--ds-radius-pill); background: var(--sunk); overflow: hidden; vertical-align: middle; }
-.sc-bar i { display: block; height: 100%; border-radius: var(--ds-radius-pill); }
 
 /* ----- حاسبة التصنيف ----- */
 .sc-tier-top { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 16px; align-items: stretch; }
