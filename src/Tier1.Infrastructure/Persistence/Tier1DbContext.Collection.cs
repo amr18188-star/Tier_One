@@ -32,7 +32,13 @@ public sealed partial class Tier1DbContext
     {
         b.Entity<CollectionCycle>(e =>
         {
-            e.ToTable("cycles", "dc", t => t.HasCheckConstraint("ck_cycles_dates", "due_on >= opens_on"));
+            e.ToTable("cycles", "dc", t =>
+            {
+                t.HasCheckConstraint("ck_cycles_dates", "due_on >= opens_on");
+                t.HasCheckConstraint("ck_cycles_quarter", "quarter IS NULL OR quarter BETWEEN 1 AND 4");
+            });
+            // DB-3: one official cycle per quarter, in the database too (the service checks first; two at once meet this index).
+            e.HasIndex(x => new { x.TargetYear, x.Quarter }).IsUnique().HasFilter("NOT trial AND quarter IS NOT NULL").HasDatabaseName("ux_cycles_official_quarter");
             e.Property(x => x.Name).HasMaxLength(200);
             e.Property(x => x.PeriodLabel).HasMaxLength(200);
             e.Property(x => x.Version).IsRowVersion();
@@ -136,7 +142,16 @@ public sealed partial class Tier1DbContext
         });
         b.Entity<UniversityValue>(e =>
         {
-            e.ToTable("university_values", "dc", t => t.HasCheckConstraint("ck_university_values_quarter", "quarter BETWEEN 1 AND 4"));
+            e.ToTable("university_values", "dc", t =>
+            {
+                t.HasCheckConstraint("ck_university_values_quarter", "quarter BETWEEN 1 AND 4");
+                t.HasCheckConstraint("ck_university_values_ratio", "denominator IS NULL OR denominator > 0");
+            });
+            // DB-6: the same precision as every other value column.
+            e.Property(x => x.Value).HasPrecision(20, 4);
+            e.Property(x => x.Numerator).HasPrecision(20, 4);
+            e.Property(x => x.Denominator).HasPrecision(20, 4);
+            e.Property(x => x.ComputedValue).HasPrecision(20, 4);
             // قيمة رسمية واحدة لكل مؤشر في كل ربع.
             e.HasIndex(x => new { x.IndicatorId, x.Year, x.Quarter }).IsUnique();
             e.Property(x => x.Note).HasMaxLength(1000);

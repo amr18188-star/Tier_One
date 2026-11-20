@@ -145,4 +145,17 @@ public class KpiFrameworkSeedTests
         Assert.All(byCode.Values.Where(i => i.GetProperty("aggregation").GetString() == "RatioOfSums"),
             i => Assert.False(string.IsNullOrWhiteSpace(i.GetProperty("denominator").GetString())));
     }
+
+    [Theory]
+    [InlineData("66.66666666666666666666666667", "66.6667")]
+    [InlineData("0.00005", "0.0001")]
+    [InlineData("-0.00005", "-0.0001")]
+    [InlineData("12", "12")]
+    public void Official_values_are_kept_at_four_decimals(string computed, string stored)
+    {
+        // DB-6: stored and compared at the column's precision, so a recomputed value equal to the stored one stays "transferred".
+        var c = decimal.Parse(computed, System.Globalization.CultureInfo.InvariantCulture);
+        Assert.Equal(decimal.Parse(stored, System.Globalization.CultureInfo.InvariantCulture), Tier1.Application.Scorecard.ReviewService.Round4(c));
+        Assert.Null(Tier1.Application.Scorecard.ReviewService.Round4(null));
+    }
 }

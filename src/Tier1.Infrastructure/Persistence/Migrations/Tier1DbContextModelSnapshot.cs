@@ -460,9 +460,16 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("pk_cycles");
 
+                    b.HasIndex("TargetYear", "Quarter")
+                        .IsUnique()
+                        .HasDatabaseName("ux_cycles_official_quarter")
+                        .HasFilter("NOT trial AND quarter IS NOT NULL");
+
                     b.ToTable("cycles", "dc", t =>
                         {
                             t.HasCheckConstraint("ck_cycles_dates", "due_on >= opens_on");
+
+                            t.HasCheckConstraint("ck_cycles_quarter", "quarter IS NULL OR quarter BETWEEN 1 AND 4");
                         });
                 });
 
@@ -889,7 +896,8 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .HasColumnName("id");
 
                     b.Property<decimal?>("ComputedValue")
-                        .HasColumnType("numeric")
+                        .HasPrecision(20, 4)
+                        .HasColumnType("numeric(20,4)")
                         .HasColumnName("computed_value");
 
                     b.Property<Guid>("CycleId")
@@ -897,7 +905,8 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .HasColumnName("cycle_id");
 
                     b.Property<decimal?>("Denominator")
-                        .HasColumnType("numeric")
+                        .HasPrecision(20, 4)
+                        .HasColumnType("numeric(20,4)")
                         .HasColumnName("denominator");
 
                     b.Property<int>("Expected")
@@ -914,7 +923,8 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .HasColumnName("note");
 
                     b.Property<decimal?>("Numerator")
-                        .HasColumnType("numeric")
+                        .HasPrecision(20, 4)
+                        .HasColumnType("numeric(20,4)")
                         .HasColumnName("numerator");
 
                     b.Property<int>("Quarter")
@@ -939,7 +949,8 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .HasColumnName("transferred_by_name");
 
                     b.Property<decimal?>("Value")
-                        .HasColumnType("numeric")
+                        .HasPrecision(20, 4)
+                        .HasColumnType("numeric(20,4)")
                         .HasColumnName("value");
 
                     b.Property<uint>("Version")
@@ -965,6 +976,8 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                     b.ToTable("university_values", "dc", t =>
                         {
                             t.HasCheckConstraint("ck_university_values_quarter", "quarter BETWEEN 1 AND 4");
+
+                            t.HasCheckConstraint("ck_university_values_ratio", "denominator IS NULL OR denominator > 0");
                         });
                 });
 

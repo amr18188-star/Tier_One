@@ -206,7 +206,7 @@ public sealed class CyclesService(IAppDb db, IClock clock, ICurrentUser current,
     {
         if (c.Quarter is not { } q || c.Trial) return;
         if (await db.Cycles.AnyAsync(x => x.Id != c.Id && !x.Trial && x.TargetYear == c.TargetYear && x.Quarter == q, ct))
-            throw new DomainException("quarter_taken", $"توجد دورة رسمية لـ{Scorecard.PlanCalendar.Label(c.TargetYear, q)} بالفعل.", "A cycle for this quarter already exists.");
+            throw new DomainException("quarter_taken", $"توجد دورة رسمية لـ{Scorecard.PlanCalendar.Label(c.TargetYear, q)} بالفعل.", "A cycle for this quarter already exists.", 409);
     }
 
     private static void Apply(CollectionCycle c, SaveCycleRequest req)

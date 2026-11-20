@@ -123,6 +123,9 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> log, TechLo
         {
             DomainException d => (d.Status, d.Code, d.Message),
             DbUpdateConcurrencyException => (409, "conflict", Lang.Pick("عدّل مستخدم آخر هذا العنصر. حدّث الصفحة ثم أعد المحاولة.", "Someone else changed this item. Refresh and try again.")),
+            // DB-3: two official cycles for one quarter, created at the same moment.
+            DbUpdateException { InnerException: Npgsql.PostgresException { SqlState: "23505", ConstraintName: "ux_cycles_official_quarter" } } =>
+                (409, "quarter_taken", Lang.Pick("توجد دورة رسمية لهذا الربع بالفعل.", "A cycle for this quarter already exists.")),
             // سباق على قيد تفرد (طلبان متزامنان لنفس الشيء): تعارض لا خطأ خادم.
             DbUpdateException { InnerException: Npgsql.PostgresException { SqlState: "23505" } } =>
                 (409, "conflict", Lang.Pick("سبقك طلب آخر للعنصر نفسه. حدّث الصفحة ثم أعد المحاولة.", "Another request for the same item came first. Refresh and try again.")),

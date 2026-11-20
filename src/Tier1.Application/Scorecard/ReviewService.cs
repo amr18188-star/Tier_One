@@ -101,6 +101,9 @@ public sealed class ReviewService(IAppDb db, IClock clock, ICurrentUser current,
         return ready.Count;
     }
 
+    /// <summary>DB-6: the precision of every value column (numeric(20,4)), rounded half away from zero.</summary>
+    internal static decimal? Round4(decimal? x) => x is { } v ? decimal.Round(v, 4, MidpointRounding.AwayFromZero) : null;
+
     private async Task SaveAsync(CollectionCycle cycle, ReviewRow row, decimal? value, string? note, uint? version, CancellationToken ct)
     {
         var final = value ?? row.Computed ?? throw new DomainException("no_value", "لا قيمة محسوبة لهذا المؤشر بعد؛ اكتب القيمة بسبب.", "There is no computed value; enter one with a reason.", 400);
@@ -117,10 +120,10 @@ public sealed class ReviewService(IAppDb db, IClock clock, ICurrentUser current,
         var old = existing?.Value;
         var entity = existing ?? new UniversityValue { IndicatorId = row.IndicatorId, Year = cycle.TargetYear, Quarter = cycle.Quarter!.Value };
         entity.CycleId = cycle.Id;
-        entity.Value = final;
-        entity.Numerator = adjusted ? null : row.ComputedNumerator;
-        entity.Denominator = adjusted ? null : row.ComputedDenominator;
-        entity.ComputedValue = row.Computed;
+        entity.Value = Round4(final);
+        entity.Numerator = adjusted ? null : Round4(row.ComputedNumerator);
+        entity.Denominator = adjusted ? null : Round4(row.ComputedDenominator);
+        entity.ComputedValue = Round4(row.Computed);
         entity.Reported = row.Reported;
         entity.Expected = row.Expected;
         entity.Note = why;
@@ -167,7 +170,8 @@ public sealed class ReviewService(IAppDb db, IClock clock, ICurrentUser current,
             var pillarId = standards.GetValueOrDefault(b.StandardCode)?.PillarId;
             var pillarIndex = pillars.FindIndex(p => p.Id == pillarId);
             var o = official.GetValueOrDefault(b.IndicatorId);
-            var computed = b.University.Value;
+            // DB-6: official values are stored at 4 decimals; compare and store the computed value at the same precision.
+            var computed = Round4(b.University.Value);
             var state = o is not null ? (o.ComputedValue == computed ? ReviewState.Transferred : ReviewState.Changed)
                 : computed is null ? (b.University.Reported == 0 ? ReviewState.NoData : ReviewState.Incomplete)
                 : b.University.Reported < b.University.Expected ? ReviewState.Incomplete

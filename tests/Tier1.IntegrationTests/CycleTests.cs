@@ -26,6 +26,21 @@ public sealed class CycleTests(Tier1App app)
         Assert.All((await DueDatesAsync(cycle.Id)).Split(','), d => Assert.Equal(Calls.Today(30), d));
     }
 
+    [Fact]
+    public async Task Two_official_cycles_for_one_quarter_at_once_leave_one()
+    {
+        // DB-3: the service checks first, and the database index catches the two that pass the check together.
+        var planner = await app.As("planner");
+        var year = 2031;
+        JsonObject Body(string tag) => Scenario.O(("name", $"دورة رسمية {tag}"), ("periodLabel", tag), ("targetYear", year), ("opensOn", Calls.Today()),
+            ("dueOn", Calls.Today(14)), ("trial", false), ("quarter", 4), ("version", null));
+        var both = await Task.WhenAll(planner.Call("POST", "/api/cycles", Body("a-" + Calls.Tag())), planner.Call("POST", "/api/cycles", Body("b-" + Calls.Tag())));
+        Assert.Equal([200, 409], both.Select(r => r.Status).Order());
+        Assert.Equal("quarter_taken", both.Single(r => r.Status == 409).Body.Code());
+        var official = (await planner.Get("/api/cycles")).Items().Count(c => c["targetYear"].Num() == year && c["quarter"].Num() == 4 && !c["trial"].Truthy());
+        Assert.Equal(1, official);
+    }
+
     private async Task<string> DueDatesAsync(string cycleId)
     {
         var planner = await app.As("planner");
