@@ -74,7 +74,7 @@ export interface ReviewRow {
   universityTarget: number | null; computedAchievement: number | null; official: OfficialValue | null; state: ReviewState;
   /** تقارن الكلية بمستهدف الجامعة (نسبة أو متوسط أو مركزي)، وإلا بحصتها من رقم الجامعة. */
   comparable: boolean; units: ReviewUnit[];
-  /** تاريخ القيمة الرسمية في هذا الربع، الأحدث أولًا (D8). */ history?: ValueChange[];
+  /** تاريخ القيمة الرسمية في هذا الربع، الأحدث أولًا (D8). */ history: ValueChange[] | null;
 }
 export interface Review { cycles: ReviewCycle[]; cycle: ReviewCycle | null; rows: ReviewRow[]; canTransfer: boolean }
 

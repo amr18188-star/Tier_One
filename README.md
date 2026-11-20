@@ -105,7 +105,7 @@ dotnet test tests/Tier1.E2E                                    # شاملة: و�
 - فحص الأسرار (gitleaks بإعدادات `.gitleaks.toml`).
 - الاختبارات الشاملة على بيئة `docker-compose.e2e.yml`، بـ `T1_E2E_REQUIRE_SERVER=1` فيفشل التشغيل إن غاب الخادم بدل أن تتخطى الاختبارات نفسها.
 
-**عقد API** في `docs/api/openapi.json` (يولده الخادم في التطوير على `/openapi/v1.json`). اختبار `OpenApiContractTests` يفشل إن تغير مسار أو معامل أو شكل طلب دون تحديثه. لقبول تغيير مقصود: `T1_UPDATE_OPENAPI=1 dotnet test tests/Tier1.IntegrationTests --filter OpenApiContract`، ثم أضف الملف مع التغيير.
+**عقد API** في `docs/api/openapi.json` (يولده الخادم في التطوير على `/openapi/v1.json`). اختبار `OpenApiContractTests` يفشل إن تغير مسار أو معامل أو شكل طلب أو استجابة دون تحديثه. لقبول تغيير مقصود: `T1_UPDATE_OPENAPI=1 dotnet test tests/Tier1.IntegrationTests --filter OpenApiContract`، ثم `npm run gen:api` في `web` لتوليد أنواع الواجهة (`src/api/schema.d.ts`)، ثم أضف الملفين مع التغيير. الواجهة تقارن أنواعها المكتوبة بالمولدة في `src/api/contract.check.ts`، فيفشل `npm run typecheck` إن أرسل الخادم ما لا تقرؤه الشاشات.
 
 اختبارات تفاعل الواجهة تعمل في jsdom بتعليق `// @vitest-environment jsdom` أول الملف (مثال: `web/src/shared/DecisionModal.test.tsx`)، وبقية الاختبارات في بيئة node.
 
