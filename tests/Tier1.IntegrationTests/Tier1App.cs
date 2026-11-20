@@ -31,6 +31,9 @@ public sealed class Tier1App : IAsyncLifetime
 
     public string ConnectionString => postgres.GetConnectionString();
 
+    /// <summary>The application's services, for checks that call a service directly in a scope of its own.</summary>
+    public IServiceProvider Services => factory!.Services;
+
     public async Task InitializeAsync()
     {
         await Task.WhenAll(postgres.StartAsync(), mongo.StartAsync());

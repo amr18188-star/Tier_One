@@ -65,10 +65,10 @@ public sealed class FormNotifier(IAppDb db, IAccessService access, IMailOutbox m
         return sent;
     }
 
-    private async Task<List<string>> ReviewersAsync(ApprovalStep step, OrgUnit unit, CancellationToken ct)
+    internal async Task<List<string>> ReviewersAsync(ApprovalStep step, OrgUnit unit, CancellationToken ct, bool everyone = false)
     {
         if (step is ApprovalStep.Entry or ApprovalStep.Done) return [];
-        return await UsersWhereAsync(a => ApprovalRules.MayReview(a, unit, step, allowDirect: false) && UnitScope.For(a, Features.Forms, Cap.View).Covers(unit), ct);
+        return await UsersWhereAsync(Need.Review, a => ApprovalRules.MayReview(a, unit, step, allowDirect: false) && UnitScope.For(a, Features.Forms, Cap.View).Covers(unit), ct, everyone);
     }
 
     /// <summary>من أدخل قيم النموذج، وإلا كل من يملك الإدخال في نطاق الجهة.</summary>
@@ -77,12 +77,35 @@ public sealed class FormNotifier(IAppDb db, IAccessService access, IMailOutbox m
         var editors = await db.SubmittedValues.AsNoTracking().Where(v => v.SubmissionId == s.Id).Select(v => v.EditedBy).Distinct().ToListAsync(ct);
         if (editors.Count > 0)
             return await db.Users.AsNoTracking().Where(u => u.Active && editors.Contains(u.Id)).Select(u => u.Email).ToListAsync(ct);
-        return await UsersWhereAsync(a => a.Has(Features.Forms, Cap.Edit) && UnitScope.For(a, Features.Forms, Cap.Edit).Covers(unit) && !a.IsSuperAdmin, ct);
+        return await UnitEditorsAsync(unit, ct);
     }
 
-    private async Task<List<string>> UsersWhereAsync(Func<EffectiveAccess, bool> predicate, CancellationToken ct)
+    /// <summary>Everyone who may enter the unit's values (the editors of a form nobody has touched yet).</summary>
+    internal async Task<List<string>> UnitEditorsAsync(OrgUnit unit, CancellationToken ct, bool everyone = false) =>
+        await UsersWhereAsync(Need.Edit, a => a.Has(Features.Forms, Cap.Edit) && UnitScope.For(a, Features.Forms, Cap.Edit).Covers(unit) && !a.IsSuperAdmin, ct, everyone);
+
+    private enum Need { Review, Edit }
+
+    /// <summary>
+    /// PERF-B1: the rule (MayReview, the unit scope) is applied as before, but only to the accounts that could pass it: holders of a
+    /// role or an allowing exception that grants a review action (or the edit capability) on forms, and super administrators.
+    /// That is tens of accounts instead of every active one, each costing 4-5 queries on a cache miss inside the approval request.
+    /// <paramref name="everyone"/> evaluates every active account (the old way), for the equivalence test only.
+    /// </summary>
+    private async Task<List<string>> UsersWhereAsync(Need need, Func<EffectiveAccess, bool> predicate, CancellationToken ct, bool everyone = false)
     {
-        var users = await db.Users.AsNoTracking().Where(u => u.Active).Select(u => new { u.Id, u.Email }).ToListAsync(ct);
+        var forms = Features.Forms;
+        var roles = need == Need.Review
+            ? db.Roles.Where(r => r.Code == PermissionCatalog.SuperAdminRole || r.Grants.Any(g => g.Feature == forms && g.Specials.Count > 0))
+            : db.Roles.Where(r => r.Code == PermissionCatalog.SuperAdminRole || r.Grants.Any(g => g.Feature == forms && (g.Caps & Cap.Edit) == Cap.Edit));
+        var roleIds = roles.Select(r => r.Id);
+        var viaRoles = db.UserRoles.Where(a => a.RevokedAt == null && roleIds.Contains(a.RoleId)).Select(a => a.UserId);
+        var viaOverrides = need == Need.Review
+            ? db.UserOverrides.Where(o => o.RevokedAt == null && o.Effect == OverrideEffect.Allow && o.Feature == forms && o.Specials.Count > 0).Select(o => o.UserId)
+            : db.UserOverrides.Where(o => o.RevokedAt == null && o.Effect == OverrideEffect.Allow && o.Feature == forms && (o.Caps & Cap.Edit) == Cap.Edit).Select(o => o.UserId);
+        var candidates = db.Users.AsNoTracking().Where(u => u.Active);
+        if (!everyone) candidates = candidates.Where(u => viaRoles.Contains(u.Id) || viaOverrides.Contains(u.Id));
+        var users = await candidates.OrderBy(u => u.Email).Select(u => new { u.Id, u.Email }).ToListAsync(ct);
         var result = new List<string>();
         foreach (var u in users)
             if (predicate(await access.GetAsync(u.Id, ct))) result.Add(u.Email);
