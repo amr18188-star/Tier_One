@@ -29,6 +29,10 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("id");
 
+                    b.Property<bool>("GlobalIpRestricted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("global_ip_restricted");
+
                     b.Property<long>("Version")
                         .HasColumnType("bigint")
                         .HasColumnName("version");
@@ -42,6 +46,7 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         new
                         {
                             Id = 1,
+                            GlobalIpRestricted = false,
                             Version = 1L
                         });
                 });
@@ -1214,6 +1219,10 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("full_name_en");
 
+                    b.Property<bool>("IpRestricted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("ip_restricted");
+
                     b.Property<DateTimeOffset?>("LastLoginAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_login_at");
@@ -1266,6 +1275,110 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_users_email");
 
                     b.ToTable("users", "iam");
+                });
+
+            modelBuilder.Entity("Tier1.Domain.Identity.EmailDomain", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("boolean")
+                        .HasColumnName("active");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Domain")
+                        .IsRequired()
+                        .HasMaxLength(253)
+                        .HasColumnType("character varying(253)")
+                        .HasColumnName("domain");
+
+                    b.Property<string>("UniversityAr")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("university_ar");
+
+                    b.Property<string>("UniversityEn")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("university_en");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_email_domains");
+
+                    b.HasIndex("Domain")
+                        .IsUnique()
+                        .HasDatabaseName("ix_email_domains_domain");
+
+                    b.ToTable("email_domains", "iam");
+                });
+
+            modelBuilder.Entity("Tier1.Domain.Identity.IpAllowRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Cidr")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("cidr");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("label");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_ip_allow_rules");
+
+                    b.HasIndex("UserId", "Cidr")
+                        .IsUnique()
+                        .HasDatabaseName("ix_ip_allow_rules_user_id_cidr");
+
+                    NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("UserId", "Cidr"), false);
+
+                    b.ToTable("ip_allow_rules", "iam");
                 });
 
             modelBuilder.Entity("Tier1.Domain.Identity.LoginAttempt", b =>
@@ -3444,6 +3557,15 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_value_snapshots_submissions_submission_id");
+                });
+
+            modelBuilder.Entity("Tier1.Domain.Identity.IpAllowRule", b =>
+                {
+                    b.HasOne("Tier1.Domain.Identity.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .HasConstraintName("fk_ip_allow_rules_users_user_id");
                 });
 
             modelBuilder.Entity("Tier1.Domain.Identity.UserSession", b =>

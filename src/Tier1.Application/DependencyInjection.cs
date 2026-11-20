@@ -33,6 +33,10 @@ public static class DependencyInjection
         services.AddScoped<UserAccountsService>();
         services.AddScoped<RoleAssignmentService>();
         services.AddScoped<UserOverridesService>();
+        // ADR-0016: approved university email domains and the IP allowlists.
+        services.AddScoped<UniversityDomainsService>();
+        services.AddScoped<NetworkAccessService>();
+        services.AddScoped<IpAllowlistService>();
         services.AddScoped<LogsService>();
         services.AddScoped<Settings.SettingsService>();
         services.AddScoped<IMailOutbox, Notifications.MailOutbox>();

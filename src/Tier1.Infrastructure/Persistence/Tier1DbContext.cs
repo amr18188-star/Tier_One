@@ -34,6 +34,10 @@ public sealed partial class Tier1DbContext(DbContextOptions<Tier1DbContext> opti
 
     public DbSet<AccessState> AccessStates => Set<AccessState>();
 
+    public DbSet<EmailDomain> EmailDomains => Set<EmailDomain>();
+
+    public DbSet<IpAllowRule> IpAllowRules => Set<IpAllowRule>();
+
     public DbSet<OutboxEvent> Outbox => Set<OutboxEvent>();
 
     public DbSet<ChainState> ChainStates => Set<ChainState>();
@@ -71,6 +75,26 @@ public sealed partial class Tier1DbContext(DbContextOptions<Tier1DbContext> opti
             e.Property(s => s.Ip).HasMaxLength(64);
             e.Property(s => s.UserAgent).HasMaxLength(300);
             e.HasOne<AppUser>().WithMany().HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+        // Approved university email domains and the IP allowlists (ADR-0016). The first domains come from the migration, not the code.
+        b.Entity<EmailDomain>(e =>
+        {
+            e.ToTable("email_domains", "iam");
+            e.HasIndex(d => d.Domain).IsUnique();
+            e.Property(d => d.Domain).HasMaxLength(253);
+            e.Property(d => d.UniversityAr).HasMaxLength(200);
+            e.Property(d => d.UniversityEn).HasMaxLength(200);
+            e.Property(d => d.Version).IsRowVersion();
+        });
+        b.Entity<IpAllowRule>(e =>
+        {
+            e.ToTable("ip_allow_rules", "iam");
+            // One entry per list: the global list (no user) counts as one list, so NULLS NOT DISTINCT.
+            e.HasIndex(r => new { r.UserId, r.Cidr }).IsUnique().AreNullsDistinct(false);
+            e.Property(r => r.Cidr).HasMaxLength(64);
+            e.Property(r => r.Label).HasMaxLength(200);
+            e.Property(r => r.Version).IsRowVersion();
+            e.HasOne<AppUser>().WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
         });
         // Sign-in counters and attempts shared by every API instance (see PostgresLoginAttempts).
         b.Entity<LoginCounter>(e =>

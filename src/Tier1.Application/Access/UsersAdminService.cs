@@ -25,7 +25,8 @@ public sealed record UserDetailDto(Guid Id, string Email, string FullNameAr, str
 
 public sealed record CreateUserRequest(string Email, string FullNameAr, string? FullNameEn);
 
-public sealed record UpdateUserRequest(string FullNameAr, string? FullNameEn);
+/// <param name="Email">A new university email (the user's login name), or null to keep it. Checked against the approved domains.</param>
+public sealed record UpdateUserRequest(string FullNameAr, string? FullNameEn, string? Email = null);
 
 /// <summary>كلمة المرور المؤقتة تعرض مرة واحدة فقط ولا تحفظ إلا بصمتها.</summary>
 public sealed record TemporaryPasswordDto(Guid UserId, string TemporaryPassword);

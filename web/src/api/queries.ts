@@ -74,6 +74,12 @@ export const queryKeys = {
   logsStatus: ["logs-status"] as const,
   adminSettings: ["admin-settings"] as const,
   adminMail: (filter: unknown) => ["admin-mail", filter] as const,
+
+  // Sign-in security (ADR-0016): university email domains and the IP allowlists.
+  emailDomains: ["email-domains"] as const,
+  activeEmailDomains: ["email-domains", "active"] as const,
+  ipAllowlist: ["ip-allowlist"] as const,
+  userIpAllowlist: (userId: string) => ["ip-allowlist", "user", userId] as const,
 };
 
 /** Per call site: whether the user may load it, and how long a cached copy is fresh. */

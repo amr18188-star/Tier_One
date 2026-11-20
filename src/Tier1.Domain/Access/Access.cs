@@ -205,4 +205,7 @@ public sealed class AccessState
     public int Id { get; set; } = 1;
 
     public long Version { get; set; } = 1;
+
+    /// <summary>The global IP allowlist is enforced (with its entries in iam.ip_allow_rules where user_id is null).</summary>
+    public bool GlobalIpRestricted { get; set; }
 }

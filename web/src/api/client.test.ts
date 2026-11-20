@@ -76,6 +76,17 @@ describe("createApiClient 204", () => {
     await expect(c.get("/api/auth/csrf")).rejects.toMatchObject({ status: 401 });
     expect(ended.mock.calls).toEqual([["/api/forms/1"]]);
   });
+
+  it("reports a session refused for its network address, except at sign-in, which shows its own error (ADR-0016)", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => json(403, { code: "ip_not_allowed", title: "Not from 8.8.8.8" })));
+    const refused = vi.fn();
+    const ended = vi.fn();
+    const c = createApiClient({ csrfUrl: "/csrf", onUnauthorized: ended, onAddressRefused: refused });
+    await expect(c.get("/api/home")).rejects.toMatchObject({ status: 403, code: "ip_not_allowed" });
+    await expect(c.get("/api/auth/login")).rejects.toMatchObject({ status: 403 });
+    expect(refused.mock.calls).toEqual([["Not from 8.8.8.8"]]);
+    expect(ended).not.toHaveBeenCalled();
+  });
 });
 
 describe("API errors (FE-12)", () => {

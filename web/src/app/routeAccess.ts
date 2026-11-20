@@ -44,6 +44,6 @@ export const ROUTE_NEEDS = {
   "/changes": ["adm.roles:V"],
   "/users": ["adm.users:V", "adm.grants:V"],
   "/logs": ["log.audit:V", "log.security:V", "log.access:V", "log.tech:V"],
-  "/settings": ["adm.settings:V"],
+  "/settings": ["adm.settings:V", "adm.security:V"],
   "/mail": ["adm.mail:V"],
 } as const satisfies Record<string, readonly string[]>;

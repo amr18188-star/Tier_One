@@ -12,6 +12,7 @@ public static class ApiEndpoints
         api.MapIam();
         api.MapLogs();
         api.MapSettings();
+        api.MapSecurity();
         api.MapTier1();
         api.MapCollection();
         api.MapNotifications();

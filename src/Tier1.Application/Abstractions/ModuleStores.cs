@@ -148,6 +148,12 @@ public interface IIdentityStore : IUnitOfWork
     DbSet<Domain.Access.RbacChange> RbacChanges { get; }
 
     DbSet<Domain.Access.AccessState> AccessStates { get; }
+
+    /// <summary>Approved university email domains (ADR-0016).</summary>
+    DbSet<Domain.Identity.EmailDomain> EmailDomains { get; }
+
+    /// <summary>The global and per-user IP allowlists (ADR-0016).</summary>
+    DbSet<Domain.Identity.IpAllowRule> IpAllowRules { get; }
 }
 
 /// <summary>BE-14: the tables the audit log owns (namespaces Auditing and Logs): the audit outbox and the hash chain state, anchors and checkpoints.</summary>
