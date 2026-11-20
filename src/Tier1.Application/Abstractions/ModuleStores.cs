@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Tier1.Domain.Notifications;
 
 namespace Tier1.Application.Abstractions;
@@ -14,6 +15,9 @@ public interface IUnitOfWork
     EntityEntry<TEntity> Entry<TEntity>(TEntity entity) where TEntity : class;
 
     Task<int> SaveChangesAsync(CancellationToken ct = default);
+
+    /// <summary>Transactions and the few set-based statements a module runs on its own tables.</summary>
+    DatabaseFacade Database { get; }
 }
 
 /// <summary>
@@ -53,4 +57,27 @@ public interface IScorecardStore : IUnitOfWork
     DbSet<Domain.Collection.UniversityValue> UniversityValues { get; }
 
     DbSet<Domain.Collection.UniversityValueChange> UniversityValueChanges { get; }
+}
+
+/// <summary>
+/// BE-14: the tables the forms module owns: cycles and their indicators, unit forms, values, the path of each form, reopen requests
+/// with the values kept at reopening, and stored documents (evidence and plan documents).
+/// </summary>
+public interface ICollectionStore : IUnitOfWork
+{
+    DbSet<Domain.Collection.CollectionCycle> Cycles { get; }
+
+    DbSet<Domain.Collection.CycleIndicator> CycleIndicators { get; }
+
+    DbSet<Domain.Collection.Submission> Submissions { get; }
+
+    DbSet<Domain.Collection.SubmittedValue> SubmittedValues { get; }
+
+    DbSet<Domain.Collection.SubmissionEvent> SubmissionEvents { get; }
+
+    DbSet<Domain.Collection.ReopenRequest> ReopenRequests { get; }
+
+    DbSet<Domain.Collection.ValueSnapshot> ValueSnapshots { get; }
+
+    DbSet<Domain.Collection.StoredDocument> Documents { get; }
 }

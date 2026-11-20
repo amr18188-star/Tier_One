@@ -56,7 +56,7 @@ public sealed record PlanDocDto(DocDto Document, string? UploadedBy);
 /// المستندات: أدلة قيم المؤشرات (في نموذج الجهة)، ومستندات هيكل الكلية (الهيكل المعتمد وقرارات التشكيل).
 /// لا حذف نهائيًا: الإبطال بسبب يبقي المستند في السجل، والتنزيل بصلاحية الاطلاع على مالكه.
 /// </summary>
-public sealed class DocumentsService(IAppDb db, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, IFileStore files, FormReader forms)
+public sealed class DocumentsService(ICollectionStore db, IReadModel read,  IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, IFileStore files, FormReader forms)
 {
     public long MaxBytes => files.MaxBytes;
 
@@ -80,7 +80,7 @@ public sealed class DocumentsService(IAppDb db, IClock clock, ICurrentUser curre
     public async Task<IReadOnlyList<DocDto>> StructureDocsAsync(Guid collegeId, CancellationToken ct)
     {
         var me = await access.RequireAsync(Features.Structure, Cap.View, ct);
-        var college = await db.OrgUnits.AsNoTracking().FirstOrDefaultAsync(u => u.Id == collegeId, ct) ?? throw DomainException.NotFound();
+        var college = await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().FirstOrDefaultAsync(u => u.Id == collegeId, ct) ?? throw DomainException.NotFound();
         UnitScope.For(me, Features.Structure, Cap.View).Require(college);
         return await db.Documents.AsNoTracking().Where(d => d.OwnerType == StoredDocument.StructureOwner && d.OwnerId == collegeId)
             .OrderByDescending(d => d.UploadedAt).Select(d => FormReader.ToDoc(d)).ToListAsync(ct);
@@ -89,7 +89,7 @@ public sealed class DocumentsService(IAppDb db, IClock clock, ICurrentUser curre
     public async Task<DocDto> UploadStructureAsync(Guid collegeId, UploadedFile file, CancellationToken ct)
     {
         var me = await access.RequireAsync(Features.Structure, Cap.Add, ct);
-        var college = await db.OrgUnits.AsNoTracking().FirstOrDefaultAsync(u => u.Id == collegeId && (u.Kind == OrgUnitKind.College || u.Kind == OrgUnitKind.Institute), ct)
+        var college = await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().FirstOrDefaultAsync(u => u.Id == collegeId && (u.Kind == OrgUnitKind.College || u.Kind == OrgUnitKind.Institute), ct)
                       ?? throw DomainException.NotFound();
         UnitScope.For(me, Features.Structure, Cap.Add).Require(college);
         var doc = await StoreAsync(StoredDocument.StructureOwner, college.Id, file, ct);
@@ -110,7 +110,7 @@ public sealed class DocumentsService(IAppDb db, IClock clock, ICurrentUser curre
         // الإصدارات المبطلة لمن يدير الوثيقة فقط؛ غيره يرى الساري.
         var manager = me.Has(Features.Strategy, Cap.Delete);
         var users = docs.Select(d => d.UploadedBy).Distinct().ToList();
-        var names = await db.Users.AsNoTracking().Where(u => users.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.FullNameAr, ct);
+        var names = await read.Query<Domain.Identity.AppUser>().AsNoTracking().Where(u => users.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.FullNameAr, ct);
         return docs.Where(d => manager || d.VoidedAt is null)
             .Select(d => new PlanDocDto(FormReader.ToDoc(d), names.GetValueOrDefault(d.UploadedBy))).ToList();
     }
@@ -121,7 +121,7 @@ public sealed class DocumentsService(IAppDb db, IClock clock, ICurrentUser curre
         await access.RequireAsync(Features.Strategy, Cap.Add, ct);
         if (!string.Equals(Path.GetExtension(file.FileName), ".pdf", StringComparison.OrdinalIgnoreCase))
             throw new DomainException("pdf_only", "وثيقة الخطة تعرض في المنصة، فترفع بصيغة PDF.", "The plan document must be a PDF.", 400);
-        var root = await db.OrgUnits.AsNoTracking().FirstAsync(u => u.Kind == OrgUnitKind.University, ct);
+        var root = await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().FirstAsync(u => u.Kind == OrgUnitKind.University, ct);
         var doc = await StoreAsync(StoredDocument.PlanOwner, root.Id, file, ct, PlanMaxBytes);
         audit.Record(AuditEvents.Audit("kpi", Features.Strategy, "kpi.plan_document_uploaded", "رفع وثيقة الخطة الاستراتيجية", "Uploaded the strategic plan document") with
         {
@@ -188,7 +188,7 @@ public sealed class DocumentsService(IAppDb db, IClock clock, ICurrentUser curre
         {
             var unit = await (from v in db.SubmittedValues
                               join s in db.Submissions on v.SubmissionId equals s.Id
-                              join u in db.OrgUnits on s.UnitId equals u.Id
+                              join u in read.Query<Domain.Organization.OrgUnit>() on s.UnitId equals u.Id
                               where v.Id == doc.OwnerId
                               select u).AsNoTracking().FirstAsync(ct);
             var me = await access.RequireAsync(Features.Forms, cap, ct);
@@ -202,7 +202,7 @@ public sealed class DocumentsService(IAppDb db, IClock clock, ICurrentUser curre
             if (doc.VoidedAt is not null && !me.Has(Features.Strategy, Cap.Delete)) throw DomainException.NotFound();
             return ReferenceCode;
         }
-        var college = await db.OrgUnits.AsNoTracking().FirstAsync(u => u.Id == doc.OwnerId, ct);
+        var college = await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().FirstAsync(u => u.Id == doc.OwnerId, ct);
         var access2 = await access.RequireAsync(Features.Structure, cap, ct);
         UnitScope.For(access2, Features.Structure, cap).Require(college);
         return college.Code;

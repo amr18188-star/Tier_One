@@ -22,7 +22,7 @@ public sealed record OpenCyclePreview(int Indicators, int Forms, int Departments
 /// دورات جمع البيانات: الإنشاء والفتح والإغلاق. الفتح يأخذ لقطة من التعريفات المعتمدة (أو قيد العمل في الدورة التجريبية)،
 /// وينشئ نموذجًا لكل جهة تنطبق عليها مؤشرات بحسب مستوى جمع بياناتها: القسم، أو الكلية، أو الجهة المالكة للمؤشر المركزي.
 /// </summary>
-public sealed class CyclesService(IAppDb db, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit)
+public sealed class CyclesService(ICollectionStore db, IReadModel read,  IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit)
 {
     private const string Feature = Features.Cycles;
 
@@ -40,7 +40,7 @@ public sealed class CyclesService(IAppDb db, IClock clock, ICurrentUser current,
         var forms = db.Submissions.AsNoTracking().Where(s => ids.Contains(s.CycleId));
         if (!scope.All)
         {
-            var visible = (await db.OrgUnits.AsNoTracking().Select(u => new { u.Id, u.Path }).ToListAsync(ct)).Where(u => scope.Covers(u.Path)).Select(u => u.Id).ToList();
+            var visible = (await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().Select(u => new { u.Id, u.Path }).ToListAsync(ct)).Where(u => scope.Covers(u.Path)).Select(u => u.Id).ToList();
             forms = forms.Where(s => visible.Contains(s.UnitId));
         }
         // PERF-B2: counted in SQL per cycle, status and lateness, instead of reading every form of every cycle.
@@ -160,10 +160,10 @@ public sealed class CyclesService(IAppDb db, IClock clock, ICurrentUser current,
 
     private async Task<Plan> PlanAsync(CollectionCycle cycle, CancellationToken ct)
     {
-        var indicators = await db.Indicators.AsNoTracking().Include(i => i.Versions).Where(i => !i.Suspended).OrderBy(i => i.SortOrder).ToListAsync(ct);
-        var units = await db.OrgUnits.AsNoTracking().Where(u => u.Active).ToListAsync(ct);
+        var indicators = await read.Query<Domain.Kpi.Indicator>().AsNoTracking().Include(i => i.Versions).Where(i => !i.Suspended).OrderBy(i => i.SortOrder).ToListAsync(ct);
+        var units = await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().Where(u => u.Active).ToListAsync(ct);
         var root = units.First(u => u.Kind == OrgUnitKind.University);
-        var map = new Organization.AssignmentMap(units, await db.UnitIndicators.AsNoTracking().ToListAsync(ct));
+        var map = new Organization.AssignmentMap(units, await read.Query<Domain.Organization.UnitIndicator>().AsNoTracking().ToListAsync(ct));
         var skipped = new List<string>();
         var picked = new List<CycleIndicator>();
         foreach (var i in indicators)

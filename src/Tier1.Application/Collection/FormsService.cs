@@ -69,7 +69,7 @@ public sealed record ExtendRequest(DateOnly DueOn, string? Reason);
 /// ARCH-1: this class lists forms and shows one. Entry is <see cref="FormEntryService"/>, the path is <see cref="FormWorkflowService"/>,
 /// loading and building a form is <see cref="FormReader"/>, and which indicators a unit enters is <see cref="FormAssignmentRules"/>.
 /// </summary>
-public sealed class FormsService(IAppDb db, IClock clock, ICurrentUser current, IAccessService access, FormReader reader)
+public sealed class FormsService(ICollectionStore db, IReadModel read,  IClock clock, ICurrentUser current, IAccessService access, FormReader reader)
 {
     private const string Feature = Features.Forms;
 
@@ -87,7 +87,7 @@ public sealed class FormsService(IAppDb db, IClock clock, ICurrentUser current, 
         // PERF-B2/BE-17: scope and search are decided on the unit tree (a few hundred rows, needed for the names anyway) and reach
         // SQL as unit ids with the status, so only the forms the user may see and asked for are read. The list stays whole per cycle:
         // it is bounded by the number of units, and the page groups colleges with their departments and counts over all of them.
-        var units = await db.OrgUnits.AsNoTracking().ToDictionaryAsync(u => u.Id, ct);
+        var units = await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().ToDictionaryAsync(u => u.Id, ct);
         var term = q?.Trim();
         var forms = db.Submissions.AsNoTracking().Where(s => ids.Contains(s.CycleId));
         if (!view.All || !string.IsNullOrEmpty(term))

@@ -28,7 +28,7 @@ public sealed class FormMovedNotifications(FormNotifier notifier) : Integration.
 /// إشعارات مسار النماذج بالبريد: من عليه الإجراء التالي يصله رابط النموذج مباشرة. المستلمون يحسبون من الصلاحيات الفعلية:
 /// مراجع الخطوة (إجراؤها الخاص ونطاقه يغطي الجهة)، أو مدخلو البيانات عند الإعادة. الرسالة تضاف بعد ثبوت الانتقال، من معالج حدث form.moved.
 /// </summary>
-public sealed class FormNotifier(IAppDb db, IAccessService access, INotificationPublisher notifications)
+public sealed class FormNotifier(ICollectionStore db, IReadModel read,  IAccessService access, INotificationPublisher notifications)
 {
     /// <summary>
     /// Runs in the form.moved handler, after the transition committed. The message describes the form as the event saw it (its step
@@ -36,7 +36,7 @@ public sealed class FormNotifier(IAppDb db, IAccessService access, INotification
     /// </summary>
     public async Task MovedAsync(FormMoved s, CancellationToken ct)
     {
-        var unit = await db.OrgUnits.AsNoTracking().FirstAsync(u => u.Id == s.UnitId, ct);
+        var unit = await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().FirstAsync(u => u.Id == s.UnitId, ct);
         var cycle = await db.Cycles.AsNoTracking().FirstAsync(c => c.Id == s.CycleId, ct);
         var (recipients, title, body) = s.Status switch
         {
@@ -62,12 +62,12 @@ public sealed class FormNotifier(IAppDb db, IAccessService access, INotification
         var ids = open.Keys.ToList();
         var limit = today.AddDays(daysBefore);
         var forms = await db.Submissions.AsNoTracking().Where(s => ids.Contains(s.CycleId) && s.Status != SubmissionStatus.Approved && s.DueOn <= limit).ToListAsync(ct);
-        var units = await db.OrgUnits.AsNoTracking().ToDictionaryAsync(u => u.Id, ct);
+        var units = await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().ToDictionaryAsync(u => u.Id, ct);
         var sent = 0;
         foreach (var s in forms)
         {
             var key = $"rem:{s.Id:N}:{today:yyyyMMdd}";
-            if (await db.OutgoingMails.AnyAsync(m => m.DedupKey != null && m.DedupKey.StartsWith(key), ct)) continue;
+            if (await read.Query<Domain.Notifications.OutgoingMail>().AnyAsync(m => m.DedupKey != null && m.DedupKey.StartsWith(key), ct)) continue;
             var unit = units[s.UnitId];
             var to = s.Status == SubmissionStatus.InReview ? await ReviewersAsync(s.Step, unit, ct) : await EditorsAsync(s.Id, unit, ct);
             var late = s.DueOn < today;
@@ -95,7 +95,7 @@ public sealed class FormNotifier(IAppDb db, IAccessService access, INotification
     {
         var editors = await db.SubmittedValues.AsNoTracking().Where(v => v.SubmissionId == submissionId).Select(v => v.EditedBy).Distinct().ToListAsync(ct);
         if (editors.Count > 0)
-            return await db.Users.AsNoTracking().Where(u => u.Active && editors.Contains(u.Id)).OrderBy(u => u.Email).Select(u => new Recipient(u.Id, u.Email)).ToListAsync(ct);
+            return await read.Query<Domain.Identity.AppUser>().AsNoTracking().Where(u => u.Active && editors.Contains(u.Id)).OrderBy(u => u.Email).Select(u => new Recipient(u.Id, u.Email)).ToListAsync(ct);
         return await UnitEditorsAsync(unit, ct);
     }
 
@@ -115,14 +115,14 @@ public sealed class FormNotifier(IAppDb db, IAccessService access, INotification
     {
         var forms = Features.Forms;
         var roles = need == Need.Review
-            ? db.Roles.Where(r => r.Code == PermissionCatalog.SuperAdminRole || r.Grants.Any(g => g.Feature == forms && g.Specials.Count > 0))
-            : db.Roles.Where(r => r.Code == PermissionCatalog.SuperAdminRole || r.Grants.Any(g => g.Feature == forms && (g.Caps & Cap.Edit) == Cap.Edit));
+            ? read.Query<Domain.Access.Role>().Where(r => r.Code == PermissionCatalog.SuperAdminRole || r.Grants.Any(g => g.Feature == forms && g.Specials.Count > 0))
+            : read.Query<Domain.Access.Role>().Where(r => r.Code == PermissionCatalog.SuperAdminRole || r.Grants.Any(g => g.Feature == forms && (g.Caps & Cap.Edit) == Cap.Edit));
         var roleIds = roles.Select(r => r.Id);
-        var viaRoles = db.UserRoles.Where(a => a.RevokedAt == null && roleIds.Contains(a.RoleId)).Select(a => a.UserId);
+        var viaRoles = read.Query<Domain.Access.UserRole>().Where(a => a.RevokedAt == null && roleIds.Contains(a.RoleId)).Select(a => a.UserId);
         var viaOverrides = need == Need.Review
-            ? db.UserOverrides.Where(o => o.RevokedAt == null && o.Effect == OverrideEffect.Allow && o.Feature == forms && o.Specials.Count > 0).Select(o => o.UserId)
-            : db.UserOverrides.Where(o => o.RevokedAt == null && o.Effect == OverrideEffect.Allow && o.Feature == forms && (o.Caps & Cap.Edit) == Cap.Edit).Select(o => o.UserId);
-        var candidates = db.Users.AsNoTracking().Where(u => u.Active);
+            ? read.Query<Domain.Access.UserOverride>().Where(o => o.RevokedAt == null && o.Effect == OverrideEffect.Allow && o.Feature == forms && o.Specials.Count > 0).Select(o => o.UserId)
+            : read.Query<Domain.Access.UserOverride>().Where(o => o.RevokedAt == null && o.Effect == OverrideEffect.Allow && o.Feature == forms && (o.Caps & Cap.Edit) == Cap.Edit).Select(o => o.UserId);
+        var candidates = read.Query<Domain.Identity.AppUser>().AsNoTracking().Where(u => u.Active);
         if (!everyone) candidates = candidates.Where(u => viaRoles.Contains(u.Id) || viaOverrides.Contains(u.Id));
         var users = await candidates.OrderBy(u => u.Email).Select(u => new { u.Id, u.Email }).ToListAsync(ct);
         var result = new List<Recipient>();

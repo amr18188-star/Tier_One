@@ -49,7 +49,7 @@ public sealed class CycleSnapshotCache
     }
 
     /// <summary>The fingerprints of several cycles in one query (a trend or a college's quarters read many).</summary>
-    public static async Task<Dictionary<Guid, string>> FingerprintsAsync(IAppDb db, Guid[] cycleIds, CancellationToken ct)
+    public static async Task<Dictionary<Guid, string>> FingerprintsAsync(ICollectionStore db, Guid[] cycleIds, CancellationToken ct)
     {
         var approved = (int)SubmissionStatus.Approved;
         var rows = await db.Database.SqlQuery<FingerprintRow>($"""

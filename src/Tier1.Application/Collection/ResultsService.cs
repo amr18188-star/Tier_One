@@ -59,7 +59,7 @@ public sealed record IndicatorResultsDto(IndicatorResult University, IReadOnlyLi
 /// النتائج من القيم المعتمدة نهائيًا فقط: قيمة الكلية من أقسامها أو من نموذجها، وقيمة الجامعة من كلياتها أو من الجهة المركزية،
 /// بقاعدة تجميع المؤشر. من نطاقه الجامعة يرى الجامعة وكل الكليات؛ ومن نطاقه كليات يرى كلياته فقط.
 /// </summary>
-public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog audit, Settings.SettingsService settings, CycleSnapshotCache cache)
+public sealed class ResultsService(ICollectionStore db, IReadModel read,  IAccessService access, IAuditLog audit, Settings.SettingsService settings, CycleSnapshotCache cache)
 {
     private const string Feature = Features.Results;
 
@@ -312,11 +312,11 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
     {
         var cis = await db.CycleIndicators.AsNoTracking().Where(c => c.CycleId == cycle.Id).ToListAsync(ct);
         var versionIds = cis.Select(c => c.VersionId).ToList();
-        var versions = await db.IndicatorVersions.AsNoTracking().Where(v => versionIds.Contains(v.Id)).ToDictionaryAsync(v => v.Id, ct);
+        var versions = await read.Query<Domain.Kpi.IndicatorVersion>().AsNoTracking().Where(v => versionIds.Contains(v.Id)).ToDictionaryAsync(v => v.Id, ct);
         var indicatorIds = cis.Select(c => c.IndicatorId).ToList();
-        var indicators = await db.Indicators.AsNoTracking().Where(i => indicatorIds.Contains(i.Id)).Select(i => new { i.Id, i.StandardId, i.SortOrder, i.PlanStartYear }).ToDictionaryAsync(i => i.Id, ct);
-        var standards = await db.Standards.AsNoTracking().ToDictionaryAsync(s => s.Id, ct);
-        var units = await db.OrgUnits.AsNoTracking().ToDictionaryAsync(u => u.Id, ct);
+        var indicators = await read.Query<Domain.Kpi.Indicator>().AsNoTracking().Where(i => indicatorIds.Contains(i.Id)).Select(i => new { i.Id, i.StandardId, i.SortOrder, i.PlanStartYear }).ToDictionaryAsync(i => i.Id, ct);
+        var standards = await read.Query<Domain.Kpi.Standard>().AsNoTracking().ToDictionaryAsync(s => s.Id, ct);
+        var units = await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().ToDictionaryAsync(u => u.Id, ct);
         var subs = await db.Submissions.AsNoTracking().Where(s => s.CycleId == cycle.Id).ToListAsync(ct);
         var approvedIds = subs.Where(s => s.Status == SubmissionStatus.Approved).Select(s => s.Id).ToList();
         var unitOf = subs.ToDictionary(s => s.Id, s => s.UnitId);
@@ -329,7 +329,7 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
         if (official.Count > 0)
             values.AddRange((await db.ValueSnapshots.AsNoTracking().Where(v => official.Contains(v.RequestId)).ToListAsync(ct)).Select(ReopenRules.AsValue));
         var underCorrection = reopened.Select(r => r.SubmissionId).ToHashSet();
-        var targets = await db.Targets.AsNoTracking().Where(t => indicatorIds.Contains(t.IndicatorId) && (t.Year <= cycle.TargetYear || t.Kind == TargetKind.Baseline)).ToListAsync(ct);
+        var targets = await read.Query<Domain.Kpi.IndicatorTarget>().AsNoTracking().Where(t => indicatorIds.Contains(t.IndicatorId) && (t.Year <= cycle.TargetYear || t.Kind == TargetKind.Baseline)).ToListAsync(ct);
         return new Snapshot
         {
             Cycle = cycle,

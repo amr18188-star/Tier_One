@@ -42,7 +42,7 @@ public sealed class ResultsCacheTests(Tier1App app)
     {
         var cycle = await Flow.OpenCycleAsync(app);
         await using var scope = app.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<Tier1.Application.Abstractions.IAppDb>();
+        var db = scope.ServiceProvider.GetRequiredService<Tier1.Application.Abstractions.ICollectionStore>();
         var id = Guid.Parse(cycle.Id);
         async Task<string> Print() => (await CycleSnapshotCache.FingerprintsAsync(db, [id], default))[id];
 

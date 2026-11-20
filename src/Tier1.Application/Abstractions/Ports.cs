@@ -102,8 +102,6 @@ public interface IAppDb : IUnitOfWork
 
     DbSet<InboxItem> Inbox { get; }
 
-    DatabaseFacade Database { get; }
-
     /// <summary>لمحو ما تتبعه العملية بعد خطوة فاشلة اختيارية، فتكمل بحالة القاعدة.</summary>
     Microsoft.EntityFrameworkCore.ChangeTracking.ChangeTracker ChangeTracker { get; }
 

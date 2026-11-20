@@ -27,7 +27,7 @@ internal sealed class FormContext
 /// ARCH-1: one form as its screen shows it. Loads the form's context (unit, cycle, indicators, values, previous values) in the
 /// user's scope, and builds the form, an item, the blocking list, targets and documents. Shared by the list, entry and workflow.
 /// </summary>
-public sealed class FormReader(IAppDb db, IClock clock, ICurrentUser current, IAccessService access, Settings.SettingsService settings)
+public sealed class FormReader(ICollectionStore db, IReadModel read,  IClock clock, ICurrentUser current, IAccessService access, Settings.SettingsService settings)
 {
     private const string Feature = Features.Forms;
 
@@ -36,17 +36,17 @@ public sealed class FormReader(IAppDb db, IClock clock, ICurrentUser current, IA
         var me = await access.RequireAsync(Feature, cap, ct);
         var subQuery = tracking ? db.Submissions : db.Submissions.AsNoTracking();
         var sub = await subQuery.FirstOrDefaultAsync(s => s.Id == id, ct) ?? throw DomainException.NotFound();
-        var unit = await db.OrgUnits.AsNoTracking().FirstAsync(u => u.Id == sub.UnitId, ct);
+        var unit = await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().FirstAsync(u => u.Id == sub.UnitId, ct);
         UnitScope.For(me, Feature, cap).Require(unit);
         var cycle = await db.Cycles.AsNoTracking().FirstAsync(c => c.Id == sub.CycleId, ct);
 
         var cis = (await db.CycleIndicators.AsNoTracking().Where(c => c.CycleId == cycle.Id).ToListAsync(ct)).Where(c => FormAssignmentRules.Applies(c, unit)).ToList();
         var versionIds = cis.Select(c => c.VersionId).ToList();
-        var versions = await db.IndicatorVersions.AsNoTracking().Where(v => versionIds.Contains(v.Id)).ToDictionaryAsync(v => v.Id, ct);
+        var versions = await read.Query<Domain.Kpi.IndicatorVersion>().AsNoTracking().Where(v => versionIds.Contains(v.Id)).ToDictionaryAsync(v => v.Id, ct);
         var indicatorIds = cis.Select(c => c.IndicatorId).ToList();
-        var meta = await db.Indicators.AsNoTracking().Where(i => indicatorIds.Contains(i.Id)).Select(i => new { i.Id, i.StandardId, i.SortOrder, i.PlanStartYear }).ToDictionaryAsync(i => i.Id, ct);
-        var standards = await db.Standards.AsNoTracking().ToDictionaryAsync(s => s.Id, ct);
-        var pillars = await db.Pillars.AsNoTracking().ToDictionaryAsync(p => p.Id, ct);
+        var meta = await read.Query<Domain.Kpi.Indicator>().AsNoTracking().Where(i => indicatorIds.Contains(i.Id)).Select(i => new { i.Id, i.StandardId, i.SortOrder, i.PlanStartYear }).ToDictionaryAsync(i => i.Id, ct);
+        var standards = await read.Query<Domain.Kpi.Standard>().AsNoTracking().ToDictionaryAsync(s => s.Id, ct);
+        var pillars = await read.Query<Domain.Kpi.Pillar>().AsNoTracking().ToDictionaryAsync(p => p.Id, ct);
         var valuesQuery = tracking ? db.SubmittedValues : db.SubmittedValues.AsNoTracking();
         var values = await valuesQuery.Where(v => v.SubmissionId == sub.Id).ToDictionaryAsync(v => v.IndicatorId, ct);
 
@@ -111,9 +111,9 @@ public sealed class FormReader(IAppDb db, IClock clock, ICurrentUser current, IA
     internal async Task<Dictionary<Guid, Kpi.TargetInfo>> TargetsAsync(FormContext ctx, CancellationToken ct)
     {
         var ids = ctx.Indicators.Select(i => i.Ci.IndicatorId).ToList();
-        var targets = (await db.Targets.AsNoTracking().Where(t => ids.Contains(t.IndicatorId) && t.Year <= ctx.Cycle.TargetYear && t.Kind != TargetKind.Baseline).ToListAsync(ct))
+        var targets = (await read.Query<Domain.Kpi.IndicatorTarget>().AsNoTracking().Where(t => ids.Contains(t.IndicatorId) && t.Year <= ctx.Cycle.TargetYear && t.Kind != TargetKind.Baseline).ToListAsync(ct))
             .ToLookup(t => t.IndicatorId);
-        var universityId = await db.OrgUnits.AsNoTracking().Where(u => u.Kind == OrgUnitKind.University).Select(u => u.Id).FirstAsync(ct);
+        var universityId = await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().Where(u => u.Kind == OrgUnitKind.University).Select(u => u.Id).FirstAsync(ct);
         return ctx.Indicators.ToDictionary(i => i.Ci.IndicatorId,
             i => Kpi.TargetLookup.For([.. targets[i.Ci.IndicatorId]], ctx.Unit, universityId, ctx.Cycle.TargetYear, i.PlanStart, i.Version.Aggregation));
     }
