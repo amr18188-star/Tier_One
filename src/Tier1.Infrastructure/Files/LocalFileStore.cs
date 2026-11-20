@@ -33,6 +33,24 @@ public sealed partial class LocalFileStore(IConfiguration config) : IFileStore
         return Task.CompletedTask;
     }
 
+    public IEnumerable<(string Key, DateTimeOffset WrittenAt, bool Partial)> List()
+    {
+        if (!Directory.Exists(root)) yield break;
+        foreach (var path in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))
+        {
+            var partial = path.EndsWith(".part", StringComparison.Ordinal);
+            var key = Path.GetRelativePath(root, partial ? path[..^5] : path).Replace(Path.DirectorySeparatorChar, '/');
+            if (!KeyPattern().IsMatch(key)) continue;
+            yield return (key, new DateTimeOffset(File.GetLastWriteTimeUtc(path), TimeSpan.Zero), partial);
+        }
+    }
+
+    public void DeletePartial(string key)
+    {
+        var path = PathFor(key) + ".part";
+        if (File.Exists(path)) File.Delete(path);
+    }
+
     private string PathFor(string key)
     {
         if (!KeyPattern().IsMatch(key)) throw new ArgumentException("Invalid storage key.", nameof(key));

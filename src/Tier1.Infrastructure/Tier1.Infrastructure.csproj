@@ -32,5 +32,6 @@
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Tier1.Tests" />
+    <InternalsVisibleTo Include="Tier1.IntegrationTests" />
   </ItemGroup>
 </Project>

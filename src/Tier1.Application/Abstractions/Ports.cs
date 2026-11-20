@@ -172,4 +172,10 @@ public interface IFileStore
 
     /// <summary>يحذف الملف نهائيًا. عند إعادة ضبط البيانات فقط؛ في الاستخدام العادي تبطل الأدلة ولا تحذف.</summary>
     Task DeleteAsync(string key, CancellationToken ct);
+
+    /// <summary>BE-19: every stored key with its last write time, and leftover partial writes, for the orphan sweep.</summary>
+    IEnumerable<(string Key, DateTimeOffset WrittenAt, bool Partial)> List();
+
+    /// <summary>Removes a partial write left by a failed upload.</summary>
+    void DeletePartial(string key);
 }

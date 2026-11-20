@@ -34,6 +34,9 @@ public sealed class Tier1App : IAsyncLifetime
     /// <summary>The application's services, for checks that call a service directly in a scope of its own.</summary>
     public IServiceProvider Services => factory!.Services;
 
+    /// <summary>Where the app stores uploaded files (Files:Root) in this run.</summary>
+    public string FilesRoot => Path.Combine(dataDir, "files");
+
     public async Task InitializeAsync()
     {
         await Task.WhenAll(postgres.StartAsync(), mongo.StartAsync());
