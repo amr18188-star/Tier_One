@@ -108,3 +108,28 @@ describe("API errors (FE-12)", () => {
     expect(shouldRetry(1, new ApiError(503, "x", "x"))).toBe(false);
   });
 });
+
+describe("duplicate writes (BE-8)", () => {
+  it("sends an identical write once while it is in flight, and again after it finished", async () => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => { release = r; });
+    const writes: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === "/csrf") return json(200, { token: "t" });
+      writes.push(`${init?.method} ${url} ${String(init?.body)}`);
+      await gate;
+      return json(200, { ok: writes.length });
+    }));
+    const c = createApiClient({ csrfUrl: "/csrf" });
+    const first = c.post("/api/members", { name: "أ" });
+    const second = c.post("/api/members", { name: "أ" });
+    const other = c.post("/api/members", { name: "ب" });
+    await vi.waitFor(() => expect(writes).toHaveLength(2));
+    release();
+    const [a, b] = await Promise.all([first, second, other]);
+    expect(a).toEqual(b);
+    expect(writes).toHaveLength(2);
+    await c.post("/api/members", { name: "أ" });
+    expect(writes).toHaveLength(3);
+  });
+});

@@ -111,17 +111,18 @@ public sealed class CollectionTests(ITestOutputHelper output)
         form = await entry.Fill(form);
         t.Check(form["completed"].Num() == form["required"].Num(), $"The form is complete: {form["completed"].Num()}/{form["required"].Num()}");
 
-        (status, var doc) = await entry.Upload(evidencePath, "كشف الطلاب.pdf", Env.Pdf, ("description", "كشف"));
+        var evidence = Env.UniquePdf();
+        (status, var doc) = await entry.Upload(evidencePath, "كشف الطلاب.pdf", evidence, ("description", "كشف"));
         t.Check(status == 200 && doc!["contentType"].Str() == "application/pdf", "A valid PDF evidence uploaded");
         var dl = await entry.Download($"/api/documents/{doc!["id"].Str()}");
-        t.Check(dl.Status == 200 && dl.Body.SequenceEqual(Env.Pdf), "The evidence downloads as uploaded");
+        t.Check(dl.Status == 200 && dl.Body.SequenceEqual(evidence), "The evidence downloads as uploaded");
         t.Check((await viewer.Download($"/api/documents/{doc["id"].Str()}")).Status is 403 or 404, "A viewer of another college cannot download the evidence");
         (status, _) = await entry.Call("POST", $"/api/documents/{doc["id"].Str()}/void", Scenario.O(("note", "")));
         t.Check(status == 400, "Voiding asks for a reason");
         var voided = await entry.Ok("POST", $"/api/documents/{doc["id"].Str()}/void", Scenario.O(("note", "رفع بالخطأ")));
         t.Check(voided["voided"].Truthy(), "The evidence is voided and stays in the log");
 
-        (status, var sdoc) = await college.Upload($"/api/structure/colleges/{eng["id"].Str()}/documents", "هيكل الهندسة المعتمد.pdf", Env.Pdf);
+        (status, var sdoc) = await college.Upload($"/api/structure/colleges/{eng["id"].Str()}/documents", "هيكل الهندسة المعتمد.pdf", Env.UniquePdf());
         t.Check(status == 200, "The college committee uploads the approved structure");
         var docs = (await college.Get($"/api/structure/colleges/{eng["id"].Str()}/documents")).Items();
         t.Check(docs.Any(x => x["id"].Str() == sdoc!["id"].Str()), "The document is in the college's list");

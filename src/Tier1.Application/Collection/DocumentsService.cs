@@ -222,6 +222,11 @@ public sealed class DocumentsService(ICollectionStore db, IReadModel read, ICloc
         var name = FileRules.CleanName(file.FileName);
         var type = FileRules.ContentTypeFor(name, bytes.AsSpan(0, Math.Min(bytes.Length, 16)))
                    ?? throw new DomainException("file_type", $"نوع الملف غير مقبول. المقبول: {FileRules.Accepted}.", "File type not accepted.", 400);
+        // BE-8: the same file attached twice to the same owner (a double click, or a second try after a slow upload) is refused,
+        // so evidence is not duplicated and clearing the value is not blocked by a copy nobody meant to keep.
+        var sha256 = Convert.ToHexStringLower(SHA256.HashData(bytes));
+        if (await db.Documents.AnyAsync(d => d.OwnerType == ownerType && d.OwnerId == ownerId && d.Sha256 == sha256 && d.VoidedAt == null, ct))
+            throw new DomainException("duplicate_file", "هذا الملف مرفق بالفعل.", "This file is already attached.", 409);
         // المفتاح بصيغة مخزن الملفات: النوع/السنة/معرّف، بلا اسم الملف ولا امتداده (النوع محفوظ في السجل).
         var key = $"{ownerType}/{clock.UtcNow:yyyy}/{Guid.CreateVersion7():N}";
         buffer.Position = 0;
@@ -229,7 +234,7 @@ public sealed class DocumentsService(ICollectionStore db, IReadModel read, ICloc
         var doc = new StoredDocument
         {
             OwnerType = ownerType, OwnerId = ownerId, FileName = name, ContentType = type, SizeBytes = bytes.Length,
-            Sha256 = Convert.ToHexStringLower(SHA256.HashData(bytes)), StorageKey = key, Description = Require.Optional(file.Description, 300),
+            Sha256 = sha256, StorageKey = key, Description = Require.Optional(file.Description, 300),
             UploadedBy = current.UserId!.Value, UploadedAt = clock.UtcNow,
         };
         db.Documents.Add(doc);

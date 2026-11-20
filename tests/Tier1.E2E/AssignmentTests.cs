@@ -129,7 +129,7 @@ public sealed class AssignmentTests(ITestOutputHelper output)
         t.Check(status == 403, "A data entry user cannot upload the plan document");
         (status, err) = await planner.Upload("/api/strategy/documents", "plan.docx", [.. "PK\x03\x04rest"u8]);
         t.Check(status == 400 && err.Code() == "pdf_only", "The document must be a PDF");
-        (status, var doc) = await planner.Upload("/api/strategy/documents", "plan.pdf", Env.Pdf, ("description", "خطة اختبار"));
+        (status, var doc) = await planner.Upload("/api/strategy/documents", "plan.pdf", Env.UniquePdf(), ("description", "خطة اختبار"));
         t.Check(status == 200 && doc!["description"].Str() == "خطة اختبار", "The plan manager uploaded a version");
         var docs = (await entryCom.Get("/api/strategy/documents")).Items().ToList();
         t.Check(docs.Count > 0 && docs[0]["document"]!["id"].Str() == doc!["id"].Str(), "The Commerce entry user sees the latest version");

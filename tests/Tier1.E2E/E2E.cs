@@ -62,6 +62,9 @@ internal static class Env
     }
 
     public static readonly byte[] Pdf = "%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n"u8.ToArray();
+
+    /// <summary>A PDF with a unique comment: the same file attached twice to one owner is refused (BE-8), and tests run again on the same data.</summary>
+    public static byte[] UniquePdf() => [.. Pdf, .. System.Text.Encoding.ASCII.GetBytes($"% {Guid.NewGuid():N}\n")];
 }
 
 /// <summary>

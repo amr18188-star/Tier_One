@@ -128,6 +128,23 @@ export function createApiClient({ csrfUrl, onUnauthorized }: {
     return data as T;
   }
 
+  /**
+   * BE-8: a write identical to one still in flight (same method, path and body: a double click, or a second click while the first
+   * is slow) does not go out again; both callers get the first one's answer.
+   */
+  const inFlight = new Map<string, Promise<unknown>>();
+  function once<T>(key: string, send: () => Promise<T>): Promise<T> {
+    const running = inFlight.get(key);
+    if (running) return running as Promise<T>;
+    const p = send().finally(() => inFlight.delete(key));
+    inFlight.set(key, p);
+    return p;
+  }
+
+  function write<T>(method: string, path: string, body?: unknown): Promise<T> {
+    return once(`${method} ${path} ${JSON.stringify(body ?? null)}`, () => request<T>(method, path, body));
+  }
+
   async function request<T>(method: string, path: string, body?: unknown, retry = true, passive = false): Promise<T> {
     const headers: Record<string, string> = { "Accept-Language": getLang() };
     if (passive) headers["X-Passive"] = "1";
@@ -148,10 +165,11 @@ export function createApiClient({ csrfUrl, onUnauthorized }: {
   return {
     get: <T>(path: string) => request<T>("GET", path),
     poll: <T>(path: string) => request<T>("GET", path, undefined, true, true),
-    post: <T>(path: string, body: unknown = {}) => request<T>("POST", path, body),
-    put: <T>(path: string, body: unknown = {}) => request<T>("PUT", path, body),
-    del: <T>(path: string) => request<T>("DELETE", path),
-    upload: <T>(path: string, file: File, fields?: Record<string, string>) => upload<T>(path, file, fields),
+    post: <T>(path: string, body: unknown = {}) => write<T>("POST", path, body),
+    put: <T>(path: string, body: unknown = {}) => write<T>("PUT", path, body),
+    del: <T>(path: string) => write<T>("DELETE", path),
+    upload: <T>(path: string, file: File, fields?: Record<string, string>) =>
+      once(`UPLOAD ${path} ${file.name} ${file.size} ${file.lastModified} ${JSON.stringify(fields ?? {})}`, () => upload<T>(path, file, fields)),
     refreshCsrf,
   };
 }
