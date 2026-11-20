@@ -1,7 +1,7 @@
 import { cloneElement, useCallback, useEffect, useId, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactElement, type ReactNode } from "react";
 import { AutoComplete, Button, Drawer, Dropdown, Input, Tooltip } from "antd";
 import {
-  AimOutlined, ApartmentOutlined, AuditOutlined, BankOutlined, BarChartOutlined, BranchesOutlined, CalendarOutlined, ClusterOutlined, ControlOutlined, DatabaseOutlined, DoubleLeftOutlined, DoubleRightOutlined, DownOutlined, FileDoneOutlined, FilePdfOutlined, FormOutlined, HomeOutlined, LogoutOutlined, MenuOutlined,
+  AimOutlined, ApartmentOutlined, AuditOutlined, BankOutlined, BarChartOutlined, BranchesOutlined, CalendarOutlined, ClusterOutlined, ControlOutlined, DatabaseOutlined, DoubleLeftOutlined, DoubleRightOutlined, DownOutlined, FileDoneOutlined, FilePdfOutlined, FormOutlined, HomeOutlined, LogoutOutlined, MailOutlined, MenuOutlined,
   PartitionOutlined, RiseOutlined, SafetyCertificateOutlined, SearchOutlined, SettingOutlined, TeamOutlined, TrophyOutlined, UnorderedListOutlined,
 } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
@@ -15,6 +15,7 @@ import { prefersReducedMotion } from "../shared/entrance";
 import { usePermissions, useSession } from "../shared/session";
 import { initials } from "../shared/ui";
 import { AppearanceButton } from "./AppearanceMenu";
+import { NotificationBell } from "../features/notifications/NotificationBell";
 // شعار الجامعة للترويسة الفاتحة، وشعار الخطة للشريط الجانبي الكحلي.
 import logoOnWhite from "../assets/brand/capital-university-logo-light.png";
 import strategyBrandOnNavy from "../assets/brand/strategy-performance-dark.png";
@@ -190,6 +191,7 @@ export function Shell({ children }: { children: ReactNode }) {
         (perms.can("adm.users", "V") || perms.can("adm.grants", "V")) && { to: "/users", icon: <TeamOutlined aria-hidden />, label: L("الحسابات والأدوار", "Accounts and roles") },
         anyLog && { to: "/logs", icon: <AuditOutlined aria-hidden />, label: L("السجلات", "Logs") },
         perms.can("adm.settings", "V") && { to: "/settings", icon: <SettingOutlined aria-hidden />, label: L("إعدادات النظام", "System settings") },
+        perms.can("adm.mail", "V") && { to: "/mail", icon: <MailOutlined aria-hidden />, label: L("البريد الصادر", "Outgoing mail") },
       ],
     },
   ];
@@ -274,6 +276,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <Button type="text" className="lcp-lang" onClick={toggleLang}>{lang === "ar" ? "EN" : "ع"}</Button>
           {/* المظهر (لوحة الألوان والزوايا) بجانب اللغة والحساب. */}
           <AppearanceButton tooltip={false} />
+          <NotificationBell />
           <Dropdown trigger={["click"]} placement={lang === "ar" ? "bottomLeft" : "bottomRight"} menu={{
             items: [
               {

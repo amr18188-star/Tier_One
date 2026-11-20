@@ -49,6 +49,19 @@ public class HardeningTests
     [InlineData("Prod")]
     public void Every_non_development_environment_rejects_demo_settings(string env) =>
         Assert.Throws<InvalidOperationException>(() => StartupGuards.Check(Config(("Seed:Demo", "true")), new Env(env)));
+
+    /// <summary>BE-9: mail links must lead to the address users open, never to a silent localhost default.</summary>
+    [Theory]
+    [InlineData("https://tier1.university.edu.eg", true)]
+    [InlineData("https://tier1.university.edu.eg/", true)]
+    [InlineData(null, false)]
+    [InlineData("", false)]
+    [InlineData("http://tier1.university.edu.eg", false)]
+    [InlineData("https://localhost:5150", false)]
+    [InlineData("https://127.0.0.1", false)]
+    [InlineData("tier1.university.edu.eg", false)]
+    public void Outside_development_the_public_url_is_an_https_address_of_the_server(string? value, bool ok) =>
+        Assert.Equal(ok, StartupGuards.PublicUrlOk(value));
 }
 
 /// <summary>حجب التخمين لكل (حساب، عنوان): لا يقفل أحد حساب غيره من مكان واحد.</summary>

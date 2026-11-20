@@ -34,6 +34,10 @@ public static class DependencyInjection
         services.AddScoped<Settings.SettingsService>();
         services.AddScoped<IMailOutbox, Notifications.MailOutbox>();
         services.AddScoped<Integration.IEventOutbox, Integration.EventOutbox>();
+        services.AddScoped<Notifications.NotificationPublisher>();
+        services.AddScoped<Notifications.INotificationPublisher>(sp => sp.GetRequiredService<Notifications.NotificationPublisher>());
+        services.AddScoped<Notifications.InboxService>();
+        services.AddScoped<Notifications.MailAdminService>();
 
         // Tier 1: الجهات والهيكل، والقاموس والمستهدفات والتعارضات، والصفحة الأولى.
         services.AddScoped<Organization.OrgUnitsService>();

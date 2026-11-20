@@ -55,6 +55,7 @@ const ChangesPage = load(() => import("../features/matrix/ChangesPage"));
 const UsersPage = load(() => import("../features/users/UsersPage"));
 const LogsPage = load(() => import("../features/logs/LogsPage"));
 const SettingsPage = load(() => import("../features/settings/SettingsPage"));
+const MailPage = load(() => import("../features/mail/MailPage"));
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
@@ -163,6 +164,7 @@ function Gate() {
             <Route path="/users" element={<Guard need={["adm.users:V", "adm.grants:V"]}><UsersPage /></Guard>} />
             <Route path="/logs" element={<Guard need={["log.audit:V", "log.security:V", "log.access:V", "log.tech:V"]}><LogsPage /></Guard>} />
             <Route path="/settings" element={<Guard need={["adm.settings:V"]}><SettingsPage /></Guard>} />
+            <Route path="/mail" element={<Guard need={["adm.mail:V"]}><MailPage /></Guard>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

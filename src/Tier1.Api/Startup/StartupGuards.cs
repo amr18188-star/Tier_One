@@ -35,6 +35,8 @@ public static class StartupGuards
             Require((c[$"Cookies:{name}"] ?? "").StartsWith("__Host-", StringComparison.Ordinal), $"Cookies:{name} must use the __Host- prefix outside Development.");
         // التنبيهات ونقاط تثبيت السجلات ترسل بالبريد.
         Require(!string.IsNullOrWhiteSpace(c["Email:Host"]), "Email:Host is required outside Development (notifications and log checkpoints).");
+        // BE-9: links in mail lead to this address; without it they fell back silently to a localhost nobody can open.
+        Require(PublicUrlOk(c["App:PublicUrl"]), "App:PublicUrl must be the https address users open the system at (links in notifications lead there).");
         Require(!c.GetValue<bool>("MongoLogs:SetupOnStartup"), "MongoLogs:SetupOnStartup is for development. Run --mongo-setup once with the admin account.");
         Require(string.IsNullOrWhiteSpace(c.GetConnectionString("MongoAdmin")), "ConnectionStrings:MongoAdmin must not be configured on the running application.");
         Require((c.GetSection("Network:TrustedProxies").Get<string[]>() ?? []).Length > 0, "Network:TrustedProxies is required outside Development (the reverse proxy address).");
@@ -62,6 +64,10 @@ public static class StartupGuards
             Require(loopback, $"Development listens on loopback only; '{url}' would expose the demo accounts and the MFA switch. Use another environment name.");
         }
     }
+
+    /// <summary>An absolute https address that is not this machine.</summary>
+    public static bool PublicUrlOk(string? value) =>
+        Uri.TryCreate(value, UriKind.Absolute, out var url) && url.Scheme == Uri.UriSchemeHttps && !url.IsLoopback;
 
     private static void Require(bool ok, string message)
     {

@@ -100,6 +100,8 @@ public interface IAppDb
 
     DbSet<Domain.Integration.ProcessedEvent> ProcessedEvents { get; }
 
+    DbSet<InboxItem> Inbox { get; }
+
     DatabaseFacade Database { get; }
 
     /// <summary>لمحو ما تتبعه العملية بعد خطوة فاشلة اختيارية، فتكمل بحالة القاعدة.</summary>
@@ -161,7 +163,9 @@ public interface ISecretProtector
 public interface IMailOutbox
 {
     /// <param name="dedupKey">مفتاح فريد يمنع تكرار الرسالة نفسها (التذكير اليومي).</param>
-    void Enqueue(string kind, string to, string subject, string body, string? dedupKey = null);
+    /// <param name="relatedType">What the mail carries (notification: an inbox item it can be resent from).</param>
+    /// <param name="resentFromId">The failed mail this one resends (BE-11).</param>
+    void Enqueue(string kind, string to, string subject, string body, string? dedupKey = null, string? relatedType = null, Guid? relatedId = null, long? resentFromId = null);
 }
 
 /// <summary>تخزين الملفات (الأدلة وقرارات التشكيل) خارج القاعدة بمفتاح لا باسم الملف الأصلي.</summary>

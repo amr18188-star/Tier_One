@@ -12,7 +12,7 @@ public interface IMailSignal
 /// <summary>يضيف الرسالة إلى الصندوق الصادر في معاملة العملية؛ النص مشفر حتى يرسل ثم يمحى.</summary>
 public sealed class MailOutbox(IAppDb db, IClock clock, ICurrentUser current, ISecretProtector protector, IMailSignal signal) : IMailOutbox
 {
-    public void Enqueue(string kind, string to, string subject, string body, string? dedupKey = null)
+    public void Enqueue(string kind, string to, string subject, string body, string? dedupKey = null, string? relatedType = null, Guid? relatedId = null, long? resentFromId = null)
     {
         var now = clock.UtcNow;
         db.OutgoingMails.Add(new OutgoingMail
@@ -27,6 +27,9 @@ public sealed class MailOutbox(IAppDb db, IClock clock, ICurrentUser current, IS
             Module = "adm",
             CreatedBy = current.UserId,
             DedupKey = dedupKey,
+            RelatedType = relatedType,
+            RelatedId = relatedId,
+            ResentFromId = resentFromId,
         });
         signal.Notify();
     }

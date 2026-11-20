@@ -11,7 +11,7 @@ namespace Tier1.Infrastructure.Persistence;
 /// الاحتفاظ بالبيانات: يمحو مرة كل ست ساعات ما انتهت حاجته ولا قيمة رقابية له: الجلسات المنتهية أو الملغاة، وروابط البريد المستعملة أو المنتهية،
 /// ومحاولات صفحة التحقق العامة (فيها عناوين الزوار) بعد مدتها. ما يلزم الرقابة باق في سجلات MongoDB.
 /// DB-7/BE-20: نسخة قيد التدقيق في صندوق الإرسال بعد وصولها إلى MongoDB وثبوت سلامة يومها، والبريد المرسل أو الفاشل بعد مدته.
-/// Phase 3: business events whose handlers ran, after Retention:EventDays.
+/// Phase 3: business events whose handlers ran, after Retention:EventDays, and in-app notifications after Retention:InboxDays.
 /// BE-19: الملفات التي لا مستند لها (رفع فشل حفظه) بعد ساعة.
 /// </summary>
 public sealed class RetentionJob(IServiceScopeFactory scopes, IConfiguration config, ILogger<RetentionJob> log) : BackgroundService
@@ -31,6 +31,10 @@ public sealed class RetentionJob(IServiceScopeFactory scopes, IConfiguration con
     // A handled business event (and its handler records, by cascade) is only history after its handlers ran.
     private const string EventSql =
         "DELETE FROM \"int\".outbox_events WHERE id IN (SELECT id FROM \"int\".outbox_events WHERE processed_at < {0} LIMIT {1})";
+
+    // In-app notifications, read or not, are kept for a year.
+    private const string InboxSql =
+        "DELETE FROM notify.inbox WHERE id IN (SELECT id FROM notify.inbox WHERE created_at < {0} LIMIT {1})";
 
     private const string MailSql =
         "DELETE FROM adm.mail_outbox WHERE id IN (SELECT id FROM adm.mail_outbox WHERE sent_at < {0} OR failed_at < {2} LIMIT {1})";
@@ -69,8 +73,10 @@ public sealed class RetentionJob(IServiceScopeFactory scopes, IConfiguration con
         var mail = await DeleteInBatchesAsync(db, MailSql,
             [now.AddDays(-config.GetValue("Retention:MailSentDays", 180)), Batch, now.AddDays(-config.GetValue("Retention:MailFailedDays", 365))], ct);
         var events = await DeleteInBatchesAsync(db, EventSql, [now.AddDays(-config.GetValue("Retention:EventDays", 30)), Batch], ct);
-        if (outbox + mail + events > 0)
-            log.LogInformation("Retention removed {Outbox} delivered audit copies, {Mail} old mail rows and {Events} handled events.", outbox, mail, events);
+        var inbox = await DeleteInBatchesAsync(db, InboxSql, [now.AddDays(-config.GetValue("Retention:InboxDays", 365)), Batch], ct);
+        if (outbox + mail + events + inbox > 0)
+            log.LogInformation("Retention removed {Outbox} delivered audit copies, {Mail} old mail rows, {Events} handled events and {Inbox} old notifications.",
+                outbox, mail, events, inbox);
 
         var files = scope.ServiceProvider.GetRequiredService<IFileStore>();
         var orphans = await SweepFilesAsync(db, files, now.AddHours(-1), ct);

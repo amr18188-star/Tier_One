@@ -193,6 +193,9 @@ public static class Features
     public const string SecurityLog = "log.security";
     public const string AccessLog = "log.access";
     public const string TechLog = "log.tech";
+
+    /// <summary>BE-11: the outgoing mail, its failures, and resending a failed notification.</summary>
+    public const string Mail = "adm.mail";
     public const string Dashboard = "dash.home";
     public const string Units = "org.units";
     public const string Structure = "org.structure";

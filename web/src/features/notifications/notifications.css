@@ -1,0 +1,33 @@
+/* صندوق الإشعارات في الشريط العلوي. خصائص منطقية فقط (RTL وLTR)، ورموز --ds-* لا ألوان خام. */
+.nb-bell { display: inline-flex; align-items: center; justify-content: center; }
+.nb-bell .anticon { font-size: 18px; }
+
+.nb-panel { inline-size: min(380px, calc(100vw - 32px)); }
+.nb-head {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--ds-space-sm);
+  padding-block-end: var(--ds-space-sm); border-block-end: 1px solid var(--ds-border);
+}
+.nb-empty { margin: 0; padding-block: var(--ds-space-md); color: var(--muted); text-align: center; }
+
+.nb-list { list-style: none; margin: 0; padding: 0; max-block-size: min(60vh, 460px); overflow-y: auto; }
+.nb-list li + li { border-block-start: 1px solid var(--ds-border); }
+
+.nb-item {
+  display: grid; gap: 2px; inline-size: 100%; text-align: start;
+  padding-block: var(--ds-space-sm); padding-inline: var(--ds-space-sm);
+  background: none; border: 0; border-radius: var(--ds-radius-lg); cursor: pointer; color: var(--ds-fg);
+  font: inherit;
+}
+.nb-item:hover { background: var(--ds-app-muted-bg); }
+.nb-item:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: -2px; }
+.nb-item.is-unread .nb-title { font-weight: 700; }
+.nb-item.is-unread .nb-title::before {
+  content: ""; display: inline-block; inline-size: 8px; block-size: 8px; margin-inline-end: 6px;
+  border-radius: var(--ds-radius-pill); background: var(--ds-accent); vertical-align: middle;
+}
+.nb-title { color: var(--ds-heading); }
+.nb-body {
+  color: var(--muted); font-size: 0.86em; white-space: pre-line;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.nb-time { color: var(--muted); font-size: 0.78em; }

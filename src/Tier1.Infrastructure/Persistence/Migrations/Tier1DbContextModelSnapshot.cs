@@ -2430,6 +2430,61 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                     b.ToTable("outbox", "logs");
                 });
 
+            modelBuilder.Entity("Tier1.Domain.Notifications.InboxItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("body");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Link")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("link");
+
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("read_at");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("title");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_inbox");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_inbox_user_unread")
+                        .HasFilter("read_at IS NULL");
+
+                    b.HasIndex("UserId", "CreatedAt")
+                        .HasDatabaseName("ix_inbox_user_created_at");
+
+                    b.ToTable("inbox", "notify");
+                });
+
             modelBuilder.Entity("Tier1.Domain.Notifications.MessageTemplate", b =>
                 {
                     b.Property<string>("Key")
@@ -3403,6 +3458,16 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .HasForeignKey("TargetId")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_target_revisions_targets_target_id");
+                });
+
+            modelBuilder.Entity("Tier1.Domain.Notifications.InboxItem", b =>
+                {
+                    b.HasOne("Tier1.Domain.Identity.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_inbox_users_user_id");
                 });
 
             modelBuilder.Entity("Tier1.Domain.Organization.OrgUnit", b =>

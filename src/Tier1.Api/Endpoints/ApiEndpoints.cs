@@ -14,6 +14,7 @@ public static class ApiEndpoints
         api.MapSettings();
         api.MapTier1();
         api.MapCollection();
+        api.MapNotifications();
         return api;
     }
 }
