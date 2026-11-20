@@ -30,6 +30,10 @@ public static class DependencyInjection
         services.AddScoped<MeService>();
         services.AddScoped<RbacAdminService>();
         services.AddScoped<UsersAdminService>();
+        services.AddScoped<IamPolicy>();
+        services.AddScoped<UserAccountsService>();
+        services.AddScoped<RoleAssignmentService>();
+        services.AddScoped<UserOverridesService>();
         services.AddScoped<LogsService>();
         services.AddScoped<Settings.SettingsService>();
         services.AddScoped<IMailOutbox, Notifications.MailOutbox>();

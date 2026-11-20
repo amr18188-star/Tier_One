@@ -46,60 +46,60 @@ public static class IamEndpoints
             .RequireAnyPermission("adm.users:V", "adm.grants:V");
         users.MapGet("/{id:guid}", async (Guid id, UsersAdminService svc, CancellationToken ct) => Results.Ok(await svc.GetAsync(id, ct)))
             .RequireAnyPermission("adm.users:V", "adm.grants:V");
-        users.MapPost("/", async (CreateUserRequest req, UsersAdminService svc, CancellationToken ct) => Results.Ok(await svc.CreateAsync(req, ct)))
+        users.MapPost("/", async (CreateUserRequest req, UserAccountsService svc, CancellationToken ct) => Results.Ok(await svc.CreateAsync(req, ct)))
             .RequirePermission(Features.Users, Cap.Add);
-        users.MapPut("/{id:guid}", async (Guid id, UpdateUserRequest req, UsersAdminService svc, CancellationToken ct) =>
+        users.MapPut("/{id:guid}", async (Guid id, UpdateUserRequest req, UserAccountsService svc, CancellationToken ct) =>
         {
             await svc.UpdateAsync(id, req, ct);
             return Results.NoContent();
         }).RequirePermission(Features.Users, Cap.Edit);
-        users.MapPost("/{id:guid}/deactivate", async (Guid id, ReasonRequest req, UsersAdminService svc, CancellationToken ct) =>
+        users.MapPost("/{id:guid}/deactivate", async (Guid id, ReasonRequest req, UserAccountsService svc, CancellationToken ct) =>
         {
             await svc.DeactivateAsync(id, req.Reason, ct);
             return Results.NoContent();
         }).RequirePermission(Features.Users, Cap.Delete);
-        users.MapPost("/{id:guid}/reactivate", async (Guid id, ReasonRequest req, UsersAdminService svc, CancellationToken ct) =>
+        users.MapPost("/{id:guid}/reactivate", async (Guid id, ReasonRequest req, UserAccountsService svc, CancellationToken ct) =>
         {
             await svc.ReactivateAsync(id, req.Reason, ct);
             return Results.NoContent();
         }).RequirePermission(Features.Users, Cap.Edit);
-        users.MapPost("/{id:guid}/unlock", async (Guid id, ReasonRequest req, UsersAdminService svc, CancellationToken ct) =>
+        users.MapPost("/{id:guid}/unlock", async (Guid id, ReasonRequest req, UserAccountsService svc, CancellationToken ct) =>
         {
             await svc.UnlockAsync(id, req.Reason, ct);
             return Results.NoContent();
         }).RequirePermission(Features.Users, Cap.Edit);
-        users.MapPost("/{id:guid}/reset-mfa", async (Guid id, ReasonRequest req, UsersAdminService svc, CancellationToken ct) =>
+        users.MapPost("/{id:guid}/reset-mfa", async (Guid id, ReasonRequest req, UserAccountsService svc, CancellationToken ct) =>
         {
             await svc.ResetMfaAsync(id, req.Reason, ct);
             return Results.NoContent();
         }).RequirePermission(Features.Users, Cap.Edit);
-        users.MapPost("/{id:guid}/temporary-password", async (Guid id, ReasonRequest req, UsersAdminService svc, CancellationToken ct) => Results.Ok(await svc.SetTemporaryPasswordAsync(id, req.Reason, ct)))
+        users.MapPost("/{id:guid}/temporary-password", async (Guid id, ReasonRequest req, UserAccountsService svc, CancellationToken ct) => Results.Ok(await svc.SetTemporaryPasswordAsync(id, req.Reason, ct)))
             .RequireSpecial(Features.Users, Specials.SetPassword);
 
         // ----- الإسناد والاستثناءات والصلاحيات الفعلية -----
         users.MapGet("/{id:guid}/effective", async (Guid id, UsersAdminService svc, CancellationToken ct) => Results.Ok(await svc.EffectiveAsync(id, ct)))
             .RequirePermission(Features.Grants, Cap.View);
-        users.MapPost("/{id:guid}/roles", async (Guid id, AssignRoleRequest req, UsersAdminService svc, CancellationToken ct) => Results.Ok(await svc.AssignRoleAsync(id, req, ct)))
+        users.MapPost("/{id:guid}/roles", async (Guid id, AssignRoleRequest req, RoleAssignmentService svc, CancellationToken ct) => Results.Ok(await svc.AssignRoleAsync(id, req, ct)))
             .RequirePermission(Features.Grants, Cap.Add);
-        users.MapPost("/{id:guid}/overrides", async (Guid id, AddOverrideRequest req, UsersAdminService svc, CancellationToken ct) => Results.Ok(await svc.AddOverrideAsync(id, req, ct)))
+        users.MapPost("/{id:guid}/overrides", async (Guid id, AddOverrideRequest req, UserOverridesService svc, CancellationToken ct) => Results.Ok(await svc.AddOverrideAsync(id, req, ct)))
             .RequirePermission(Features.Grants, Cap.Add);
-        iam.MapPut("/assignments/{id:guid}", async (Guid id, UpdateAssignmentRequest req, UsersAdminService svc, CancellationToken ct) =>
+        iam.MapPut("/assignments/{id:guid}", async (Guid id, UpdateAssignmentRequest req, RoleAssignmentService svc, CancellationToken ct) =>
         {
             await svc.UpdateAssignmentAsync(id, req, ct);
             return Results.NoContent();
         }).RequirePermission(Features.Grants, Cap.Edit);
         // اعتماد إسناد دور المدير الأعلى: للمدير الأعلى وحده، والخدمة تمنع الطالب ومن يتبعه.
-        iam.MapPost("/assignments/{id:guid}/approve", async (Guid id, UsersAdminService svc, CancellationToken ct) =>
+        iam.MapPost("/assignments/{id:guid}/approve", async (Guid id, RoleAssignmentService svc, CancellationToken ct) =>
         {
             await svc.ApproveAssignmentAsync(id, ct);
             return Results.NoContent();
         }).RequireSpecial(Features.Roles, Specials.Approve);
-        iam.MapPost("/assignments/{id:guid}/revoke", async (Guid id, ReasonRequest req, UsersAdminService svc, CancellationToken ct) =>
+        iam.MapPost("/assignments/{id:guid}/revoke", async (Guid id, ReasonRequest req, RoleAssignmentService svc, CancellationToken ct) =>
         {
             await svc.RevokeAssignmentAsync(id, req.Reason, ct);
             return Results.NoContent();
         }).RequirePermission(Features.Grants, Cap.Delete);
-        iam.MapPost("/overrides/{id:guid}/revoke", async (Guid id, ReasonRequest req, UsersAdminService svc, CancellationToken ct) =>
+        iam.MapPost("/overrides/{id:guid}/revoke", async (Guid id, ReasonRequest req, UserOverridesService svc, CancellationToken ct) =>
         {
             await svc.RevokeOverrideAsync(id, req.Reason, ct);
             return Results.NoContent();
