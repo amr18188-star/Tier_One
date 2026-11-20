@@ -4,32 +4,26 @@ using Tier1.Application.Abstractions;
 namespace Tier1.Tests;
 
 /// <summary>
-/// BE-14: module boundaries in the data-access ports. Each module writes through its own store and reads others through
-/// <see cref="IReadModel"/>. The shared <see cref="IAppDb"/> is the migration path: the list of services still on it may only shrink.
+/// BE-14: module boundaries in the data-access ports. Each module writes only its own tables through its store, and reads other
+/// modules through <see cref="IReadModel"/> (untracked, so what it reads cannot be saved). There is no port to the whole database.
 /// </summary>
 public sealed class ModuleBoundaryTests
 {
-    private static readonly Assembly Application = typeof(IAppDb).Assembly;
+    private static readonly Assembly Application = typeof(IUnitOfWork).Assembly;
 
-    /// <summary>Services not yet moved to module stores. Remove a name when its service moves; never add one.</summary>
-    private static readonly HashSet<string> StillOnSharedDb =
-    [
-        "AccessService", "AuditLog", "HomeService", "IamPolicy", "LogsService", "MeService",
-        "RbacAdminService", "RoleAssignmentService", "SessionService", "SignInService",
-        "UserAccountsService", "UserOverridesService", "UsersAdminService",
-    ];
-
-    /// <summary>Each module store, and the namespace of the only module that may write through it.</summary>
-    private static readonly Dictionary<Type, string> Owners = new()
+    /// <summary>Each module store, and the namespaces of the module that may write through it.</summary>
+    private static readonly Dictionary<Type, string[]> Owners = new()
     {
-        [typeof(INotificationStore)] = "Tier1.Application.Notifications",
-        [typeof(ISettingsStore)] = "Tier1.Application.Settings",
-        [typeof(IEventStore)] = "Tier1.Application.Integration",
-        [typeof(IScorecardStore)] = "Tier1.Application.Scorecard",
-        [typeof(ICollectionStore)] = "Tier1.Application.Collection",
-        [typeof(IKpiStore)] = "Tier1.Application.Kpi",
-        [typeof(IOrgStore)] = "Tier1.Application.Organization",
-        [typeof(IStructureStore)] = "Tier1.Application.Structure",
+        [typeof(INotificationStore)] = ["Tier1.Application.Notifications"],
+        [typeof(ISettingsStore)] = ["Tier1.Application.Settings"],
+        [typeof(IEventStore)] = ["Tier1.Application.Integration"],
+        [typeof(IScorecardStore)] = ["Tier1.Application.Scorecard"],
+        [typeof(ICollectionStore)] = ["Tier1.Application.Collection"],
+        [typeof(IKpiStore)] = ["Tier1.Application.Kpi"],
+        [typeof(IOrgStore)] = ["Tier1.Application.Organization"],
+        [typeof(IStructureStore)] = ["Tier1.Application.Structure"],
+        [typeof(IIdentityStore)] = ["Tier1.Application.Access", "Tier1.Application.Accounts"],
+        [typeof(IAuditStore)] = ["Tier1.Application.Auditing", "Tier1.Application.Logs"],
     };
 
     private static IEnumerable<(Type Type, Type Parameter)> ConstructorDependencies() =>
@@ -47,22 +41,28 @@ public sealed class ModuleBoundaryTests
     }
 
     [Fact]
-    public void Services_on_the_shared_database_port_only_shrink()
+    public void Every_module_store_has_an_owner_and_the_whole_database_has_no_port()
     {
-        var onShared = ConstructorDependencies().Where(d => d.Parameter == typeof(IAppDb)).Select(d => d.Type.Name).ToHashSet();
-        var added = onShared.Except(StillOnSharedDb).Order(StringComparer.Ordinal).ToList();
-        Assert.True(added.Count == 0,
-            $"New services on IAppDb: {string.Join(", ", added)}. Write through the module's store and read other modules through IReadModel.");
-        var moved = StillOnSharedDb.Except(onShared).Order(StringComparer.Ordinal).ToList();
-        Assert.True(moved.Count == 0, $"No longer on IAppDb, so remove them from the list: {string.Join(", ", moved)}.");
+        var stores = Application.GetTypes().Where(t => t.IsInterface && t != typeof(IUnitOfWork) && typeof(IUnitOfWork).IsAssignableFrom(t)).ToList();
+        Assert.Empty(stores.Except(Owners.Keys).Select(t => t.Name));
+        Assert.Null(Application.GetType("Tier1.Application.Abstractions.IAppDb"));
     }
 
     [Fact]
     public void A_module_store_is_used_only_by_its_own_module()
     {
         var foreign = ConstructorDependencies()
-            .Where(d => Owners.TryGetValue(d.Parameter, out var owner) && !(d.Type.Namespace ?? "").StartsWith(owner, StringComparison.Ordinal))
+            .Where(d => Owners.TryGetValue(d.Parameter, out var owners) && !owners.Any(o => (d.Type.Namespace ?? "").StartsWith(o, StringComparison.Ordinal)))
             .Select(d => $"{d.Type.FullName} uses {d.Parameter.Name}").ToList();
         Assert.True(foreign.Count == 0, "A module writes only its own tables:\n" + string.Join("\n", foreign));
+    }
+
+    [Fact]
+    public void A_service_writes_through_one_module_store()
+    {
+        var many = ConstructorDependencies().Where(d => Owners.ContainsKey(d.Parameter)).GroupBy(d => d.Type)
+            .Where(g => g.Select(d => d.Parameter).Distinct().Count() > 1)
+            .Select(g => $"{g.Key.FullName}: {string.Join(", ", g.Select(d => d.Parameter.Name))}").ToList();
+        Assert.True(many.Count == 0, "A service writing two modules' tables belongs to neither; split it or raise an event:\n" + string.Join("\n", many));
     }
 }

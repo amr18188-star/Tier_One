@@ -126,3 +126,38 @@ public interface IStructureStore : IUnitOfWork
 
     DbSet<Domain.Structure.IndustryPartner> IndustryPartners { get; }
 }
+
+/// <summary>
+/// BE-14: the tables the identity and access module owns (namespaces Access and Accounts): accounts and sessions, roles with
+/// their grants, role assignments, individual overrides, proposed role changes, and the access version.
+/// </summary>
+public interface IIdentityStore : IUnitOfWork
+{
+    DbSet<Domain.Identity.AppUser> Users { get; }
+
+    DbSet<Domain.Identity.UserSession> Sessions { get; }
+
+    DbSet<Domain.Access.Role> Roles { get; }
+
+    DbSet<Domain.Access.RoleGrant> RoleGrants { get; }
+
+    DbSet<Domain.Access.UserRole> UserRoles { get; }
+
+    DbSet<Domain.Access.UserOverride> UserOverrides { get; }
+
+    DbSet<Domain.Access.RbacChange> RbacChanges { get; }
+
+    DbSet<Domain.Access.AccessState> AccessStates { get; }
+}
+
+/// <summary>BE-14: the tables the audit log owns (namespaces Auditing and Logs): the audit outbox and the hash chain state, anchors and checkpoints.</summary>
+public interface IAuditStore : IUnitOfWork
+{
+    DbSet<Domain.Logging.OutboxEvent> Outbox { get; }
+
+    DbSet<Domain.Logging.ChainState> ChainStates { get; }
+
+    DbSet<Domain.Logging.ChainAnchor> ChainAnchors { get; }
+
+    DbSet<Domain.Logging.ChainCheckpoint> ChainCheckpoints { get; }
+}

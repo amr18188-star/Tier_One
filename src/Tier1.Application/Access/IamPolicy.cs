@@ -22,7 +22,7 @@ namespace Tier1.Application.Access;
 /// </list>
 /// A refusal is audited before it is thrown.
 /// </summary>
-public sealed class IamPolicy(IAppDb db, IClock clock, ICurrentUser current, IAccessService access, ISessionService sessions, IAuditLog audit, IOptions<AuthOptions> authOptions)
+public sealed class IamPolicy(IIdentityStore db, IClock clock, ICurrentUser current, IAccessService access, ISessionService sessions, IAuditLog audit, IOptions<AuthOptions> authOptions)
 {
     public const int MinimumSuperAdmins = 2;
 

@@ -40,7 +40,7 @@ public sealed record AddOverrideRequest(string Feature, string Caps, IReadOnlyLi
 /// permissions. ARCH-2: changes are in <see cref="UserAccountsService"/>, <see cref="RoleAssignmentService"/> and <see cref="UserOverridesService"/>,
 /// under the rules of <see cref="IamPolicy"/>.
 /// </summary>
-public sealed class UsersAdminService(IAppDb db, IClock clock, ICurrentUser current, IAccessService access)
+public sealed class UsersAdminService(IIdentityStore db, IClock clock, ICurrentUser current, IAccessService access)
 {
     public async Task<IReadOnlyList<UserListItemDto>> ListAsync(string? search, CancellationToken ct)
     {
@@ -89,5 +89,5 @@ public sealed class UsersAdminService(IAppDb db, IClock clock, ICurrentUser curr
     }
 
     private Task<Dictionary<Guid, PersonDto>> PeopleAsync(IEnumerable<Guid?> ids, CancellationToken ct) =>
-        People.LookupAsync(db, ids.Where(i => i is not null).Select(i => i!.Value), ct);
+        People.LookupAsync(db.Users, ids.Where(i => i is not null).Select(i => i!.Value), ct);
 }

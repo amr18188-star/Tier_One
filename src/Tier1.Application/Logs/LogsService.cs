@@ -80,7 +80,7 @@ public sealed record ExportFile(string FileName, byte[] Content);
 /// قراءة السجلات بصلاحيات المصفوفة: لا إمكانية تعديل أو إضافة أو حذف لأي دور (SOD-12).
 /// النطاق «الكل» بلا قيد، و«نطاقه» وحدات الإسناد، و«المسند إليه» و«سجلاته» أحداث المستخدم نفسه.
 /// </summary>
-public sealed class LogsService(IAppDb db, IClock clock, ICurrentUser current, IAccessService access, ILogReader reader, IChainVerifier verifier, IAuditLog audit)
+public sealed class LogsService(IAuditStore db, IClock clock, ICurrentUser current, IAccessService access, ILogReader reader, IChainVerifier verifier, IAuditLog audit)
 {
     public const int MaxExportRows = 10_000;
 

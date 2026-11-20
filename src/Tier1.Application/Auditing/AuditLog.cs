@@ -60,7 +60,7 @@ public interface IOutboxSignal
     void Notify();
 }
 
-public sealed class AuditLog(IAppDb db, IClock clock, ICurrentUser current, IAccessCache accessCache, IOutboxDirectWriter direct, IOutboxSignal signal) : IAuditLog
+public sealed class AuditLog(IAuditStore db, IClock clock, ICurrentUser current, IAccessCache accessCache, IOutboxDirectWriter direct, IOutboxSignal signal) : IAuditLog
 {
     private static readonly string AppVersion =
         typeof(AuditLog).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0] ?? "1.0.0";

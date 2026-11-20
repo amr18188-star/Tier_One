@@ -13,7 +13,7 @@ using Tier1.Domain.Identity;
 namespace Tier1.Application.Access;
 
 /// <summary>ARCH-2: individual allow and deny overrides on a staff account.</summary>
-public sealed class UserOverridesService(IAppDb db, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, IamPolicy policy, UsersAdminService users)
+public sealed class UserOverridesService(IIdentityStore db, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, IamPolicy policy, UsersAdminService users)
 {
     public async Task<OverrideDto> AddOverrideAsync(Guid userId, AddOverrideRequest req, CancellationToken ct)
     {

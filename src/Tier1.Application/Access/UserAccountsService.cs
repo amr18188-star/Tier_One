@@ -13,7 +13,7 @@ using Tier1.Domain.Identity;
 namespace Tier1.Application.Access;
 
 /// <summary>ARCH-2: staff accounts: create, edit, deactivate and reactivate, unlock, reset two-step verification, set a temporary password.</summary>
-public sealed class UserAccountsService(IAppDb db, IClock clock, ICurrentUser current, IAccessService access, IPasswordHasher hasher, ISessionService sessions, IAuditLog audit, IamPolicy policy, IIamLock iamLock)
+public sealed class UserAccountsService(IIdentityStore db, IClock clock, ICurrentUser current, IAccessService access, IPasswordHasher hasher, ISessionService sessions, IAuditLog audit, IamPolicy policy, IIamLock iamLock)
 {
     public async Task<TemporaryPasswordDto> CreateAsync(CreateUserRequest req, CancellationToken ct)
     {

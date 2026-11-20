@@ -23,7 +23,7 @@ public sealed record HomeDto(
 /// الصفحة الأولى: «مطلوب منك» بحسب صلاحيات المستخدم ونطاقه، ثم الصورة العامة للقاموس والتعارضات والهيكل.
 /// كل مهمة تحمل رابطًا مباشرًا، فيصل المستخدم إلى ما يريده بنقرة.
 /// </summary>
-public sealed class HomeService(IAppDb db, ICurrentUser current, IAccessService access, DictionaryService dictionary, StructureService structure, Collection.FormsService forms)
+public sealed class HomeService(IReadModel read, ICurrentUser current, IAccessService access, DictionaryService dictionary, StructureService structure, Collection.FormsService forms)
 {
     public async Task<HomeDto> GetAsync(CancellationToken ct)
     {
@@ -45,7 +45,7 @@ public sealed class HomeService(IAppDb db, ICurrentUser current, IAccessService 
                 tasks.Add(new("forms_review", "نماذج تنتظر مراجعتك", "راجع القيم والأدلة، ثم اعتمد أو أعد بملاحظات.", review, "/forms", "brand"));
         }
 
-        var versions = await db.IndicatorVersions.AsNoTracking().Where(v => v.Status == DefinitionStatus.Draft || v.Status == DefinitionStatus.UnderReview).ToListAsync(ct);
+        var versions = await read.Query<Domain.Kpi.IndicatorVersion>().AsNoTracking().Where(v => v.Status == DefinitionStatus.Draft || v.Status == DefinitionStatus.UnderReview).ToListAsync(ct);
         if (me.Has(Features.Dictionary, Cap.Edit))
         {
             var returned = versions.Count(v => v.Status == DefinitionStatus.Draft && v.ReturnNote != null);
@@ -66,7 +66,7 @@ public sealed class HomeService(IAppDb db, ICurrentUser current, IAccessService 
         }
         if (me.HasSpecial(Features.Cycles, Collection.ApprovalRules.ApproveReopen))
         {
-            var reopen = await db.ReopenRequests.AsNoTracking().Where(r => r.Status == Domain.Collection.ReopenRequestStatus.Pending && r.RequestedBy != current.UserId)
+            var reopen = await read.Query<Domain.Collection.ReopenRequest>().AsNoTracking().Where(r => r.Status == Domain.Collection.ReopenRequestStatus.Pending && r.RequestedBy != current.UserId)
                 .Select(r => r.SubmissionId).ToListAsync(ct);
             if (reopen.Count > 0)
                 tasks.Add(new("reopen_requests", "طلبات إعادة فتح نماذج معتمدة", "اعتمدها برقم المحضر، أو ارفضها بسبب.", reopen.Count,
@@ -74,12 +74,12 @@ public sealed class HomeService(IAppDb db, ICurrentUser current, IAccessService 
         }
         if (me.HasSpecial(Features.Targets, Specials.Approve))
         {
-            var proposed = await db.Targets.CountAsync(t => t.Status == TargetStatus.Proposed && t.Kind != TargetKind.EachCollege && t.UpdatedBy != current.UserId, ct);
+            var proposed = await read.Query<Domain.Kpi.IndicatorTarget>().CountAsync(t => t.Status == TargetStatus.Proposed && t.Kind != TargetKind.EachCollege && t.UpdatedBy != current.UserId, ct);
             if (proposed > 0)
                 tasks.Add(new("targets_proposed", "مستهدفات مقترحة تنتظر الاعتماد", "تعتمد بعد حسم تعارضاتها.", proposed, "/indicators", "info"));
         }
 
-        var conflicts = await db.Conflicts.AsNoTracking().Select(c => new { c.Status, c.Severity }).ToListAsync(ct);
+        var conflicts = await read.Query<Domain.Kpi.DataConflict>().AsNoTracking().Select(c => new { c.Status, c.Severity }).ToListAsync(ct);
         if (me.Has(Features.Conflicts, Cap.Edit))
         {
             var open = conflicts.Count(c => c.Status == ConflictStatus.Open);
@@ -108,7 +108,7 @@ public sealed class HomeService(IAppDb db, ICurrentUser current, IAccessService 
             }
         }
 
-        var all = await db.IndicatorVersions.AsNoTracking().Select(v => new { v.IndicatorId, v.Status }).ToListAsync(ct);
+        var all = await read.Query<Domain.Kpi.IndicatorVersion>().AsNoTracking().Select(v => new { v.IndicatorId, v.Status }).ToListAsync(ct);
         var byIndicator = all.GroupBy(v => v.IndicatorId).Select(g => g.Any(v => v.Status == DefinitionStatus.Approved) && !g.Any(v => v.Status is DefinitionStatus.Draft or DefinitionStatus.UnderReview)
             ? DefinitionStatus.Approved
             : g.Any(v => v.Status == DefinitionStatus.UnderReview) ? DefinitionStatus.UnderReview : DefinitionStatus.Draft).ToList();

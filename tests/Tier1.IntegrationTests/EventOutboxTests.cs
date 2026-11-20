@@ -48,7 +48,7 @@ public sealed class EventOutboxTests(Tier1App app)
         await using (var scope = app.Services.CreateAsyncScope())
         {
             scope.ServiceProvider.GetRequiredService<IEventOutbox>().Add(new ProbeEvent(tag), "probe", Guid.NewGuid());
-            var db = scope.ServiceProvider.GetRequiredService<IAppDb>();
+            var db = scope.ServiceProvider.GetRequiredService<Tier1.Infrastructure.Persistence.Tier1DbContext>();
             id = db.ChangeTracker.Entries<DomainEventRecord>().Single().Entity.Id;
             await db.SaveChangesAsync();
         }

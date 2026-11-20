@@ -23,7 +23,7 @@ public interface IEventSignal
 }
 
 /// <summary>
-/// Handles one event type after the commit. It writes through the scoped <see cref="IAppDb"/> and does not save: the dispatcher saves
+/// Handles one event type after the commit. It writes through its module's scoped store and does not save: the dispatcher saves
 /// its writes together with the record that it ran, so a handler is never applied twice. A handler that calls an outside system
 /// must make that call idempotent itself.
 /// </summary>

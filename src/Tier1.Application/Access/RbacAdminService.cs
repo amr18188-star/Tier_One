@@ -12,7 +12,7 @@ namespace Tier1.Application.Access;
 /// إدارة الأدوار ومصفوفة الصلاحيات. تعديل منح دور لا يسري مباشرة: ينشئ طلبًا بالفرق والسبب،
 /// يعتمده مدير أعلى غير الذي طلبه (SOD-10)، ثم يرتفع رقم إصدار الصلاحيات فيسري خلال دقيقة.
 /// </summary>
-public sealed partial class RbacAdminService(IAppDb db, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit)
+public sealed partial class RbacAdminService(IIdentityStore db, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -366,7 +366,7 @@ public sealed partial class RbacAdminService(IAppDb db, IClock clock, ICurrentUs
         };
 
     private Task<Dictionary<Guid, PersonDto>> PeopleAsync(IEnumerable<Guid> ids, CancellationToken ct) =>
-        People.LookupAsync(db, ids.Where(i => i != Guid.Empty), ct);
+        People.LookupAsync(db.Users, ids.Where(i => i != Guid.Empty), ct);
 
     private static RoleSummaryDto Summary(Role r, int holders, Guid? pending) =>
         new(r.Id, r.Code, Lang.Name(r.NameAr, r.NameEn), r.NameEn, r.DescriptionAr, r.IsSystem, r.IsLocked, r.GrantsVersion, holders, pending);

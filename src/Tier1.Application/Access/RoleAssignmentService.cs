@@ -16,7 +16,7 @@ namespace Tier1.Application.Access;
 /// ARCH-2: role assignments: assign, approve a super administrator assignment, edit scope and end date, revoke.
 /// Changes that can touch the number of super administrators run in a transaction under the IAM lock.
 /// </summary>
-public sealed class RoleAssignmentService(IAppDb db, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, IamPolicy policy, IIamLock iamLock, UsersAdminService users)
+public sealed class RoleAssignmentService(IIdentityStore db, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, IamPolicy policy, IIamLock iamLock, UsersAdminService users)
 {
     public async Task<AssignmentDto> AssignRoleAsync(Guid userId, AssignRoleRequest req, CancellationToken ct)
     {

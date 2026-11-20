@@ -49,7 +49,7 @@ public interface IAccessService : IAccessCache
     Task BumpVersionAsync(CancellationToken ct);
 }
 
-public sealed class AccessService(IAppDb db, IClock clock, ICurrentUser current, IMemoryCache cache, AccessVersion version) : IAccessService
+public sealed class AccessService(IIdentityStore db, IReadModel read, IClock clock, ICurrentUser current, IMemoryCache cache, AccessVersion version) : IAccessService
 {
     /// <summary>الحساب يخبأ دقيقة على الأكثر، فينتهي الإسناد المؤقت في موعده حتى بلا تعديل.</summary>
     private static readonly TimeSpan CacheFor = TimeSpan.FromSeconds(60);
@@ -76,7 +76,7 @@ public sealed class AccessService(IAppDb db, IClock clock, ICurrentUser current,
                 .Where(o => o.UserId == userId && o.RevokedAt == null && o.ValidFrom <= now && (o.ValidTo == null || o.ValidTo > now))
                 .ToListAsync(ct);
             var wide = assignments.Any(a => a.ScopeValues.Count > 0)
-                ? await db.OrgUnits.AsNoTracking().Where(u => u.ViewsWholeUniversity && u.Active).Select(u => u.Code).ToListAsync(ct)
+                ? await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().Where(u => u.ViewsWholeUniversity && u.Active).Select(u => u.Code).ToListAsync(ct)
                 : [];
             access = EffectiveAccessCalculator.Compute(
                 userId,

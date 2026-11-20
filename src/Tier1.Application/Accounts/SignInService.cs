@@ -17,7 +17,7 @@ public sealed record LoginResult(string Token, DateTimeOffset ExpiresAt, string 
 public sealed record MfaSetup(string Secret, string OtpAuthUri, string QrDataUri);
 
 public sealed class SignInService(
-    IAppDb db,
+    IIdentityStore db,
     IClock clock,
     ICurrentUser current,
     IPasswordHasher hasher,

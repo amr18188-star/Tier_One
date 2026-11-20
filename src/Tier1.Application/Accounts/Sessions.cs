@@ -65,7 +65,7 @@ public interface ISessionService
 /// <summary>
 /// جلسات معتمة: الرمز عشوائي والقاعدة تحفظ بصمته فقط. التحقق يخبأ 30 ثانية؛ الإلغاء يمسح الخبيئة فورًا لهذه النسخة.
 /// </summary>
-public sealed class SessionService(IAppDb db, IClock clock, ICurrentUser current, IMemoryCache cache, IOptions<AuthOptions> options) : ISessionService
+public sealed class SessionService(IIdentityStore db, IClock clock, ICurrentUser current, IMemoryCache cache, IOptions<AuthOptions> options) : ISessionService
 {
     private static readonly TimeSpan CacheFor = TimeSpan.FromSeconds(30);
 

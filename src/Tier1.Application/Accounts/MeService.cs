@@ -9,7 +9,7 @@ public sealed record MeDto(Guid Id, string Email, string Name, string FullNameAr
 
 public sealed record SessionDto(Guid Id, DateTimeOffset CreatedAt, DateTimeOffset LastSeenAt, string? Ip, string? UserAgent, bool Current);
 
-public sealed class MeService(IAppDb db, ICurrentUser current, IAccessService access)
+public sealed class MeService(IIdentityStore db, ICurrentUser current, IAccessService access)
 {
     public async Task<MeDto> GetAsync(bool mfaPending, CancellationToken ct)
     {

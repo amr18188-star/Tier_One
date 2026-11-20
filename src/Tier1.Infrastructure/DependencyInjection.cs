@@ -26,7 +26,6 @@ public static class DependencyInjection
         var pg = config.GetConnectionString("Tier1") is { Length: > 0 } p ? p : throw new InvalidOperationException("ConnectionStrings:Tier1 is required.");
         services.AddNpgsqlDataSource(pg);
         services.AddDbContext<Tier1DbContext>((sp, o) => o.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>(), x => x.MigrationsHistoryTable("__ef_migrations", "iam")).UseSnakeCaseNamingConvention());
-        services.AddScoped<IAppDb>(sp => sp.GetRequiredService<Tier1DbContext>());
         services.AddScoped<IReadModel>(sp => sp.GetRequiredService<Tier1DbContext>());
         services.AddScoped<INotificationStore>(sp => sp.GetRequiredService<Tier1DbContext>());
         services.AddScoped<ISettingsStore>(sp => sp.GetRequiredService<Tier1DbContext>());
@@ -36,6 +35,8 @@ public static class DependencyInjection
         services.AddScoped<IKpiStore>(sp => sp.GetRequiredService<Tier1DbContext>());
         services.AddScoped<IOrgStore>(sp => sp.GetRequiredService<Tier1DbContext>());
         services.AddScoped<IStructureStore>(sp => sp.GetRequiredService<Tier1DbContext>());
+        services.AddScoped<IIdentityStore>(sp => sp.GetRequiredService<Tier1DbContext>());
+        services.AddScoped<IAuditStore>(sp => sp.GetRequiredService<Tier1DbContext>());
         services.AddScoped<ITransactionLock, PostgresTransactionLock>();
         services.AddScoped<IIamLock, PostgresIamLock>();
 
