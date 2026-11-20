@@ -99,10 +99,12 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
         if (status is { } wanted) forms = forms.Where(s => s.Status == wanted);
         var subs = await forms.ToListAsync(ct);
         var subIds = subs.Select(s => s.Id).ToList();
-        var editors = await db.SubmittedValues.AsNoTracking().Where(v => subIds.Contains(v.SubmissionId) && v.EditedBy == current.UserId)
-            .Select(v => v.SubmissionId).Distinct().ToListAsync(ct);
-        var approvedByMe = await db.SubmissionEvents.AsNoTracking().Where(e => subIds.Contains(e.SubmissionId) && e.By == current.UserId && e.Action == SubmissionAction.Approved)
-            .Select(e => e.SubmissionId).Distinct().ToListAsync(ct);
+        var userId = current.UserId!.Value;
+        var editedByMe = (await db.SubmittedValues.AsNoTracking().Where(v => subIds.Contains(v.SubmissionId) && v.EditedBy == userId)
+            .Select(v => v.SubmissionId).Distinct().ToListAsync(ct)).ToHashSet();
+        // ARCH-6/CR-4: the user's own approvals, judged by the same round rule as the form page and the server check.
+        var approvedByMe = (await db.SubmissionEvents.AsNoTracking().Where(e => subIds.Contains(e.SubmissionId) && e.By == userId && e.Action == SubmissionAction.Approved)
+            .ToListAsync(ct)).ToLookup(e => e.SubmissionId);
         // D4: طلبات إعادة الفتح المعلقة تنتظر من يقررها (اللجنة العليا)، ما لم يكن مقدمها.
         var reopenPending = me.HasSpecial(Features.Cycles, ApprovalRules.ApproveReopen)
             ? (await db.ReopenRequests.AsNoTracking().Where(r => subIds.Contains(r.SubmissionId) && r.Status == ReopenRequestStatus.Pending && r.RequestedBy != current.UserId)
@@ -112,8 +114,7 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
 
         bool Waiting(Submission s) => cycles[s.CycleId].Status == CycleStatus.Open && (
             (s.IsEditable && edit.Covers(units[s.UnitId]) && me.Has(Feature, Cap.Edit))
-            || (s.Status == SubmissionStatus.InReview && ApprovalRules.MayReview(me, units[s.UnitId], s.Step)
-                && !editors.Contains(s.Id) && !approvedByMe.Contains(s.Id))
+            || ApprovalRules.CanDecide(me, units[s.UnitId], s, userId, editedByMe.Contains(s.Id) ? [userId] : [], approvedByMe[s.Id])
             || reopenPending.Contains(s.Id));
         var listed = subs.Select(s => (Form: s, Waiting: Waiting(s))).Where(x => !awaitingMe || x.Waiting).ToList();
 
@@ -427,8 +428,8 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
         if (ctx.Submission.Status != SubmissionStatus.InReview)
             throw new DomainException("not_in_review", "النموذج لا ينتظر مراجعة الآن.", "The form is not waiting for review.", 409);
         if (!ApprovalRules.MayReview(ctx.Me, ctx.Unit, ctx.Submission.Step, allowDirect)) throw DomainException.Forbidden();
-        var history = await db.SubmissionEvents.AsNoTracking().Where(e => e.SubmissionId == ctx.Submission.Id && e.At > (ctx.Submission.SubmittedAt ?? DateTimeOffset.MinValue).AddSeconds(-1)).ToListAsync(ct);
-        ApprovalRules.EnsureSeparation(current.UserId!.Value, ctx.Values.Values.Select(v => v.EditedBy), history);
+        var history = await db.SubmissionEvents.AsNoTracking().Where(e => e.SubmissionId == ctx.Submission.Id && e.Action == SubmissionAction.Approved).ToListAsync(ct);
+        ApprovalRules.EnsureSeparation(current.UserId!.Value, ctx.Values.Values.Select(v => v.EditedBy), history, ctx.Submission.SubmittedAt);
     }
 
     /// <summary>BE-3: whoever acts next is told after the commit, by the form.moved handler, not inside this request.</summary>
@@ -442,7 +443,6 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
     {
         var s = ctx.Submission;
         var from = s.Step;
-        var direct = action == SubmissionAction.Approved && from == ApprovalStep.DepartmentReview && to == ApprovalStep.Dean;
         db.SubmissionEvents.Add(new SubmissionEvent
         {
             SubmissionId = s.Id, Action = action, FromStep = from, ToStep = to, By = current.UserId!.Value, ByName = current.DisplayName, At = clock.UtcNow, Note = note,
@@ -455,16 +455,7 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
             _ => SubmissionStatus.InReview,
         };
         if (s.Status == SubmissionStatus.Approved) s.ApprovedAt = clock.UtcNow;
-        var (verb, ar, en) = action switch
-        {
-            SubmissionAction.Submitted => ("dc.form_submitted", "إرسال نموذج جهة للمراجعة", "Submitted a unit form"),
-            SubmissionAction.Approved when direct => ("dc.form_approved_department_directly", "اعتماد مباشر لنموذج القسم من لجنة الكلية", "College committee approved a department form directly"),
-            SubmissionAction.Approved when to == ApprovalStep.Quality && from is ApprovalStep.DepartmentReview or ApprovalStep.CollegeCommittee
-                => ("dc.form_approved_as_dean_directly", "اعتماد مباشر من العميد وإحالة للجودة المركزية", "Dean approved the form directly and forwarded it to central quality"),
-            SubmissionAction.Approved => (to == ApprovalStep.Done ? "dc.form_approved_final" : "dc.form_approved", to == ApprovalStep.Done ? "الاعتماد النهائي لنموذج جهة" : "اعتماد خطوة في نموذج جهة", "Approved a unit form step"),
-            SubmissionAction.Returned => ("dc.form_returned", "إعادة نموذج جهة للتصحيح", "Returned a unit form"),
-            _ => ("dc.form_reopened", "إعادة فتح نموذج معتمد", "Reopened an approved form"),
-        };
+        var (verb, ar, en) = ApprovalRules.AuditVerb(action, from, to);
         audit.Record(AuditEvents.Audit("dc", Feature, verb, ar, en) with
         {
             Target = new AuditTarget("submission", s.Id.ToString(), ctx.Unit.Code, ctx.Unit.Code),
@@ -554,10 +545,7 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
 
         var cycleOpen = ctx.Cycle.Status == CycleStatus.Open;
         var canEdit = cycleOpen && s.IsEditable && ctx.Me.Has(Feature, Cap.Edit) && UnitScope.For(ctx.Me, Feature, Cap.Edit).Covers(ctx.Unit);
-        var sinceSubmit = events.Where(e => e.At >= (s.SubmittedAt ?? DateTimeOffset.MaxValue).AddSeconds(-1)).ToList();
-        var canReview = cycleOpen && s.Status == SubmissionStatus.InReview && ApprovalRules.MayReview(ctx.Me, ctx.Unit, s.Step)
-                        && ctx.Values.Values.All(v => v.EditedBy != current.UserId)
-                        && !sinceSubmit.Any(e => e.Action == SubmissionAction.Approved && e.By == current.UserId);
+        var canReview = cycleOpen && ApprovalRules.CanDecide(ctx.Me, ctx.Unit, s, current.UserId!.Value, ctx.Values.Values.Select(v => v.EditedBy), events);
         // D4: طلب إعادة الفتح ممن يملكه ولا طلب معلق، وقرار الطلب المعلق للجنة العليا ما لم يكن مقدمه.
         var (reopen, pendingBy, before) = await ReopenStateAsync(s, ct);
         var canReopen = cycleOpen && s.Status == SubmissionStatus.Approved && ctx.Me.HasSpecial(Features.Cycles, ApprovalRules.Reopen) && pendingBy is null;

@@ -343,7 +343,8 @@ public sealed class ResultsService(IAppDb db, IAccessService access, IAuditLog a
             Approved = values.ToDictionary(v => (unitOf[v.SubmissionId], v.IndicatorId)),
             Targets = targets.ToLookup(t => t.IndicatorId),
             PlanStart = indicators.Values.ToDictionary(i => i.Id, i => i.PlanStartYear),
-            Root = units.Values.Where(u => u.ParentId == null).OrderBy(u => u.SortOrder).First(),
+            // ARCH-6: the university is the unit of kind University, as everywhere else (not "the first root").
+            Root = units.Values.First(u => u.Kind == OrgUnitKind.University),
         };
     }
 

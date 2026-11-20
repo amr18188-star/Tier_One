@@ -130,6 +130,34 @@ public class CollectionRulesTests
     }
 
     [Fact]
+    public void An_approval_from_an_earlier_round_does_not_bar_the_reviewer_CR4()
+    {
+        var reviewer = Guid.NewGuid();
+        var resent = new DateTimeOffset(2026, 11, 20, 10, 0, 0, TimeSpan.Zero);
+        var earlier = new SubmissionEvent { Action = SubmissionAction.Approved, By = reviewer, At = resent.AddDays(-2) };
+        var thisRound = new SubmissionEvent { Action = SubmissionAction.Approved, By = reviewer, At = resent.AddMinutes(5) };
+        Assert.Null(ApprovalRules.SeparationBreach(reviewer, [], [earlier], resent));
+        Assert.Equal("SOD-C2", ApprovalRules.SeparationBreach(reviewer, [], [earlier, thisRound], resent));
+        // Without a submission time every approval counts, the strict reading.
+        Assert.Equal("SOD-C2", ApprovalRules.SeparationBreach(reviewer, [], [earlier], null));
+        Assert.Equal("SOD-C1", ApprovalRules.SeparationBreach(reviewer, [reviewer], [], resent));
+        ApprovalRules.EnsureSeparation(reviewer, [], [earlier], resent);
+    }
+
+    [Theory]
+    [InlineData(SubmissionAction.Submitted, ApprovalStep.Entry, ApprovalStep.CollegeCommittee, "dc.form_submitted")]
+    [InlineData(SubmissionAction.Approved, ApprovalStep.DepartmentReview, ApprovalStep.CollegeCommittee, "dc.form_approved")]
+    [InlineData(SubmissionAction.Approved, ApprovalStep.DepartmentReview, ApprovalStep.Dean, "dc.form_approved_department_directly")]
+    [InlineData(SubmissionAction.Approved, ApprovalStep.DepartmentReview, ApprovalStep.Quality, "dc.form_approved_as_dean_directly")]
+    [InlineData(SubmissionAction.Approved, ApprovalStep.CollegeCommittee, ApprovalStep.Quality, "dc.form_approved_as_dean_directly")]
+    [InlineData(SubmissionAction.Approved, ApprovalStep.Dean, ApprovalStep.Quality, "dc.form_approved")]
+    [InlineData(SubmissionAction.Approved, ApprovalStep.Quality, ApprovalStep.Done, "dc.form_approved_final")]
+    [InlineData(SubmissionAction.Returned, ApprovalStep.Dean, ApprovalStep.Entry, "dc.form_returned")]
+    [InlineData(SubmissionAction.Reopened, ApprovalStep.Done, ApprovalStep.Entry, "dc.form_reopened")]
+    public void Audit_verb_for_each_transition(SubmissionAction action, ApprovalStep from, ApprovalStep to, string verb) =>
+        Assert.Equal(verb, ApprovalRules.AuditVerb(action, from, to).Verb);
+
+    [Fact]
     public void Form_is_editable_only_at_entry_before_review()
     {
         Assert.True(new Submission { Step = ApprovalStep.Entry, Status = SubmissionStatus.Returned }.IsEditable);

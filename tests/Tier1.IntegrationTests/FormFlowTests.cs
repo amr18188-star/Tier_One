@@ -76,6 +76,33 @@ public sealed class FormFlowTests(Tier1App app, ITestOutputHelper output)
     }
 
     [Fact]
+    public async Task A_reviewer_from_the_previous_round_sees_the_resent_form_awaiting_them_CR4()
+    {
+        var t = new Scenario(output);
+        var cycle = await Flow.OpenCycleAsync(app);
+        var form = await Flow.SubmittedEngineeringFormAsync(app, cycle);
+        var id = form["id"].Str();
+        var college = await app.As("college");
+        form = await college.Ok("POST", $"/api/forms/{id}/approve", Flow.Approve(form));
+        form = await (await app.As("dean")).Ok("POST", $"/api/forms/{id}/return", Scenario.O(("note", "صحح القيم قبل الاعتماد"), ("items", new JsonArray()), ("version", form["version"])));
+        t.Check(form["status"].Str() == "Returned", "The dean returned the form after the committee approved it");
+
+        var entry = await app.As("entry");
+        form = (await entry.Get($"/api/forms/{id}"))!;
+        form = await entry.Ok("POST", $"/api/forms/{id}/submit", Scenario.O(("version", form["version"])));
+        t.Check(form["step"].Str() == "CollegeCommittee", "Resent, the form is back at the committee");
+
+        // One rule for the list, the page and the server: last round's approval does not bar the committee this round.
+        var row = (await college.Get($"/api/forms?cycleId={cycle.Id}&awaitingMe=true")).Items().SingleOrDefault(r => r["id"].Str() == id);
+        t.Check(row is not null, "The resent form is in the committee's \"awaiting me\" list");
+        form = (await college.Get($"/api/forms/{id}"))!;
+        t.Check(form["actions"]!["canReview"].Truthy(), "The form page offers the committee its decision");
+        form = await college.Ok("POST", $"/api/forms/{id}/approve", Flow.Approve(form));
+        t.Check(form["step"].Str() == "Dean", "The committee approved the new round");
+        t.Finish();
+    }
+
+    [Fact]
     public async Task Refused_transitions_and_stale_versions_are_conflicts_and_leave_nothing_behind()
     {
         var t = new Scenario(output);
