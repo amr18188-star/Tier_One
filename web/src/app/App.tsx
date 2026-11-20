@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { onLangChange, useLang, type Lang } from "../shared/i18n";
 import { AppLoading } from "../shared/AppLoading";
+import { canOpen, ROUTE_NEEDS } from "./routeAccess";
 import { ErrorScreen, NoAccess } from "../shared/QueryState";
 import { SessionProvider, usePermissions, useSession } from "../shared/session";
 import { SessionExpiredDialog } from "../shared/SessionExpiredDialog";
@@ -102,13 +103,9 @@ function useAntLocale(lang: Lang): Locale {
  * الصفحة لمن يملك إحدى الصلاحيات المذكورة («خاصية:إمكانية»)؛ وإلا شرح «لا تملك صلاحية» بطريق للعودة.
  * للواجهة فقط: الخادم يرفض الطلب نفسه في كل الأحوال.
  */
-function Guard({ need, children }: { need: string[]; children: ReactNode }) {
+function Guard({ need, children }: { need: readonly string[]; children: ReactNode }) {
   const perms = usePermissions();
-  const allowed = need.some((n) => {
-    const [feature, cap] = n.split(":");
-    return perms.can(feature, cap);
-  });
-  return allowed ? <>{children}</> : <NoAccess />;
+  return canOpen(perms, need) ? <>{children}</> : <NoAccess />;
 }
 
 /** صفحة التعريف العامة لزائر لم يسجل دخوله. */
@@ -148,9 +145,9 @@ function Gate() {
             <Route path="/indicators" element={<Guard need={["kpi.dictionary:V"]}><IndicatorsPage /></Guard>} />
             <Route path="/indicators/:code" element={<Guard need={["kpi.dictionary:V"]}><IndicatorPage /></Guard>} />
             {/* سجل التعارضات أخفي بعد اعتماد الإطار الشامل نهائيًا؛ روابطه القديمة تعود إلى الرئيسية. */}
-            <Route path="/scorecard" element={<Guard need={["dc.results:V"]}><ScorecardPage /></Guard>} />
-            <Route path="/structure" element={<Guard need={["org.structure:V"]}><StructurePage /></Guard>} />
-            <Route path="/structure/:id" element={<Guard need={["org.structure:V"]}><CollegeStructurePage /></Guard>} />
+            <Route path="/scorecard" element={<Guard need={ROUTE_NEEDS.scorecard}><ScorecardPage /></Guard>} />
+            <Route path="/structure" element={<Guard need={ROUTE_NEEDS.structure}><StructurePage /></Guard>} />
+            <Route path="/structure/:id" element={<Guard need={ROUTE_NEEDS.structure}><CollegeStructurePage /></Guard>} />
             <Route path="/review" element={<Guard need={["dc.university:V"]}><ReviewPage /></Guard>} />
             <Route path="/progress" element={<Guard need={["dc.results:V"]}><ProgressPage /></Guard>} />
             <Route path="/cycles"element={<Guard need={["dc.cycles:E"]}><CyclesPage /></Guard>} />

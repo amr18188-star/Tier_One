@@ -16,6 +16,7 @@ import { usePermissions, useSession } from "../shared/session";
 import { initials } from "../shared/ui";
 import { AppearanceButton } from "./AppearanceMenu";
 import { NotificationBell } from "../features/notifications/NotificationBell";
+import { canOpen, ROUTE_NEEDS } from "./routeAccess";
 // شعار الجامعة للترويسة الفاتحة، وشعار الخطة للشريط الجانبي الكحلي.
 import logoOnWhite from "../assets/brand/capital-university-logo-light.png";
 import strategyBrandOnNavy from "../assets/brand/strategy-performance-dark.png";
@@ -161,7 +162,7 @@ export function Shell({ children }: { children: ReactNode }) {
         // بلا عداد في القائمة الجانبية (طلب المستخدم)؛ عدد النماذج المنتظرة يظهر في الرئيسية وصفحة النماذج.
         perms.can("dc.forms", "V") && { to: "/forms", icon: <FormOutlined aria-hidden />, label: L("نماذج الجهات", "Unit forms"), tab: true },
         // بطاقة الجامعة كاملة لمن نطاقه الجامعة؛ مستخدم الكلية أو الإدارة يرى تقدم جهته.
-        perms.scopeOf("dc.results", "V") === "A" && { to: "/scorecard", icon: <TrophyOutlined aria-hidden />, label: L("بطاقة الأداء والتصنيف", "Scorecard and tier"), tab: true },
+        canOpen(perms, ROUTE_NEEDS.scorecard) && { to: "/scorecard", icon: <TrophyOutlined aria-hidden />, label: L("بطاقة الأداء والتصنيف", "Scorecard and tier"), tab: true },
         perms.can("dc.university", "V") && { to: "/review", icon: <FileDoneOutlined aria-hidden />, label: L("مراجعة مؤشرات الكليات", "Review college indicators"), tab: true },
         perms.can("dc.results", "V") && { to: "/progress", icon: <RiseOutlined aria-hidden />, label: L("تقدم الكلية", "College progress") },
         perms.can("dc.results", "V") && { to: "/results", icon: <BarChartOutlined aria-hidden />, label: L("النتائج والمقارنات", "Results") },
@@ -177,7 +178,7 @@ export function Shell({ children }: { children: ReactNode }) {
     },
     {
       key: "org", title: L("الجهات والهياكل", "Units and structures"), icon: <BankOutlined aria-hidden />, items: [
-        perms.can("org.structure", "V") && { to: "/structure", icon: <ClusterOutlined aria-hidden />, label: L("هياكل Tier 1 بالكليات", "College structures"), tab: true },
+        canOpen(perms, ROUTE_NEEDS.structure) && { to: "/structure", icon: <ClusterOutlined aria-hidden />, label: L("هياكل Tier 1 بالكليات", "College structures"), tab: true },
         perms.can("org.units", "V") && { to: "/units", icon: <ApartmentOutlined aria-hidden />, label: L("الجهات", "Units") },
       ],
     },
@@ -405,19 +406,21 @@ function GlobalSearch() {
   const indicators = useQuery({ queryKey: ["indicators", "all"], queryFn: () => api.get<IndicatorRow[]>("/api/kpi/indicators"), enabled: perms.can("kpi.dictionary", "V"), staleTime: 300_000 });
   const units = useQuery({ queryKey: ["units"], queryFn: () => api.get<OrgUnit[]>("/api/org/units"), enabled: perms.can("org.units", "V"), staleTime: 300_000 });
 
+  const opensStructure = canOpen(perms, ROUTE_NEEDS.structure);
   const options = useMemo(() => {
     const t = text.trim();
     if (t.length < 2) return [];
     const low = t.toLowerCase();
     const ind = (indicators.data ?? []).filter((i) => i.code.toLowerCase().includes(low) || i.nameAr.includes(t)).slice(0, 8)
       .map((i) => ({ value: `/indicators/${i.code}`, label: <span><code>{i.code}</code> {i.nameAr}</span> }));
-    const col = (units.data ?? []).filter((u) => (u.kind === "College" || u.kind === "Institute") && (u.nameAr.includes(t) || u.code.toLowerCase().includes(low))).slice(0, 5)
+    // A college opens its structure page, so it is offered only to who may open that page (FE-11).
+    const col = (opensStructure ? units.data ?? [] : []).filter((u) => (u.kind === "College" || u.kind === "Institute") && (u.nameAr.includes(t) || u.code.toLowerCase().includes(low))).slice(0, 5)
       .map((u) => ({ value: `/structure/${u.id}`, label: <span><ClusterOutlined aria-hidden /> {u.nameAr}</span> }));
     return [
       ...(ind.length ? [{ label: L("المؤشرات", "Indicators"), options: ind }] : []),
       ...(col.length ? [{ label: L("الكليات", "Colleges"), options: col }] : []),
     ];
-  }, [text, indicators.data, units.data]);
+  }, [text, indicators.data, units.data, opensStructure]);
 
   return (
     <AutoComplete className="t1-search" options={options} value={text} onChange={setText}
