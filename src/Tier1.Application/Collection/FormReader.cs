@@ -52,13 +52,19 @@ public sealed class FormReader(ICollectionStore db, IReadModel read, IClock cloc
 
         // آخر قيمة معتمدة للجهة نفسها في دورة سابقة، لتنبيه الاختلاف الكبير وللمقارنة. الدورة الفعلية لا تقارن بقيم البروفة.
         var rehearsal = cycle.Trial;
-        var previous = (await (from v in db.SubmittedValues.AsNoTracking()
-                               join s in db.Submissions.AsNoTracking() on v.SubmissionId equals s.Id
-                               join c in db.Cycles.AsNoTracking() on s.CycleId equals c.Id
-                               where s.UnitId == unit.Id && s.Status == SubmissionStatus.Approved && c.Id != cycle.Id && c.OpenedAt < cycle.OpenedAt
-                                     && (rehearsal || !c.Trial)
-                               select new { v.IndicatorId, v.Value, c.OpenedAt }).ToListAsync(ct))
-            .GroupBy(x => x.IndicatorId).ToDictionary(g => g.Key, g => g.OrderByDescending(x => x.OpenedAt).First().Value);
+        // PERF: the latest per indicator is picked in SQL (DISTINCT ON), not after reading every approved value of the unit in
+        // every earlier cycle, which grows with each quarter (growth data: 1,585 rows read per form opened, for 85 kept).
+        var approved = (int)SubmissionStatus.Approved;
+        var previous = (await db.Database.SqlQuery<PreviousValue>($"""
+                SELECT DISTINCT ON (v.indicator_id) v.indicator_id, v.value
+                FROM dc.values v
+                JOIN dc.submissions s ON s.id = v.submission_id
+                JOIN dc.cycles c ON c.id = s.cycle_id
+                WHERE s.unit_id = {unit.Id} AND s.status = {approved} AND c.id <> {cycle.Id} AND c.opened_at < {cycle.OpenedAt}
+                  AND ({rehearsal} OR NOT c.trial)
+                ORDER BY v.indicator_id, c.opened_at DESC
+                """).ToListAsync(ct))
+            .ToDictionary(x => x.IndicatorId, x => x.Value);
 
         return new FormContext
         {
@@ -211,4 +217,12 @@ public sealed class FormReader(ICollectionStore db, IReadModel read, IClock cloc
             latest.DecidedByName, latest.DecidedAt, latest.DecisionRef, latest.DecisionNote),
             latest?.Status == ReopenRequestStatus.Pending ? latest.RequestedBy : null, before);
     }
+}
+
+/// <summary>A unit's last approved value of an indicator in an earlier cycle (columns indicator_id, value).</summary>
+internal sealed class PreviousValue
+{
+    public Guid IndicatorId { get; set; }
+
+    public decimal? Value { get; set; }
 }

@@ -12,9 +12,10 @@ namespace Tier1.Application.Collection;
 /// target changed after a cycle closed (D8), a renamed unit or a reopened form gives a new fingerprint and a rebuilt snapshot.
 /// The fingerprint is the row count and the sum of row versions (xmin) per table: an insert, an update or a delete changes it.
 /// It is read before the snapshot is built, so a change made during a build leaves a stale fingerprint, never a stale snapshot.
-/// The values and saved values are summed per form (LATERAL, through the submission_id index): with many cycles the planner
-/// misjudges how many approved forms one cycle has and would scan every value of every cycle on each request (growth data:
-/// 81 ms instead of 17 for one cycle).
+/// The values and saved values are matched to the cycle's forms as an array (submission_id = ANY(ARRAY(...))), not by a join:
+/// with many cycles the planner misjudged how many approved forms one cycle has and scanned every value of every cycle on
+/// each request (growth data: 81 ms instead of 17 for one cycle). A per-form LATERAL fixed that but rescanned the small saved
+/// values table once per form (30 ms); the array form takes the index on the large table and one scan of the small one.
 /// </summary>
 public sealed class CycleSnapshotCache
 {
@@ -66,16 +67,12 @@ public sealed class CycleSnapshotCache
               (SELECT count(*) || ':' || coalesce(sum(ci.xmin::text::bigint), 0) || ':' || coalesce(sum(v.xmin::text::bigint), 0)
                  FROM dc.cycle_indicators ci LEFT JOIN kpi.indicator_versions v ON v.id = ci.version_id WHERE ci.cycle_id = c.id),
               (SELECT count(*) || ':' || coalesce(sum(s.xmin::text::bigint), 0) FROM dc.submissions s WHERE s.cycle_id = c.id),
-              (SELECT coalesce(sum(v.n), 0) || ':' || coalesce(sum(v.x), 0)
-                 FROM dc.submissions s CROSS JOIN LATERAL
-                   (SELECT count(*) AS n, sum(vv.xmin::text::bigint) AS x FROM dc.values vv WHERE vv.submission_id = s.id) v
-                 WHERE s.cycle_id = c.id AND s.status = {approved}),
+              (SELECT count(*) || ':' || coalesce(sum(v.xmin::text::bigint), 0) FROM dc.values v
+                 WHERE v.submission_id = ANY (ARRAY(SELECT s.id FROM dc.submissions s WHERE s.cycle_id = c.id AND s.status = {approved}))),
               (SELECT count(*) || ':' || coalesce(sum(r.xmin::text::bigint), 0)
                  FROM dc.reopen_requests r JOIN dc.submissions s ON s.id = r.submission_id WHERE s.cycle_id = c.id),
-              (SELECT coalesce(sum(vs.n), 0) || ':' || coalesce(sum(vs.x), 0)
-                 FROM dc.submissions s CROSS JOIN LATERAL
-                   (SELECT count(*) AS n, sum(v.xmin::text::bigint) AS x FROM dc.value_snapshots v WHERE v.submission_id = s.id) vs
-                 WHERE s.cycle_id = c.id)) AS fingerprint
+              (SELECT count(*) || ':' || coalesce(sum(vs.xmin::text::bigint), 0) FROM dc.value_snapshots vs
+                 WHERE vs.submission_id = ANY (ARRAY(SELECT s.id FROM dc.submissions s WHERE s.cycle_id = c.id)))) AS fingerprint
             FROM dc.cycles c CROSS JOIN shared
             WHERE c.id = ANY({cycleIds})
             """).ToListAsync(ct);

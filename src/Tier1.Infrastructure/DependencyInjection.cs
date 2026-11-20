@@ -20,11 +20,13 @@ namespace Tier1.Infrastructure;
 
 public static class DependencyInjection
 {
+    private static string WithPoolLimits(string connectionString, IConfiguration config) => PoolLimits.Apply(connectionString, config);
+
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration config)
     {
         services.AddApplication(config);
         var pg = config.GetConnectionString("Tier1") is { Length: > 0 } p ? p : throw new InvalidOperationException("ConnectionStrings:Tier1 is required.");
-        services.AddNpgsqlDataSource(pg);
+        services.AddNpgsqlDataSource(WithPoolLimits(pg, config));
         services.AddDbContext<Tier1DbContext>((sp, o) => o.UseNpgsql(sp.GetRequiredService<NpgsqlDataSource>(), x => x.MigrationsHistoryTable("__ef_migrations", "iam")).UseSnakeCaseNamingConvention());
         services.AddScoped<IReadModel>(sp => sp.GetRequiredService<Tier1DbContext>());
         services.AddScoped<INotificationStore>(sp => sp.GetRequiredService<Tier1DbContext>());
@@ -106,6 +108,30 @@ public static class DependencyInjection
             services.AddHostedService<Email.FormReminderJob>();
         }
         return services;
+    }
+}
+
+/// <summary>The pool limits of the application's PostgreSQL data source.</summary>
+public static class PoolLimits
+{
+    /// <summary>
+    /// Npgsql's default pool (100) equals PostgreSQL's default max_connections (100): under load one instance took every
+    /// connection the server has, and kept them idle for minutes after, so a second instance, the tools or an administrator
+    /// could not connect ("too many clients"). More connections than the database has cores also only makes queries wait for
+    /// CPU inside PostgreSQL instead of for a connection in the pool (load on growth data: see docs/deployment.md).
+    /// So the pool has an explicit maximum, Database:MaxPoolSize (default below), unless the connection string sets one, and
+    /// idle connections go back after a minute. Keep instances × MaxPoolSize + tools and administration under max_connections.
+    /// </summary>
+    public const int DefaultMaxPoolSize = 30;
+
+    public static string Apply(string connectionString, IConfiguration config)
+    {
+        var builder = new NpgsqlConnectionStringBuilder(connectionString);
+        var named = connectionString.Contains("Maximum Pool Size", StringComparison.OrdinalIgnoreCase)
+                    || connectionString.Contains("MaxPoolSize", StringComparison.OrdinalIgnoreCase);
+        if (!named) builder.MaxPoolSize = config.GetValue("Database:MaxPoolSize", DefaultMaxPoolSize);
+        if (!connectionString.Contains("Idle Lifetime", StringComparison.OrdinalIgnoreCase)) builder.ConnectionIdleLifetime = 60;
+        return builder.ConnectionString;
     }
 }
 

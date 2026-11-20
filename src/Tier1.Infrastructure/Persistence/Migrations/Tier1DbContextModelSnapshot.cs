@@ -876,6 +876,9 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                     b.HasIndex("IndicatorId")
                         .HasDatabaseName("ix_values_indicator_id");
 
+                    b.HasIndex("EditedBy", "SubmissionId")
+                        .HasDatabaseName("ix_values_edited_by_submission_id");
+
                     b.HasIndex("SubmissionId", "IndicatorId")
                         .IsUnique()
                         .HasDatabaseName("ix_values_submission_id_indicator_id");

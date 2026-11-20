@@ -60,7 +60,10 @@ public sealed class DictionaryService(IKpiStore db, IReadModel read, IClock cloc
         await access.RequireAsync(Feature, Cap.View, ct);
         var pillars = await db.Pillars.AsNoTracking().ToDictionaryAsync(p => p.Id, ct);
         var standards = await db.Standards.AsNoTracking().OrderBy(s => s.SortOrder).ToListAsync(ct);
-        var indicators = await db.Indicators.AsNoTracking().Include(i => i.Versions).ToListAsync(ct);
+        // PERF: only what the counts need, in SQL (the home page asks on every visit). An indicator has an effective definition
+        // when one of its versions is approved (Indicator.Effective); the full versions and their texts are not read.
+        var indicators = await db.Indicators.AsNoTracking()
+            .Select(i => new { i.StandardId, Approved = i.Versions.Any(v => v.Status == DefinitionStatus.Approved) }).ToListAsync(ct);
         var openConflicts = await OpenConflictScopesAsync(ct);
 
         return standards.Select(s =>
@@ -68,7 +71,7 @@ public sealed class DictionaryService(IKpiStore db, IReadModel read, IClock cloc
             var mine = indicators.Where(i => i.StandardId == s.Id).ToList();
             var pillar = s.PillarId is { } pid ? pillars.GetValueOrDefault(pid) : null;
             return new StandardDto(s.Id, s.Code, s.NameAr, pillar?.Code, pillar?.NameAr, s.ClassificationNote, mine.Count,
-                mine.Count(i => i.Effective is not null),
+                mine.Count(i => i.Approved),
                 openConflicts.Count(scope => scope.Any(code => code == s.Code || code.StartsWith(s.Code + "-", StringComparison.Ordinal))));
         }).ToList();
     }

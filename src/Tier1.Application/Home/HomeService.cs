@@ -45,7 +45,10 @@ public sealed class HomeService(IReadModel read, ICurrentUser current, IAccessSe
                 tasks.Add(new("forms_review", "نماذج تنتظر مراجعتك", "راجع القيم والأدلة، ثم اعتمد أو أعد بملاحظات.", review, "/forms", "brand"));
         }
 
-        var versions = await read.Query<Domain.Kpi.IndicatorVersion>().AsNoTracking().Where(v => v.Status == DefinitionStatus.Draft || v.Status == DefinitionStatus.UnderReview).ToListAsync(ct);
+        // The definitions being prepared, read only for who has a task in them (editors and approvers of the dictionary).
+        var versions = me.Has(Features.Dictionary, Cap.Edit) || me.HasSpecial(Features.Dictionary, Specials.Approve)
+            ? await read.Query<Domain.Kpi.IndicatorVersion>().AsNoTracking().Where(v => v.Status == DefinitionStatus.Draft || v.Status == DefinitionStatus.UnderReview).ToListAsync(ct)
+            : [];
         if (me.Has(Features.Dictionary, Cap.Edit))
         {
             var returned = versions.Count(v => v.Status == DefinitionStatus.Draft && v.ReturnNote != null);

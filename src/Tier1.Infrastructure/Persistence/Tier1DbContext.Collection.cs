@@ -73,6 +73,8 @@ public sealed partial class Tier1DbContext
             });
             // تكرار قيمة المؤشر نفسه للجهة والدورة ممنوع في القاعدة أيضًا.
             e.HasIndex(x => new { x.SubmissionId, x.IndicatorId }).IsUnique();
+            // The forms a user edited (the forms list and the home page, on every call): by editor, then form.
+            e.HasIndex(x => new { x.EditedBy, x.SubmissionId });
             e.Property(x => x.Value).HasPrecision(20, 4);
             e.Property(x => x.Numerator).HasPrecision(20, 4);
             e.Property(x => x.Denominator).HasPrecision(20, 4);
