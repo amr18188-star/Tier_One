@@ -15,7 +15,7 @@ import { PanelSkeleton } from "../../shared/PanelSkeleton";
 import { EmptyNote, FilterMeta, PageHeader } from "../../shared/ui";
 import { usePeriodParams, useSearchState } from "../../shared/usePeriodParams";
 import { latestCycle, ReviewPeriod, reviewable } from "./ReviewPeriod";
-import { useCycles } from "../../api/queries";
+import { useCycles, queryKeys } from "../../api/queries";
 import { IndicatorRow, PillarHeader } from "./ReviewRows";
 import { PillarGroup, STATES, dropIndicator, periodText, pillarKey } from "./reviewParts";
 import "./review.css";
@@ -40,7 +40,7 @@ export default function ReviewPage() {
   // البيانات تتبع ربع الشريط؛ ومن لا يرى الدورات يتبع cycle= في الرابط كما كان (وبدونه افتراض الخادم).
   const cycleId = navMode ? period.cycle?.id : params.get("cycle") ?? undefined;
   const review = useQuery({
-    queryKey: ["review", cycleId], queryFn: () => api.get<Review>(`/api/review${cycleId ? `?cycleId=${cycleId}` : ""}`), enabled: !waiting && !noCycleInYear,
+    queryKey: queryKeys.review(cycleId), queryFn: () => api.get<Review>(`/api/review${cycleId ? `?cycleId=${cycleId}` : ""}`), enabled: !waiting && !noCycleInYear,
     // تغيير الربع أو السنة يغير المفتاح: تبقى ركائز الربع السابق ظاهرة (وأجسامها هياكل) حتى يصل الجديد، فلا تُمحى اللوحات وتعود.
     placeholderData: keepPreviousData,
   });

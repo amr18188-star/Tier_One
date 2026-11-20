@@ -11,6 +11,7 @@ import { ImportModal } from "./ImportModal";
 import { skippedSteps } from "./model";
 import type { FormSubmit } from "./useFormPage";
 import type { ReturnMark } from "./ValueRow";
+import { useFieldErrors } from "../../shared/useFieldErrors";
 
 /* The form page's dialogs: send for review, approve (normal or direct), return, reopen, extend a deadline, import from Excel. */
 
@@ -52,10 +53,11 @@ export function ApproveModal({ form, direct, onClose, onDone }: { form: Form; di
   const title = direct
     ? form.actions.directDeanApproval ? L("اعتماد مباشر من العميد", "Direct dean approval") : L("اعتماد مباشر لنموذج القسم", "Direct approval of the department form")
     : final ? L("الاعتماد النهائي", "Final approval") : L("اعتماد وإحالة", "Approve and forward");
+  const runMarked = useFieldErrors(fields, run.error);
   return (
     <Modal open title={title} onCancel={onClose} onOk={() => (direct ? fields.submit() : run.mutate(null))} confirmLoading={run.isPending}
       okText={L("اعتماد", "Approve")} cancelText={L("إلغاء", "Cancel")} destroyOnHidden>
-      {run.error && <Alert type="error" showIcon message={errorText(run.error)} className="mb" />}
+      {run.error && !runMarked && <Alert type="error" showIcon message={errorText(run.error)} className="mb" />}
       {direct ? (
         <>
           <p>{L(`ينتقل النموذج إلى «${form.actions.directStepName ?? ""}» متخطيًا: ${skipped.join("، ")}. يسجل التخطي وسببه في سجل النموذج.`,
@@ -82,10 +84,11 @@ export function ExtendModal({ form, onClose, onDone }: { form: Form; onClose: ()
     mutationFn: (v: { dueOn: Dayjs; reason: string }) => api.post<Form>(`/api/forms/${form.id}/extend`, { dueOn: v.dueOn.format("YYYY-MM-DD"), reason: v.reason }),
     onSuccess: (f) => { onDone(f); onClose(); },
   });
+  const runMarked = useFieldErrors(fields, run.error);
   return (
     <Modal open title={L(`تمديد موعد ${form.unitName}`, `Extend ${form.unitName}`)} onCancel={onClose} onOk={() => fields.submit()} confirmLoading={run.isPending}
       okText={L("تمديد", "Extend")} cancelText={L("إلغاء", "Cancel")} destroyOnHidden>
-      {run.error && <Alert type="error" showIcon message={errorText(run.error)} className="mb" />}
+      {run.error && !runMarked && <Alert type="error" showIcon message={errorText(run.error)} className="mb" />}
       <p>{L("يمدد موعد هذه الجهة وحدها بقرار مسجل؛ موعد الدورة لبقية الجهات لا يتغير.", "Extends this unit only; the cycle deadline stays.")}</p>
       <AntForm form={fields} layout="vertical" onFinish={(v) => run.mutate(v)} initialValues={{ dueOn: dayjs(form.dueOn).add(7, "day") }}>
         <AntForm.Item name="dueOn" label={L("الموعد الجديد", "New deadline")} rules={[{ required: true }]}>

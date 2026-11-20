@@ -140,7 +140,7 @@ public sealed class CyclesService(ICollectionStore db, IReadModel read, IClock c
     public async Task<CycleDto> CloseAsync(Guid id, string? reason, CancellationToken ct)
     {
         await access.RequireAsync(Feature, Cap.Delete, ct);
-        var why = Require.Reason(reason);
+        var why = Require.Reason(reason, field: "note"); // The endpoint takes it as NoteRequest.Note.
         var cycle = await db.Cycles.FirstOrDefaultAsync(c => c.Id == id, ct) ?? throw DomainException.NotFound();
         if (cycle.Status != CycleStatus.Open) throw new DomainException("cycle_not_open", "تغلق الدورة المفتوحة فقط.", "Only an open cycle can be closed.");
         cycle.Status = CycleStatus.Closed;
@@ -214,15 +214,15 @@ public sealed class CyclesService(ICollectionStore db, IReadModel read, IClock c
 
     private static void Apply(CollectionCycle c, SaveCycleRequest req)
     {
-        c.Name = string.IsNullOrWhiteSpace(req.Name) ? throw new DomainException("name_required", "اكتب اسم الدورة.", "Enter the cycle name.", 400) : req.Name.Trim();
+        c.Name = string.IsNullOrWhiteSpace(req.Name) ? throw new DomainException("name_required", "اكتب اسم الدورة.", "Enter the cycle name.", 400) { Field = "name" } : req.Name.Trim();
         if (req.Quarter is { } q && (q is < 1 or > 4 || req.TargetYear is < Scorecard.PlanCalendar.FirstYear or > Scorecard.PlanCalendar.LastYear))
             throw new DomainException("invalid_quarter", "الدورة الربعية لسنة من 2027 إلى 2031 وربع من 1 إلى 4.", "Quarterly cycles: year 2027-2031, quarter 1-4.", 400);
         c.Quarter = req.Quarter;
         c.PeriodLabel = !string.IsNullOrWhiteSpace(req.PeriodLabel) ? req.PeriodLabel.Trim()
             : req.Quarter is { } quarter ? Scorecard.PlanCalendar.Label(req.TargetYear, quarter)
-            : throw new DomainException("period_required", "اكتب الفترة التي تقيسها الدورة.", "Enter the period.", 400);
-        if (req.TargetYear is < 2026 or > 2031) throw new DomainException("invalid_year", "سنة المستهدف من 2026 إلى 2031.", "Target year 2026-2031.", 400);
-        if (req.DueOn < req.OpensOn) throw new DomainException("dates", "الموعد النهائي بعد تاريخ الفتح.", "The deadline is after the opening date.", 400);
+            : throw new DomainException("period_required", "اكتب الفترة التي تقيسها الدورة.", "Enter the period.", 400) { Field = "periodLabel" };
+        if (req.TargetYear is < 2026 or > 2031) throw new DomainException("invalid_year", "سنة المستهدف من 2026 إلى 2031.", "Target year 2026-2031.", 400) { Field = "targetYear" };
+        if (req.DueOn < req.OpensOn) throw new DomainException("dates", "الموعد النهائي بعد تاريخ الفتح.", "The deadline is after the opening date.", 400) { Field = "dueOn" };
         c.TargetYear = req.TargetYear;
         c.OpensOn = req.OpensOn;
         c.DueOn = req.DueOn;

@@ -90,7 +90,7 @@ public sealed partial class FormWorkflowService(ICollectionStore db, IClock cloc
         if (ctx.Cycle.Status != CycleStatus.Open) throw new DomainException("cycle_not_open", "الدورة غير مفتوحة.", "The cycle is not open.");
         if (ctx.Submission.Status == SubmissionStatus.Approved) throw new DomainException("form_approved", "النموذج معتمد؛ لا يحتاج تمديدًا.", "The form is approved.");
         if (req.DueOn <= ctx.Submission.DueOn)
-            throw new DomainException("due_not_later", "الموعد الجديد بعد الموعد الحالي.", "The new deadline must be later.", 400);
+            throw new DomainException("due_not_later", "الموعد الجديد بعد الموعد الحالي.", "The new deadline must be later.", 400) { Field = "dueOn" };
         var old = ctx.Submission.DueOn;
         ctx.Submission.DueOn = req.DueOn;
         audit.Record(AuditEvents.Audit("dc", Feature, "dc.form_extended", "تمديد موعد نموذج جهة", "Extended a unit form deadline") with

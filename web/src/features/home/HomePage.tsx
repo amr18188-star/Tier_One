@@ -25,7 +25,7 @@ import "./home.css";
 
 /** الدرجة الكلية والفئة ودرجة كل ركيزة، بربط إلى بطاقة الأداء. */
 function ScoreGlance() {
-  const card = useQuery({ queryKey: ["scorecard"], queryFn: () => api.get<Scorecard>("/api/scorecard") });
+  const card = useQuery({ queryKey: queryKeys.scorecard, queryFn: () => api.get<Scorecard>("/api/scorecard") });
   const c = card.data;
   return (
     <Panel title={L("بطاقة أداء الجامعة وفئتها", "University scorecard")} icon={<TrophyOutlined aria-hidden />} query={card}
@@ -52,7 +52,7 @@ function ScoreGlance() {
   );
 }
 import { EmptyNote, firstName, greeting, Hero, Panel, StatTile } from "../../shared/ui";
-import { useCycles, useLatestResults } from "../../api/queries";
+import { useCycles, useLatestResults, queryKeys } from "../../api/queries";
 
 /**
  * الصفحة الأولى بحسب الدور، والأهم أولًا:
@@ -61,11 +61,11 @@ import { useCycles, useLatestResults } from "../../api/queries";
  */
 function GeneralHome() {
   const perms = usePermissions();
-  const home = useQuery({ queryKey: ["home"], queryFn: () => api.get<Home>("/api/home") });
+  const home = useQuery({ queryKey: queryKeys.home, queryFn: () => api.get<Home>("/api/home") });
   const planning = perms.can("kpi.dictionary", "E") || perms.can("kpi.dictionary", "approve");
   const seesForms = perms.can("dc.forms", "V");
   const seesResults = perms.can("dc.results", "V");
-  const mine = useQuery({ queryKey: ["forms", "mine"], queryFn: () => api.get<FormRow[]>("/api/forms?awaitingMe=true"), enabled: seesForms });
+  const mine = useQuery({ queryKey: queryKeys.formsMine, queryFn: () => api.get<FormRow[]>("/api/forms?awaitingMe=true"), enabled: seesForms });
   const results = useLatestResults({ enabled: seesResults });
   const d = home.data;
   const pillarMap = usePillarMap();
@@ -200,8 +200,8 @@ const PAGE_SIZE = 8;
 function AdminHome() {
   const lang = useLang();
   const Forward = lang === "ar" ? ArrowLeftOutlined : ArrowRightOutlined;
-  const home = useQuery({ queryKey: ["home"], queryFn: () => api.get<Home>("/api/home") });
-  const mine = useQuery({ queryKey: ["forms", "mine"], queryFn: () => api.get<FormRow[]>("/api/forms?awaitingMe=true") });
+  const home = useQuery({ queryKey: queryKeys.home, queryFn: () => api.get<Home>("/api/home") });
+  const mine = useQuery({ queryKey: queryKeys.formsMine, queryFn: () => api.get<FormRow[]>("/api/forms?awaitingMe=true") });
   const cycles = useCycles();
   const [filter, setFilter] = useState<WorkFilter>("all");
   const [search, setSearch] = useState("");

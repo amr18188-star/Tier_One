@@ -1,7 +1,9 @@
 namespace Tier1.Domain.Common;
 
 /// <summary>
-/// خطأ قاعدة عمل برسالة ثنائية اللغة ورمز ثابت تتعامل معه الواجهة. الحالة الافتراضية 422.
+/// خطأ قاعدة عمل برسالة ثنائية اللغة ورمز ثابت تتعامل معه الواجهة. الحالات (BE-6، docs/api/errors.md):
+/// 400 مدخل غير صالح يصححه المستخدم (ومعه الحقل إن عرف)، و422 طلب صالح ترفضه قاعدة عمل أو حالة العنصر (الافتراضي)،
+/// و409 تعارض مع تعديل آخر أو تكرار، و403 و404 للصلاحية والنطاق. الرمز الواحد له حالة واحدة دائمًا.
 /// </summary>
 public sealed class DomainException : Exception
 {
@@ -32,6 +34,12 @@ public sealed class DomainException : Exception
     public string Code { get; } = "error";
 
     public int Status { get; } = 422;
+
+    /// <summary>
+    /// BE-6: the request field the error is about, by its JSON name ("email", "reason", "endsOn"), so a form can mark that field.
+    /// Null when the error is about the request as a whole. Set it with an initializer: <c>new DomainException(...) { Field = "email" }</c>.
+    /// </summary>
+    public string? Field { get; init; }
 
     /// <summary>السجل خارج نطاق المستخدم يعامل كأنه غير موجود، فلا تتسرب معلومة عن وجوده.</summary>
     public static DomainException NotFound() =>

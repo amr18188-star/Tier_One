@@ -136,8 +136,8 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> log, ITechn
             _ when db.Kind == DatabaseErrorKind.TooLong => (400, "text_too_long", Lang.Pick("أحد النصوص أطول من المسموح. اختصره ثم أعد المحاولة.", "A text is longer than allowed. Shorten it and retry.")),
             _ when db.Kind == DatabaseErrorKind.InvalidValue => (400, "invalid_value", Lang.Pick("قيمة غير مقبولة في الطلب.", "A value in the request is not accepted.")),
             _ when db.Kind == DatabaseErrorKind.InUse => (409, "in_use", Lang.Pick("العنصر مرتبط ببيانات أخرى أو لم يعد موجودًا. حدّث الصفحة ثم أعد المحاولة.", "The item is linked to other data or no longer exists. Refresh and try again.")),
-            BadHttpRequestException b => (b.StatusCode, "bad_request", Lang.Pick("الطلب غير صالح.", "Invalid request.")),
-            System.Text.Json.JsonException => (400, "bad_request", Lang.Pick("الطلب غير صالح.", "Invalid request.")),
+            BadHttpRequestException b => (b.StatusCode, "bad_request", BadRequestTitle(Json(b))),
+            System.Text.Json.JsonException j => (400, "bad_request", BadRequestTitle(j)),
             _ => (500, "server_error", Lang.Pick("حدث خطأ غير متوقع. أعد المحاولة، وإن تكرر أبلغ الدعم الفني.", "An unexpected error occurred. Retry; if it persists, contact support.")),
         };
         var traceId = ApiErrors.TraceId(ctx);
@@ -149,7 +149,28 @@ public sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> log, ITechn
                 (ctx.GetEndpoint() as RouteEndpoint)?.RoutePattern.RawText ?? ctx.Request.Path.Value ?? "", ctx.Request.Method,
                 ctx.User.FindFirst(ClaimNames.UserId)?.Value, traceId));
         }
-        await ApiErrors.WriteAsync(ctx, status, code, title, ct);
+        await ApiErrors.WriteAsync(ctx, status, code, title, FieldErrors(exception, code, title), ct);
         return true;
+    }
+
+    /// <summary>The JSON reading error behind a binding failure (a malformed body, a value of the wrong type), if any.</summary>
+    private static System.Text.Json.JsonException? Json(Exception e) => e as System.Text.Json.JsonException ?? e.InnerException as System.Text.Json.JsonException;
+
+    private static string BadRequestTitle(System.Text.Json.JsonException? j) =>
+        ApiErrors.FieldFromJsonPath(j?.Path) is { } field
+            ? Lang.Pick($"قيمة الحقل «{field}» غير صالحة.", $"The value of '{field}' is not valid.")
+            : Lang.Pick("الطلب غير صالح.", "Invalid request.");
+
+    /// <summary>BE-6: the field to mark in the form, from the rule that refused it or from the JSON path of a binding error.</summary>
+    private static List<FieldError> FieldErrors(Exception exception, string code, string title)
+    {
+        var field = exception switch
+        {
+            DomainException d => d.Field,
+            BadHttpRequestException b => ApiErrors.FieldFromJsonPath(Json(b)?.Path),
+            System.Text.Json.JsonException j => ApiErrors.FieldFromJsonPath(j.Path),
+            _ => null,
+        };
+        return field is null ? [] : [new FieldError(field, code == "bad_request" ? "invalid_value" : code, title)];
     }
 }

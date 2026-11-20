@@ -68,6 +68,9 @@ public static class DependencyInjection
         });
         services.AddSingleton<MongoLogContext>();
         services.AddSingleton<Health.ReadinessProbe>();
+        // The pool metrics are read in every process that runs the server (not only with background jobs): the load report needs them.
+        services.AddSingleton<Health.DatabasePoolMetrics>();
+        services.AddHostedService(sp => sp.GetRequiredService<Health.DatabasePoolMetrics>());
         services.AddSingleton<ChainKeyHolder>();
         services.AddScoped<CheckpointPublisher>();
         services.Configure<EmailOptions>(config.GetSection("Email"));

@@ -141,7 +141,7 @@ public sealed class LogsService(IAuditStore db, IClock clock, ICurrentUser curre
         var end = to ?? today;
         var start = from ?? end.AddDays(-6);
         if (start > end || end.DayNumber - start.DayNumber > 31)
-            throw new DomainException("invalid_range", "الفترة غير صالحة (31 يومًا على الأكثر في الطلب الواحد).", "Invalid range (31 days at most per request).", 400);
+            throw new DomainException("invalid_range", "الفترة غير صالحة (31 يومًا على الأكثر في الطلب الواحد).", "Invalid range (31 days at most per request).", 400) { Field = "to" };
         var result = await verifier.VerifyAsync(start, end, ct);
         audit.Record(AuditEvents.Security("log.verify", Features.AuditLog, "فحص سلامة السجلات", "Verified log integrity") with
         {

@@ -2,7 +2,7 @@ import { memo, useEffect, useId, useMemo, useState } from "react";
 import { Input, Tag, Tooltip } from "antd";
 import type { IndicatorScore, Level, PillarScore, Scorecard } from "../../api/scorecard";
 import { AccordionPanel, useSingleOpen } from "../../shared/AccordionPanel";
-import { L } from "../../shared/i18n";
+import { L, useLang } from "../../shared/i18n";
 import { num } from "../../shared/labels";
 import { tint } from "../../shared/pillars";
 import { EmptyNote } from "../../shared/ui";
@@ -69,6 +69,7 @@ export const PillarPanel = memo(function PillarPanel({ p, index, open, onToggle,
   stds: StdRows[];
   filtering: boolean;
 }) {
+  useLang(); // memo skips equal props; its own texts still follow a language change
   const uid = useId();
   const shown = stds.reduce((n, x) => n + x.rows.length, 0);
   return (
@@ -94,6 +95,7 @@ export const PillarPanel = memo(function PillarPanel({ p, index, open, onToggle,
 
 /** معايير الركيزة ومؤشراتها (كما كانت تحت رأس الركيزة)؛ مذكّرة على صفوف المرشح، فلا تعاد عند فتح لوحة أو طيها. */
 export const PillarStandards = memo(function PillarStandards({ stds, onPick }: { stds: StdRows[]; onPick: (i: IndicatorScore) => void }) {
+  useLang(); // memo skips equal props; its own texts still follow a language change
   return (
     <div className="sc-acc-content">
       {stds.length === 0 && <EmptyNote>{L("لا مؤشرات في هذه الركيزة تطابق البحث أو الحالة المختارة.", "No indicators in this pillar match the filter.")}</EmptyNote>}

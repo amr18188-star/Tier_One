@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { api, ApiError, onSessionEnded, refreshCsrf } from "../api/client";
 import type { CapLetter, Effective, Me } from "../api/types";
+import { queryKeys } from "../api/queries";
 
 /** Fired after the user signs in again over the page they were on (UX-1); unsaved rows retry their saves. */
 export const SESSION_RESUMED = "tier1:session-resumed";
@@ -32,7 +33,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   const [expired, setExpired] = useState(false);
   const known = useRef<Me | null>(null);
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["me"],
+    queryKey: queryKeys.me,
     queryFn: async () => {
       try {
         // FE-2: the minute poll is passive, so an unattended tab still reaches the idle timeout.
@@ -60,7 +61,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const resume = useCallback(async (): Promise<ResumeResult> => {
     await refreshCsrf();
-    const fresh = await qc.fetchQuery({ queryKey: ["me"], queryFn: () => api.get<Me>("/api/me"), staleTime: 0 });
+    const fresh = await qc.fetchQuery({ queryKey: queryKeys.me, queryFn: () => api.get<Me>("/api/me"), staleTime: 0 });
     // Another account must not inherit the page (its unsaved values would be saved in the other person's name).
     if (!fresh || fresh.id !== known.current?.id || fresh.mustChangePassword || (fresh.mfaPending && !fresh.mfaEnabled)) return "reload";
     if (fresh.mfaPending) return "code";
@@ -94,7 +95,7 @@ export function useSession() {
  */
 export async function reloadSession(qc: QueryClient) {
   await refreshCsrf();
-  await refreshIdentity(qc, () => qc.refetchQueries({ queryKey: ["me"] }));
+  await refreshIdentity(qc, () => qc.refetchQueries({ queryKey: queryKeys.me }));
 }
 
 /** يجلب الجلسة بـ fetchMe؛ هوية مختلفة عما قبلها تحذف ما سوى ["me"]، والهوية نفسها تعلم الكل قديمًا ليعاد جلبه. */

@@ -6,6 +6,8 @@ import { api } from "../../api/client";
 import type { Member, Partner, Position } from "../../api/tier1";
 import { errorText } from "../../shared/format";
 import { L } from "../../shared/i18n";
+import { useFieldErrors } from "../../shared/useFieldErrors";
+import { queryKeys } from "../../api/queries";
 
 const INDUSTRY = "عضو من جهة صناعية";
 
@@ -37,16 +39,17 @@ export function MemberModal({ collegeId, departmentId, position, member, occupie
     },
     onSuccess: async () => {
       message.success(member ? L("حُفظت بيانات العضو.", "Member saved.") : L("أضيف العضو إلى الهيكل.", "Member added."));
-      await qc.invalidateQueries({ queryKey: ["structure"] });
-      await qc.invalidateQueries({ queryKey: ["home"] });
+      await qc.invalidateQueries({ queryKey: queryKeys.structure });
+      await qc.invalidateQueries({ queryKey: queryKeys.home });
       onClose();
     },
   });
 
+  const saveMarked = useFieldErrors(form, save.error);
   return (
     <Modal open title={`${member ? L("تعديل بيانات", "Edit") : L("إضافة", "Add")}: ${position.titleAr}`} okText={L("حفظ", "Save")} cancelText={L("إلغاء", "Cancel")}
       onCancel={onClose} onOk={() => form.submit()} confirmLoading={save.isPending} destroyOnHidden>
-      {save.error && <Alert type="error" showIcon message={errorText(save.error)} className="mb" />}
+      {save.error && !saveMarked && <Alert type="error" showIcon message={errorText(save.error)} className="mb" />}
       <Form form={form} layout="vertical" onFinish={(v) => save.mutate(v)} requiredMark="optional">
         <Form.Item name="fullName" label={L("الاسم", "Full name")} rules={[{ required: true, message: L("اكتب اسم العضو", "Enter the name") }]}><Input maxLength={200} autoFocus /></Form.Item>
         <Form.Item name="title" label={L("الدرجة أو الصفة الوظيفية", "Title")} extra={L("مثل: أستاذ — وكيل الكلية للدراسات العليا", "E.g. Professor — Vice dean")}><Input maxLength={200} /></Form.Item>
@@ -78,15 +81,16 @@ export function EndModal({ title, path, onClose }: { title: string; path: string
     mutationFn: (v: { endDate: Dayjs; reason: string }) => api.post(path, { endDate: v.endDate.format("YYYY-MM-DD"), reason: v.reason }),
     onSuccess: async () => {
       message.success(L("سُجل الإنهاء.", "Ended."));
-      await qc.invalidateQueries({ queryKey: ["structure"] });
+      await qc.invalidateQueries({ queryKey: queryKeys.structure });
       onClose();
     },
   });
+  const saveMarked = useFieldErrors(form, save.error);
   return (
     <Modal open title={title} okText={L("إنهاء", "End")} okButtonProps={{ danger: true }} cancelText={L("إلغاء", "Cancel")}
       onCancel={onClose} onOk={() => form.submit()} confirmLoading={save.isPending} destroyOnHidden>
       <Alert type="info" showIcon className="mb" message={L("لا يحذف شيء: يبقى السجل ويظهر في الهيكل كما كان قبل هذا التاريخ.", "Nothing is deleted; the record stays and shows in earlier views.")} />
-      {save.error && <Alert type="error" showIcon message={errorText(save.error)} className="mb" />}
+      {save.error && !saveMarked && <Alert type="error" showIcon message={errorText(save.error)} className="mb" />}
       <Form form={form} layout="vertical" initialValues={{ endDate: dayjs() }} onFinish={(v) => save.mutate(v)}>
         <Form.Item name="endDate" label={L("تاريخ الانتهاء", "End date")} rules={[{ required: true }]}><DatePicker style={{ width: "100%" }} /></Form.Item>
         <Form.Item name="reason" label={L("السبب", "Reason")} rules={[{ required: true, min: 5, message: L("اكتب سببًا واضحًا", "Enter a clear reason") }]}><Input.TextArea rows={2} maxLength={500} /></Form.Item>
@@ -114,14 +118,15 @@ export function PartnerModal({ departmentId, departmentName, partner, onClose }:
     },
     onSuccess: async () => {
       message.success(L("حُفظ الشريك الصناعي.", "Partner saved."));
-      await qc.invalidateQueries({ queryKey: ["structure"] });
+      await qc.invalidateQueries({ queryKey: queryKeys.structure });
       onClose();
     },
   });
+  const saveMarked = useFieldErrors(form, save.error);
   return (
     <Modal open title={`${L("الشريك الصناعي لقسم", "Industry partner of")} ${departmentName}`} okText={L("حفظ", "Save")} cancelText={L("إلغاء", "Cancel")}
       onCancel={onClose} onOk={() => form.submit()} confirmLoading={save.isPending} destroyOnHidden>
-      {save.error && <Alert type="error" showIcon message={errorText(save.error)} className="mb" />}
+      {save.error && !saveMarked && <Alert type="error" showIcon message={errorText(save.error)} className="mb" />}
       <Form form={form} layout="vertical" onFinish={(v) => save.mutate(v)} requiredMark="optional">
         <Form.Item name="nameAr" label={L("اسم الجهة الشريكة", "Partner name")} rules={[{ required: true }]}><Input maxLength={200} autoFocus /></Form.Item>
         <Form.Item name="sector" label={L("القطاع أو النشاط", "Sector")}><Input maxLength={150} /></Form.Item>

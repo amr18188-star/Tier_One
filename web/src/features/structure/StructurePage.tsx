@@ -6,6 +6,7 @@ import type { CollegeCompleteness } from "../../api/tier1";
 import { L, useLang } from "../../shared/i18n";
 import { usePermissions } from "../../shared/session";
 import { EmptyNote, PageHeader, Panel } from "../../shared/ui";
+import { queryKeys } from "../../api/queries";
 
 /**
  * هياكل Tier 1 بالكليات في نطاق المستخدم: بطاقة لكل كلية بحلقة اكتمال هيكلها وأول نقص فيه، الأقل اكتمالًا أولًا،
@@ -14,7 +15,7 @@ import { EmptyNote, PageHeader, Panel } from "../../shared/ui";
 export default function StructurePage() {
   const perms = usePermissions();
   const Go = useLang() === "ar" ? ArrowLeftOutlined : ArrowRightOutlined;
-  const list = useQuery({ queryKey: ["structure", "completeness"], queryFn: () => api.get<CollegeCompleteness[]>("/api/structure/completeness") });
+  const list = useQuery({ queryKey: queryKeys.structureCompleteness, queryFn: () => api.get<CollegeCompleteness[]>("/api/structure/completeness") });
   const data = list.data ?? [];
   const avg = data.length > 0 ? Math.round(data.reduce((s, c) => s + c.percent, 0) / data.length) : null;
   const complete = data.filter((c) => c.percent >= 100).length;

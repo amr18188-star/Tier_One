@@ -10,12 +10,13 @@ import { L } from "../../shared/i18n";
 import { fileSize } from "../../shared/labels";
 import { usePermissions } from "../../shared/session";
 import { Panel } from "../../shared/ui";
+import { queryKeys } from "../../api/queries";
 
 /** مستندات هيكل الكلية: صورة الهيكل المعتمد وقرارات التشكيل. لا حذف نهائيًا؛ الإبطال بسبب يبقيها في السجل. */
 export function StructureDocs({ collegeId, editable }: { collegeId: string; editable: boolean }) {
   const perms = usePermissions();
   const qc = useQueryClient();
-  const key = ["structure", "docs", collegeId];
+  const key = queryKeys.structureDocs(collegeId);
   const docs = useQuery({ queryKey: key, queryFn: () => api.get<Doc[]>(`/api/structure/colleges/${collegeId}/documents`) });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

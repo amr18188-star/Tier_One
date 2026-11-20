@@ -180,9 +180,9 @@ public static class CollectionEndpoints
     /// <summary>ملف واحد من نموذج multipart بحد حجم؛ يرفض ما عدا ذلك برسالة واضحة.</summary>
     private static async Task<IFormFile> SingleFileAsync(HttpRequest request, long maxBytes, CancellationToken ct)
     {
-        if (!request.HasFormContentType) throw new DomainException("file_required", "أرفق ملفًا.", "Attach a file.", 400);
+        if (!request.HasFormContentType) throw new DomainException("file_required", "أرفق ملفًا.", "Attach a file.", 400) { Field = "file" };
         var form = await request.ReadFormAsync(ct);
-        var file = form.Files.Count == 1 ? form.Files[0] : throw new DomainException("file_required", "أرفق ملفًا واحدًا.", "Attach exactly one file.", 400);
+        var file = form.Files.Count == 1 ? form.Files[0] : throw new DomainException("file_required", "أرفق ملفًا واحدًا.", "Attach exactly one file.", 400) { Field = "file" };
         if (file.Length > maxBytes) throw new DomainException("file_too_large", $"الملف أكبر من {maxBytes / 1024 / 1024} ميجابايت.", $"The file is larger than {maxBytes / 1024 / 1024} MB.", 413);
         return file;
     }
@@ -222,6 +222,6 @@ public static class CollectionEndpoints
         if (http.ContentLength is null or 0 && !http.Headers.ContainsKey("Transfer-Encoding")) return null;
         try { return await http.ReadFromJsonAsync<T>(ct); }
         catch (System.Text.Json.JsonException) { throw new DomainException("invalid_body", "صيغة الطلب غير صالحة.", "The request body is not valid JSON.", 400); }
-        catch (InvalidOperationException) { throw new DomainException("invalid_body", "صيغة الطلب غير صالحة.", "The request body must be JSON.", 415); }
+        catch (InvalidOperationException) { throw new DomainException("json_required", "صيغة الطلب غير صالحة.", "The request body must be JSON.", 415); }
     }
 }

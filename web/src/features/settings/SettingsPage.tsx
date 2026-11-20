@@ -10,6 +10,7 @@ import { L } from "../../shared/i18n";
 import { QueryState } from "../../shared/QueryState";
 import { usePermissions } from "../../shared/session";
 import { DataTable, EmptyNote, PageHeader } from "../../shared/ui";
+import { queryKeys } from "../../api/queries";
 
 /** إعداد نظام كما يعيده GET /api/admin/settings (أوله seat_hold_hours: مهلة المقعد المؤقت، D12). */
 export interface SystemSetting {
@@ -43,7 +44,7 @@ const numeric = (s: SystemSetting) => typeof s.value === "number" || s.min != nu
 export default function SettingsPage() {
   const perms = usePermissions();
   const canView = perms.can("adm.settings", "V");
-  const list = useQuery({ queryKey: ["admin-settings"], queryFn: () => api.get<SystemSetting[]>("/api/admin/settings"), enabled: canView });
+  const list = useQuery({ queryKey: queryKeys.adminSettings, queryFn: () => api.get<SystemSetting[]>("/api/admin/settings"), enabled: canView });
   const [editing, setEditing] = useState<SystemSetting | null>(null);
   const value = (s: SystemSetting, v: number | string) => s.isSwitch
     ? <Tag color={Number(v) === 1 ? "green" : "default"}>{Number(v) === 1 ? L("مشغل", "On") : L("موقف", "Off")}</Tag>

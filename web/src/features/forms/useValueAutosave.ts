@@ -7,6 +7,7 @@ import type { Form, FormItem, SaveValue, ValueKind } from "../../api/collection"
 import { errorText } from "../../shared/format";
 import { L } from "../../shared/i18n";
 import { SESSION_RESUMED } from "../../shared/session";
+import { setLeaveGuard } from "../../shared/leaveGuard";
 
 // ----- المسودة -----
 
@@ -114,8 +115,28 @@ export function useAutosaveRegistry() {
   const navigate = useNavigate();
   const { modal } = App.useApp();
 
-  // UX-3: leaving by a link inside the app (sidebar, back link) saves what can be saved first; what cannot (an incomplete
-  // reason or ratio) is not dropped silently: the user is asked whether to stay.
+  // UX-3: leaving the form (a link, the back link, or the global search) saves what can be saved first; what cannot (an
+  // incomplete reason or ratio) is not dropped silently: the user is asked whether to stay.
+  const confirmLeave = useCallback(async (go: () => void) => {
+    await flushAll();
+    await new Promise((r) => setTimeout(r, 0));
+    if (leftRef.current === 0) return go();
+    modal.confirm({
+      title: L("قيم لم تحفظ", "Unsaved values"),
+      content: L(`في النموذج ${leftRef.current} قيمة لم تحفظ (سبب أقصر من 5 أحرف، أو نسبة بلا بسط أو مقام، أو حفظ لم ينجح). إن غادرت ضاعت.`,
+        `${leftRef.current} values are not saved (a short reason, a ratio missing a part, or a failed save). Leaving loses them.`),
+      okText: L("غادر دون حفظها", "Leave without them"), cancelText: L("ابق وأكملها", "Stay and complete them"), okButtonProps: { danger: true },
+      onOk: go,
+    });
+  }, [flushAll, modal]);
+  // Navigation from code (the global search) asks through the shared guard.
+  useEffect(() => {
+    if (!busy) return;
+    return setLeaveGuard((proceed) => {
+      void confirmLeave(proceed);
+      return true;
+    });
+  }, [busy, confirmLeave]);
   useEffect(() => {
     if (!busy) return;
     const onClick = (e: MouseEvent) => {
@@ -128,22 +149,11 @@ export function useAutosaveRegistry() {
       if (to === window.location.pathname + window.location.search + window.location.hash) return;
       e.preventDefault();
       e.stopPropagation();
-      void (async () => {
-        await flushAll();
-        await new Promise((r) => setTimeout(r, 0));
-        if (leftRef.current === 0) return navigate(to);
-        modal.confirm({
-          title: L("قيم لم تحفظ", "Unsaved values"),
-          content: L(`في النموذج ${leftRef.current} قيمة لم تحفظ (سبب أقصر من 5 أحرف، أو نسبة بلا بسط أو مقام، أو حفظ لم ينجح). إن غادرت ضاعت.`,
-            `${leftRef.current} values are not saved (a short reason, a ratio missing a part, or a failed save). Leaving loses them.`),
-          okText: L("غادر دون حفظها", "Leave without them"), cancelText: L("ابق وأكملها", "Stay and complete them"), okButtonProps: { danger: true },
-          onOk: () => navigate(to),
-        });
-      })();
+      void confirmLeave(() => navigate(to));
     };
     document.addEventListener("click", onClick, true);
     return () => document.removeEventListener("click", onClick, true);
-  }, [busy, flushAll, navigate, modal]);
+  }, [busy, confirmLeave, navigate]);
   useEffect(() => {
     if (!busy) return;
     const warn = (e: BeforeUnloadEvent) => {

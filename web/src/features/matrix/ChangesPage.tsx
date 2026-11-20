@@ -9,6 +9,7 @@ import { L } from "../../shared/i18n";
 import { QueryState } from "../../shared/QueryState";
 import { EmptyNote, PageHeader, Panel } from "../../shared/ui";
 import { describe } from "./grants";
+import { queryKeys } from "../../api/queries";
 
 const STATUS: Record<ChangeStatus, { color: string; label: () => string }> = {
   Pending: { color: "gold", label: () => L("ينتظر الاعتماد", "Waiting for approval") },
@@ -20,9 +21,9 @@ const STATUS: Record<ChangeStatus, { color: string; label: () => string }> = {
 
 export default function ChangesPage() {
   const [tab, setTab] = useState("Pending");
-  const catalog = useQuery({ queryKey: ["catalog"], queryFn: () => api.get<Catalog>("/api/iam/catalog"), staleTime: Infinity });
+  const catalog = useQuery({ queryKey: queryKeys.catalog, queryFn: () => api.get<Catalog>("/api/iam/catalog"), staleTime: Infinity });
   const changes = useQuery({
-    queryKey: ["changes", tab === "Pending" ? "Pending" : "all"],
+    queryKey: queryKeys.changesList(tab === "Pending" ? "Pending" : "all"),
     queryFn: () => api.get<RbacChange[]>(tab === "Pending" ? "/api/iam/changes?status=Pending" : "/api/iam/changes"),
   });
   return (

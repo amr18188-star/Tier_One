@@ -15,8 +15,8 @@ export function useRefreshPlan() {
   const qc = useQueryClient();
   return async () => {
     await qc.invalidateQueries({ queryKey: queryKeys.strategy });
-    await qc.invalidateQueries({ queryKey: ["indicators"] });
-    await qc.invalidateQueries({ queryKey: ["standards"] });
+    await qc.invalidateQueries({ queryKey: queryKeys.indicators });
+    await qc.invalidateQueries({ queryKey: queryKeys.standards });
   };
 }
 

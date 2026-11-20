@@ -8,6 +8,8 @@ import type { Conflict } from "../../api/tier1";
 import { errorText, formatDate } from "../../shared/format";
 import { L, useLang } from "../../shared/i18n";
 import { conflictSeverity, conflictStatus } from "../../shared/labels";
+import { useFieldErrors } from "../../shared/useFieldErrors";
+import { queryKeys } from "../../api/queries";
 
 /**
  * تفاصيل التعارض: القيمتان المتعارضتان ومصدراهما جنبًا إلى جنب، ثم ما يستطيعه المستخدم:
@@ -61,14 +63,15 @@ function PrepareForm({ conflict }: { conflict: Conflict }) {
     mutationFn: (v: { proposal: string; preparationNote?: string }) => api.post<Conflict>(`/api/kpi/conflicts/${conflict.code}/prepare`, { ...v, version: conflict.version }),
     onSuccess: async () => {
       message.success(L("جُهز التعارض ودخل جدول أعمال اللجنة.", "Prepared and added to the committee agenda."));
-      await qc.invalidateQueries({ queryKey: ["conflicts"] });
-      await qc.invalidateQueries({ queryKey: ["home"] });
+      await qc.invalidateQueries({ queryKey: queryKeys.conflicts });
+      await qc.invalidateQueries({ queryKey: queryKeys.home });
     },
   });
+  const saveMarked = useFieldErrors(form, save.error);
   return (
     <section className="lcp-muted-box mb">
       <h3 className="t1-form-sec">{L("التجهيز للجنة العليا", "Prepare for the committee")}</h3>
-      {save.error && <Alert type="error" showIcon message={errorText(save.error)} className="mb" />}
+      {save.error && !saveMarked && <Alert type="error" showIcon message={errorText(save.error)} className="mb" />}
       <Form form={form} layout="vertical" onFinish={(v) => save.mutate(v)}>
         <Form.Item name="proposal" label={L("المعالجة المقترحة", "Proposed resolution")} rules={[{ required: true, message: L("اكتب المعالجة المقترحة", "Enter the proposal") }]}
           extra={L("ما تقترح أن تقرره اللجنة، بالأرقام إن أمكن.", "What the committee should decide, with numbers if possible.")}>
@@ -96,15 +99,16 @@ function DecideForm({ conflict, onDone }: { conflict: Conflict; onDone: () => vo
     }),
     onSuccess: async (_, v) => {
       message.success(v.outcome === "defer" ? L("سُجل التأجيل.", "Deferral recorded.") : L("سُجل قرار اللجنة العليا.", "Committee decision recorded."));
-      await qc.invalidateQueries({ queryKey: ["conflicts"] });
-      await qc.invalidateQueries({ queryKey: ["home"] });
+      await qc.invalidateQueries({ queryKey: queryKeys.conflicts });
+      await qc.invalidateQueries({ queryKey: queryKeys.home });
       onDone();
     },
   });
+  const saveMarked = useFieldErrors(form, save.error);
   return (
     <section className="lcp-muted-box">
       <h3 className="t1-form-sec">{L("قرار اللجنة العليا لـ Tier 1", "Tier 1 higher committee decision")}</h3>
-      {save.error && <Alert type="error" showIcon message={errorText(save.error)} className="mb" />}
+      {save.error && !saveMarked && <Alert type="error" showIcon message={errorText(save.error)} className="mb" />}
       <Form form={form} layout="vertical" initialValues={{ outcome: "resolve", decisionDate: dayjs(), decision: conflict.proposal ?? undefined }} onFinish={(v) => save.mutate(v)}>
         <Form.Item name="outcome">
           <Radio.Group optionType="button" options={[{ value: "resolve", label: L("حسم بقرار", "Resolve") }, { value: "defer", label: L("تأجيل", "Defer") }]} />

@@ -14,6 +14,7 @@ import { QueryState } from "../../shared/QueryState";
 import { EmptyNote, FilterMeta, PageHeader } from "../../shared/ui";
 import "../../shared/score.css";
 import "./progress.css";
+import { queryKeys } from "../../api/queries";
 
 /**
  * تقدم الكلية: قيمها المعتمدة لكل مؤشر مقارنة بمستهدف الجامعة لذلك العام، وكم تبعد عنه، وبمستهدفها الخاص إن وضع،
@@ -31,7 +32,7 @@ export default function ProgressPage() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
   const unitId = params.get("unit") ?? undefined;
-  const progress = useQuery({ queryKey: ["progress", unitId], queryFn: () => api.get<Progress | null>(`/api/progress${unitId ? `?unitId=${unitId}` : ""}`) });
+  const progress = useQuery({ queryKey: queryKeys.progress(unitId), queryFn: () => api.get<Progress | null>(`/api/progress${unitId ? `?unitId=${unitId}` : ""}`) });
   const [filter, setFilter] = useState<Filter>("all");
   const [q, setQ] = useState("");
   const p = progress.data;

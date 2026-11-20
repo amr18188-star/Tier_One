@@ -1534,6 +1534,25 @@
         }
       }
     },
+    "/api/logs/database": {
+      "get": {
+        "tags": [
+          "Tier1.Api"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatabasePoolSnapshot"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/logs/verify": {
       "post": {
         "tags": [
@@ -5649,6 +5668,82 @@
           "Open",
           "Closed"
         ]
+      },
+      "DatabasePoolSnapshot": {
+        "required": [
+          "used",
+          "idle",
+          "max",
+          "pending",
+          "timeouts",
+          "peakUsed",
+          "peakPending",
+          "since"
+        ],
+        "type": "object",
+        "properties": {
+          "used": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "idle": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "max": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pending": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "timeouts": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "peakUsed": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "peakPending": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
       },
       "DecideConflictRequest": {
         "required": [

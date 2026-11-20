@@ -9,6 +9,7 @@ import { L } from "../../shared/i18n";
 import { conflictSeverity, conflictStatus } from "../../shared/labels";
 import { DataTable, FilterMeta, oneOf, PageHeader, Panel } from "../../shared/ui";
 import { ConflictDrawer } from "./ConflictDrawer";
+import { queryKeys } from "../../api/queries";
 
 const STATUSES: ConflictStatus[] = ["Open", "Ready", "Deferred", "Resolved"];
 const SEVERITIES: ConflictSeverity[] = ["High", "Medium", "Low"];
@@ -34,8 +35,8 @@ export default function ConflictsPage() {
     setParams(next, { replace: true });
   };
 
-  const all = useQuery({ queryKey: ["conflicts", "all"], queryFn: () => api.get<ConflictList>("/api/kpi/conflicts") });
-  const list = useQuery({ queryKey: ["conflicts", status, severity, q], queryFn: () => api.get<ConflictList>(`/api/kpi/conflicts${query({ status, severity, q })}`) });
+  const all = useQuery({ queryKey: queryKeys.conflictsAll, queryFn: () => api.get<ConflictList>("/api/kpi/conflicts") });
+  const list = useQuery({ queryKey: queryKeys.conflictsList(status, severity, q), queryFn: () => api.get<ConflictList>(`/api/kpi/conflicts${query({ status, severity, q })}`) });
   const count = (s: ConflictStatus) => all.data?.items.filter((c) => c.status === s).length ?? 0;
   const selected = all.data?.items.find((c) => c.code === open);
   const actions = list.data?.actions ?? all.data?.actions;

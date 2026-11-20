@@ -13,13 +13,14 @@ import { usePermissions } from "../../shared/session";
 import { PageHeader, Panel } from "../../shared/ui";
 import { clean, describe, diffKeys, type Grants } from "./grants";
 import { MatrixTable } from "./MatrixTable";
+import { queryKeys } from "../../api/queries";
 
 export default function MatrixPage() {
   const { roleId } = useParams();
   const nav = useNavigate();
   const perms = usePermissions();
-  const catalog = useQuery({ queryKey: ["catalog"], queryFn: () => api.get<Catalog>("/api/iam/catalog"), staleTime: Infinity });
-  const roles = useQuery({ queryKey: ["roles"], queryFn: () => api.get<RoleSummary[]>("/api/iam/roles") });
+  const catalog = useQuery({ queryKey: queryKeys.catalog, queryFn: () => api.get<Catalog>("/api/iam/catalog"), staleTime: Infinity });
+  const roles = useQuery({ queryKey: queryKeys.roles, queryFn: () => api.get<RoleSummary[]>("/api/iam/roles") });
   const selectedId = roleId ?? roles.data?.find((r) => !r.isLocked)?.id;
   const [creating, setCreating] = useState(false);
 
@@ -66,14 +67,14 @@ function RoleEditor({ roleId, catalog, roles }: { roleId: string; catalog: Catal
   const qc = useQueryClient();
   const { message } = App.useApp();
   const nav = useNavigate();
-  const detail = useQuery({ queryKey: ["role", roleId], queryFn: () => api.get<RoleDetail>(`/api/iam/roles/${roleId}`) });
+  const detail = useQuery({ queryKey: queryKeys.role(roleId), queryFn: () => api.get<RoleDetail>(`/api/iam/roles/${roleId}`) });
   const [draft, setDraft] = useState<Grants>({});
   const [module, setModule] = useState("all");
   const [search, setSearch] = useState("");
   const [compareId, setCompareId] = useState<string | undefined>();
   const [reviewing, setReviewing] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const compare = useQuery({ queryKey: ["role", compareId], queryFn: () => api.get<RoleDetail>(`/api/iam/roles/${compareId}`), enabled: !!compareId });
+  const compare = useQuery({ queryKey: queryKeys.role(compareId), queryFn: () => api.get<RoleDetail>(`/api/iam/roles/${compareId}`), enabled: !!compareId });
 
   const version = detail.data?.role.grantsVersion;
   useEffect(() => {
@@ -158,9 +159,9 @@ function RoleEditor({ roleId, catalog, roles }: { roleId: string; catalog: Catal
           await api.put<RbacChange>(`/api/iam/roles/${roleId}/grants`, { baseVersion: role.grantsVersion, reason, grants: clean(draft) });
           message.success(L("أُرسل الطلب. يسري بعد اعتماد مدير أعلى آخر.", "Request sent. It takes effect after another super administrator approves it."));
           setReviewing(false);
-          await qc.invalidateQueries({ queryKey: ["role", roleId] });
-          await qc.invalidateQueries({ queryKey: ["roles"] });
-          await qc.invalidateQueries({ queryKey: ["changes"] });
+          await qc.invalidateQueries({ queryKey: queryKeys.role(roleId) });
+          await qc.invalidateQueries({ queryKey: queryKeys.roles });
+          await qc.invalidateQueries({ queryKey: queryKeys.changes });
         }}
       />
       <ReasonModal
@@ -173,7 +174,7 @@ function RoleEditor({ roleId, catalog, roles }: { roleId: string; catalog: Catal
           await api.post(`/api/iam/roles/${roleId}/delete`, { reason });
           message.success(L("حُذف الدور.", "Role deleted."));
           setDeleting(false);
-          await qc.invalidateQueries({ queryKey: ["roles"] });
+          await qc.invalidateQueries({ queryKey: queryKeys.roles });
           nav("/matrix");
         }}
       />
@@ -295,8 +296,8 @@ function CreateRoleModal({ open, onClose, roles, onCreated }: { open: boolean; o
         setError(null);
         try {
           const role = await api.post<RoleSummary>("/api/iam/roles", v);
-          await qc.invalidateQueries({ queryKey: ["roles"] });
-          await qc.invalidateQueries({ queryKey: ["changes"] });
+          await qc.invalidateQueries({ queryKey: queryKeys.roles });
+          await qc.invalidateQueries({ queryKey: queryKeys.changes });
           form.resetFields();
           onClose();
           onCreated(role.id);

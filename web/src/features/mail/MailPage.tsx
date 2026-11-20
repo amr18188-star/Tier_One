@@ -8,6 +8,7 @@ import { L } from "../../shared/i18n";
 import { QueryState } from "../../shared/QueryState";
 import { usePermissions } from "../../shared/session";
 import { DataTable, EmptyNote, PageHeader } from "../../shared/ui";
+import { queryKeys } from "../../api/queries";
 
 /** رسالة في الصندوق الصادر كما يعيدها GET /api/admin/mail، بعنوان مقنّع. */
 export interface MailRow {
@@ -46,7 +47,7 @@ export default function MailPage() {
   const canResend = perms.can("adm.mail", "E");
   const [filter, setFilter] = useState<Filter>("failed");
   const [busy, setBusy] = useState<number | null>(null);
-  const list = useQuery({ queryKey: ["admin-mail", filter], queryFn: () => api.get<MailRow[]>(`/api/admin/mail?status=${filter}`) });
+  const list = useQuery({ queryKey: queryKeys.adminMail(filter), queryFn: () => api.get<MailRow[]>(`/api/admin/mail?status=${filter}`) });
 
   const resend = async (m: MailRow) => {
     setBusy(m.id);

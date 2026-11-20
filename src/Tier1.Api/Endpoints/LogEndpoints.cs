@@ -16,6 +16,9 @@ public static class LogEndpoints
         var logs = api.MapGroup("/logs");
         logs.MapGet("/status", async (int? days, LogsService svc, CancellationToken ct) => TypedResults.Ok(await svc.StatusAsync(days ?? 14, ct)))
             .RequireAnyPermission(AnyLog);
+        // The PostgreSQL connection pool now and its peaks (load tests, capacity checks): technical-log viewers only.
+        logs.MapGet("/database", (Tier1.Infrastructure.Health.DatabasePoolMetrics pool) => TypedResults.Ok(pool.Snapshot()))
+            .RequirePermission(Tier1.Application.Access.Features.TechLog, Tier1.Domain.Access.Cap.View);
         logs.MapPost("/verify", async (VerifyRequest req, LogsService svc, CancellationToken ct) => TypedResults.Ok(await svc.VerifyAsync(req.From, req.To, ct)))
             .RequireAnyPermission(AnyLog).RequireRateLimiting(ApiSetup.SensitiveLimit);
         logs.MapGet("/{collection}", async ([AsParameters] LogQuery q, string collection, LogsService svc, CancellationToken ct) =>

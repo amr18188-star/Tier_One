@@ -181,8 +181,9 @@ export function App() {
         <AntApp>
           <QueryClientProvider client={queryClient}>
             <BrowserRouter>
-              {/* إعادة التركيب عند تغيير اللغة تعيد كل النصوص ونتائج الخادم بها. */}
-              <SessionProvider key={lang}>
+              {/* Changing the language re-renders the tree (App reads the language) without remounting it, so an open dialog,
+                  a filter or a value being typed stays; the server's answers are fetched again in the new language (below). */}
+              <SessionProvider>
                 <Gate />
               </SessionProvider>
             </BrowserRouter>

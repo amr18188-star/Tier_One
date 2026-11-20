@@ -68,7 +68,7 @@ public static class IndicatorRules
         if (string.IsNullOrWhiteSpace(changeReason) || changeReason.Trim().Length < 5)
             throw new DomainException("change_reason_required",
                 "التعريف معتمد؛ تعديله ينشئ إصدارًا جديدًا. اكتب سبب التعديل.",
-                "The definition is approved; editing creates a new version. Enter the reason.", 400);
+                "The definition is approved; editing creates a new version. Enter the reason.", 400) { Field = "changeReason" };
 
         var next = Copy(approved);
         next.Number = indicator.Versions.Max(v => v.Number) + 1;
@@ -105,7 +105,7 @@ public static class IndicatorRules
                 "من أعدّ التعريف أو أرسله لا يعتمده.",
                 "Whoever prepared or submitted the definition cannot approve it.");
         if (string.IsNullOrWhiteSpace(decisionRef))
-            throw new DomainException("decision_ref_required", "اكتب رقم محضر اللجنة العليا الذي اعتمد التعريف.", "Enter the committee minutes reference.", 400);
+            throw new DomainException("decision_ref_required", "اكتب رقم محضر اللجنة العليا الذي اعتمد التعريف.", "Enter the committee minutes reference.", 400) { Field = "decisionRef" };
 
         foreach (var old in indicator.Versions.Where(x => x.Status == DefinitionStatus.Approved))
             old.Status = DefinitionStatus.Superseded;

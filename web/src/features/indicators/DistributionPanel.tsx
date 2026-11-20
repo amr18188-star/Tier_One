@@ -11,6 +11,7 @@ import { PeriodNav } from "../../shared/PeriodNav";
 import { Panel } from "../../shared/ui";
 import { usePlanCalendar } from "../../shared/usePeriodParams";
 import { TargetEditor, type TargetSlot } from "./TargetEditor";
+import { queryKeys } from "../../api/queries";
 
 /**
  * هل يحقق توزيع الكليات مستهدف الجامعة؟ الملخص مكتوب أولًا، ثم الأعمدة لكل كلية، ثم جدول الإدخال.
@@ -21,8 +22,8 @@ export function DistributionPanel({ code }: { code: string }) {
   const [year, setYear] = useState(2027);
   const calendar = usePlanCalendar();
   const [slot, setSlot] = useState<TargetSlot | null>(null);
-  const dist = useQuery({ queryKey: ["distribution", code, year], queryFn: () => api.get<Distribution>(`/api/kpi/indicators/${code}/distribution?year=${year}`) });
-  const targets = useQuery({ queryKey: ["targets", code], queryFn: () => api.get<IndicatorTargets>(`/api/kpi/indicators/${code}/targets`) });
+  const dist = useQuery({ queryKey: queryKeys.distributionYear(code, year), queryFn: () => api.get<Distribution>(`/api/kpi/indicators/${code}/distribution?year=${year}`) });
+  const targets = useQuery({ queryKey: queryKeys.targets(code), queryFn: () => api.get<IndicatorTargets>(`/api/kpi/indicators/${code}/targets`) });
   const r = dist.data?.result;
   const t = targets.data;
 

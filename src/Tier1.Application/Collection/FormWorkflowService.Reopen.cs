@@ -52,7 +52,7 @@ public sealed partial class FormWorkflowService
         var request = await PendingRequestAsync(id, ct);
         ReopenRules.EnsureCanDecide(request, current.UserId!.Value);
         var decision = Require.Optional(req.DecisionRef, 200)
-            ?? throw new DomainException("decision_ref_required", "اعتماد إعادة الفتح يحتاج رقم محضر اللجنة العليا.", "Approving a reopen needs the committee's decision reference.", 400);
+            ?? throw new DomainException("decision_ref_required", "اعتماد إعادة الفتح يحتاج رقم محضر اللجنة العليا.", "Approving a reopen needs the committee's decision reference.", 400) { Field = "decisionRef" };
         // الطلب قدم والنموذج معتمد في دورة مفتوحة؛ يعاد الفحص لأن الحال قد تغير منذ الطلب.
         ReopenRules.EnsureCanRequest(ctx.Submission, ctx.Cycle, hasPending: false);
 

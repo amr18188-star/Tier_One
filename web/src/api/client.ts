@@ -1,8 +1,16 @@
 import { getLang, L } from "../shared/i18n";
 
+/** BE-6: one invalid field of a request, by its JSON name, with the error code and the message in the UI language. */
+export interface FieldError {
+  field: string;
+  code: string;
+  message: string;
+}
+
 /**
  * خطأ من الخادم برمزه الثابت ورسالته بلغة الطلب. الحالة 0 تعني أن الطلب لم يصل إلى الخادم أصلًا.
  * traceId (FE-12، BE-6): مرجع الطلب في سجلات الخادم، يذكره المستخدم للدعم الفني.
+ * errors (BE-6): الحقول التي يعلمها النموذج، وفارغة إن كان الخطأ عن الطلب كله.
  */
 export class ApiError extends Error {
   constructor(
@@ -10,9 +18,18 @@ export class ApiError extends Error {
     public code: string,
     message: string,
     public traceId?: string,
+    public errors: FieldError[] = [],
   ) {
     super(message);
   }
+}
+
+/** The field errors of an answer, kept only when well formed (a proxy page or an older server sends none). */
+function fieldErrors(value: unknown): FieldError[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (e): e is FieldError => typeof e?.field === "string" && typeof e?.code === "string" && typeof e?.message === "string",
+  );
 }
 
 /** FE-12: a 4xx answer will not change on retry (no access, not found, conflict, invalid input); a network or server error may. */
@@ -39,7 +56,7 @@ async function send(path: string, init: RequestInit): Promise<Response> {
   }
 }
 
-async function readJson(r: Response): Promise<{ code?: string; title?: string; token?: string; traceId?: string } | null> {
+async function readJson(r: Response): Promise<{ code?: string; title?: string; token?: string; traceId?: string; errors?: unknown } | null> {
   if (!r.headers.get("content-type")?.includes("json")) return null;
   // FE-12: a JSON content type with an empty or broken body is "no answer", not a SyntaxError shown to the user.
   const text = await r.text();
@@ -124,7 +141,7 @@ export function createApiClient({ csrfUrl, onUnauthorized }: {
       }
       if (r.status === 401 && path !== "/api/me" && !path.startsWith("/api/auth/")) onUnauthorized?.(path);
       throw new ApiError(r.status, data?.code ?? (r.status >= 500 ? "server_unavailable" : "error"), data?.title ?? fallbackTitle(r.status),
-        data?.traceId ?? r.headers.get("X-Trace-Id") ?? undefined);
+        data?.traceId ?? r.headers.get("X-Trace-Id") ?? undefined, fieldErrors(data?.errors));
     }
     return data as T;
   }

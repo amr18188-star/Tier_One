@@ -18,6 +18,7 @@ import { EmptyNote, PageHeader, Panel } from "../../shared/ui";
 import enUS from "antd/locale/en_US";
 import "./cycles.css";
 import { queryKeys, useCycles } from "../../api/queries";
+import { useFieldErrors } from "../../shared/useFieldErrors";
 
 // Range picker forced to LTR with English day/month names, whatever the app's language.
 // Wrapped in a component so Form.Item still injects value/onChange into the picker itself.
@@ -177,7 +178,7 @@ function CycleDrawer({ cycle, onClose }: { cycle: Cycle | null; onClose: () => v
   const [form] = Form.useForm<CycleFields>();
   const qc = useQueryClient();
   const { message } = App.useApp();
-  const calendar = useQuery({ queryKey: ["plan", "calendar"], queryFn: () => api.get<PlanQuarter[]>("/api/plan/calendar") });
+  const calendar = useQuery({ queryKey: queryKeys.planCalendar, queryFn: () => api.get<PlanQuarter[]>("/api/plan/calendar") });
   const cycles = useCycles();
   const quarters = calendar.data ?? [];
   const taken = new Set((cycles.data ?? []).filter((x) => x.id !== cycle?.id && !x.trial && x.quarter).map((x) => `${x.targetYear}-${x.quarter}`));
@@ -206,10 +207,11 @@ function CycleDrawer({ cycle, onClose }: { cycle: Cycle | null; onClose: () => v
   const firstFree = quarters.find((q) => q.end < today && !taken.has(`${q.year}-${q.quarter}`)) ?? quarters.find((q) => q.current) ?? quarters[0];
   const current = cycle?.quarter ? quarters.find((q) => q.year === cycle.targetYear && q.quarter === cycle.quarter) : undefined;
 
+  const saveMarked = useFieldErrors(form, save.error);
   return (
     <Drawer open width={520} title={cycle ? L("تعديل الدورة", "Edit cycle") : L("دورة ربعية جديدة", "New quarterly cycle")} onClose={onClose} destroyOnHidden
       extra={<Space><Button onClick={onClose}>{L("إلغاء", "Cancel")}</Button><Button type="primary" loading={save.isPending} disabled={quarters.length === 0} onClick={() => form.submit()}>{L("حفظ", "Save")}</Button></Space>}>
-      {save.error && <Alert type="error" showIcon message={errorText(save.error)} className="mb" />}
+      {save.error && !saveMarked && <Alert type="error" showIcon message={errorText(save.error)} className="mb" />}
       {open && <Alert type="info" showIcon className="mb" message={L("الدورة مفتوحة: يمكن تعديل الاسم وتمديد الموعد النهائي فقط.", "The cycle is open: only the name and deadline can change.")} />}
       {quarters.length === 0 ? <p>{L("جار تحميل تقويم الخطة…", "Loading…")}</p> : (
         <Form form={form} layout="vertical" onFinish={(v) => save.mutate(v)} requiredMark="optional"
@@ -245,7 +247,7 @@ function CycleDrawer({ cycle, onClose }: { cycle: Cycle | null; onClose: () => v
 function OpenModal({ cycle, onClose }: { cycle: Cycle; onClose: () => void }) {
   const qc = useQueryClient();
   const { message } = App.useApp();
-  const preview = useQuery({ queryKey: ["cycles", cycle.id, "preview"], queryFn: () => api.get<OpenPreview>(`/api/cycles/${cycle.id}/preview`) });
+  const preview = useQuery({ queryKey: queryKeys.cyclePreview(cycle.id), queryFn: () => api.get<OpenPreview>(`/api/cycles/${cycle.id}/preview`) });
   const open = useMutation({
     mutationFn: () => api.post<Cycle>(`/api/cycles/${cycle.id}/open`),
     onSuccess: async () => {

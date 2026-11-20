@@ -233,6 +233,7 @@ public sealed class LoadTests(ITestOutputHelper output)
         });
 
         output.WriteLine($"Running for {seconds}s…");
+        var pool = await PoolWatch.StartAsync();
         var until = DateTime.UtcNow.AddSeconds(seconds);
         await Task.WhenAll(clients.Where(c => c is not null).Select(async c =>
         {
@@ -261,6 +262,7 @@ public sealed class LoadTests(ITestOutputHelper output)
         }
         var failed = errors.Values.Sum();
         output.WriteLine($"{total} requests, {total / (double)seconds:0.0} req/s, worst p95 {worst * 1000:0} ms, server errors {failed}");
+        output.WriteLine(await pool.StopAsync());
         Assert.True(worst < 2.0 && failed == 0, $"p95 {worst * 1000:0} ms (limit 2000), server errors {failed}.");
     }
 
@@ -279,6 +281,7 @@ public sealed class LoadTests(ITestOutputHelper output)
         var users = int.Parse(Environment.GetEnvironmentVariable("T1_LOAD_USERS") ?? "60", System.Globalization.CultureInfo.InvariantCulture);
         var seconds = int.Parse(Environment.GetEnvironmentVariable("T1_LOAD_SECONDS") ?? "60", System.Globalization.CultureInfo.InvariantCulture);
         var stats = new LoadStats();
+        PoolWatch? pool = null;
 
         // The cycle, and the department forms filled and sent for review before the clock starts.
         var planner = await Env.As("planner");
@@ -317,6 +320,7 @@ public sealed class LoadTests(ITestOutputHelper output)
 
             var until = DateTime.UtcNow.AddSeconds(seconds);
             output.WriteLine($"Running for {seconds}s…");
+            pool = await PoolWatch.StartAsync();
             await Task.WhenAll(
             [
                 // Users of one account share its form: the k-th of n autosaves every n-th indicator, from k.
@@ -334,6 +338,7 @@ public sealed class LoadTests(ITestOutputHelper output)
         }
 
         var (worst, failed, conflicts) = stats.Report(output, seconds);
+        if (pool is not null) output.WriteLine(await pool.StopAsync());
         Assert.True(worst < 2.0 && failed == 0 && conflicts == 0, $"p95 {worst * 1000:0} ms (limit 2000), server errors {failed}, conflicts on saves {conflicts}.");
     }
 
@@ -461,5 +466,61 @@ public sealed class LoadTests(ITestOutputHelper output)
             output.WriteLine($"{total} requests, {total / (double)seconds:0.0} req/s, worst p95 {worst * 1000:0} ms, server errors {failed}, conflicts {conflicts.Values.Sum()}");
             return (worst, failed, conflicts.GetValueOrDefault("save"));
         }
+    }
+}
+
+/// <summary>
+/// The server's PostgreSQL connection pool during a load run (Npgsql's own metrics at /api/logs/database, read as the system
+/// admin twice a second): peak connections in use against the maximum, and requests left waiting for one. Waiting requests mean
+/// the pool, not the code, sets the response time. Reported only; the run passes or fails on its response times.
+/// </summary>
+internal sealed class PoolWatch
+{
+    private readonly CancellationTokenSource stop = new();
+    private readonly Task loop;
+    private int peakUsed, peakPending, max;
+    private long timeouts;
+    private bool seen;
+
+    private PoolWatch(DemoClient? admin) => loop = admin is null ? Task.CompletedTask : RunAsync(admin);
+
+    public static async Task<PoolWatch> StartAsync()
+    {
+        DemoClient? admin = null;
+        try { admin = await DemoClient.LoginAsync(Env.Base, "sysadmin@tier1.local", Env.Password, default); }
+        catch (InvalidOperationException) { } // no system admin account on this server: the report says so
+        return new PoolWatch(admin);
+    }
+
+    private async Task RunAsync(DemoClient admin)
+    {
+        try
+        {
+            while (!stop.IsCancellationRequested)
+            {
+                var (status, pool) = await admin.CallAsync(HttpMethod.Get, "/api/logs/database", null, null, stop.Token);
+                if (status == 200 && pool is not null)
+                {
+                    seen = true;
+                    peakUsed = Math.Max(peakUsed, (int)(pool["used"].Num() ?? 0));
+                    peakPending = Math.Max(peakPending, (int)(pool["pending"].Num() ?? 0));
+                    max = (int)(pool["max"].Num() ?? max);
+                    timeouts = (long)(pool["timeouts"].Num() ?? 0);
+                }
+                await Task.Delay(500, stop.Token);
+            }
+        }
+        catch (OperationCanceledException) { }
+        finally { admin.Dispose(); }
+    }
+
+    public async Task<string> StopAsync()
+    {
+        await stop.CancelAsync();
+        await loop;
+        stop.Dispose();
+        return seen
+            ? $"PostgreSQL pool: peak {peakUsed} connections in use of {max}, peak {peakPending} requests waiting, {timeouts} timeouts since the server started"
+            : "PostgreSQL pool: not reported (the server has no /api/logs/database, or no system admin account)";
     }
 }

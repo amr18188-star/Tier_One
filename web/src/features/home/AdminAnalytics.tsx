@@ -20,7 +20,7 @@ import { DotLegend, StateBar } from "../strategy/PlanMap";
 import "../strategy/strategy.css";
 import "./analytics.css";
 import { approvalState, resultPeriods, shareOf, type ApprovalState } from "./adminModel";
-import { useCycles, useStrategyTree } from "../../api/queries";
+import { useCycles, useStrategyTree, queryKeys } from "../../api/queries";
 
 // ---------------------------------------------------------------- shared parts
 
@@ -157,7 +157,7 @@ function ResultsCard({ results, periods, period, onPeriod }: {
 // ---------------------------------------------------------------- 2. score + calculator
 
 function ScoreRow() {
-  const card = useQuery({ queryKey: ["scorecard"], queryFn: () => api.get<Scorecard>("/api/scorecard") });
+  const card = useQuery({ queryKey: queryKeys.scorecard, queryFn: () => api.get<Scorecard>("/api/scorecard") });
   const c = card.data;
   return (
     <div className="han-pair">
@@ -339,10 +339,10 @@ function DefinitionSections({ home }: { home: ReturnType<typeof useHome> }) {
 
 // ---------------------------------------------------------------- page section
 
-const useHome = () => useQuery({ queryKey: ["home"], queryFn: () => api.get<Home>("/api/home") });
+const useHome = () => useQuery({ queryKey: queryKeys.home, queryFn: () => api.get<Home>("/api/home") });
 function useResults(cycleId: string | undefined, enabled: boolean) {
   return useQuery({
-    queryKey: ["results", cycleId, undefined],
+    queryKey: queryKeys.results(cycleId, undefined),
     queryFn: () => api.get<Results | null>(`/api/results${query({ cycleId })}`),
     enabled, placeholderData: (prev) => prev,
   });

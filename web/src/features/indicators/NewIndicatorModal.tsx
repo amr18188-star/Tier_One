@@ -7,6 +7,7 @@ import { errorText } from "../../shared/format";
 import { L } from "../../shared/i18n";
 import { level, options } from "../../shared/labels";
 import { queryKeys } from "../../api/queries";
+import { useFieldErrors } from "../../shared/useFieldErrors";
 
 interface Fields { standardCode: string; nameAr: string; unit: string; level: CollectionLevel; reason?: string }
 
@@ -18,16 +19,17 @@ export function NewIndicatorModal({ standards, standard, onClose }: { standards:
   const create = useMutation({
     mutationFn: (v: Fields) => api.post<IndicatorDetail>("/api/kpi/indicators", v),
     onSuccess: async (d) => {
-      await qc.invalidateQueries({ queryKey: ["indicators"] });
-      await qc.invalidateQueries({ queryKey: ["standards"] });
+      await qc.invalidateQueries({ queryKey: queryKeys.indicators });
+      await qc.invalidateQueries({ queryKey: queryKeys.standards });
       await qc.invalidateQueries({ queryKey: queryKeys.strategy });
       navigate(`/indicators/${d.code}?edit=1`);
     },
   });
+  const createMarked = useFieldErrors(form, create.error);
   return (
     <Modal open title={L("مؤشر جديد", "New indicator")} okText={L("إنشاء وإكمال التعريف", "Create and complete")} cancelText={L("إلغاء", "Cancel")}
       onCancel={onClose} onOk={() => form.submit()} confirmLoading={create.isPending} destroyOnHidden>
-      {create.error && <Alert type="error" showIcon message={errorText(create.error)} className="mb" />}
+      {create.error && !createMarked && <Alert type="error" showIcon message={errorText(create.error)} className="mb" />}
       <Form form={form} layout="vertical" onFinish={(v) => create.mutate(v)} initialValues={{ standardCode: standard, unit: "%", level: "College" }} requiredMark="optional">
         <Form.Item name="standardCode" label={L("المعيار", "Standard")} rules={[{ required: true, message: L("اختر المعيار", "Pick a standard") }]}>
           <Select showSearch optionFilterProp="label" options={standards.map((s) => ({ value: s.code, label: `${s.code} — ${s.nameAr}` }))} />

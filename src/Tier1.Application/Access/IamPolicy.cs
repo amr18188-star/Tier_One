@@ -160,13 +160,13 @@ public sealed class IamPolicy(IIdentityStore db, IClock clock, ICurrentUser curr
     {
         var e = (email ?? "").Trim().ToLowerInvariant();
         if (e.Length is < 5 or > 254 || !MailAddress.TryCreate(e, out var parsed) || parsed.Address != e)
-            throw new DomainException("invalid_email", "البريد الإلكتروني غير صالح.", "Invalid email address.", 400);
+            throw new DomainException("invalid_email", "البريد الإلكتروني غير صالح.", "Invalid email address.", 400) { Field = "email" };
         return e;
     }
 
     internal static void RequireReason(string? reason)
     {
         if (string.IsNullOrWhiteSpace(reason) || reason.Trim().Length < 5)
-            throw new DomainException("reason_required", "اكتب سببًا واضحًا (5 أحرف على الأقل).", "Enter a clear reason (at least 5 characters).", 400);
+            throw new DomainException("reason_required", "اكتب سببًا واضحًا (5 أحرف على الأقل).", "Enter a clear reason (at least 5 characters).", 400) { Field = "reason" };
     }
 }

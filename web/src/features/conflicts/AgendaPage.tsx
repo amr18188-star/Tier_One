@@ -8,13 +8,14 @@ import { uiLocale } from "../../shared/format";
 import { L } from "../../shared/i18n";
 import { conflictSeverity, conflictStatus } from "../../shared/labels";
 import { EmptyNote, PageHeader, Panel } from "../../shared/ui";
+import { queryKeys } from "../../api/queries";
 
 /**
  * جدول أعمال جلسة اللجنة العليا: الحالات الجاهزة والمؤجلة، الأخطر أولًا، بالقيمتين المتعارضتين والمعالجة المقترحة.
  * يطبع للجلسة، ومن كل بند يفتح نموذج تسجيل القرار.
  */
 export default function AgendaPage() {
-  const agenda = useQuery({ queryKey: ["conflicts", "agenda"], queryFn: () => api.get<Conflict[]>("/api/kpi/conflicts/agenda") });
+  const agenda = useQuery({ queryKey: queryKeys.conflictsAgenda, queryFn: () => api.get<Conflict[]>("/api/kpi/conflicts/agenda") });
   const today = new Intl.DateTimeFormat(uiLocale(), { dateStyle: "long", timeZone: "Africa/Cairo" }).format(new Date());
 
   return (

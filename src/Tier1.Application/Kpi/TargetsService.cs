@@ -102,7 +102,7 @@ public sealed class TargetsService(IKpiStore db, IReadModel read, IClock clock, 
                 if (!me.HasSpecial(Feature, Specials.Approve)) throw DomainException.Forbidden();
                 reason = Require.Reason(req.Reason);
                 var decision = Require.Optional(req.DecisionRef, 200)
-                    ?? throw new DomainException("decision_ref_required", "تعديل مستهدف معتمد يحتاج رقم قرار اللجنة العليا.", "Changing an approved target needs a decision reference.", 400);
+                    ?? throw new DomainException("decision_ref_required", "تعديل مستهدف معتمد يحتاج رقم قرار اللجنة العليا.", "Changing an approved target needs a decision reference.", 400) { Field = "decisionRef" };
                 db.TargetRevisions.Add(Revision(target, value, Require.Optional(req.Text, 300), reason, decision, TargetRevisionAction.Revised, now));
                 target.DecisionRef = decision;
             }
@@ -250,7 +250,7 @@ public sealed class TargetsService(IKpiStore db, IReadModel read, IClock clock, 
         if (!me.HasSpecial(Feature, Specials.Approve)) throw DomainException.Forbidden();
         var why = Require.Reason(reason);
         var decision = Require.Optional(decisionRef, 200)
-            ?? throw new DomainException("decision_ref_required", "تعديل مستهدف معتمد أو حذفه يحتاج رقم قرار اللجنة العليا.", "Changing an approved target needs a decision reference.", 400);
+            ?? throw new DomainException("decision_ref_required", "تعديل مستهدف معتمد أو حذفه يحتاج رقم قرار اللجنة العليا.", "Changing an approved target needs a decision reference.", 400) { Field = "decisionRef" };
         return (why, decision);
     }
 
@@ -274,7 +274,7 @@ public sealed class TargetsService(IKpiStore db, IReadModel read, IClock clock, 
         target.ApprovedBy = current.UserId;
         target.ApprovedAt = clock.UtcNow;
         target.DecisionRef = Require.Optional(req.DecisionRef, 200)
-            ?? throw new DomainException("decision_ref_required", "اكتب رقم محضر اللجنة العليا.", "Enter the committee minutes reference.", 400);
+            ?? throw new DomainException("decision_ref_required", "اكتب رقم محضر اللجنة العليا.", "Enter the committee minutes reference.", 400) { Field = "decisionRef" };
         var unit = await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().FirstAsync(u => u.Id == target.UnitId, ct);
         audit.Record(AuditEvents.Audit("kpi", Feature, "kpi.target_approved", "اعتماد مستهدف مؤشر", "Approved an indicator target") with
         {

@@ -7,6 +7,7 @@ import { api } from "../../api/client";
 import { formatDateTime } from "../../shared/format";
 import { L } from "../../shared/i18n";
 import "./notifications.css";
+import { queryKeys } from "../../api/queries";
 
 /** عنصر في صندوق الإشعارات كما يعيده GET /api/notifications. */
 export interface InboxItem {
@@ -21,7 +22,7 @@ export interface InboxItem {
 
 export interface Inbox { items: InboxItem[]; unread: number }
 
-export const INBOX_KEY = ["notifications"] as const;
+export const INBOX_KEY = queryKeys.notifications;
 
 /**
  * صندوق الإشعارات داخل التطبيق (المطلب 4-15): كل ما أرسل للمستخدم بالبريد يظهر هنا أيضًا، فلا يضيع بفشل البريد.

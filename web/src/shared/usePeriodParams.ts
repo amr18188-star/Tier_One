@@ -8,10 +8,11 @@ import {
   cycleTimeline, defaultCycleSlot, quarterTimeline, resolveCycle, resolveQuarter, resolveYear,
   type PeriodChange, type PeriodMode, type QuarterOptions, type Slot, type Timeline,
 } from "./period";
+import { queryKeys } from "../api/queries";
 
 /** تقويم أرباع الخطة؛ متاح لكل من يرى الدورات أو النماذج أو النتائج. الرفض أو الفشل لا يعاد، والسنوات تأتي من الدورات. */
 export function usePlanCalendar() {
-  return useQuery({ queryKey: ["plan", "calendar"], queryFn: () => api.get<PlanQuarter[]>("/api/plan/calendar"), retry: false, staleTime: 300_000 });
+  return useQuery({ queryKey: queryKeys.planCalendar, queryFn: () => api.get<PlanQuarter[]>("/api/plan/calendar"), retry: false, staleTime: 300_000 });
 }
 
 export interface SearchState {

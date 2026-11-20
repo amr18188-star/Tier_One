@@ -32,7 +32,7 @@ public sealed class MailAdminService(INotificationStore db, IReadModel read, IAc
             "pending" => q.Where(m => m.SentAt == null && m.FailedAt == null && m.CancelledAt == null && m.SkippedReason == null),
             "sent" => q.Where(m => m.SentAt != null),
             null or "" or "all" => q,
-            _ => throw new DomainException("invalid_status", "حالة غير معروفة.", "Unknown status.", 400),
+            _ => throw new DomainException("invalid_status", "حالة غير معروفة.", "Unknown status.", 400) { Field = "status" },
         };
         var rows = await q.OrderByDescending(m => m.Id).Take(Shown).ToListAsync(ct);
         var ids = rows.Select(r => r.Id).ToList();

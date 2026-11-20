@@ -6,7 +6,8 @@ import type { IndicatorDetail, Version } from "../../api/tier1";
 import { errorText } from "../../shared/format";
 import { L, useLang } from "../../shared/i18n";
 import { aggregation, direction, frequency, level, options } from "../../shared/labels";
-import { useUnits } from "../../api/queries";
+import { useUnits, queryKeys } from "../../api/queries";
+import { useFieldErrors } from "../../shared/useFieldErrors";
 
 type FormValues = Pick<Version, "nameAr" | "nameEn" | "definition" | "purpose" | "exclusions" | "numerator" | "denominator" | "unit" | "direction"
   | "frequency" | "level" | "aggregation" | "aggregationNote" | "dataSource" | "ownerUnitId" | "evidenceRequired" | "formula" | "accumulation"> & { changeReason?: string };
@@ -47,8 +48,8 @@ export function DefinitionDrawer({ detail, onClose }: { detail: IndicatorDetail;
     mutationFn: (f: FormValues) => api.put<IndicatorDetail>(`/api/kpi/indicators/${detail.code}/definition`, { ...f, version: createsVersion ? undefined : v.version }),
     onSuccess: async (updated) => {
       qc.setQueryData(["indicator", detail.code], updated);
-      await qc.invalidateQueries({ queryKey: ["indicators"] });
-      await qc.invalidateQueries({ queryKey: ["home"] });
+      await qc.invalidateQueries({ queryKey: queryKeys.indicators });
+      await qc.invalidateQueries({ queryKey: queryKeys.home });
       message.success(updated.current.missing.length === 0
         ? L("حُفظ التعريف وهو مكتمل؛ يمكنك إرساله للاعتماد.", "Saved and complete; you can submit it for approval.")
         : L(`حُفظ التعريف. ما زال ينقصه: ${updated.current.missing.join("، ")}.`, `Saved. Still missing: ${updated.current.missing.join(", ")}.`));
@@ -56,6 +57,7 @@ export function DefinitionDrawer({ detail, onClose }: { detail: IndicatorDetail;
     },
   });
 
+  const saveMarked = useFieldErrors(form, save.error);
   return (
     <Drawer open width={720} placement={lang === "ar" ? "left" : "right"} onClose={onClose}
       title={`${L("تعديل تعريف", "Edit definition")} ${detail.code}`}
@@ -65,7 +67,7 @@ export function DefinitionDrawer({ detail, onClose }: { detail: IndicatorDetail;
           description={L(`الحفظ ينشئ الإصدار ${v.number + 1} مسودةً، ويبقى الإصدار ${v.number} المعتمد ساريًا حتى تعتمد اللجنة الجديد.`,
             `Saving creates version ${v.number + 1} as a draft; version ${v.number} stays in force until the committee approves the new one.`)} />
       )}
-      {save.error && <Alert type="error" showIcon message={errorText(save.error)} className="mb" />}
+      {save.error && !saveMarked && <Alert type="error" showIcon message={errorText(save.error)} className="mb" />}
       <Form form={form} layout="vertical" onFinish={(f) => save.mutate(f)} requiredMark="optional" scrollToFirstError>
         {createsVersion && (
           <Form.Item name="changeReason" label={L("سبب التعديل", "Reason for the change")} rules={[{ required: true, min: 5, message: L("اكتب سببًا واضحًا", "Enter a clear reason") }]}>

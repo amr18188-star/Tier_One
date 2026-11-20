@@ -5,6 +5,7 @@ import { invalidate } from "../../api/invalidate";
 import type { Form, FormItem } from "../../api/collection";
 import { L } from "../../shared/i18n";
 import { useCoalesced } from "../../shared/useCoalesced";
+import { queryKeys } from "../../api/queries";
 
 /**
  * One form's data and its writes: the query, the autosave patch, submit, and showing what a decision returned.
@@ -13,7 +14,7 @@ import { useCoalesced } from "../../shared/useCoalesced";
 export function useFormPage(id: string | undefined) {
   const qc = useQueryClient();
   const { message } = App.useApp();
-  const key = ["form", id];
+  const key = queryKeys.form(id);
   const form = useQuery({ queryKey: key, queryFn: () => api.get<Form>(`/api/forms/${id}`) });
 
   const refresh = () => qc.invalidateQueries({ queryKey: key });

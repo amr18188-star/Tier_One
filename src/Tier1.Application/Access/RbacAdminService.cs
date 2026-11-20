@@ -57,11 +57,11 @@ public sealed partial class RbacAdminService(IIdentityStore db, IClock clock, IC
     {
         var code = (req.Code ?? "").Trim().ToUpperInvariant();
         if (!RoleCode().IsMatch(code))
-            throw new DomainException("invalid_code", "رمز الدور من 2 إلى 16 حرفًا إنجليزيًا كبيرًا أو رقمًا أو شرطة سفلية، ويبدأ بحرف.", "The role code is 2–16 capital letters, digits or underscores, starting with a letter.", 400);
+            throw new DomainException("invalid_code", "رمز الدور من 2 إلى 16 حرفًا إنجليزيًا كبيرًا أو رقمًا أو شرطة سفلية، ويبدأ بحرف.", "The role code is 2–16 capital letters, digits or underscores, starting with a letter.", 400) { Field = "code" };
         if (PermissionCatalog.Roles.Any(r => r.Code == code) || await db.Roles.AnyAsync(r => r.Code == code, ct))
             throw new DomainException("duplicate_code", "يوجد دور بهذا الرمز.", "A role with this code already exists.", 409);
         if (string.IsNullOrWhiteSpace(req.NameAr))
-            throw new DomainException("name_required", "اكتب اسم الدور بالعربية.", "Enter the Arabic role name.", 400);
+            throw new DomainException("name_required", "اكتب اسم الدور بالعربية.", "Enter the Arabic role name.", 400) { Field = "nameAr" };
         var role = new Role
         {
             Code = code,
@@ -278,7 +278,7 @@ public sealed partial class RbacAdminService(IIdentityStore db, IClock clock, IC
         if (change.RequestedBy == me)
             throw new DomainException("use_cancel", "اسحب طلبك بدل رفضه.", "Withdraw your own request instead of rejecting it.", 409);
         if (string.IsNullOrWhiteSpace(note))
-            throw new DomainException("note_required", "اكتب سبب الرفض.", "Enter the reason for rejecting.", 400);
+            throw new DomainException("note_required", "اكتب سبب الرفض.", "Enter the reason for rejecting.", 400) { Field = "note" };
         change.Status = RbacChangeStatus.Rejected;
         change.DecidedBy = me;
         change.DecidedAt = clock.UtcNow;
@@ -354,7 +354,7 @@ public sealed partial class RbacAdminService(IIdentityStore db, IClock clock, IC
     private static void RequireReason(string? reason)
     {
         if (string.IsNullOrWhiteSpace(reason) || reason.Trim().Length < 5)
-            throw new DomainException("reason_required", "اكتب سببًا واضحًا (5 أحرف على الأقل).", "Enter a clear reason (at least 5 characters).", 400);
+            throw new DomainException("reason_required", "اكتب سببًا واضحًا (5 أحرف على الأقل).", "Enter a clear reason (at least 5 characters).", 400) { Field = "reason" };
     }
 
     private static AuditEntry Denied(string action, RbacChange change, string rule) =>

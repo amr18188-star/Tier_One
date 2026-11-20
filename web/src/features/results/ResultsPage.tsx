@@ -16,7 +16,7 @@ import { usePeriodParams, useSearchState } from "../../shared/usePeriodParams";
 import { ReportView } from "./ReportView";
 import { groupResultIndicators } from "./indicatorGroups";
 import "./results.css";
-import { useCycles } from "../../api/queries";
+import { useCycles, queryKeys } from "../../api/queries";
 
 const PERF: Performance[] = ["Achieved", "Near", "Behind", "NoData", "NoTarget", "Incomplete", "NotStarted"];
 
@@ -48,7 +48,7 @@ export default function ResultsPage() {
 
   const cycles = useCycles();
   const res = useQuery({
-    queryKey: ["results", cycleParam, unitParam],
+    queryKey: queryKeys.results(cycleParam, unitParam),
     queryFn: ({ signal }) => api.get<Results | null>(`/api/results${query({ cycleId: cycleParam, unitId: unitParam })}`, { signal }),
   });
   const r = res.data;
@@ -375,7 +375,7 @@ function IndicatorDrawer({ cycleId, unitId, university, item, onClose }: { cycle
   // خط مستهدف الجامعة على مقارنة الكليات: مستهدف الجهة المعروضة إن كانت الجامعة، وإلا مستهدف الجامعة المحسوب معها.
   const uniTarget = university ? item.target : item.universityTarget;
   const d = useQuery({
-    queryKey: ["results", cycleId, "indicator", item.indicatorId, unitId],
+    queryKey: queryKeys.resultsIndicator(cycleId, item.indicatorId, unitId),
     queryFn: ({ signal }) => api.get<IndicatorResults>(`/api/results/${cycleId}/indicators/${item.indicatorId}${query({ unitId })}`, { signal }),
   });
   return (

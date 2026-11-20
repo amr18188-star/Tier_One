@@ -33,7 +33,7 @@ public static partial class OrgRules
         var c = (code ?? "").Trim().ToUpperInvariant();
         return CodePattern().IsMatch(c) ? c
             : throw new DomainException("invalid_code", "الرمز حروف إنجليزية كبيرة وأرقام وشرطة فقط، حتى 32 حرفًا (مثل ENG أو ENG-CIV).",
-                "The code is uppercase letters, digits and dashes, up to 32 characters.", 400);
+                "The code is uppercase letters, digits and dashes, up to 32 characters.", 400) { Field = "code" };
     }
 
     public static void RequireParent(OrgUnitKind kind, OrgUnit? parent)
@@ -58,7 +58,7 @@ public static partial class OrgRules
                 _ => "المركز أو الإدارة يتبع الجامعة أو قطاعًا أو إدارة أو كلية.",
             }, "The parent unit is not valid for this kind.", 400);
         if (parent is { Active: false })
-            throw new DomainException("parent_inactive", "الجهة الأم معطلة.", "The parent unit is inactive.", 400);
+            throw new DomainException("parent_inactive", "الجهة الأم معطلة.", "The parent unit is inactive.", 400) { Field = "parentId" };
     }
 }
 
@@ -178,7 +178,7 @@ public sealed class OrgUnitsService(IOrgStore db, IClock clock, ICurrentUser cur
         if (req.MergedIntoId is { } mid)
         {
             into = await db.OrgUnits.FirstOrDefaultAsync(u => u.Id == mid && u.Active, ct) ?? throw DomainException.NotFound();
-            if (into.Id == unit.Id) throw new DomainException("merge_self", "لا تدمج الجهة في نفسها.", "A unit cannot merge into itself.", 400);
+            if (into.Id == unit.Id) throw new DomainException("merge_self", "لا تدمج الجهة في نفسها.", "A unit cannot merge into itself.", 400) { Field = "mergedIntoId" };
         }
 
         var now = clock.UtcNow;
@@ -220,8 +220,8 @@ public sealed class OrgUnitsService(IOrgStore db, IClock clock, ICurrentUser cur
         });
 
     private static string RequireName(string? name) =>
-        string.IsNullOrWhiteSpace(name) ? throw new DomainException("name_required", "اكتب اسم الجهة.", "Enter the unit name.", 400) : name.Trim().Length > 200
-            ? throw new DomainException("text_too_long", "الاسم أطول من 200 حرف.", "The name is too long.", 400) : name.Trim();
+        string.IsNullOrWhiteSpace(name) ? throw new DomainException("name_required", "اكتب اسم الجهة.", "Enter the unit name.", 400) { Field = "nameAr" } : name.Trim().Length > 200
+            ? throw new DomainException("text_too_long", "الاسم أطول من 200 حرف.", "The name is too long.", 400) { Field = "nameAr" } : name.Trim();
 
     private static OrgUnitDto ToDto(OrgUnit u) =>
         new(u.Id, u.Code, u.NameAr, u.NameEn, u.Kind, u.ParentId, u.Path, u.Active, u.SortOrder, u.EstablishedOn, u.ClosedOn, u.Version, u.ViewsWholeUniversity, u.CustomIndicators);

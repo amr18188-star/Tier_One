@@ -11,6 +11,7 @@ import { EmptyNote, Panel } from "../../shared/ui";
 import { Fold } from "./Fold";
 import { byPriority, dueLabel, isCollegeForm, taskAction } from "./model";
 import { Bar, FormLink, StatusTag } from "./parts";
+import { queryKeys } from "../../api/queries";
 
 /**
  * «مهامي»: بطاقة لكل نموذج ينتظرني (المعاد للتصحيح أولًا) بإجراء واحد، وتحتها ما أرسل وينتظر المراجعة وما اعتمد، مطويين.
@@ -85,7 +86,7 @@ function TaskCard({ row: r }: { row: FormRow }) {
 
 /** ملاحظة المراجع عند الإعادة: ليست في صف القائمة، فتطلب من النموذج نفسه للبطاقات المعادة وحدها (ومفتاحها مفتاح صفحة النموذج). */
 function ReturnNote({ id }: { id: string }) {
-  const form = useQuery({ queryKey: ["form", id], queryFn: () => api.get<Form>(`/api/forms/${id}`), staleTime: 60_000 });
+  const form = useQuery({ queryKey: queryKeys.form(id), queryFn: () => api.get<Form>(`/api/forms/${id}`), staleTime: 60_000 });
   const note = form.data?.returnNote?.trim();
   return (
     <div className="fm-note">

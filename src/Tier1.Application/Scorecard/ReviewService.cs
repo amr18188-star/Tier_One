@@ -106,14 +106,14 @@ public sealed class ReviewService(IScorecardStore db, IReadModel read, IClock cl
 
     private async Task SaveAsync(CollectionCycle cycle, ReviewRow row, decimal? value, string? note, uint? version, CancellationToken ct)
     {
-        var final = value ?? row.Computed ?? throw new DomainException("no_value", "لا قيمة محسوبة لهذا المؤشر بعد؛ اكتب القيمة بسبب.", "There is no computed value; enter one with a reason.", 400);
+        var final = value ?? row.Computed ?? throw new DomainException("no_value", "لا قيمة محسوبة لهذا المؤشر بعد؛ اكتب القيمة بسبب.", "There is no computed value; enter one with a reason.", 400) { Field = "value" };
         var adjusted = row.Computed is not { } c || c != final;
         var partial = row.Reported < row.Expected;
         var why = Require.Optional(note, 1000);
         if ((adjusted || partial) && (why is null || why.Length < 5))
             throw new DomainException("note_required", partial
                 ? $"اعتمدت قيم {row.Reported} من {row.Expected} جهة فقط؛ اكتب سبب النقل قبل اكتمالها."
-                : "القيمة تختلف عن المحسوبة من الكليات؛ اكتب سبب التعديل.", "A reason is required.", 400);
+                : "القيمة تختلف عن المحسوبة من الكليات؛ اكتب سبب التعديل.", "A reason is required.", 400) { Field = "note" };
 
         var existing = await db.UniversityValues.FirstOrDefaultAsync(v => v.IndicatorId == row.IndicatorId && v.Year == cycle.TargetYear && v.Quarter == cycle.Quarter, ct);
         if (existing is not null) Concurrency.ExpectUpsert(db, existing, version);

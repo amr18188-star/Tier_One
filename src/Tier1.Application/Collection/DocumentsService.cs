@@ -120,7 +120,7 @@ public sealed class DocumentsService(ICollectionStore db, IReadModel read, ICloc
     {
         await access.RequireAsync(Features.Strategy, Cap.Add, ct);
         if (!string.Equals(Path.GetExtension(file.FileName), ".pdf", StringComparison.OrdinalIgnoreCase))
-            throw new DomainException("pdf_only", "وثيقة الخطة تعرض في المنصة، فترفع بصيغة PDF.", "The plan document must be a PDF.", 400);
+            throw new DomainException("pdf_only", "وثيقة الخطة تعرض في المنصة، فترفع بصيغة PDF.", "The plan document must be a PDF.", 400) { Field = "file" };
         var root = await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().FirstAsync(u => u.Kind == OrgUnitKind.University, ct);
         var doc = await StoreAsync(StoredDocument.PlanOwner, root.Id, file, ct, PlanMaxBytes);
         audit.Record(AuditEvents.Audit("kpi", Features.Strategy, "kpi.plan_document_uploaded", "رفع وثيقة الخطة الاستراتيجية", "Uploaded the strategic plan document") with
@@ -154,7 +154,7 @@ public sealed class DocumentsService(ICollectionStore db, IReadModel read, ICloc
 
     public async Task<DocDto> VoidAsync(Guid id, string? reason, CancellationToken ct)
     {
-        var why = Require.Reason(reason);
+        var why = Require.Reason(reason, field: "note"); // The endpoint takes it as NoteRequest.Note.
         var doc = await db.Documents.FirstOrDefaultAsync(d => d.Id == id, ct) ?? throw DomainException.NotFound();
         if (doc.VoidedAt is not null) throw new DomainException("already_voided", "المستند مبطل بالفعل.", "Already voided.");
         var unitCode = await AuthorizeAsync(doc, doc.OwnerType == StoredDocument.ValueOwner ? Cap.Edit : Cap.Delete, ct);
@@ -213,7 +213,7 @@ public sealed class DocumentsService(ICollectionStore db, IReadModel read, ICloc
     private async Task<StoredDocument> StoreAsync(string ownerType, Guid ownerId, UploadedFile file, CancellationToken ct, long? maxBytes = null)
     {
         var max = maxBytes ?? files.MaxBytes;
-        if (file.Length <= 0) throw new DomainException("empty_file", "الملف فارغ.", "The file is empty.", 400);
+        if (file.Length <= 0) throw new DomainException("empty_file", "الملف فارغ.", "The file is empty.", 400) { Field = "file" };
         if (file.Length > max)
             throw new DomainException("file_too_large", $"الملف أكبر من {max / 1024 / 1024} ميجابايت.", "The file is too large.", 413);
         using var buffer = new MemoryStream();
@@ -221,7 +221,7 @@ public sealed class DocumentsService(ICollectionStore db, IReadModel read, ICloc
         var bytes = buffer.ToArray();
         var name = FileRules.CleanName(file.FileName);
         var type = FileRules.ContentTypeFor(name, bytes.AsSpan(0, Math.Min(bytes.Length, 16)))
-                   ?? throw new DomainException("file_type", $"نوع الملف غير مقبول. المقبول: {FileRules.Accepted}.", "File type not accepted.", 400);
+                   ?? throw new DomainException("file_type", $"نوع الملف غير مقبول. المقبول: {FileRules.Accepted}.", "File type not accepted.", 400) { Field = "file" };
         // BE-8: the same file attached twice to the same owner (a double click, or a second try after a slow upload) is refused,
         // so evidence is not duplicated and clearing the value is not blocked by a copy nobody meant to keep.
         var sha256 = Convert.ToHexStringLower(SHA256.HashData(bytes));

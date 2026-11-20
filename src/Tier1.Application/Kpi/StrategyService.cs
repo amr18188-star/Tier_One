@@ -198,7 +198,7 @@ public sealed class StrategyService(IKpiStore db, IReadModel read, IClock clock,
         if (await db.Standards.AnyAsync(s => s.Id != standard.Id && s.NameAr == standard.NameAr, ct))
             throw new DomainException("duplicate_name", "يوجد معيار بالاسم نفسه.", "A standard with this name exists.");
         if (req.PillarId is { } p && !await db.Pillars.AnyAsync(x => x.Id == p, ct))
-            throw new DomainException("pillar_not_found", "الركيزة غير موجودة.", "Pillar not found.", 400);
+            throw new DomainException("pillar_not_found", "الركيزة غير موجودة.", "Pillar not found.", 400) { Field = "pillarId" };
         standard.PillarId = req.PillarId;
         standard.NameEn = Require.Optional(req.NameEn, 200);
         standard.Description = Require.Optional(req.Description, 4000);
@@ -210,7 +210,7 @@ public sealed class StrategyService(IKpiStore db, IReadModel read, IClock clock,
     {
         await access.RequireAsync(Feature, Cap.Add, ct);
         var standard = await db.Standards.AsNoTracking().FirstOrDefaultAsync(s => s.Id == req.StandardId, ct)
-                       ?? throw new DomainException("standard_not_found", "المعيار غير موجود.", "Standard not found.", 400);
+                       ?? throw new DomainException("standard_not_found", "المعيار غير موجود.", "Standard not found.", 400) { Field = "standardId" };
         var siblings = await db.Initiatives.Where(i => i.StandardId == standard.Id).Select(i => new { i.Code, i.SortOrder }).ToListAsync(ct);
         var now = clock.UtcNow;
         var initiative = new Initiative
@@ -232,7 +232,7 @@ public sealed class StrategyService(IKpiStore db, IReadModel read, IClock clock,
         var initiative = await db.Initiatives.FirstOrDefaultAsync(i => i.Id == id, ct) ?? throw DomainException.NotFound();
         Concurrency.Expect(db, initiative, req.Version);
         if (req.StandardId != initiative.StandardId && !await db.Standards.AnyAsync(s => s.Id == req.StandardId, ct))
-            throw new DomainException("standard_not_found", "المعيار غير موجود.", "Standard not found.", 400);
+            throw new DomainException("standard_not_found", "المعيار غير موجود.", "Standard not found.", 400) { Field = "standardId" };
         await ApplyAsync(initiative, req, clock.UtcNow, ct);
         Record("kpi.initiative_updated", "تعديل مبادرة", "Edited an initiative", "initiative", initiative.Id, initiative.Code, null);
         await db.SaveChangesAsync(ct);
@@ -254,7 +254,7 @@ public sealed class StrategyService(IKpiStore db, IReadModel read, IClock clock,
         initiative.NameAr = Name(req.NameAr, 300, "اسم المبادرة");
         PlanRules.ValidateYears(req.StartYear, req.EndYear, TargetsService.PlanStart, "مدة المبادرة");
         if (req.OwnerUnitId is { } owner && !await read.Query<Domain.Organization.OrgUnit>().AnyAsync(u => u.Id == owner && u.Active, ct))
-            throw new DomainException("owner_not_found", "الجهة المسؤولة غير موجودة أو معطلة.", "The owner unit was not found.", 400);
+            throw new DomainException("owner_not_found", "الجهة المسؤولة غير موجودة أو معطلة.", "The owner unit was not found.", 400) { Field = "ownerUnitId" };
         var codes = (req.IndicatorCodes ?? []).Select(c => c.Trim().ToUpperInvariant()).Where(c => c.Length > 0).Distinct().ToList();
         var known = await db.Indicators.Where(i => codes.Contains(i.Code)).Select(i => i.Code).ToListAsync(ct);
         if (codes.Except(known).FirstOrDefault() is { } unknown)
@@ -285,8 +285,8 @@ public sealed class StrategyService(IKpiStore db, IReadModel read, IClock clock,
     private static string Name(string? value, int max, string field)
     {
         var v = value?.Trim();
-        if (string.IsNullOrEmpty(v)) throw new DomainException("name_required", $"اكتب {field}.", "Enter the name.", 400);
-        return v.Length <= max ? v : throw new DomainException("text_too_long", $"«{field}» أطول من {max} حرف.", "The name is too long.", 400);
+        if (string.IsNullOrEmpty(v)) throw new DomainException("name_required", $"اكتب {field}.", "Enter the name.", 400) { Field = "nameAr" };
+        return v.Length <= max ? v : throw new DomainException("text_too_long", $"«{field}» أطول من {max} حرف.", "The name is too long.", 400) { Field = "nameAr" };
     }
 
     private void Record(string verb, string ar, string en, string type, Guid id, string code, string? reason) =>
@@ -306,11 +306,11 @@ public static class PlanRules
         var first = baselineYear + 1;
         var last = TargetsService.PlanEnd;
         if (start is { } s && (s < first || s > last))
-            throw new DomainException("plan_year", $"{field}: سنة البداية من {first} إلى {last}.", "Start year is outside the plan.", 400);
+            throw new DomainException("plan_year", $"{field}: سنة البداية من {first} إلى {last}.", "Start year is outside the plan.", 400) { Field = "startYear" };
         if (end is { } e && (e < first || e > last))
-            throw new DomainException("plan_year", $"{field}: سنة النهاية من {first} إلى {last}.", "End year is outside the plan.", 400);
+            throw new DomainException("plan_year", $"{field}: سنة النهاية من {first} إلى {last}.", "End year is outside the plan.", 400) { Field = "endYear" };
         if (start is { } a && end is { } b && b < a)
-            throw new DomainException("plan_order", $"{field}: سنة النهاية لا تسبق سنة البداية.", "The end year precedes the start year.", 400);
+            throw new DomainException("plan_order", $"{field}: سنة النهاية لا تسبق سنة البداية.", "The end year precedes the start year.", 400) { Field = "endYear" };
     }
 
     /// <summary>وصف مدة المستهدف كما يقرؤه الناس: قصير أو متوسط أو طويل المدى، ومتى يبدأ.</summary>

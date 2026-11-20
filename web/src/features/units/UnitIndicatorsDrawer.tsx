@@ -22,7 +22,7 @@ const LEVEL: Record<UnitIndicatorItem["level"], { text: string; color: string }>
 export default function UnitIndicatorsDrawer({ unit, onClose }: { unit: OrgUnit; onClose: () => void }) {
   const qc = useQueryClient();
   const { message } = App.useApp();
-  const data = useQuery({ queryKey: ["unit-indicators", unit.id], queryFn: () => api.get<UnitIndicators>(`/api/org/units/${unit.id}/indicators`) });
+  const data = useQuery({ queryKey: queryKeys.unitIndicators(unit.id), queryFn: () => api.get<UnitIndicators>(`/api/org/units/${unit.id}/indicators`) });
   const central = !["College", "Institute", "Department"].includes(unit.kind);
   const [custom, setCustom] = useState(false);
   const [picked, setPicked] = useState<Set<string>>(new Set());

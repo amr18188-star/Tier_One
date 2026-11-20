@@ -5,12 +5,13 @@ import type { Dayjs } from "dayjs";
 import { api } from "../../api/client";
 import { CAPS, type Assignment, type Catalog, type Effective, type GrantView, type Override, type RoleSummary, type UserDetail } from "../../api/types";
 import { errorText, formatDate, formatDateTime } from "../../shared/format";
+import { markFieldErrors } from "../../shared/useFieldErrors";
 import { dirArrow, L, useLang } from "../../shared/i18n";
 import { QueryError } from "../../shared/QueryState";
 import { usePermissions, useSession } from "../../shared/session";
 import { ReasonModal } from "../matrix/MatrixPage";
 import { capName, MatrixTable } from "../matrix/MatrixTable";
-import { useUnits } from "../../api/queries";
+import { useUnits, queryKeys } from "../../api/queries";
 
 // أدوار لا يسندها إلا المدير الأعلى (SOD-9)، كما في كتالوج الخادم.
 const RESERVED = ["SA", "SYS", "AUD", "PRES", "HC"];
@@ -21,17 +22,17 @@ export function UserDrawer({ userId, onClose }: { userId: string; onClose: () =>
   const lang = useLang();
   const qc = useQueryClient();
   const { message, modal } = App.useApp();
-  const user = useQuery({ queryKey: ["user", userId], queryFn: () => api.get<UserDetail>(`/api/iam/users/${userId}`) });
-  const catalog = useQuery({ queryKey: ["catalog"], queryFn: () => api.get<Catalog>("/api/iam/catalog"), staleTime: Infinity });
+  const user = useQuery({ queryKey: queryKeys.user(userId), queryFn: () => api.get<UserDetail>(`/api/iam/users/${userId}`) });
+  const catalog = useQuery({ queryKey: queryKeys.catalog, queryFn: () => api.get<Catalog>("/api/iam/catalog"), staleTime: Infinity });
   const [reasonFor, setReasonFor] = useState<null | { title: string; ok: string; run: (reason: string) => Promise<void> }>(null);
   const [error, setError] = useState<string | null>(null);
   const self = me?.id === userId;
 
   async function refresh() {
-    await qc.invalidateQueries({ queryKey: ["user", userId] });
-    await qc.invalidateQueries({ queryKey: ["users"] });
-    await qc.invalidateQueries({ queryKey: ["effective", userId] });
-    await qc.invalidateQueries({ queryKey: ["roles"] });
+    await qc.invalidateQueries({ queryKey: queryKeys.user(userId) });
+    await qc.invalidateQueries({ queryKey: queryKeys.users });
+    await qc.invalidateQueries({ queryKey: queryKeys.effective(userId) });
+    await qc.invalidateQueries({ queryKey: queryKeys.roles });
   }
 
   const u = user.data;
@@ -142,7 +143,7 @@ function EditNames({ user, onSaved }: { user: UserDetail; onSaved: () => Promise
           setOpen(false);
           await onSaved();
         } catch (e) {
-          setError(errorText(e));
+          if (!markFieldErrors(form, e)) setError(errorText(e));
         }
       }}>
         {error && <Alert type="error" showIcon message={error} className="mb" />}
@@ -159,7 +160,7 @@ type ReasonSetter = (v: null | { title: string; ok: string; run: (reason: string
 
 function Assignments({ user, self, onChanged, setReasonFor, onError }: { user: UserDetail; self: boolean; onChanged: () => Promise<void>; setReasonFor: ReasonSetter; onError: (e: string) => void }) {
   const perms = usePermissions();
-  const roles = useQuery({ queryKey: ["roles"], queryFn: () => api.get<RoleSummary[]>("/api/iam/roles") });
+  const roles = useQuery({ queryKey: queryKeys.roles, queryFn: () => api.get<RoleSummary[]>("/api/iam/roles") });
   // «نطاقه» في Tier 1 جهات: الكلية تغطي أقسامها، فيكفي اختيار الكلية لعميدها.
   const units = useUnits();
   const unitName = (code: string) => units.data?.find((u) => u.code === code)?.nameAr ?? code;
@@ -231,7 +232,7 @@ function Assignments({ user, self, onChanged, setReasonFor, onError }: { user: U
                 form.resetFields();
                 await onChanged();
               } catch (e) {
-                onError(errorText(e));
+                if (!markFieldErrors(form, e)) onError(errorText(e));
               } finally {
                 setBusy(false);
               }
@@ -310,7 +311,7 @@ function Overrides({ user, catalog, self, onChanged, setReasonFor, onError }: { 
                 form.resetFields();
                 await onChanged();
               } catch (e) {
-                onError(errorText(e));
+                if (!markFieldErrors(form, e)) onError(errorText(e));
               } finally {
                 setBusy(false);
               }
@@ -352,7 +353,7 @@ function Overrides({ user, catalog, self, onChanged, setReasonFor, onError }: { 
 }
 
 function EffectiveView({ userId, catalog }: { userId: string; catalog: Catalog }) {
-  const eff = useQuery({ queryKey: ["effective", userId], queryFn: () => api.get<Effective>(`/api/iam/users/${userId}/effective`) });
+  const eff = useQuery({ queryKey: queryKeys.effective(userId), queryFn: () => api.get<Effective>(`/api/iam/users/${userId}/effective`) });
   const [module, setModule] = useState("all");
   if (eff.isError && !eff.data) return <QueryError error={eff.error} onRetry={() => void eff.refetch()} />;
   if (!eff.data) return <Spin />;

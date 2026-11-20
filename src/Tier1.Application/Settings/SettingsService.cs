@@ -61,7 +61,7 @@ public sealed class SettingsService(ISettingsStore db, IClock clock, ICurrentUse
         EnsureCanEdit(d, await access.CurrentAsync(ct));
         var reason = Require.Reason(req.Reason);
         if (req.Value < d.Min || req.Value > d.Max)
-            throw new DomainException("invalid_value", $"القيمة من {d.Min} إلى {d.Max} {d.UnitAr}.", $"The value is {d.Min} to {d.Max} {d.UnitEn}.", 400);
+            throw new DomainException("invalid_value", $"القيمة من {d.Min} إلى {d.Max} {d.UnitAr}.", $"The value is {d.Min} to {d.Max} {d.UnitEn}.", 400) { Field = "value" };
         var s = await db.Settings.FirstOrDefaultAsync(x => x.Key == key, ct);
         var before = s?.Value ?? d.Default.ToString(System.Globalization.CultureInfo.InvariantCulture);
         if (s is null)

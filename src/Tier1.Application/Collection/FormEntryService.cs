@@ -20,7 +20,7 @@ public sealed partial class FormEntryService(ICollectionStore db, IClock clock, 
         var ctx = await reader.LoadAsync(id, Cap.Edit, tracking: true, ct);
         FormReader.EnsureEditable(ctx);
         var ci = ctx.Indicators.FirstOrDefault(i => i.Ci.IndicatorId == req.IndicatorId)
-                 ?? throw new DomainException("not_in_form", "هذا المؤشر ليس مطلوبًا من هذه الجهة.", "This indicator is not required from this unit.", 400);
+                 ?? throw new DomainException("not_in_form", "هذا المؤشر ليس مطلوبًا من هذه الجهة.", "This indicator is not required from this unit.", 400) { Field = "indicatorId" };
         var spec = CycleSpec.Of(ci.Version);
         var bigChange = await settings.IntAsync(SettingKeys.BigChangePercent, ct) / 100m;
         var (value, issues) = ValueRules.Check(spec, new ValueInput(req.Kind, req.Value, req.Numerator, req.Denominator, req.Reason, req.Explanation),

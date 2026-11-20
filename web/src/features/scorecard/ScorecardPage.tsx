@@ -19,6 +19,7 @@ import "../strategy/strategy.css";
 import "../../shared/score.css";
 import "./scorecard.css";
 import "./scorecard-accordion.css";
+import { queryKeys } from "../../api/queries";
 
 /**
  * بطاقة أداء الجامعة وتصنيفها: ما كانت تحسبه أوراق ملف «الإطار الشامل» (بطاقة مؤشرات الأداء، وحاسبة التصنيف، والرسوم والتحليلات،
@@ -35,7 +36,7 @@ const VIEWS: { key: View; icon: ReactNode; ar: string; en: string }[] = [
 ];
 
 export default function ScorecardPage() {
-  const card = useQuery({ queryKey: ["scorecard"], queryFn: () => api.get<Scorecard>("/api/scorecard") });
+  const card = useQuery({ queryKey: queryKeys.scorecard, queryFn: () => api.get<Scorecard>("/api/scorecard") });
   const [params, setParams] = useSearchParams();
   const view = (VIEWS.find((v) => v.key === params.get("view"))?.key ?? "tier") as View;
   const [open, setOpen] = useState<IndicatorScore | null>(null);

@@ -13,6 +13,7 @@ import { QueryState } from "../../shared/QueryState";
 import { initials, PageHeader, Panel } from "../../shared/ui";
 import { EndModal, MemberModal, PartnerModal } from "./MemberForms";
 import { StructureDocs } from "./StructureDocs";
+import { queryKeys } from "../../api/queries";
 
 type Dialog =
   | { kind: "add"; position: Position; departmentId: string | null; occupiedBy: string | null }
@@ -31,7 +32,7 @@ export default function CollegeStructurePage() {
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const [card, setCard] = useState<{ member: Member; position: Position } | null>(null);
   const chart = useQuery({
-    queryKey: ["structure", "college", id, asOf],
+    queryKey: queryKeys.structureCollege(id, asOf),
     queryFn: () => api.get<CollegeChart>(`/api/structure/colleges/${id}${asOf ? `?asOf=${asOf}` : ""}`),
   });
   const c = chart.data;

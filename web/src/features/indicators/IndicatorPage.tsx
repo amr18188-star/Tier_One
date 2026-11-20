@@ -16,7 +16,7 @@ import { QueryState } from "../../shared/QueryState";
 import { DefinitionDrawer } from "./DefinitionDrawer";
 import { DistributionPanel } from "./DistributionPanel";
 import { TargetsPanel } from "./TargetsPanel";
-import { useUnits } from "../../api/queries";
+import { useUnits, queryKeys } from "../../api/queries";
 
 /**
  * صفحة المؤشر الواحدة: الحالة والخطوة التالية مكتوبتان أعلاها، ثم التعريف، والمستهدفات، والتوزيع على الكليات،
@@ -29,7 +29,7 @@ export default function IndicatorPage() {
   // «مؤشر جديد» يفتح الصفحة ومحرر التعريف مباشرة لإكماله.
   const [editing, setEditing] = useState(() => new URLSearchParams(window.location.search).get("edit") === "1");
   const [decision, setDecision] = useState<"approve" | "return" | null>(null);
-  const detail = useQuery({ queryKey: ["indicator", code], queryFn: () => api.get<IndicatorDetail>(`/api/kpi/indicators/${code}`) });
+  const detail = useQuery({ queryKey: queryKeys.indicator(code), queryFn: () => api.get<IndicatorDetail>(`/api/kpi/indicators/${code}`) });
   const units = useUnits();
   const university = units.data?.find((u) => u.kind === "University");
   const d = detail.data;
@@ -37,8 +37,8 @@ export default function IndicatorPage() {
 
   const refresh = async (updated?: IndicatorDetail) => {
     if (updated) qc.setQueryData(["indicator", code], updated);
-    await qc.invalidateQueries({ queryKey: ["indicators"] });
-    await qc.invalidateQueries({ queryKey: ["home"] });
+    await qc.invalidateQueries({ queryKey: queryKeys.indicators });
+    await qc.invalidateQueries({ queryKey: queryKeys.home });
   };
   const submit = useMutation({
     mutationFn: () => api.post<IndicatorDetail>(`/api/kpi/indicators/${code}/submit`),

@@ -9,6 +9,7 @@ import { L } from "../../shared/i18n";
 import { usePermissions } from "../../shared/session";
 import { PageHeader, Panel } from "../../shared/ui";
 import "./plan-document.css";
+import { queryKeys } from "../../api/queries";
 
 interface DocDto { id: string; fileName: string; contentType: string; sizeBytes: number; uploadedAt: string; description: string | null; voided: boolean; voidReason: string | null }
 interface PlanDoc { document: DocDto; uploadedBy: string | null }
@@ -21,7 +22,7 @@ export default function PlanDocumentPage() {
   const perms = usePermissions();
   const qc = useQueryClient();
   const { message } = App.useApp();
-  const docs = useQuery({ queryKey: ["plan-documents"], queryFn: () => api.get<PlanDoc[]>("/api/strategy/documents") });
+  const docs = useQuery({ queryKey: queryKeys.planDocuments, queryFn: () => api.get<PlanDoc[]>("/api/strategy/documents") });
   const current = (docs.data ?? []).filter((d) => !d.document.voided);
   const [picked, setPicked] = useState<string | null>(null);
   const shown = current.find((d) => d.document.id === picked) ?? current[0];
@@ -94,12 +95,12 @@ export default function PlanDocumentPage() {
       )}
       {uploading && <UploadPlan onClose={() => setUploading(false)} onDone={async () => {
         setUploading(false); setPicked(null); setPage(1);
-        await qc.invalidateQueries({ queryKey: ["plan-documents"] });
+        await qc.invalidateQueries({ queryKey: queryKeys.planDocuments });
         message.success(L("رفعت الوثيقة، وصارت الإصدار المعروض.", "Uploaded."));
       }} />}
       {voiding && <VoidPlan doc={voiding} onClose={() => setVoiding(null)} onDone={async () => {
         setVoiding(null); setPicked(null); setPage(1);
-        await qc.invalidateQueries({ queryKey: ["plan-documents"] });
+        await qc.invalidateQueries({ queryKey: queryKeys.planDocuments });
       }} />}
     </>
   );

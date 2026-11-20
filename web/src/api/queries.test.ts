@@ -17,4 +17,13 @@ describe("shared queries (FE-7)", () => {
       .filter((f) => inline.test(readFileSync(new URL(f, src), "utf8")));
     expect(offenders).toEqual([]);
   });
+
+  it("no query key is written inline: every key comes from queryKeys", () => {
+    const inline = /queryKey: \[|const \w*[kK]ey = \[|_KEY = \[/;
+    const offenders = readdirSync(src, { recursive: true })
+      .map(slashes)
+      .filter((f) => /\.(ts|tsx)$/.test(f) && !/\.test\.tsx?$/.test(f) && !f.endsWith("api/queries.ts") && !f.endsWith("api/invalidate.ts"))
+      .filter((f) => inline.test(readFileSync(new URL(f, src), "utf8")));
+    expect(offenders).toEqual([]);
+  });
 });

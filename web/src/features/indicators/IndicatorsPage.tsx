@@ -14,6 +14,7 @@ import { AccordionPanel } from "../../shared/AccordionPanel";
 import { PanelSkeleton } from "../../shared/PanelSkeleton";
 import { NewIndicatorModal } from "./NewIndicatorModal";
 import "./indicators.css";
+import { queryKeys } from "../../api/queries";
 
 const STATUSES: DefinitionStatus[] = ["Draft", "UnderReview", "Approved"];
 
@@ -37,11 +38,11 @@ export default function IndicatorsPage() {
     setParams(next, { replace: true });
   };
 
-  const standards = useQuery({ queryKey: ["standards"], queryFn: () => api.get<Standard[]>("/api/kpi/standards") });
+  const standards = useQuery({ queryKey: queryKeys.standards, queryFn: () => api.get<Standard[]>("/api/kpi/standards") });
   const rows = useQuery({
     // المرشحات تغير المفتاح: تبقى الصفوف السابقة ظاهرة حتى تصل الجديدة، فلا تختفي اللوحات المفتوحة وتعود.
     placeholderData: keepPreviousData,
-    queryKey: ["indicators", standard, status, q, withConflicts],
+    queryKey: queryKeys.indicatorsList(standard, status, q, withConflicts),
     queryFn: () => api.get<IndicatorRow[]>(`/api/kpi/indicators${query({ standard, status, q, withConflicts: withConflicts ? "true" : undefined })}`),
   });
   const selected = standards.data?.find((s) => s.code === standard);

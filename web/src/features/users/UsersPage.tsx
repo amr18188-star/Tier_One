@@ -5,18 +5,20 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import type { UserListItem } from "../../api/types";
 import { errorText, formatDateTime } from "../../shared/format";
+import { markFieldErrors } from "../../shared/useFieldErrors";
 import { L } from "../../shared/i18n";
 import { QueryState } from "../../shared/QueryState";
 import { usePermissions } from "../../shared/session";
 import { DataTable, EmptyNote, PageHeader } from "../../shared/ui";
 import { UserDrawer } from "./UserDrawer";
+import { queryKeys } from "../../api/queries";
 
 export default function UsersPage() {
   const perms = usePermissions();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
-  const users = useQuery({ queryKey: ["users", search], queryFn: () => api.get<UserListItem[]>(`/api/iam/users/?q=${encodeURIComponent(search)}`) });
+  const users = useQuery({ queryKey: queryKeys.usersList(search), queryFn: () => api.get<UserListItem[]>(`/api/iam/users/?q=${encodeURIComponent(search)}`) });
 
   return (
     <>
@@ -99,7 +101,7 @@ function CreateUserModal({ open, onClose }: { open: boolean; onClose: () => void
         setError(null);
         try {
           const r = await api.post<{ userId: string; temporaryPassword: string }>("/api/iam/users/", v);
-          await qc.invalidateQueries({ queryKey: ["users"] });
+          await qc.invalidateQueries({ queryKey: queryKeys.users });
           form.resetFields();
           onClose();
           modal.success({
@@ -113,7 +115,7 @@ function CreateUserModal({ open, onClose }: { open: boolean; onClose: () => void
             ),
           });
         } catch (e) {
-          setError(errorText(e));
+          if (!markFieldErrors(form, e)) setError(errorText(e));
         } finally {
           setBusy(false);
         }

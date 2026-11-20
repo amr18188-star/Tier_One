@@ -10,6 +10,7 @@ import { getLang, L } from "../../shared/i18n";
 import { usePermissions } from "../../shared/session";
 import { DataTable, EmptyNote, PageHeader, Panel } from "../../shared/ui";
 import { mergeSizes, Pager, usePaged } from "../../shared/Pager";
+import { queryKeys } from "../../api/queries";
 
 const COLLECTIONS = [
   { key: "audit_events", feature: "log.audit", label: () => L("سجل العمليات", "Operations") },
@@ -69,7 +70,7 @@ function LogTable({ collection, feature }: { collection: string; feature: string
     [filters],
   );
   const data = useQuery({
-    queryKey: ["logs", collection, params, page],
+    queryKey: queryKeys.logs(collection, params, page),
     queryFn: () => api.get<LogPage>(`/api/logs/${collection}${query({ ...params, page, pageSize: 25 })}`),
   });
 
@@ -173,7 +174,7 @@ const CHAIN_PAGE = 8;
 function IntegrityPanel() {
   const qc = useQueryClient();
   const { message } = App.useApp();
-  const status = useQuery({ queryKey: ["logs-status"], queryFn: () => api.poll<LogsStatus>("/api/logs/status?days=14"), refetchInterval: 15_000 });
+  const status = useQuery({ queryKey: queryKeys.logsStatus, queryFn: () => api.poll<LogsStatus>("/api/logs/status?days=14"), refetchInterval: 15_000 });
   const [busy, setBusy] = useState(false);
   const days = status.data?.days ?? [];
   const pagedDays = usePaged(days, CHAIN_PAGE);
@@ -185,7 +186,7 @@ function IntegrityPanel() {
       const bad = r.filter((d) => d.intact === false).length;
       if (bad) message.error(L(`${bad} يوم مكسور`, `${bad} broken day(s)`));
       else message.success(L(`فُحص ${r.length} يومًا، كلها سليمة.`, `Checked ${r.length} day(s); all intact.`));
-      await qc.invalidateQueries({ queryKey: ["logs-status"] });
+      await qc.invalidateQueries({ queryKey: queryKeys.logsStatus });
     } catch (e) {
       message.error(errorText(e));
     } finally {

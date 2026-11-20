@@ -19,7 +19,7 @@ public sealed class UserAccountsService(IIdentityStore db, IClock clock, ICurren
     {
         var email = IamPolicy.NormalizeEmail(req.Email);
         if (string.IsNullOrWhiteSpace(req.FullNameAr))
-            throw new DomainException("name_required", "اكتب الاسم بالعربية.", "Enter the Arabic name.", 400);
+            throw new DomainException("name_required", "اكتب الاسم بالعربية.", "Enter the Arabic name.", 400) { Field = "fullNameAr" };
         if (await db.Users.AnyAsync(u => u.Email == email, ct))
             throw new DomainException("duplicate_email", "يوجد حساب بهذا البريد.", "An account with this email already exists.", 409);
         var temporary = Tokens.NewTemporaryPassword();
@@ -48,7 +48,7 @@ public sealed class UserAccountsService(IIdentityStore db, IClock clock, ICurren
     {
         var user = await policy.LoadManagedAsync(id, "iam.user_update", Features.Users, ct);
         if (string.IsNullOrWhiteSpace(req.FullNameAr))
-            throw new DomainException("name_required", "اكتب الاسم بالعربية.", "Enter the Arabic name.", 400);
+            throw new DomainException("name_required", "اكتب الاسم بالعربية.", "Enter the Arabic name.", 400) { Field = "fullNameAr" };
         var changes = new List<FieldChange>();
         var ar = req.FullNameAr.Trim();
         var en = string.IsNullOrWhiteSpace(req.FullNameEn) ? null : req.FullNameEn.Trim();

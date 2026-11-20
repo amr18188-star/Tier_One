@@ -32,6 +32,41 @@ public sealed class InputValidationTests(Tier1App app)
         Assert.Equal(200, good);
     }
 
+    /// <summary>BE-6: the field a refusal is about, by its JSON name, so the form marks it.</summary>
+    [Fact]
+    public async Task A_refused_field_is_named_in_the_errors_list()
+    {
+        static (string? Field, string? Code) First(JsonNode? error) =>
+            error?["errors"]?.AsArray().FirstOrDefault() is { } e ? (e["field"].Str(), e["code"].Str()) : (null, null);
+
+        var sys = await app.As("sysadmin");
+        // A rule in the service: the email is not valid.
+        var (status, error) = await sys.Call("POST", "/api/iam/users", Scenario.O(("email", "not-an-email"), ("fullNameAr", "اسم للاختبار"), ("fullNameEn", null)));
+        Assert.Equal((400, "invalid_email"), (status, error.Code()));
+        Assert.Equal(("email", "invalid_email"), First(error));
+
+        // The shared reason check names the field the argument came from.
+        var cycle = await Flow.OpenCycleAsync(app);
+        var planner = await app.As("planner");
+        (status, error) = await planner.Call("POST", $"/api/cycles/{cycle.Id}/close", Scenario.O(("note", "x")));
+        Assert.Equal(400, status);
+        Assert.Equal("note", First(error).Field);
+
+        // A JSON value of the wrong type is named by its path.
+        (status, error) = await sys.Call("POST", "/api/iam/users", Scenario.O(("email", "a@tier1.local"), ("fullNameAr", 5)));
+        Assert.Equal((400, "bad_request"), (status, error.Code()));
+        Assert.Equal(("fullNameAr", "invalid_value"), First(error));
+
+        // An enum in the query string is named by its parameter.
+        (status, error) = await planner.Call("GET", $"/api/forms?cycleId={cycle.Id}&status=7");
+        Assert.Equal((400, "status"), (status, First(error).Field));
+
+        // A refusal about the whole request names no field.
+        (status, error) = await (await app.As("entry")).Call("GET", "/api/no-such-route");
+        Assert.Equal(404, status);
+        Assert.Empty(error!["errors"]!.AsArray());
+    }
+
     [Fact]
     public async Task Every_error_carries_a_code_and_the_trace_id_of_its_response()
     {

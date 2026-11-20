@@ -6,6 +6,8 @@ import type { Target, TargetKind } from "../../api/tier1";
 import { errorText } from "../../shared/format";
 import { L } from "../../shared/i18n";
 import { num, targetKind } from "../../shared/labels";
+import { useFieldErrors } from "../../shared/useFieldErrors";
+import { queryKeys } from "../../api/queries";
 
 export interface TargetSlot { unitId: string; unitName: string; year: number; kind: TargetKind; existing: Target | null }
 
@@ -45,16 +47,17 @@ export function TargetEditor({ code, unit, slot, onClose }: { code: string; unit
     }),
     onSuccess: async () => {
       message.success(L("حُفظ المستهدف.", "Target saved."));
-      await qc.invalidateQueries({ queryKey: ["targets", code] });
-      await qc.invalidateQueries({ queryKey: ["distribution", code] });
+      await qc.invalidateQueries({ queryKey: queryKeys.targets(code) });
+      await qc.invalidateQueries({ queryKey: queryKeys.distribution(code) });
       onClose();
     },
   });
 
+  const saveMarked = useFieldErrors(form, save.error);
   return (
     <Modal open title={`${targetKind[slot.kind]} — ${slot.unitName} — ${slot.year}`} okText={L("حفظ", "Save")} cancelText={L("إلغاء", "Cancel")}
       onCancel={onClose} onOk={() => form.submit()} confirmLoading={save.isPending} destroyOnHidden>
-      {save.error && <Alert type="error" showIcon message={errorText(save.error)} className="mb" />}
+      {save.error && !saveMarked && <Alert type="error" showIcon message={errorText(save.error)} className="mb" />}
       {approved && (
         <Alert type="warning" showIcon className="mb" message={L("هذا المستهدف معتمد", "This target is approved")}
           description={L("تعديله يحتاج سببًا ورقم قرار اللجنة العليا، وتحفظ القيمة السابقة للمقارنة.", "Changing it needs a reason and the committee decision reference; the previous value is kept.")} />

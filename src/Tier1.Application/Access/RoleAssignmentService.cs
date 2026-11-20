@@ -33,7 +33,7 @@ public sealed class RoleAssignmentService(IIdentityStore db, IClock clock, ICurr
         var now = clock.UtcNow;
         var from = req.ValidFrom ?? now;
         if (req.ValidTo is { } to && to <= from)
-            throw new DomainException("invalid_dates", "تاريخ النهاية يجب أن يكون بعد البداية.", "The end date must be after the start date.", 400);
+            throw new DomainException("invalid_dates", "تاريخ النهاية يجب أن يكون بعد البداية.", "The end date must be after the start date.", 400) { Field = "validTo" };
         var scopeValues = IamPolicy.CleanScope(req.ScopeValues);
         if (await db.UserRoles.AnyAsync(a => a.UserId == userId && a.RoleId == role.Id && a.RevokedAt == null && (a.ValidTo == null || a.ValidTo > now), ct))
             throw new DomainException("already_assigned", "الدور مسند لهذا المستخدم بالفعل أو ينتظر الاعتماد. عدّل الإسناد القائم.", "This role is already assigned or waiting for approval. Edit the existing assignment.", 409);
@@ -105,7 +105,7 @@ public sealed class RoleAssignmentService(IIdentityStore db, IClock clock, ICurr
         await policy.EnsureMayManageRoleAsync(role, user, ct);
         if (a.RevokedAt is not null) throw new DomainException("revoked", "الإسناد مسحوب.", "The assignment was revoked.", 409);
         if (req.ValidTo is { } to && to <= a.ValidFrom)
-            throw new DomainException("invalid_dates", "تاريخ النهاية يجب أن يكون بعد البداية.", "The end date must be after the start date.", 400);
+            throw new DomainException("invalid_dates", "تاريخ النهاية يجب أن يكون بعد البداية.", "The end date must be after the start date.", 400) { Field = "validTo" };
         if (role.Code == PermissionCatalog.SuperAdminRole && req.ValidTo is not null && a.ApprovedAt is not null)
             await policy.EnsureSuperAdminsRemainAsync(excludeUser: null, excludeAssignment: a.Id, ct);
         var scope = IamPolicy.CleanScope(req.ScopeValues);

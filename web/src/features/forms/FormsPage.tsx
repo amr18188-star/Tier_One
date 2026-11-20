@@ -16,7 +16,7 @@ import { byPriority, formModes, type Filters, type Mode } from "./model";
 import { MonitorView } from "./MonitorView";
 import { TasksView } from "./TasksView";
 import "./forms.css";
-import { useCycles } from "../../api/queries";
+import { useCycles, queryKeys } from "../../api/queries";
 
 const STATUSES = ["NotStarted", "InProgress", "InReview", "Returned", "Approved"] as const satisfies readonly SubmissionStatus[];
 const MODES = ["tasks", "monitor"] as const satisfies readonly Mode[];
@@ -57,7 +57,7 @@ export default function FormsPage() {
   const cycleOpen = cycle ? cycle.status === "Open" : true;
 
   const all = useQuery({
-    queryKey: ["forms", cycleId],
+    queryKey: queryKeys.forms(cycleId),
     queryFn: ({ signal }) => api.get<FormRow[]>(`/api/forms${query({ cycleId })}`, { signal }),
     enabled: !!cycleId,
   });

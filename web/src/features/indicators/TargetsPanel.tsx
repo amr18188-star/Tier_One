@@ -11,12 +11,13 @@ import { L } from "../../shared/i18n";
 import { direction, withUnit } from "../../shared/labels";
 import { Panel } from "../../shared/ui";
 import { TargetEditor, type TargetSlot } from "./TargetEditor";
+import { queryKeys } from "../../api/queries";
 
 /** مستهدفات الجامعة: الرسم من خط الأساس حتى 2031، وبطاقة لكل سنة تعدل أو تعتمد من مكانها، والمستهدف الموحد لكل كلية. */
 export function TargetsPanel({ code, universityId }: { code: string; universityId: string | undefined }) {
   const qc = useQueryClient();
   const { message } = App.useApp();
-  const targets = useQuery({ queryKey: ["targets", code], queryFn: () => api.get<IndicatorTargets>(`/api/kpi/indicators/${code}/targets`) });
+  const targets = useQuery({ queryKey: queryKeys.targets(code), queryFn: () => api.get<IndicatorTargets>(`/api/kpi/indicators/${code}/targets`) });
   const [slot, setSlot] = useState<TargetSlot | null>(null);
   const [approve, setApprove] = useState<Target | null>(null);
   const t = targets.data;
@@ -94,7 +95,7 @@ export function TargetsPanel({ code, universityId }: { code: string; universityI
               onSubmit={async (decisionRef) => {
                 await api.post(`/api/kpi/targets/${approve.id}/approve`, { decisionRef });
                 message.success(L("اعتُمد المستهدف.", "Target approved."));
-                await qc.invalidateQueries({ queryKey: ["targets", code] });
+                await qc.invalidateQueries({ queryKey: queryKeys.targets(code) });
               }} />
           )}
         </>

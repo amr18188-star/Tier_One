@@ -12,11 +12,17 @@ public sealed class DefinedEnumsFilter : IEndpointFilter
 {
     public ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
-        foreach (var argument in context.Arguments)
+        for (var i = 0; i < context.Arguments.Count; i++)
         {
-            if (argument is Enum value && value.GetType().GetCustomAttribute<FlagsAttribute>() is null && !Enum.IsDefined(value.GetType(), value))
-                throw new DomainException("invalid_value", "قيمة غير مقبولة في الطلب.", "A value in the request is not accepted.", 400);
+            if (context.Arguments[i] is Enum value && value.GetType().GetCustomAttribute<FlagsAttribute>() is null && !Enum.IsDefined(value.GetType(), value))
+                throw new DomainException("invalid_value", "قيمة غير مقبولة في الطلب.", "A value in the request is not accepted.", 400) { Field = ParameterName(context, i) };
         }
         return next(context);
     }
+
+    /// <summary>The name of the handler's i-th parameter (the query or route name it binds), for the error's field (BE-6).</summary>
+    private static string? ParameterName(EndpointFilterInvocationContext context, int index) =>
+        context.HttpContext.GetEndpoint()?.Metadata.GetMetadata<MethodInfo>()?.GetParameters() is { } parameters && index < parameters.Length
+            ? parameters[index].Name
+            : null;
 }

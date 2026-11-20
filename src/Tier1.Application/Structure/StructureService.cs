@@ -125,7 +125,7 @@ public sealed class StructureService(IStructureStore db, IReadModel read, IClock
                         $"منصب «{position.TitleAr}» يشغله {holder.FullName}. اختر «استبدال الحالي» لإنهاء عضويته في اليوم السابق.",
                         $"The position is held by {holder.FullName}. Choose to replace the current holder.", 409);
                 if (holder.StartDate >= req.StartDate)
-                    throw new DomainException("replace_date", "تاريخ بداية العضو الجديد يجب أن يكون بعد بداية الحالي.", "The new start date must be after the current holder's start.", 400);
+                    throw new DomainException("replace_date", "تاريخ بداية العضو الجديد يجب أن يكون بعد بداية الحالي.", "The new start date must be after the current holder's start.", 400) { Field = "startDate" };
                 holder.EndDate = req.StartDate.AddDays(-1);
                 holder.EndReason = "استبدال بعضو جديد";
             }
@@ -175,7 +175,7 @@ public sealed class StructureService(IStructureStore db, IReadModel read, IClock
         var (member, college) = await LoadMemberForAsync(id, Cap.Delete, ct);
         var reason = Require.Reason(req.Reason);
         if (member.EndDate is not null) throw new DomainException("already_ended", "العضوية منتهية بالفعل.", "The membership has already ended.");
-        if (req.EndDate < member.StartDate) throw new DomainException("end_before_start", "تاريخ الانتهاء قبل تاريخ البداية.", "The end date is before the start date.", 400);
+        if (req.EndDate < member.StartDate) throw new DomainException("end_before_start", "تاريخ الانتهاء قبل تاريخ البداية.", "The end date is before the start date.", 400) { Field = "endDate" };
         member.EndDate = req.EndDate;
         member.EndReason = reason;
         audit.Record(AuditEvents.Audit("org", Feature, "org.member_ended", "إنهاء عضوية في هيكل كلية", "Ended a structure membership") with
@@ -258,7 +258,7 @@ public sealed class StructureService(IStructureStore db, IReadModel read, IClock
     {
         if (!unit.PerDepartment) return;
         if (departmentId is not { } id || !await read.Query<Domain.Organization.OrgUnit>().AnyAsync(u => u.Id == id && u.ParentId == collegeId && u.Kind == OrgUnitKind.Department && u.Active, ct))
-            throw new DomainException("department_required", "اختر القسم العلمي لهذا المنصب.", "Choose the department for this position.", 400);
+            throw new DomainException("department_required", "اختر القسم العلمي لهذا المنصب.", "Choose the department for this position.", 400) { Field = "departmentId" };
     }
 
     private async Task<(StructureMember Member, OrgUnit College)> LoadMemberForAsync(Guid id, Cap cap, CancellationToken ct)
@@ -281,7 +281,7 @@ public sealed class StructureService(IStructureStore db, IReadModel read, IClock
 
     private static void Apply(StructureMember m, SaveMemberRequest req)
     {
-        m.FullName = string.IsNullOrWhiteSpace(req.FullName) ? throw new DomainException("name_required", "اكتب اسم العضو.", "Enter the member's name.", 400) : req.FullName.Trim();
+        m.FullName = string.IsNullOrWhiteSpace(req.FullName) ? throw new DomainException("name_required", "اكتب اسم العضو.", "Enter the member's name.", 400) { Field = "fullName" } : req.FullName.Trim();
         m.Title = Require.Optional(req.Title, 200);
         m.Employer = Require.Optional(req.Employer, 200);
         m.Email = Contacts.Email(req.Email);
@@ -293,7 +293,7 @@ public sealed class StructureService(IStructureStore db, IReadModel read, IClock
 
     private static void Apply(IndustryPartner p, SavePartnerRequest req)
     {
-        p.NameAr = string.IsNullOrWhiteSpace(req.NameAr) ? throw new DomainException("name_required", "اكتب اسم الجهة الشريكة.", "Enter the partner's name.", 400) : req.NameAr.Trim();
+        p.NameAr = string.IsNullOrWhiteSpace(req.NameAr) ? throw new DomainException("name_required", "اكتب اسم الجهة الشريكة.", "Enter the partner's name.", 400) { Field = "nameAr" } : req.NameAr.Trim();
         p.Sector = Require.Optional(req.Sector, 150);
         p.CoordinatorName = Require.Optional(req.CoordinatorName, 200);
         p.CoordinatorEmail = Contacts.Email(req.CoordinatorEmail);

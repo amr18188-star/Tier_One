@@ -14,6 +14,7 @@ import { PageHeader, Panel } from "../../shared/ui";
 import UnitIndicatorsDrawer from "./UnitIndicatorsDrawer";
 import "./units.css";
 import { queryKeys } from "../../api/queries";
+import { useFieldErrors } from "../../shared/useFieldErrors";
 
 type Row = OrgUnit & { children?: Row[] };
 
@@ -43,7 +44,7 @@ export default function UnitsPage() {
   const [edit, setEdit] = useState<OrgUnit | null>(null);
   const [close, setClose] = useState<OrgUnit | null>(null);
   const [tasks, setTasks] = useState<OrgUnit | null>(null);
-  const units = useQuery({ queryKey: ["units", showClosed], queryFn: () => api.get<OrgUnit[]>(`/api/org/units?includeInactive=${showClosed}`) });
+  const units = useQuery({ queryKey: queryKeys.unitsList(showClosed), queryFn: () => api.get<OrgUnit[]>(`/api/org/units?includeInactive=${showClosed}`) });
   const byId = useMemo(() => new Map((units.data ?? []).map((u) => [u.id, u])), [units.data]);
 
   // البحث يبقي الجهة المطابقة وأسلافها، فتظهر في مكانها من الشجرة.
@@ -156,7 +157,7 @@ function useRefresh() {
   const qc = useQueryClient();
   return async () => {
     await qc.invalidateQueries({ queryKey: queryKeys.units });
-    await qc.invalidateQueries({ queryKey: ["structure"] });
+    await qc.invalidateQueries({ queryKey: queryKeys.structure });
   };
 }
 
@@ -176,10 +177,11 @@ function AddUnit({ parent, onClose }: { parent: OrgUnit; onClose: () => void }) 
       else onClose();
     },
   });
+  const saveMarked = useFieldErrors(form, save.error);
   return (
     <Modal open title={`${L("إضافة تحت", "Add under")} ${parent.nameAr}`} okText={L("إضافة", "Add")} cancelText={L("إغلاق", "Close")}
       onCancel={onClose} onOk={() => form.submit()} confirmLoading={save.isPending} destroyOnHidden>
-      {save.error && <Alert type="error" showIcon message={errorText(save.error)} className="mb" />}
+      {save.error && !saveMarked && <Alert type="error" showIcon message={errorText(save.error)} className="mb" />}
       <Form form={form} layout="vertical" initialValues={{ kind: kinds[0], more: true }} onFinish={(v) => save.mutate(v)}>
         <Form.Item name="kind" label={L("النوع", "Kind")}
           extra={parent.kind === "University"
@@ -222,10 +224,11 @@ function EditUnit({ unit, onClose }: { unit: OrgUnit; onClose: () => void }) {
       }),
     onSuccess: async () => { await refresh(); onClose(); },
   });
+  const saveMarked = useFieldErrors(form, save.error);
   return (
     <Modal open title={`${L("تعديل", "Edit")} ${unit.nameAr}`} okText={L("حفظ", "Save")} cancelText={L("إلغاء", "Cancel")}
       onCancel={onClose} onOk={() => form.submit()} confirmLoading={save.isPending} destroyOnHidden>
-      {save.error && <Alert type="error" showIcon message={errorText(save.error)} className="mb" />}
+      {save.error && !saveMarked && <Alert type="error" showIcon message={errorText(save.error)} className="mb" />}
       <Form form={form} layout="vertical" initialValues={{ nameAr: unit.nameAr, nameEn: unit.nameEn ?? undefined, sortOrder: unit.sortOrder, effectiveOn: dayjs(), viewsWholeUniversity: unit.viewsWholeUniversity }} onFinish={(v) => save.mutate(v)}>
         <Form.Item name="nameAr" label={L("الاسم", "Name")} rules={[{ required: true }]}><Input maxLength={200} /></Form.Item>
         {renamed && (
@@ -261,11 +264,12 @@ function CloseUnit({ unit, all, onClose }: { unit: OrgUnit; all: OrgUnit[]; onCl
       api.post(`/api/org/units/${unit.id}/close`, { closedOn: v.closedOn.format("YYYY-MM-DD"), reason: v.reason, mergedIntoId: v.mergedIntoId ?? null }),
     onSuccess: async () => { await refresh(); onClose(); },
   });
+  const saveMarked = useFieldErrors(form, save.error);
   return (
     <Modal open title={`${L("إغلاق", "Close")} ${unit.nameAr}`} okText={L("إغلاق الجهة", "Close unit")} okButtonProps={{ danger: true }} cancelText={L("إلغاء", "Cancel")}
       onCancel={onClose} onOk={() => form.submit()} confirmLoading={save.isPending} destroyOnHidden>
       <Alert type="warning" showIcon className="mb" message={L("لا تحذف الجهة: تبقى بسجلاتها وتختفي من النماذج الجديدة. أغلق أقسامها أولًا.", "The unit is kept with its records and hidden from new forms. Close its children first.")} />
-      {save.error && <Alert type="error" showIcon message={errorText(save.error)} className="mb" />}
+      {save.error && !saveMarked && <Alert type="error" showIcon message={errorText(save.error)} className="mb" />}
       <Form form={form} layout="vertical" initialValues={{ closedOn: dayjs() }} onFinish={(v) => save.mutate(v)}>
         <Form.Item name="closedOn" label={L("تاريخ الإغلاق", "Closing date")} rules={[{ required: true }]}><DatePicker style={{ width: "100%" }} /></Form.Item>
         <Form.Item name="mergedIntoId" label={L("دمجت في (اختياري)", "Merged into (optional)")}>

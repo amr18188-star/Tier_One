@@ -72,7 +72,7 @@ public sealed class ConflictsService(IKpiStore db, IClock clock, ICurrentUser cu
         c.Proposal = Require.Optional(req.Proposal, 2000);
         c.PreparationNote = Require.Optional(req.PreparationNote, 2000);
         if (string.IsNullOrEmpty(c.Proposal))
-            throw new DomainException("proposal_required", "اكتب المعالجة المقترحة التي تعرض على اللجنة.", "Enter the proposal for the committee.", 400);
+            throw new DomainException("proposal_required", "اكتب المعالجة المقترحة التي تعرض على اللجنة.", "Enter the proposal for the committee.", 400) { Field = "proposal" };
         c.Status = ConflictStatus.Ready;
         c.PreparedBy = current.UserId;
         c.PreparedAt = clock.UtcNow;
@@ -93,8 +93,8 @@ public sealed class ConflictsService(IKpiStore db, IClock clock, ICurrentUser cu
         if (c.Status == ConflictStatus.Resolved)
             throw new DomainException("conflict_resolved", "سجل قرار هذا التعارض من قبل.", "A decision was already recorded.");
         c.MinutesRef = Require.Optional(req.MinutesRef, 200)
-            ?? throw new DomainException("minutes_required", "اكتب رقم محضر جلسة اللجنة العليا.", "Enter the committee minutes reference.", 400);
-        c.DecisionDate = req.DecisionDate ?? throw new DomainException("date_required", "اختر تاريخ الجلسة.", "Choose the session date.", 400);
+            ?? throw new DomainException("minutes_required", "اكتب رقم محضر جلسة اللجنة العليا.", "Enter the committee minutes reference.", 400) { Field = "minutesRef" };
+        c.DecisionDate = req.DecisionDate ?? throw new DomainException("date_required", "اختر تاريخ الجلسة.", "Choose the session date.", 400) { Field = "decisionDate" };
         c.Decision = req.Defer ? Require.Optional(req.Decision, 2000) : Require.Reason(req.Decision, 5, "decision_required", 2000);
         c.Status = req.Defer ? ConflictStatus.Deferred : ConflictStatus.Resolved;
         c.DecisionRecordedBy = current.UserId;

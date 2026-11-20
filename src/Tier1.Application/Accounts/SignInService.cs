@@ -286,12 +286,12 @@ public sealed class SignInService(
         if (step is null)
         {
             await audit.RecordNowAsync(AuditEvents.Security(action, Features.Users, "رفض رمز تحقق", "Rejected a two-step code") with { Outcome = "denied", Target = target }, ct);
-            throw new DomainException("invalid_code", "رمز تطبيق المصادقة غير صحيح أو مستخدم من قبل.", "The code is wrong or was already used.", 400);
+            throw new DomainException("invalid_code", "رمز تطبيق المصادقة غير صحيح أو مستخدم من قبل.", "The code is wrong or was already used.", 400) { Field = "code" };
         }
         // نجاح: إعادة العداد ذريًا ثم تحديث الخطوة المقبولة على نسخة حديثة (رمز التزامن يمنع قبول الرمز نفسه مرتين).
         await db.Users.Where(u => u.Id == user.Id).ExecuteUpdateAsync(s => s.SetProperty(u => u.FailedMfa, 0), ct);
         await db.Users.Entry(user).ReloadAsync(ct);
-        if (step.Value <= user.LastTotpStep) throw new DomainException("invalid_code", "رمز تطبيق المصادقة غير صحيح أو مستخدم من قبل.", "The code is wrong or was already used.", 400);
+        if (step.Value <= user.LastTotpStep) throw new DomainException("invalid_code", "رمز تطبيق المصادقة غير صحيح أو مستخدم من قبل.", "The code is wrong or was already used.", 400) { Field = "code" };
         user.LastTotpStep = step.Value;
         if (enabling) user.MfaEnabled = true;
         audit.Record(AuditEvents.Security(action, Features.Users, messageAr, messageEn) with { Target = target });
@@ -312,13 +312,13 @@ public static class PasswordPolicy
     public static void Ensure(string password, string email)
     {
         if (string.IsNullOrEmpty(password) || password.Length < 12)
-            throw new DomainException("weak_password", "كلمة المرور يجب ألا تقل عن 12 حرفًا.", "The password must be at least 12 characters.", 400);
+            throw new DomainException("weak_password", "كلمة المرور يجب ألا تقل عن 12 حرفًا.", "The password must be at least 12 characters.", 400) { Field = "newPassword" };
         if (password.Length > 128)
-            throw new DomainException("weak_password", "كلمة المرور أطول من المسموح.", "The password is too long.", 400);
+            throw new DomainException("weak_password", "كلمة المرور أطول من المسموح.", "The password is too long.", 400) { Field = "newPassword" };
         var local = email.Split('@')[0];
         if (local.Length >= 4 && password.Contains(local, StringComparison.OrdinalIgnoreCase))
-            throw new DomainException("weak_password", "لا تضمّن بريدك في كلمة المرور.", "Do not include your email in the password.", 400);
+            throw new DomainException("weak_password", "لا تضمّن بريدك في كلمة المرور.", "Do not include your email in the password.", 400) { Field = "newPassword" };
         if (password.Distinct().Count() < 6)
-            throw new DomainException("weak_password", "كلمة المرور متكررة الأحرف أكثر من اللازم.", "The password repeats too few characters.", 400);
+            throw new DomainException("weak_password", "كلمة المرور متكررة الأحرف أكثر من اللازم.", "The password repeats too few characters.", 400) { Field = "newPassword" };
     }
 }

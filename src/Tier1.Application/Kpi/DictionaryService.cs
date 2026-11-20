@@ -141,8 +141,8 @@ public sealed class DictionaryService(IKpiStore db, IReadModel read, IClock cloc
     {
         await access.RequireAsync(Feature, Cap.Add, ct);
         var standard = await db.Standards.FirstOrDefaultAsync(s => s.Code == req.StandardCode, ct)
-                       ?? throw new DomainException("standard_not_found", "المعيار غير موجود.", "Standard not found.", 400);
-        var name = Text(req.NameAr, 300, "اسم المؤشر") ?? throw new DomainException("name_required", "اكتب اسم المؤشر.", "Enter the indicator name.", 400);
+                       ?? throw new DomainException("standard_not_found", "المعيار غير موجود.", "Standard not found.", 400) { Field = "standardCode" };
+        var name = Text(req.NameAr, 300, "اسم المؤشر") ?? throw new DomainException("name_required", "اكتب اسم المؤشر.", "Enter the indicator name.", 400) { Field = "nameAr" };
         var siblings = await db.Indicators.Where(i => i.StandardId == standard.Id).Select(i => new { i.Id, i.Code, i.SortOrder }).ToListAsync(ct);
         var siblingIds = siblings.Select(x => x.Id).ToList();
         if (await db.IndicatorVersions.AnyAsync(v => siblingIds.Contains(v.IndicatorId) && v.NameAr == name, ct))
@@ -182,14 +182,14 @@ public sealed class DictionaryService(IKpiStore db, IReadModel read, IClock cloc
         var v = IndicatorRules.EditableVersion(indicator, now, req.ChangeReason);
         if (!createsVersion) Concurrency.Expect(db, v, req.Version);
         if (req.OwnerUnitId is { } owner && !await read.Query<Domain.Organization.OrgUnit>().AnyAsync(u => u.Id == owner && u.Active, ct))
-            throw new DomainException("owner_not_found", "الجهة المالكة غير موجودة أو معطلة.", "The owner unit was not found.", 400);
+            throw new DomainException("owner_not_found", "الجهة المالكة غير موجودة أو معطلة.", "The owner unit was not found.", 400) { Field = "ownerUnitId" };
 
         var changes = new ChangeSet()
             .Add("definition", v.Definition, req.Definition).Add("unit", v.Unit, req.Unit).Add("direction", v.Direction, req.Direction)
             .Add("aggregation", v.Aggregation, req.Aggregation).Add("numerator", v.Numerator, req.Numerator).Add("denominator", v.Denominator, req.Denominator)
             .Add("dataSource", v.DataSource, req.DataSource).Add("ownerUnitId", v.OwnerUnitId, req.OwnerUnitId).Add("level", v.Level, req.Level);
 
-        v.NameAr = Text(req.NameAr, 300, "اسم المؤشر") ?? throw new DomainException("name_required", "اكتب اسم المؤشر.", "Enter the indicator name.", 400);
+        v.NameAr = Text(req.NameAr, 300, "اسم المؤشر") ?? throw new DomainException("name_required", "اكتب اسم المؤشر.", "Enter the indicator name.", 400) { Field = "nameAr" };
         v.NameEn = Require.Optional(req.NameEn, 300);
         v.Definition = Require.Optional(req.Definition, 2000);
         v.Purpose = Require.Optional(req.Purpose, 1000);

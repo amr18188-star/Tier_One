@@ -19,8 +19,8 @@ public sealed class UserOverridesService(IIdentityStore db, IClock clock, ICurre
     {
         IamPolicy.RequireReason(req.Reason);
         var user = await policy.LoadManagedAsync(userId, "iam.override_add", Features.Grants, ct);
-        if (string.IsNullOrWhiteSpace(req.Feature)) throw new DomainException("unknown_feature", "اختر خاصية.", "Choose a feature.", 400);
-        var def = PermissionCatalog.Find(req.Feature) ?? throw new DomainException("unknown_feature", "الخاصية غير موجودة.", "Unknown feature.", 400);
+        if (string.IsNullOrWhiteSpace(req.Feature)) throw new DomainException("unknown_feature", "اختر خاصية.", "Choose a feature.", 400) { Field = "feature" };
+        var def = PermissionCatalog.Find(req.Feature) ?? throw new DomainException("unknown_feature", "الخاصية غير موجودة.", "Unknown feature.", 400) { Field = "feature" };
         Cap caps;
         AccessScope scope;
         try
@@ -34,13 +34,13 @@ public sealed class UserOverridesService(IIdentityStore db, IClock clock, ICurre
         }
         // «نطاقه» يحتاج قيم وحدات لا يحملها الاستثناء الفردي؛ فيقتصر على الكل والمسند إليه وسجلاته.
         if (scope == AccessScope.Unit)
-            throw new DomainException("invalid_scope", "الاستثناء الفردي لا يأخذ نطاق «نطاقه». اختر الكل أو المسند إليه أو سجلاته.", "An individual override cannot use the unit scope. Choose all, assigned or own.", 400);
+            throw new DomainException("invalid_scope", "الاستثناء الفردي لا يأخذ نطاق «نطاقه». اختر الكل أو المسند إليه أو سجلاته.", "An individual override cannot use the unit scope. Choose all, assigned or own.", 400) { Field = "scope" };
         var specials = (req.Specials ?? []).Distinct(StringComparer.Ordinal).ToList();
         if ((caps & ~def.AllowedCaps) != Cap.None || specials.Any(s => !def.HasSpecial(s)))
             throw new DomainException("invalid_cap", $"إمكانية أو إجراء لا معنى له في «{def.Name.Ar}».", $"A capability or action that does not exist in '{def.Key}'.", 400);
         if (caps == Cap.None && specials.Count == 0)
             throw new DomainException("empty_override", "اختر إمكانية أو إجراءً واحدًا على الأقل.", "Choose at least one capability or action.", 400);
-        if (!Enum.IsDefined(req.Effect)) throw new DomainException("invalid_effect", "نوع الاستثناء غير صالح.", "Invalid override type.", 400);
+        if (!Enum.IsDefined(req.Effect)) throw new DomainException("invalid_effect", "نوع الاستثناء غير صالح.", "Invalid override type.", 400) { Field = "effect" };
         if (req.Effect == OverrideEffect.Allow)
         {
             if (specials.Any(s => PermissionCatalog.IsSuperAdminOnly(def.Key, s)))
@@ -51,7 +51,7 @@ public sealed class UserOverridesService(IIdentityStore db, IClock clock, ICurre
                 RoleRules.Validate(constrained, false, [new GrantInput(def.Key, caps, scope, specials)]);
         }
         if (req.ValidTo is { } to && to <= clock.UtcNow)
-            throw new DomainException("invalid_dates", "تاريخ النهاية يجب أن يكون في المستقبل.", "The end date must be in the future.", 400);
+            throw new DomainException("invalid_dates", "تاريخ النهاية يجب أن يكون في المستقبل.", "The end date must be in the future.", 400) { Field = "validTo" };
         var o = new UserOverride
         {
             UserId = userId,

@@ -27,6 +27,7 @@ import "../shared/theme.css";
 import "../shared/layout.css";
 import "./nav.css";
 import "./entrance.css";
+import { queryKeys } from "../api/queries";
 
 /**
  * إطار المنظومة: قائمة جانبية داكنة مقسمة بحسب الصلاحيات (لا يرى المستخدم ما لا يملكه)، وبحث موحد أعلى كل صفحة
@@ -67,7 +68,7 @@ export function Shell({ children }: { children: ReactNode }) {
 
   const canMatrix = canOpen(perms, ROUTE_NEEDS["/matrix"]);
   const pending = useQuery({
-    queryKey: ["changes", "Pending"],
+    queryKey: queryKeys.changesList("Pending"),
     queryFn: () => api.poll<RbacChange[]>("/api/iam/changes?status=Pending"),
     enabled: canMatrix,
     refetchInterval: 60_000,

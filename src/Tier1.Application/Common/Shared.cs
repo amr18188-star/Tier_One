@@ -6,20 +6,36 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Tier1.Application.Common;
 
-/// <summary>التحقق من المدخلات النصية المشتركة: السبب المكتوب للإجراءات المسجلة والنصوص الاختيارية، بحد أدنى وأقصى يطابق أعمدة القاعدة.</summary>
+/// <summary>
+/// التحقق من المدخلات النصية المشتركة: السبب المكتوب للإجراءات المسجلة والنصوص الاختيارية، بحد أدنى وأقصى يطابق أعمدة القاعدة.
+/// BE-6: الخطأ يسمي الحقل باسمه في JSON، مأخوذًا من الوسيط نفسه (<c>req.Note</c> يصير "note")، فتعلم الواجهة الحقل.
+/// </summary>
 public static class Require
 {
-    public static string Reason(string? text, int min = 5, string code = "reason_required", int max = 500)
+    public static string Reason(string? text, int min = 5, string code = "reason_required", int max = 500,
+        [System.Runtime.CompilerServices.CallerArgumentExpression(nameof(text))] string field = "")
     {
         if (string.IsNullOrWhiteSpace(text) || text.Trim().Length < min)
-            throw new DomainException(code, $"اكتب سببًا واضحًا ({min} أحرف على الأقل).", $"Enter a clear reason (at least {min} characters).", 400);
-        return Max(text.Trim(), max);
+            throw new DomainException(code, $"اكتب سببًا واضحًا ({min} أحرف على الأقل).", $"Enter a clear reason (at least {min} characters).", 400) { Field = FieldName(field) };
+        return Max(text.Trim(), max, field);
     }
 
-    public static string? Optional(string? text, int max = 1000) => string.IsNullOrWhiteSpace(text) ? null : Max(text.Trim(), max);
+    public static string? Optional(string? text, int max = 1000,
+        [System.Runtime.CompilerServices.CallerArgumentExpression(nameof(text))] string field = "") =>
+        string.IsNullOrWhiteSpace(text) ? null : Max(text.Trim(), max, field);
 
-    private static string Max(string text, int max) => text.Length <= max ? text
-        : throw new DomainException("text_too_long", $"النص أطول من {max} حرف. اختصره ثم أعد المحاولة.", $"The text is longer than {max} characters. Shorten it and retry.", 400);
+    private static string Max(string text, int max, string field) => text.Length <= max ? text
+        : throw new DomainException("text_too_long", $"النص أطول من {max} حرف. اختصره ثم أعد المحاولة.", $"The text is longer than {max} characters. Shorten it and retry.", 400) { Field = FieldName(field) };
+
+    /// <summary>The JSON name of the field an argument came from: <c>req.DecisionRef</c> is "decisionRef", <c>reason</c> is "reason".</summary>
+    public static string? FieldName(string? expression)
+    {
+        var name = (expression ?? "").Trim();
+        name = name[(name.LastIndexOf('.') + 1)..];
+        return name.Length > 0 && name.All(char.IsAsciiLetterOrDigit) && char.IsAsciiLetter(name[0])
+            ? char.ToLowerInvariant(name[0]) + name[1..]
+            : null;
+    }
 }
 
 /// <summary>رموز عشوائية بلا التباس (بلا I وL وO وU): بطاقة الدخول والتحقق من المستند.</summary>
