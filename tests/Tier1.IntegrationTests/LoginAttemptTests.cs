@@ -93,10 +93,15 @@ public sealed class LoginAttemptTests(Tier1App app)
     {
         const string email = "rep.ai@tier1.local";
         var ip = Address();
-        var results = await Task.WhenAll(Enumerable.Range(0, 20).Select(_ => SignInAsync(app.Base, ip, email, Wrong)));
+        // Twice the account-wide limit (20), sent together from one address.
+        var results = await Task.WhenAll(Enumerable.Range(0, 40).Select(_ => SignInAsync(app.Base, ip, email, Wrong)));
         Assert.All(results, r => Assert.Equal(401, r.Status));
         // The atomic count stops at the limit and sets the block once, however many arrive together.
         Assert.Equal(5, await app.CountAsync("SELECT failures FROM iam.login_counters WHERE key LIKE '%|acct|%|' || @ip", ("ip", ip)));
+        // The attempt is reserved before the password check, so only those five reach the account's own count: guesses sent
+        // together from one address can no longer lock the account for its owner everywhere.
+        Assert.True(await app.CountAsync("SELECT failed_logins FROM iam.users WHERE email = @e", ("e", email)) <= 5);
+        Assert.Equal(0, await app.CountAsync("SELECT count(*) FROM iam.users WHERE email = @e AND locked_until > now()", ("e", email)));
         Assert.Equal(200, (await SignInAsync(app.Base, Address(), email, Tier1App.Password)).Status);
     }
 

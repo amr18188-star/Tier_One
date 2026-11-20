@@ -48,11 +48,24 @@ public sealed class PostgresLoginAttempts(NpgsqlDataSource db) : ILoginAttempts
         return new FailureResult(pair, wide);
     }
 
+    public async Task<AttemptReservation> ReserveAccountAddressAsync(string surface, Guid account, string? ip, AttemptLimit limit, DateTimeOffset now, CancellationToken ct)
+    {
+        var (allowed, setBlock) = await CountReturningAsync(AccountAddressKey(surface, account, ip), limit, now, ct);
+        return new AttemptReservation(allowed, setBlock);
+    }
+
     /// <summary>
     /// One failure on one key. Within an active block nothing changes; a window that has passed starts again at 1; reaching the
     /// limit sets the block. Returns true when this failure set the block.
     /// </summary>
-    private async Task<bool> CountAsync(string key, AttemptLimit limit, DateTimeOffset now, CancellationToken ct)
+    private async Task<bool> CountAsync(string key, AttemptLimit limit, DateTimeOffset now, CancellationToken ct) =>
+        (await CountReturningAsync(key, limit, now, ct)).SetBlock;
+
+    /// <summary>
+    /// The count itself: whether the key was free for this attempt (no block, or the block this attempt set) and whether this
+    /// attempt set the block. One statement, so the row lock orders attempts arriving together on any instance.
+    /// </summary>
+    private async Task<(bool Allowed, bool SetBlock)> CountReturningAsync(string key, AttemptLimit limit, DateTimeOffset now, CancellationToken ct)
     {
         const string Sql = """
             INSERT INTO iam.login_counters AS c (key, failures, window_start, blocked_until)
@@ -65,7 +78,7 @@ public sealed class PostgresLoginAttempts(NpgsqlDataSource db) : ILoginAttempts
               blocked_until = CASE WHEN c.blocked_until > $2 THEN c.blocked_until
                                    WHEN (CASE WHEN c.window_start <= $3 THEN 1 ELSE c.failures + 1 END) >= $4 THEN $5
                                    ELSE NULL END
-            RETURNING (blocked_until IS NOT NULL AND blocked_until = $5)
+            RETURNING (blocked_until IS NULL OR blocked_until = $5), (blocked_until IS NOT NULL AND blocked_until = $5)
             """;
         var blockUntil = now + limit.Block;
         await using var cmd = db.CreateCommand(Sql);
@@ -75,7 +88,9 @@ public sealed class PostgresLoginAttempts(NpgsqlDataSource db) : ILoginAttempts
         cmd.Parameters.AddWithValue(limit.MaxFailures);
         cmd.Parameters.AddWithValue(blockUntil);
         // Compared in SQL: PostgreSQL keeps microseconds, so the value read back would not equal .NET's 100 ns ticks.
-        return await cmd.ExecuteScalarAsync(ct) is true;
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        await reader.ReadAsync(ct);
+        return (reader.GetBoolean(0), reader.GetBoolean(1));
     }
 
     public async Task ClearAccountAddressAsync(string surface, Guid account, string? ip, CancellationToken ct)

@@ -55,7 +55,11 @@ public sealed class SignInService(
         if (user is null || !user.Active || user.PasswordHash is null)
             throw await RefuseAsync(user, email, user is null ? "unknown_email" : "inactive_or_unset", cmd.Password, counts: true, ct);
         // العنوان المحجوب عن هذا الحساب (محاولات كثيرة منه) يرد كالخطأ العادي وبزمنه، ولا يمس دخول صاحب الحساب من مكان آخر.
-        if (await attempts.AccountAddressBlockedAsync(Surface, user.Id, ip, now, ct))
+        // The attempt is counted for this account at this address BEFORE the password is checked, in one atomic statement: guesses
+        // sent together stop at the pair's limit, instead of all passing a check made before any was counted and reaching the
+        // account-wide limit, which would lock the owner out everywhere (ADR-0014). A successful sign-in clears this count.
+        var pair = await attempts.ReserveAccountAddressAsync(Surface, user.Id, ip, AccountAddressLimit, now, ct);
+        if (!pair.Allowed)
             throw await RefuseAsync(user, email, "account_address_blocked", cmd.Password, counts: false, ct);
         // حجز المحاولة ذريًا قبل التحقق: الحساب المقفل أو المستنفد لا يتحقق منه، فلا تتجاوز الطلبات المتوازية الحد.
         var max = options.Value.MaxFailedLoginsPerAccount;
@@ -76,7 +80,7 @@ public sealed class SignInService(
         var (valid, rehash) = hasher.Verify(user.PasswordHash!, cmd.Password ?? "");
         if (!valid)
         {
-            await CountFailureAsync(user, email, ip, now, ct);
+            await CountFailureAsync(user, email, ip, now, ct, pairSetBlock: pair.SetBlock);
             var failed = await db.Users.Where(u => u.Id == user.Id).Select(u => u.FailedLogins).FirstAsync(ct);
             if (failed >= max)
                 await db.Users.Where(u => u.Id == user.Id).ExecuteUpdateAsync(s => s.SetProperty(u => u.LockedUntil, now.AddMinutes(options.Value.LockoutMinutes)).SetProperty(u => u.FailedLogins, 0), ct);
@@ -223,10 +227,12 @@ public sealed class SignInService(
         new(options.Value.MaxFailedLoginsPerAddress, TimeSpan.FromMinutes(options.Value.AddressWindowMinutes), TimeSpan.FromMinutes(options.Value.AddressBlockMinutes));
 
     /// <summary>Counts a failure for the account at this address and for the address across accounts, and audits a block it set.</summary>
-    private async Task CountFailureAsync(AppUser? user, string email, string? ip, DateTimeOffset now, CancellationToken ct)
+    /// <param name="pairSetBlock">Given when the account's count at this address was already reserved before the password check
+    /// (sign-in): only the address-wide count is added, and this says whether the reservation set the block.</param>
+    private async Task CountFailureAsync(AppUser? user, string email, string? ip, DateTimeOffset now, CancellationToken ct, bool? pairSetBlock = null)
     {
-        var result = await attempts.FailAsync(Surface, user?.Id, ip, AccountAddressLimit, AddressLimit, now, ct);
-        if (result.AccountAddressBlocked && user is not null)
+        var result = await attempts.FailAsync(Surface, pairSetBlock is null ? user?.Id : null, ip, AccountAddressLimit, AddressLimit, now, ct);
+        if ((pairSetBlock ?? result.AccountAddressBlocked) && user is not null)
             await audit.RecordNowAsync(AuditEvents.Security("auth.locked", Features.Users, "حجب عنوان عن حساب بعد محاولات فاشلة", "Blocked an address from an account after failed attempts") with
             {
                 Outcome = "denied",
