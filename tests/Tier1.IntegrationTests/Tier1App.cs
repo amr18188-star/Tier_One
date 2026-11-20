@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
@@ -114,7 +115,13 @@ public sealed class Tier1App : IAsyncLifetime
 
     private sealed class Factory : WebApplicationFactory<Program>
     {
-        protected override void ConfigureWebHost(IWebHostBuilder builder) => builder.UseEnvironment("Development");
+        protected override void ConfigureWebHost(IWebHostBuilder builder) =>
+            builder.UseEnvironment("Development").ConfigureTestServices(services =>
+            {
+                // Handlers of a test-only event, to watch the dispatcher retry one handler without rerunning the other.
+                services.AddScoped<Tier1.Application.Integration.IEventHandler, ProbeMailHandler>();
+                services.AddScoped<Tier1.Application.Integration.IEventHandler, ProbeFlakyHandler>();
+            });
     }
 }
 

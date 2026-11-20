@@ -90,7 +90,9 @@ public sealed class FormFlowTests(Tier1App app, ITestOutputHelper output)
         var mailBefore = await MailFor(cycle);
         var form = await Flow.SubmittedEngineeringFormAsync(app, cycle);
         var id = form["id"].Str()!;
-        t.Check(await MailFor(cycle) > mailBefore, "Submitting queued the committee's notification in the same commit as the move");
+        t.Check(await app.CountAsync("SELECT count(*) FROM \"int\".outbox_events WHERE aggregate_id = @id AND type = 'form.moved'", ("id", Guid.Parse(id))) == 1,
+            "Submitting saved its form.moved event in the same commit as the move");
+        await EventOutboxTests.WaitAsync(async () => await MailFor(cycle) > mailBefore);
 
         (status, error) = await entry.Call("POST", $"/api/forms/{id}/submit");
         t.Check(status == 409 && error.Code() == "form_locked", $"Submitting twice is a conflict (409 form_locked), got {status} {error?.ToJsonString()}");
@@ -101,6 +103,9 @@ public sealed class FormFlowTests(Tier1App app, ITestOutputHelper output)
         t.Check(status == 428, $"Returning without the version is refused too (428), got {status}");
 
         var stale = Scenario.With(Flow.Approve(form), ("version", form["version"].Num() - 1));
+        // The submission's own notification is written after its commit: let it land before counting.
+        await EventOutboxTests.WaitAsync(async () =>
+            await app.CountAsync("SELECT count(*) FROM \"int\".outbox_events WHERE aggregate_id = @id AND processed_at IS NULL", ("id", Guid.Parse(id!))) == 0);
         var mail = await MailFor(cycle);
         var events = await EventsFor(id);
         (status, error) = await college.Call("POST", $"/api/forms/{id}/approve", stale);
@@ -110,7 +115,8 @@ public sealed class FormFlowTests(Tier1App app, ITestOutputHelper output)
         t.Check(current["step"].Str() == "CollegeCommittee", "The form did not move");
 
         var moved = await college.Ok("POST", $"/api/forms/{id}/approve", Flow.Approve(current));
-        t.Check(moved["step"].Str() == "Dean" && await EventsFor(id) == events + 1 && await MailFor(cycle) > mail, "The approval from the current version moved the form, with one event and its notification");
+        t.Check(moved["step"].Str() == "Dean" && await EventsFor(id) == events + 1, "The approval from the current version moved the form, with one event");
+        await EventOutboxTests.WaitAsync(async () => await MailFor(cycle) > mail);
         t.Finish();
     }
 

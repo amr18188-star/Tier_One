@@ -33,6 +33,7 @@ public static class DependencyInjection
         services.AddScoped<LogsService>();
         services.AddScoped<Settings.SettingsService>();
         services.AddScoped<IMailOutbox, Notifications.MailOutbox>();
+        services.AddScoped<Integration.IEventOutbox, Integration.EventOutbox>();
 
         // Tier 1: الجهات والهيكل، والقاموس والمستهدفات والتعارضات، والصفحة الأولى.
         services.AddScoped<Organization.OrgUnitsService>();
@@ -46,6 +47,7 @@ public static class DependencyInjection
 
         // جمع البيانات: الدورات والنماذج ومسار الاعتماد والأدلة والنتائج.
         services.AddScoped<Collection.FormNotifier>();
+        services.AddScoped<Integration.IEventHandler, Collection.FormMovedNotifications>();
         services.AddScoped<Collection.CyclesService>();
         services.AddScoped<Collection.FormsService>();
         services.AddScoped<Collection.DocumentsService>();

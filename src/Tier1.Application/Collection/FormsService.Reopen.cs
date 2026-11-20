@@ -75,7 +75,7 @@ public sealed partial class FormsService
             Reason = request.Reason,
             Details = new { decision, snapshot = ctx.Values.Count },
         });
-        await notifier.MovedAsync(ctx.Submission, ctx.Unit, ctx.Cycle, ct);
+        RaiseMoved(ctx);
         await db.SaveChangesAsync(ct);
         return await BuildAsync(ctx, ct);
     }

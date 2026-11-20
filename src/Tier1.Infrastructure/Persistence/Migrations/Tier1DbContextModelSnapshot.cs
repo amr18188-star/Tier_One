@@ -1332,6 +1332,108 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                     b.ToTable("sessions", "iam");
                 });
 
+            modelBuilder.Entity("Tier1.Domain.Integration.DomainEventRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<Guid>("AggregateId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("aggregate_id");
+
+                    b.Property<string>("AggregateType")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("aggregate_type");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempts");
+
+                    b.Property<DateTimeOffset>("AvailableAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("available_at");
+
+                    b.Property<DateTimeOffset?>("FailedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("failed_at");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("last_error");
+
+                    b.Property<DateTimeOffset?>("LockedUntil")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("locked_until");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload");
+
+                    b.Property<DateTimeOffset?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processed_at");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_outbox_events");
+
+                    b.HasIndex("AvailableAt")
+                        .HasDatabaseName("ix_outbox_events_pending")
+                        .HasFilter("processed_at IS NULL AND failed_at IS NULL");
+
+                    b.HasIndex("ProcessedAt")
+                        .HasDatabaseName("ix_outbox_events_processed_at")
+                        .HasFilter("processed_at IS NOT NULL");
+
+                    b.HasIndex("AggregateType", "AggregateId")
+                        .HasDatabaseName("ix_outbox_events_aggregate");
+
+                    b.ToTable("outbox_events", "int");
+                });
+
+            modelBuilder.Entity("Tier1.Domain.Integration.ProcessedEvent", b =>
+                {
+                    b.Property<string>("Handler")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("handler");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("event_id");
+
+                    b.Property<DateTimeOffset>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("processed_at");
+
+                    b.HasKey("Handler", "EventId")
+                        .HasName("pk_processed_events");
+
+                    b.HasIndex("EventId")
+                        .HasDatabaseName("ix_processed_events_event_id");
+
+                    b.ToTable("processed_events", "int");
+                });
+
             modelBuilder.Entity("Tier1.Domain.Kpi.DataConflict", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3208,6 +3310,16 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_sessions_users_user_id");
+                });
+
+            modelBuilder.Entity("Tier1.Domain.Integration.ProcessedEvent", b =>
+                {
+                    b.HasOne("Tier1.Domain.Integration.DomainEventRecord", null)
+                        .WithMany()
+                        .HasForeignKey("EventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_processed_events_outbox_events_event_id");
                 });
 
             modelBuilder.Entity("Tier1.Domain.Kpi.Indicator", b =>

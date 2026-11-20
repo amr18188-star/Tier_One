@@ -61,6 +61,8 @@ public static class DependencyInjection
         services.AddSingleton<IEmailSender, SmtpEmailSender>();
         services.AddSingleton<MailSignal>();
         services.AddSingleton<Application.Notifications.IMailSignal>(sp => sp.GetRequiredService<MailSignal>());
+        services.AddSingleton<Integration.EventSignal>();
+        services.AddSingleton<Application.Integration.IEventSignal>(sp => sp.GetRequiredService<Integration.EventSignal>());
         services.AddSingleton<OutboxSignal>();
         services.AddSingleton<IOutboxSignal>(sp => sp.GetRequiredService<OutboxSignal>());
         services.AddSingleton<IOutboxDirectWriter, OutboxDirectWriter>();
@@ -79,6 +81,7 @@ public static class DependencyInjection
             services.AddHostedService<NightlyChainVerification>();
             services.AddHostedService<AccessVersionPoller>();
             services.AddHostedService<MailDispatcher>();
+            services.AddHostedService<Integration.DomainEventDispatcher>();
             services.AddHostedService<RetentionJob>();
             services.AddHostedService<Email.FormReminderJob>();
         }

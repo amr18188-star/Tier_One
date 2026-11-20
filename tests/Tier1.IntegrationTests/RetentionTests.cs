@@ -43,6 +43,13 @@ public sealed class RetentionTests(Tier1App app)
             File.SetLastWriteTimeUtc(p, DateTime.UtcNow.AddHours(-hours));
         }
 
+        // Business events: one handled long ago, one handled recently, one still waiting for its handlers.
+        const string evt = "INSERT INTO \"int\".outbox_events (id, type, aggregate_type, aggregate_id, payload, occurred_at, available_at, attempts, processed_at, failed_at) " +
+            "VALUES (gen_random_uuid(), 'it.retention', @tag, gen_random_uuid(), '{}', now(), now(), 1, @processed, @failed)";
+        await app.ScalarAsync(evt, ("tag", tag), ("processed", (object?)Ago(60) ?? DBNull.Value), ("failed", DBNull.Value));
+        await app.ScalarAsync(evt, ("tag", tag), ("processed", (object?)Ago(1) ?? DBNull.Value), ("failed", DBNull.Value));
+        await app.ScalarAsync(evt, ("tag", tag), ("processed", DBNull.Value), ("failed", (object?)Ago(60) ?? DBNull.Value));
+
         var job = app.Services.GetServices<IHostedService>().OfType<RetentionJob>().Single();
         await job.RunOnceAsync(CancellationToken.None);
 
@@ -53,7 +60,9 @@ public sealed class RetentionTests(Tier1App app)
         Assert.Equal(1, await MailLeft($"queued-{tag}"));
         Assert.Equal(0, await app.CountAsync("SELECT count(*) FROM logs.outbox WHERE collection = @c", ("c", $"it-ok-{tag}")));
         Assert.Equal(2, await app.CountAsync("SELECT count(*) FROM logs.outbox WHERE collection = @c", ("c", $"it-unverified-{tag}")));
-        Assert.False(File.Exists(PathOf(old)), "An old file no document refers to is removed");
+        Assert.Equal(2, await app.CountAsync("SELECT count(*) FROM \"int\".outbox_events WHERE aggregate_type = @t", ("t", tag)));
+        Assert.Equal(1, await app.CountAsync("SELECT count(*) FROM \"int\".outbox_events WHERE aggregate_type = @t AND failed_at IS NOT NULL", ("t", tag)));
+        Assert.False(File.Exists(PathOf(old)),"An old file no document refers to is removed");
         Assert.False(File.Exists(PathOf(partial) + ".part"), "An old partial write is removed");
         Assert.True(File.Exists(PathOf(fresh)), "A fresh file (an upload in flight) stays");
     }

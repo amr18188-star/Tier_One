@@ -221,6 +221,7 @@ public sealed partial class Tier1DbContext(DbContextOptions<Tier1DbContext> opti
         });
 
         ConfigureTier1(b);
+        ConfigureIntegration(b);
     }
 }
 

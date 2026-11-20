@@ -67,7 +67,7 @@ public sealed record ExtendRequest(DateOnly DueOn, string? Reason);
 /// نماذج الجهات: الإدخال بالتحقق الفوري، والإرسال بعد اكتمال الإلزامي، والمراجعة والاعتماد على مسار الجهة بفصل المهام،
 /// والإعادة بملاحظات تبرز الحقول، والقفل بعد الاعتماد النهائي وإعادة الفتح بسبب. كل ذلك في نطاق المستخدم على الجهات.
 /// </summary>
-public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, Settings.SettingsService settings, FormNotifier notifier)
+public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, Settings.SettingsService settings, Integration.IEventOutbox events)
 {
     private const string Feature = Features.Forms;
 
@@ -240,7 +240,7 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
         foreach (var v in ctx.Values.Values) v.ReviewNote = null;
         ctx.Submission.SubmittedAt = clock.UtcNow;
         ctx.Submission.ReturnNote = null;
-        await notifier.MovedAsync(ctx.Submission, ctx.Unit, ctx.Cycle, ct);
+        RaiseMoved(ctx);
         await db.SaveChangesAsync(ct);
         return await BuildAsync(ctx, ct);
     }
@@ -268,7 +268,7 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
             note = Require.Optional(req.Note, 2000);
         }
         Move(ctx, SubmissionAction.Approved, next, note);
-        await notifier.MovedAsync(ctx.Submission, ctx.Unit, ctx.Cycle, ct);
+        RaiseMoved(ctx);
         await db.SaveChangesAsync(ct);
         return await BuildAsync(ctx, ct);
     }
@@ -285,7 +285,7 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
             if (ctx.Values.TryGetValue(item.IndicatorId, out var v)) v.ReviewNote = Require.Optional(item.Note, 1000);
         Move(ctx, SubmissionAction.Returned, ApprovalStep.Entry, note);
         ctx.Submission.ReturnNote = note;
-        await notifier.MovedAsync(ctx.Submission, ctx.Unit, ctx.Cycle, ct);
+        RaiseMoved(ctx);
         await db.SaveChangesAsync(ct);
         return await BuildAsync(ctx, ct);
     }
@@ -413,6 +413,13 @@ public sealed partial class FormsService(IAppDb db, IClock clock, ICurrentUser c
         if (!ApprovalRules.MayReview(ctx.Me, ctx.Unit, ctx.Submission.Step, allowDirect)) throw DomainException.Forbidden();
         var history = await db.SubmissionEvents.AsNoTracking().Where(e => e.SubmissionId == ctx.Submission.Id && e.At > (ctx.Submission.SubmittedAt ?? DateTimeOffset.MinValue).AddSeconds(-1)).ToListAsync(ct);
         ApprovalRules.EnsureSeparation(current.UserId!.Value, ctx.Values.Values.Select(v => v.EditedBy), history);
+    }
+
+    /// <summary>BE-3: whoever acts next is told after the commit, by the form.moved handler, not inside this request.</summary>
+    private void RaiseMoved(FormContext ctx)
+    {
+        var s = ctx.Submission;
+        events.Add(new FormMoved(s.Id, s.UnitId, s.CycleId, s.Status, s.Step, s.DueOn, s.ReturnNote), "submission", s.Id);
     }
 
     private void Move(FormContext ctx, SubmissionAction action, ApprovalStep to, string? note)

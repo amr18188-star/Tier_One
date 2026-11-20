@@ -96,6 +96,10 @@ public interface IAppDb
 
     DbSet<Domain.Collection.UniversityValue> UniversityValues { get; }
 
+    DbSet<Domain.Integration.DomainEventRecord> DomainEvents { get; }
+
+    DbSet<Domain.Integration.ProcessedEvent> ProcessedEvents { get; }
+
     DatabaseFacade Database { get; }
 
     /// <summary>لمحو ما تتبعه العملية بعد خطوة فاشلة اختيارية، فتكمل بحالة القاعدة.</summary>
