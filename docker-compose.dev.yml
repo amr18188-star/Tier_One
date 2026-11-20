@@ -31,7 +31,6 @@ services:
       MongoLogs__ChainKey: ybMmZEAJWMsrFElpEXuzGX81cfjMp1jnFHpxbzNRqgk=            # dev-only key
       Seed__Demo: "true"                    # demo accounts *@tier1.local
       Seed__Structure: "true"               # the official university structure for new databases
-      Seed__DemoData: "true"                # cycles, forms, values and structures; loaded once after startup
       Seed__DemoPassword: Tier1-Demo-Pass1
       Auth__RequireMfa: "false"             # Development only
       Cookies__Secure: "false"
@@ -57,6 +56,26 @@ services:
     stdin_open: true
     tty: true
 
+  # Demo data (cycles, forms, values, college structures) through the API once it answers, with each role's demo account;
+  # it skips itself when the data is already there. ARCH-4: a tool beside the server, not a job inside it. Its own build
+  # output volume, so its build never collides with `dotnet watch` in the api container.
+  demo-data:
+    image: tier1-api:dev
+    container_name: tier1-dev-demo-data
+    command: ["dotnet", "run", "--project", "tools/Tier1.Tools", "--no-launch-profile", "--",
+              "--demo-data", "--base", "http://api:5150", "--wait", "1200"]
+    environment:
+      DOTNET_ENVIRONMENT: Development
+      ArtifactsPath: /work/out-tools
+      Seed__DemoPassword: Tier1-Demo-Pass1
+    volumes:
+      - .:/work/repo
+      - tier1_tools_out:/work/out-tools
+      - tier1_api_nuget:/root/.nuget/packages
+    depends_on:
+      - api
+    restart: "no"
+
   # Vite dev server for the UI; proxies /api to the api service.
   web:
     image: node:24-bookworm-slim
@@ -76,6 +95,7 @@ services:
 
 volumes:
   tier1_api_out:
+  tier1_tools_out:
   tier1_api_nuget:
   tier1_api_data:
   tier1_web_node_modules:

@@ -77,7 +77,7 @@
   5 قطاعات، و22 إدارة عامة والإدارة المركزية للموارد البشرية، و23 كلية ومعهدان، و192 قسمًا.
   أضيفت **وحدة التخطيط الاستراتيجي** (`SPU`) و**مركز الاتصالات وتكنولوجيا المعلومات** (`ICT`).
   صُحِّح اسمان: «إدارة الأمن الجامعي» (خطأ كتابة في الملف)، و«قسم علم المعلومات» بكلية الآداب (بدل «المكتبات والمعلومات»، وفق القرار الوزاري الجديد).
-  التحويل: `dotnet run --project src/Tier1.Api -- --import-structure "path/to/structure.xlsx"`. التحميل بالأمر `dotnet run --project src/Tier1.Api -- --load-structure --confirm`،
+  التحويل: `dotnet run --project tools/Tier1.Tools -- --import-structure "path/to/structure.xlsx"`. التحميل بالأمر `dotnet run --project tools/Tier1.Tools -- --load-structure --confirm`،
   ويضيف الجهات أو يحدثها بالرمز ويحل محل الجهات التجريبية (تنقل نطاقات حساباتها ثم تحذف). أما النسخة التجريبية فتُبذر منه تلقائيًا.
 - **مستخدم الكلية أو الإدارة يرى جهته فقط**: نطاق دوره رمز جهته.
   - يرى نماذجها ونتائجها ودليل الجهات (جهته وما تحتها)، وتُحسب أعداد الدورات من نماذج جهته.
@@ -112,7 +112,7 @@
 ## إعادة الضبط
 
 ```bash
-dotnet run --project src/Tier1.Api -- --reset-kpi --confirm   # أوقف الخادم المعني قبل التشغيل
+dotnet run --project tools/Tier1.Tools -- --reset-kpi --confirm   # أوقف الخادم المعني قبل التشغيل
 ```
 
 يأخذ نسخة احتياطية كاملة في `data\backups` ثم يمسح بيانات المؤشرات كلها (التعريفات والمستهدفات والتعارضات والمبادرات
@@ -120,5 +120,5 @@ dotnet run --project src/Tier1.Api -- --reset-kpi --confirm   # أوقف الخ�
 يسجل في السجل المختوم. لتحديث الإطار من نسخة أحدث من الملف:
 
 ```powershell
-dotnet run --project src/Tier1.Api -- --import-kpi "path/to/KPI.xlsx"
+dotnet run --project tools/Tier1.Tools -- --import-kpi "path/to/KPI.xlsx"
 ```

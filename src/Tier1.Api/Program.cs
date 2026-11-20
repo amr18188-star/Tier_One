@@ -2,10 +2,7 @@ using System.Globalization;
 using Tier1.Api.Endpoints;
 using Tier1.Api.Startup;
 using Tier1.Infrastructure;
-using Tier1.Infrastructure.Logging;
 using Tier1.Infrastructure.Persistence;
-using Microsoft.Extensions.Options;
-using Npgsql;
 
 CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
 CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.GetCultureInfo("ar-EG");
@@ -24,67 +21,19 @@ var app = builder.Build();
 // إعدادات التجربة مرفوضة في كل بيئة غير التطوير (الإنتاج والتجريب وغيرهما).
 StartupGuards.Check(app.Configuration, app.Environment);
 
-// أوامر التشغيل لمرة واحدة.
-var production = app.Environment.IsProduction();
-// D10: الترحيل والبيانات الأساسية فقط؛ الإصلاحات المعلقة تعرض ولا تطبق إلا بالأمر المعتمد.
+// Two one-off commands only (ARCH-4): migration and the first super admin. Data fixes, structure loading, backups, imports and
+// demo data are in tools/Tier1.Tools, outside the production server.
+// D10: --migrate applies the schema and base data only; pending data fixes are listed, and applied only by the approved tool command.
+if (MovedCommands.Refusal(args) is { } moved)
+{
+    await Console.Error.WriteLineAsync(moved);
+    Environment.ExitCode = 2;
+    return;
+}
 if (args.Contains("--migrate"))
 {
     await DatabaseMigrator.MigrateAsync(app.Services, app.Configuration);
-    await SeedCommands.ListDataFixesAsync(app.Services, Console.Out);
-    return;
-}
-if (args.Contains("--data-fixes"))
-{
-    Environment.ExitCode = await SeedCommands.ListDataFixesAsync(app.Services, Console.Out);
-    return;
-}
-if (args.Contains("--apply-data-fixes"))
-{
-    if (!args.Contains("--confirm")) throw new ArgumentException("--apply-data-fixes changes role permissions in the database. Review --data-fixes, then add --confirm --operator \"<name>\".");
-    Environment.ExitCode = await SeedCommands.ApplyDataFixesAsync(app.Services, SeedCommands.Operator(args, production, "--apply-data-fixes"), Console.Out);
-    return;
-}
-if (args.Contains("--mongo-setup"))
-{
-    await DatabaseMigrator.SetupMongoAsync(app.Configuration, app.Services.GetRequiredService<IOptions<MongoLogOptions>>().Value,
-        app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("MongoSetup"), CancellationToken.None);
-    return;
-}
-// يمسح بيانات المؤشرات كلها (التعريفات والمستهدفات والتعارضات والمبادرات والدورات والنماذج والقيم وأدلتها) ويحمل الإطار الشامل.
-// تبقى الحسابات والأدوار والجهات والإعدادات وهياكل الكليات والسجلات. لا يعمل دون --confirm.
-// قيد السجل المختوم يبقى في صندوق الصادر بالقاعدة ويكتب إلى السجل عند تشغيل الخادم التالي.
-if (args.Contains("--reset-kpi"))
-{
-    if (SeedCommands.Refusal("--reset-kpi", production, 0) is { } refused) throw new InvalidOperationException(refused);
-    if (!args.Contains("--confirm")) throw new ArgumentException("--reset-kpi deletes all indicator data. Add --confirm to proceed.");
-    await DatabaseMigrator.MigrateAsync(app.Services, app.Configuration);
-    await Console.Out.WriteLineAsync(await KpiFramework.ResetAsync(app.Services));
-    return;
-}
-// يحمل هيكل الجامعة الرسمي (Seed/university-structure.json) ويحل محل الجهات التجريبية: تنقل نطاقات حساباتها ثم تحذف.
-// لا يعمل دون --confirm.
-if (args.Contains("--load-structure"))
-{
-    if (!args.Contains("--confirm")) throw new ArgumentException("--load-structure replaces the demo units. Add --confirm to proceed.");
-    var approvedBy = SeedCommands.Operator(args, production, "--load-structure");
-    await DatabaseMigrator.MigrateAsync(app.Services, app.Configuration);
-    if (SeedCommands.Refusal("--load-structure", production, await SeedCommands.ExistingUnitsAsync(app.Services)) is { } refused) throw new InvalidOperationException(refused);
-    var loaded = await UniversityStructure.LoadAsync(app.Services);
-    await SeedCommands.RecordStructureLoadAsync(app.Services, approvedBy, loaded);
-    await Console.Out.WriteLineAsync(loaded);
-    return;
-}
-// Full backup and restore test (replace the old PowerShell scripts).
-if (args.Contains("--backup")) { Environment.ExitCode = await Maintenance.BackupAsync(args, app.Configuration); return; }
-if (args.Contains("--restore-test")) { Environment.ExitCode = await Maintenance.RestoreTestAsync(args, app.Configuration); return; }
-// Seed extraction from the source workbooks (replace the old Python import tools).
-// --repo-root <dir> chooses where Seed/ and reference/ are written (default: the repository root, found from Tier1.sln).
-if (args.Contains("--import-structure") || args.Contains("--import-kpi"))
-{
-    var kpi = args.Contains("--import-kpi");
-    var workbook = Maintenance.Option(args, kpi ? "--import-kpi" : "--import-structure") ?? throw new ArgumentException("Usage: --import-structure <xlsx> | --import-kpi <xlsx> [--repo-root <dir>]");
-    var repoRoot = Maintenance.Option(args, "--repo-root") is { } chosen ? Path.GetFullPath(chosen) : Tier1.Infrastructure.Files.SeedImporters.FindRepoRoot();
-    await Console.Out.WriteLineAsync(kpi ? Tier1.Infrastructure.Files.SeedImporters.ImportKpi(workbook, repoRoot) : Tier1.Infrastructure.Files.SeedImporters.ImportStructure(workbook, repoRoot));
+    await DataFixReport.WriteAsync(app.Services, Console.Out);
     return;
 }
 var createSa = Array.IndexOf(args, "--create-superadmin");

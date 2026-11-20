@@ -20,12 +20,11 @@ public static class StartupGuards
         Require(CairoTime.ZoneFound, "Time-zone data for Africa/Cairo is missing; deadlines and appointments would shift. Install tzdata.");
         Require(c.GetValue("Auth:RequireMfa", true), "Auth:RequireMfa=false is allowed in Development only.");
         Require(!c.GetValue<bool>("Seed:Demo"), "Seed:Demo must be false outside Development.");
-        Require(!c.GetValue<bool>("Seed:DemoData"), "Seed:DemoData must be false outside Development.");
         Require(!c.GetValue<bool>("Seed:Flow"), "Seed:Flow must be false outside Development.");
         // D10 (ADR-0010): no automatic seeding outside Development; base data and fixes go through the approved commands.
         Require(!c.GetValue<bool>("Database:MigrateOnStartup"), "Database:MigrateOnStartup must be false outside Development; run --migrate as an approved step.");
-        Require(!c.GetValue<bool>("Seed:Structure"), "Seed:Structure must be false outside Development; load the official structure with --load-structure --confirm --operator.");
-        Require(!c.GetValue<bool>("Seed:AutoDataFixes"), "Seed:AutoDataFixes must be false outside Development; apply data fixes with --apply-data-fixes --confirm --operator.");
+        Require(!c.GetValue<bool>("Seed:Structure"), "Seed:Structure must be false outside Development; load the official structure with Tier1.Tools --load-structure --confirm --operator.");
+        Require(!c.GetValue<bool>("Seed:AutoDataFixes"), "Seed:AutoDataFixes must be false outside Development; apply data fixes with Tier1.Tools --apply-data-fixes --confirm --operator.");
         Require(!string.IsNullOrWhiteSpace(c["DataProtection:KeysPath"]), "DataProtection:KeysPath is required outside Development.");
         // مفاتيح حماية البيانات تفك أسرار التحقق بخطوتين؛ لا تحفظ مكشوفة.
         Require(!string.IsNullOrWhiteSpace(c["DataProtection:CertificatePath"]) || OperatingSystem.IsWindows(),

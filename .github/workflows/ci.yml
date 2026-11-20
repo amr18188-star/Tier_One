@@ -92,15 +92,12 @@ jobs:
           global-json-file: global.json
       - name: Start the E2E environment
         run: docker compose -p tier1-e2e -f docker-compose.e2e.yml up -d
+      # ARCH-4: the demo data is loaded by the tools' --demo-data container through the API; it exits 0 once loaded.
       - name: Wait until the demo data is loaded
         run: |
-          for i in $(seq 1 120); do
-            if docker logs tier1-e2e-api 2>&1 | grep -q "Demo data loaded"; then echo "ready after $((i * 10)) s"; exit 0; fi
-            if docker logs tier1-e2e-api 2>&1 | grep -q "Demo data seeding failed"; then break; fi
-            sleep 10
-          done
-          docker logs tier1-e2e-api 2>&1 | tail -100
-          exit 1
+          code=$(timeout 1500 docker wait tier1-e2e-demo-data || echo timeout)
+          docker logs tier1-e2e-demo-data 2>&1 | tail -20
+          if [ "$code" != "0" ]; then docker logs tier1-e2e-api 2>&1 | tail -100; exit 1; fi
       # T1_E2E_REQUIRE_SERVER: a missing server fails the run instead of skipping every test green.
       - run: dotnet test tests/Tier1.E2E
         env:

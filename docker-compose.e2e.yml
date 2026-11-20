@@ -2,6 +2,7 @@
 # بحاويات وبيانات منفصلة عن tier1-dev وtier1-flow، فتعمل معهما على الجهاز نفسه.
 #
 #   docker compose -p tier1-e2e -f docker-compose.e2e.yml up -d
+#   docker wait tier1-e2e-demo-data                                   # 0 once the demo data is loaded
 #   T1_BASE=http://127.0.0.1:5152 dotnet test tests/Tier1.E2E
 #   docker compose -p tier1-e2e -f docker-compose.e2e.yml down -v     # بيانات جديدة في المرة التالية
 services:
@@ -29,9 +30,17 @@ services:
     environment:
       App__PublicUrl: http://127.0.0.1:5152
 
+  # The demo data the suite runs on, through this environment's API (exits when loaded; CI waits for it).
+  demo-data:
+    extends:
+      file: docker-compose.dev.yml
+      service: demo-data
+    container_name: tier1-e2e-demo-data
+
 volumes:
   tier1_pgdata:
   tier1_mongodata:
   tier1_api_out:
+  tier1_tools_out:
   tier1_api_nuget:
   tier1_api_data:

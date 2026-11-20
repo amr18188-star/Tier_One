@@ -12,6 +12,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Tier1.Api\Tier1.Api.csproj" />
+    <ProjectReference Include="..\..\tools\Tier1.Tools\Tier1.Tools.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />

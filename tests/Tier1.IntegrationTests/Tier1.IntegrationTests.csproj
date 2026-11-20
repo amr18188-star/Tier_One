@@ -15,6 +15,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Tier1.Api\Tier1.Api.csproj" />
+    <ProjectReference Include="..\Tier1.TestSupport\Tier1.TestSupport.csproj" />
   </ItemGroup>
   <ItemGroup>
     <!-- The same call helpers as the E2E suite (Scenario, Calls), so both suites read alike. -->
@@ -22,7 +23,7 @@
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
-    <Using Include="Tier1.Api.Startup.DemoData" />
+    <Using Include="Tier1.TestSupport" />
     <Using Include="Tier1.E2E" />
     <Using Include="System.Text.Json.Nodes" />
   </ItemGroup>

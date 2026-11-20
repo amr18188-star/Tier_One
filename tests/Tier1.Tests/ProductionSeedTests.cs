@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Tier1.Api.Startup;
+using Tier1.Tools;
 
 namespace Tier1.Tests;
 

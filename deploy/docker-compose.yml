@@ -2,8 +2,9 @@
 #   docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d --build
 # أول مرة فقط (بعد أن تعمل القاعدتان):
 #   docker compose -f deploy/docker-compose.yml --env-file deploy/.env run --rm app --migrate
-#   docker compose -f deploy/docker-compose.yml --env-file deploy/.env run --rm -e ConnectionStrings__MongoAdmin="$MONGO_ADMIN_URL" app --mongo-setup
+#   docker compose -f deploy/docker-compose.yml --env-file deploy/.env run --rm -e ConnectionStrings__MongoAdmin="$MONGO_ADMIN_URL" tools --mongo-setup
 #   docker compose -f deploy/docker-compose.yml --env-file deploy/.env run --rm app --create-superadmin admin@capu.edu.eg "اسم المدير"
+# الخادم لا ينفذ إلا --migrate و--create-superadmin؛ أوامر الصيانة والتهيئة في خدمة tools (صورة منفصلة، لا تعمل مع up).
 name: tier1
 
 x-app-env: &app-env
@@ -80,6 +81,25 @@ services:
     networks:
       internal:
         ipv4_address: 172.30.0.20
+
+  # أوامر الصيانة والتهيئة (ARCH-4): صورة منفصلة عن الخادم بالإعدادات والمجلدات نفسها، تعمل بـ run --rm فقط ولا تبدأ مع up.
+  tools:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      target: tools
+    image: tier1-tools:latest
+    profiles: [tools]
+    depends_on:
+      postgres: { condition: service_healthy }
+      mongo: { condition: service_healthy }
+    environment: *app-env
+    volumes:
+      - appdata:/data
+    secrets:
+      - source: dp_cert
+        target: dp.pfx
+    networks: [internal]
 
   # الوحيد المنشور على الشبكة: HTTPS على 443 وتحويل 80 إليه.
   caddy:

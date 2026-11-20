@@ -6,16 +6,18 @@
     <NoWarn>$(NoWarn);CA1707;CA2007;CA1861;CA5394;CA1307;CA1309</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <!-- Reads the downloaded workbooks (scorecard, value sheets) as a user's spreadsheet would. -->
+    <PackageReference Include="ClosedXML" Version="0.104.2" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.10.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Tier1.Api\Tier1.Api.csproj" />
+    <ProjectReference Include="..\Tier1.TestSupport\Tier1.TestSupport.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
-    <Using Include="Tier1.Api.Startup.DemoData" />
+    <Using Include="Tier1.TestSupport" />
     <Using Include="System.Text.Json.Nodes" />
   </ItemGroup>
 </Project>

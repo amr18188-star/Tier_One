@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    ARCH-4: what drives the API from outside, as a browser would, shared by the E2E and integration suites and the demo-data tool:
+    a signed-in session with its CSRF token (DemoClient), JSON reading helpers, and the demo dataset (DemoRun). It references no
+    server project, so the suites and the tool test the API through HTTP only.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.13" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Tier1.Tools" />
+    <InternalsVisibleTo Include="Tier1.E2E" />
+    <InternalsVisibleTo Include="Tier1.IntegrationTests" />
+  </ItemGroup>
+</Project>

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO.Compression;
@@ -6,10 +7,10 @@ using System.Security.Cryptography;
 using System.Text;
 using Npgsql;
 
-namespace Tier1.Api.Startup;
+namespace Tier1.Tools;
 
 /// <summary>
-/// One-off operations commands (<c>dotnet Tier1.Api.dll --backup ...</c>), replacing the old PowerShell scripts:
+/// One-off operations commands (<c>dotnet Tier1.Tools.dll --backup ...</c>), replacing the old PowerShell scripts:
 /// a full backup (PostgreSQL dump, MongoDB logs, evidence files, data-protection keys, log checkpoints, SHA-256 sums)
 /// and a restore test that proves a backup can actually be restored.
 /// Connection details come from the application's own configuration; <c>pg_dump</c>, <c>pg_restore</c> and <c>mongodump</c> must be installed.

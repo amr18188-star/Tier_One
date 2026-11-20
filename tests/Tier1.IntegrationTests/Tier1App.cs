@@ -50,7 +50,6 @@ public sealed class Tier1App : IAsyncLifetime
             ["ConnectionStrings__Mongo"] = mongo.GetConnectionString(),
             ["ConnectionStrings__MongoAdmin"] = mongo.GetConnectionString(),
             ["Seed__Demo"] = "true",
-            ["Seed__DemoData"] = "false",
             ["Seed__Structure"] = "false",
             ["Seed__AutoDataFixes"] = "true",
             ["Seed__DemoPassword"] = Password,

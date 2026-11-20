@@ -16,7 +16,6 @@
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Tier1.Tests" />
-    <InternalsVisibleTo Include="Tier1.E2E" />
     <InternalsVisibleTo Include="Tier1.IntegrationTests" />
   </ItemGroup>
 </Project>

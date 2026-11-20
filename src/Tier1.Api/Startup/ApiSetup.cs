@@ -24,9 +24,6 @@ public static class ApiSetup
         services.Configure<CookieNames>(config.GetSection("Cookies"));
         // BE-22: the API contract as an OpenAPI document; served in Development only, and pinned by a test (docs/api/openapi.json).
         services.AddOpenApi();
-        // Demo data after the server starts (Development only): Seed:DemoData=true.
-        if (config.GetValue<bool>("Seed:DemoData") && !config.GetValue<bool>("Seed:Flow"))
-            services.AddHostedService<Tier1.Api.Startup.DemoData.DemoDataSeeder>();
         services.ConfigureHttpJsonOptions(o =>
         {
             o.SerializerOptions.Converters.Add(new JsonStringEnumConverter(allowIntegerValues: false)); // BE-7: names only

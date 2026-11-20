@@ -1,6 +1,5 @@
 using System.Text.Json.Nodes;
 using ClosedXML.Excel;
-using Tier1.Infrastructure.Files;
 using Xunit.Abstractions;
 
 namespace Tier1.E2E;

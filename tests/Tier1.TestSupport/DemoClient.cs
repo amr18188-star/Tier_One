@@ -3,7 +3,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json.Nodes;
 
-namespace Tier1.Api.Startup.DemoData;
+namespace Tier1.TestSupport;
 
 /// <summary>جلسة مستخدم تجريبي واحد على الخادم نفسه: كوكي الجلسة ورمز CSRF المرتبط بها (كما يفعل المتصفح).</summary>
 internal sealed class DemoClient : IDisposable

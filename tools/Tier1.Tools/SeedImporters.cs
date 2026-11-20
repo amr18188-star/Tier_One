@@ -5,7 +5,7 @@ using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using ClosedXML.Excel;
 
-namespace Tier1.Infrastructure.Files;
+namespace Tier1.Tools;
 
 /// <summary>
 /// Seed extraction from the source workbooks (replaces the old Python import tools):

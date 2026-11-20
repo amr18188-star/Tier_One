@@ -25,7 +25,6 @@ services:
       Seed__Flow: "true"
       Seed__Demo: "false"
       Seed__Structure: "false"
-      Seed__DemoData: "false"
       App__PublicUrl: http://127.0.0.1:5189
       Cookies__Session: t1_flow_session
       Cookies__Antiforgery: t1_flow_af

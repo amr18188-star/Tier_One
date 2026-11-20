@@ -7,6 +7,9 @@ data
 **/appsettings.Development.json
 src/Tier1.Api/wwwroot
 reference
-tools
+# The KPI workbook template is embedded in the server (Tier1.Infrastructure.Templates.KPI.xlsx); the other source workbooks stay out.
+!reference/KPI.xlsx
 tests
+# ARCH-4: the tools image needs the tools and the HTTP test support they reference; no other test project.
+!tests/Tier1.TestSupport
 .git

@@ -1,6 +1,6 @@
 using System.Net.Http;
 using System.Text.Json.Nodes;
-using Tier1.Api.Startup.DemoData;
+using Tier1.TestSupport;
 using Xunit.Abstractions;
 
 namespace Tier1.E2E;

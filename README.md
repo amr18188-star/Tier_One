@@ -28,8 +28,8 @@
 docker compose -p tier1-dev -f docker-compose.dev.yml up      # أول مرة بضع دقائق (الصور والحزم)
 ```
 
-عند أول بدء يملأ الخادم نفسه البيانات التجريبية (`Seed:DemoData`، نحو 30 ثانية): هياكل الكليات وثلاثة أرباع لعام 2027 بنماذج في كل مراحل الاعتماد.
-الشيفرة في `src/Tier1.Api/Startup/DemoData`، وتعمل مرة واحدة (تتخطى إن وجدت دوراتها).
+عند أول بدء تملأ حاوية `demo-data` البيانات التجريبية عبر واجهة الخادم بحسابات الأدوار (نحو 30 ثانية بعد أن يجيب الخادم): هياكل الكليات وثلاثة أرباع لعام 2027 بنماذج في كل مراحل الاعتماد.
+تعمل مرة واحدة (تتخطى إن وجدت دوراتها). المولد في `tests/Tier1.TestSupport` ويشغله أمر الأدوات `--demo-data`؛ وفي الخيار 2 شغله بنفسك بعد بدء الخادم: `dotnet run --project tools/Tier1.Tools -- --demo-data`.
 
 | | الخيار 1: الخادم داخل Docker | الخيار 2: الخادم على جهازك |
 |---|---|---|
@@ -43,7 +43,8 @@ docker compose -p tier1-dev -f docker-compose.dev.yml up      # أول مرة ب
 - الخادم في الحاوية يستمع على كل عناوينها (`ASPNETCORE_HTTP_PORTS`)، لأن حاجز التطوير في `StartupGuards` يمنع غير loopback في `ASPNETCORE_URLS`؛ والمنفذان منشوران على `127.0.0.1` فلا ينكشفان على الشبكة.
 - تُبنى الصورة من جديد (`up --build`) فقط عند تغيير `Dockerfile.dev`. لمخرجات بناء قديمة: `down` ثم `docker volume rm tier1-dev_tier1_api_out`.
 - الإيقاف: `docker compose -p tier1-dev -f docker-compose.dev.yml down` (البيانات تبقى)، ومع `-v` تحذف كل البيانات ويعاد ملؤها عند البدء التالي.
-- أوامر الصيانة أوامر .NET (لا سكربتات): `dotnet run --project src/Tier1.Api -- --reset-kpi --confirm` و`--load-structure --confirm` و`--backup <مجلد>` و`--restore-test <نسخة>`.
+- أوامر الصيانة في مشروع الأدوات `tools/Tier1.Tools`، خارج الخادم (ARCH-4، [ADR-0015](docs/adr/0015-tools-project.md)): `dotnet run --project tools/Tier1.Tools -- --reset-kpi --confirm` و`--load-structure --confirm` و`--backup <مجلد>` و`--restore-test <نسخة>` و`--data-fixes` و`--demo-data`. بلا وسائط يعرض القائمة كلها.
+  الخادم نفسه لا ينفذ إلا `--migrate` و`--create-superadmin`.
 - هذا للتطوير فقط؛ الإنتاج في `deploy/` (راجع `docs/deployment.md`).
 
 الحسابات التجريبية `*@tier1.local` بكلمة المرور `Tier1-Demo-Pass1` (من `Seed__DemoPassword` في `docker-compose.dev.yml`).
@@ -112,22 +113,22 @@ dotnet test tests/Tier1.E2E                                    # شاملة: و�
 الاختبارات الشاملة (`tests/Tier1.E2E`) تتخطى نفسها إن لم يوجد خادم، وتقرأ `T1_BASE` (الافتراضي http://localhost:5150) و`T1_DEMO_PASSWORD` (الافتراضي `Tier1-Demo-Pass1`).
 تتكرر على القاعدة نفسها دون إعادة تهيئتها، وتعمل واحدًا بعد الآخر لأنها تشترك في الخادم والحسابات. وتعمل على الهيكل الرسمي أو التجريبي (تسمي الكليات برموزها التجريبية ENG وCS وCOM).
 
-- **بطاقة الأداء** (`ScorecardTests`) تحتاج قاعدة جديدة بالكليات التجريبية (`Seed__Structure=false` و`Seed__DemoData=false`) لأنها تملأ كل النماذج بنفسها: `T1_E2E_SCORECARD=1 dotnet test tests/Tier1.E2E --filter Scorecard`.
+- **بطاقة الأداء** (`ScorecardTests`) تحتاج قاعدة جديدة بالكليات التجريبية (`Seed__Structure=false`، ودون تشغيل `--demo-data`) لأنها تملأ كل النماذج بنفسها: `T1_E2E_SCORECARD=1 dotnet test tests/Tier1.E2E --filter Scorecard`.
 - **الحمل** (`LoadTests`): `T1_E2E_LOAD=1 T1_LOAD_USERS=100 T1_LOAD_SECONDS=60 dotnet test tests/Tier1.E2E --filter Load`. المقبول: p95 أقل من ثانيتين ولا أخطاء خادم.
 - البريد في التطوير يكتب ملفات `.eml` في `data/mail`.
 
 ## الإنتاج
 
-راجع [docs/deployment.md](docs/deployment.md): Docker Compose أو IIS، والشهادات، وأوامر `--migrate` و`--mongo-setup` و`--create-superadmin`،
-والنسخ الاحتياطي اليومي (`--backup`) واختبار الاسترجاع الشهري (`--restore-test`).
+راجع [docs/deployment.md](docs/deployment.md): Docker Compose أو IIS، والشهادات، وأمري الخادم `--migrate` و`--create-superadmin`،
+وأوامر صورة الأدوات (`--mongo-setup` و`--load-structure` و`--apply-data-fixes`)، والنسخ الاحتياطي اليومي (`--backup`) واختبار الاسترجاع الشهري (`--restore-test`).
 
 ## إعادة بناء البيانات المرجعية
 
-البذرة ملفات JSON مضمنة في الخادم (`src/Tier1.Infrastructure/Persistence/Seed`)، وتستخرج من ملفي Excel بأمرين في الخادم نفسه (لا بايثون):
+البذرة ملفات JSON مضمنة في الخادم (`src/Tier1.Infrastructure/Persistence/Seed`)، وتستخرج من ملفي Excel بأمرين في مشروع الأدوات (لا بايثون):
 
 ```bash
-dotnet run --project src/Tier1.Api -- --import-structure "مسار/الهيكل.xlsx"   # university-structure.json
-dotnet run --project src/Tier1.Api -- --import-kpi "مسار/KPI.xlsx"            # kpi-framework.json
+dotnet run --project tools/Tier1.Tools -- --import-structure "مسار/الهيكل.xlsx"   # university-structure.json
+dotnet run --project tools/Tier1.Tools -- --import-kpi "مسار/KPI.xlsx"            # kpi-framework.json
 ```
 
 يكتبان الملف في `Seed/` ويحفظان نسخة المصدر في `reference/`. أما `reference-seed.json` (الهيكل المرجعي القديم) فهو المصدر نفسه ويعدل يدويًا.

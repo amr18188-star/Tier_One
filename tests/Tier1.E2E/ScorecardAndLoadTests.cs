@@ -2,8 +2,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using ClosedXML.Excel;
-using Tier1.Api.Startup.DemoData;
-using Tier1.Infrastructure.Files;
+using Tier1.TestSupport;
 using Xunit.Abstractions;
 
 namespace Tier1.E2E;

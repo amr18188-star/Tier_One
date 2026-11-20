@@ -32,24 +32,27 @@ cp deploy/.env.example deploy/.env     # املأ كل القيم (كلمات م
    docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d postgres mongo
    docker compose -f deploy/docker-compose.yml --env-file deploy/.env build app
    docker compose -f deploy/docker-compose.yml --env-file deploy/.env run --rm app --migrate
-   docker compose -f deploy/docker-compose.yml --env-file deploy/.env run --rm app --load-structure --confirm --operator "<اسم المسؤول المعتمد>"
+   docker compose -f deploy/docker-compose.yml --env-file deploy/.env build tools
+   docker compose -f deploy/docker-compose.yml --env-file deploy/.env run --rm tools --load-structure --confirm --operator "<اسم المسؤول المعتمد>"
    docker compose -f deploy/docker-compose.yml --env-file deploy/.env run --rm \
-     -e ConnectionStrings__MongoAdmin="mongodb://tier1_root:<MONGO_ROOT_PASSWORD>@mongo:27017/?authSource=admin" app --mongo-setup
+     -e ConnectionStrings__MongoAdmin="mongodb://tier1_root:<MONGO_ROOT_PASSWORD>@mongo:27017/?authSource=admin" tools --mongo-setup
    docker compose -f deploy/docker-compose.yml --env-file deploy/.env run --rm app --create-superadmin admin@capu.edu.eg "مدير المنظومة"
    docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d
    ```
    كلمة المرور المؤقتة للمدير الأعلى تطبع مرة واحدة، وتغير عند أول دخول مع تفعيل التحقق بخطوتين.
+   الخادم (`app`) لا ينفذ إلا `--migrate` و`--create-superadmin`؛ بقية الأوامر في خدمة `tools`، صورة منفصلة (`tier1-tools`) بالإعدادات والمجلدات نفسها،
+   تعمل بـ `run --rm` فقط ولا تبدأ مع `up` ([ADR-0015](adr/0015-tools-project.md)). إن أعطي الخادم أمرًا منها رفض وسمى الأداة.
 4. **التحقق**: `https://tier1.capu.edu.eg/health/ready` يعيد `"status": "ready"`.
 
-**التحديث**: `git pull`، ثم `build app`، ثم `run --rm app --migrate`، ثم `up -d app`. الترحيل لا يجري تلقائيًا عند بدء الإنتاج عمدًا.
+**التحديث**: `git pull`، ثم `build app tools`، ثم `run --rm app --migrate`، ثم `up -d app`. الترحيل لا يجري تلقائيًا عند بدء الإنتاج عمدًا.
 
 ### البيانات في الإنتاج ([ADR-0010](adr/0010-production-seed.md))
 
 - **`--migrate`** يرحل المخطط، ويضيف ما ينقص من أدوار الكتالوج، ويضيف البيانات المرجعية على قاعدة فارغة فقط. لا يغير بيانات قائمة.
 - **إصلاحات البيانات** تغير صلاحيات أدوار قائمة مرة واحدة، فلا تطبق تلقائيًا في الإنتاج. يعرضها `--migrate` في آخره، وتطبق بموافقة المسؤول المعتمد:
   ```bash
-  docker compose -f deploy/docker-compose.yml --env-file deploy/.env run --rm app --data-fixes
-  docker compose -f deploy/docker-compose.yml --env-file deploy/.env run --rm app --apply-data-fixes --confirm --operator "<اسم المسؤول المعتمد>"
+  docker compose -f deploy/docker-compose.yml --env-file deploy/.env run --rm tools --data-fixes
+  docker compose -f deploy/docker-compose.yml --env-file deploy/.env run --rm tools --apply-data-fixes --confirm --operator "<اسم المسؤول المعتمد>"
   ```
   كل إصلاح يطبق في معاملته، ويسجل في سجل التدقيق باسم من وافق وعدد ما تغير. وإعادة التشغيل لا تعيد ما طبق.
 - **الهيكل الرسمي للجامعة** يحمل بـ `--load-structure --confirm --operator`، في الإنتاج على قاعدة بلا جهات فقط (التهيئة الأولى)، ويسجل في سجل التدقيق.
@@ -63,13 +66,16 @@ cp deploy/.env.example deploy/.env     # املأ كل القيم (كلمات م
    ```powershell
    cd web; npm ci; npx vite build; cd ..
    dotnet publish src\Tier1.Api -c Release -o publish
+   dotnet publish tools\Tier1.Tools -c Release -o publish-tools
    ```
 3. انسخ `publish` إلى `C:\inetpub\tier1`، وأنشئ موقعًا بمجموعة تطبيقات «No Managed Code»، وربط HTTPS بالشهادة.
 4. الإعدادات في `appsettings.Production.json` بجوار التطبيق (أو متغيرات بيئة لمجموعة التطبيقات) بالمفاتيح نفسها التي في `deploy/docker-compose.yml`،
    مع `Files:Root` و`DataProtection:KeysPath` و`MongoLogs:CheckpointDirectory` على قرص بيانات خارج مجلد الموقع (مثل `D:\Tier1Data\files`).
    على Windows تحمى مفاتيح البيانات بـ DPAPI فلا تلزم شهادة PFX.
 5. `Network:TrustedProxies` = عنوان IIS نفسه (`127.0.0.1`) لأن ANCM يمرر الطلب محليًا.
-6. الترحيل وإنشاء المدير الأعلى من مجلد التطبيق: `dotnet Tier1.Api.dll --migrate` ثم `--load-structure --confirm --operator "<الاسم>"` (أول مرة) ثم `--mongo-setup` (بحساب الإدارة مؤقتًا) ثم `--create-superadmin`. وبعد كل تحديث: `--migrate` ثم `--data-fixes` و`--apply-data-fixes --confirm --operator` إن وجد معلق.
+6. الأدوات في مجلد خارج الموقع (مثل `C:\Tier1Tools`) من `publish-tools`، بالإعدادات نفسها (`appsettings.Production.json` بجوارها، أو متغيرات البيئة)، و`DOTNET_ENVIRONMENT=Production`.
+   الترحيل من مجلد التطبيق: `dotnet Tier1.Api.dll --migrate`، ثم من مجلد الأدوات `dotnet Tier1.Tools.dll --load-structure --confirm --operator "<الاسم>"` (أول مرة) ثم `--mongo-setup` (بحساب الإدارة مؤقتًا)،
+   ثم `dotnet Tier1.Api.dll --create-superadmin`. وبعد كل تحديث: `dotnet Tier1.Api.dll --migrate` ثم `dotnet Tier1.Tools.dll --data-fixes` و`--apply-data-fixes --confirm --operator` إن وجد معلق.
 
 ## ما يرفض الخادم البدء بدونه خارج التطوير
 
@@ -99,8 +105,8 @@ cp deploy/.env.example deploy/.env     # املأ كل القيم (كلمات م
 ```bash
 # الاتصالات من إعدادات الخادم نفسها (ConnectionStrings:Tier1 وMongo وFiles:Root وDataProtection:KeysPath وMongoLogs:CheckpointDirectory)؛
 # يلزم تثبيت pg_dump وpg_restore وmongodump، أو --pg-bin لمجلد أدوات PostgreSQL.
-dotnet Tier1.Api.dll --backup E:\Backups\Tier1 --mongo-uri "mongodb://tier1_reader:<pw>@127.0.0.1/tier1_logs?authSource=tier1_logs"
-dotnet Tier1.Api.dll --restore-test E:\Backups\Tier1	ier1-YYYYMMDD-HHMMSS
+dotnet Tier1.Tools.dll --backup E:\Backups\Tier1 --mongo-uri "mongodb://tier1_reader:<pw>@127.0.0.1/tier1_logs?authSource=tier1_logs"
+dotnet Tier1.Tools.dll --restore-test E:\Backups\Tier1\tier1-YYYYMMDD-HHMMSS
 ```
 
 - النسخة: `pg_dump` بصيغة مخصصة، و`mongodump` للسجلات، وأرشيف للأدلة والمفاتيح ونقاط التثبيت، وملف بصمات SHA-256.

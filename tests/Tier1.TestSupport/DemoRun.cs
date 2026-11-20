@@ -1,7 +1,8 @@
 #pragma warning disable CA5394 // Generated demo data: the randomness here is not security related.
 using System.Text.Json.Nodes;
+using Microsoft.Extensions.Logging;
 
-namespace Tier1.Api.Startup.DemoData;
+namespace Tier1.TestSupport;
 
 internal sealed record College(string Code, string Entry, string Committee, string Dean, double Level, int Size, (string Code, string Rep)[] Departments);
 
