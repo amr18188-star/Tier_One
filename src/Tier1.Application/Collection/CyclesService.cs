@@ -74,6 +74,8 @@ public sealed class CyclesService(IAppDb db, IClock clock, ICurrentUser current,
     public async Task<CycleDto> UpdateAsync(Guid id, SaveCycleRequest req, CancellationToken ct)
     {
         await access.RequireAsync(Feature, Cap.Edit, ct);
+        // BE-4: the forms' deadlines and the cycle with its audit row commit together or not at all.
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
         var cycle = await db.Cycles.FirstOrDefaultAsync(c => c.Id == id, ct) ?? throw DomainException.NotFound();
         Concurrency.Expect(db, cycle, req.Version);
         if (cycle.Status == CycleStatus.Closed) throw new DomainException("cycle_closed", "الدورة مغلقة.", "The cycle is closed.");
@@ -93,6 +95,7 @@ public sealed class CyclesService(IAppDb db, IClock clock, ICurrentUser current,
             Changes = new ChangeSet().Add("dueOn", oldDue, cycle.DueOn).ToList(),
         });
         await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
         return (await ListAsync(ct)).First(c => c.Id == id);
     }
 

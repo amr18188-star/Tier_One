@@ -59,6 +59,9 @@ public sealed class UnitIndicatorsService(IAppDb db, IAccessService access, IAud
             me.Has(Feature, Cap.Edit) && UnitScope.For(me, Feature, Cap.Edit).Covers(unit) && unit.Active && unit.Kind != OrgUnitKind.University, open, groups);
     }
 
+    /// <summary>Advisory lock key for unit indicator assignments (an arbitrary constant, distinct from the IAM lock).</summary>
+    private const long AssignmentLockKey = 7_301_202_611;
+
     public async Task<UnitIndicatorsDto> SaveAsync(Guid unitId, SaveUnitIndicatorsRequest req, CancellationToken ct)
     {
         await access.RequireAsync(Feature, Cap.Edit, ct);
@@ -67,6 +70,10 @@ public sealed class UnitIndicatorsService(IAppDb db, IAccessService access, IAud
             throw new DomainException("university_form", "نموذج الجامعة يدخل كل مؤشر على مستوى الجامعة لم تكلف به جهة أخرى.", "The university form takes every unassigned university-level indicator.", 400);
         if (!unit.Active) throw new DomainException("unit_closed", "الجهة مغلقة.", "The unit is closed.");
 
+        // BE-4: removals, additions and the audit row commit together. BE-5: one assignment at a time, so two units cannot
+        // both take the same university-level indicator between the check below and the insert.
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        await db.Database.ExecuteSqlAsync($"SELECT pg_advisory_xact_lock({AssignmentLockKey})", ct);
         var indicators = (await IndicatorsAsync(ct)).ToDictionary(i => i.Ref.Id);
         var ids = (req.IndicatorIds ?? []).Distinct().ToList();
         // الجهة المركزية لا افتراضي لها: ما يختار لها هو قائمتها، ولا شيء إن لم يختر شيء.
@@ -112,6 +119,7 @@ public sealed class UnitIndicatorsService(IAppDb db, IAccessService access, IAud
             });
         }
         await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
         return await GetAsync(unitId, ct);
     }
 

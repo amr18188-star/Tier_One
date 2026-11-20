@@ -40,6 +40,7 @@ public sealed class SignInService(
 
     public async Task<LoginResult> LoginAsync(LoginCommand cmd, CancellationToken ct)
     {
+        // tx-exempt: attempt counters commit on their own, before the check, so parallel or failing requests cannot undo them (BE-4).
         var email = (cmd.Email ?? "").Trim().ToLowerInvariant();
         var now = clock.UtcNow;
         var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
@@ -178,6 +179,7 @@ public sealed class SignInService(
     /// <summary>يغير الكلمة ويعيد رمزًا جديدًا للجلسة الحالية، وينهي غيرها.</summary>
     public async Task<string> ChangePasswordAsync(string currentPassword, string newPassword, CancellationToken ct)
     {
+        // tx-exempt: attempt counters commit on their own, before the check, so parallel or failing requests cannot undo them (BE-4).
         var (user, sessionId) = await CurrentAsync(ct);
         // جلسة تنتظر التحقق بخطوتين لا تغير كلمة المرور (وإلا أنهت جلسات المالك بكلمة مرور مسروقة وحدها).
         var session = await db.Sessions.AsNoTracking().FirstAsync(s => s.Id == sessionId, ct);
@@ -231,6 +233,7 @@ public sealed class SignInService(
 
     private async Task AcceptCodeAsync(AppUser user, string? code, string action, string messageAr, string messageEn, CancellationToken ct, bool enabling = false)
     {
+        // tx-exempt: attempt counters commit on their own, before the check, so parallel or failing requests cannot undo them (BE-4).
         var now = clock.UtcNow;
         // حجز ذري للمحاولة قبل التحقق: مقفل أو مستنفد ⇒ رفض دون مقارنة (لا تخمين لرمز من ستة أرقام بجلسة مسروقة).
         var maxMfa = options.Value.MaxMfaFailures;
