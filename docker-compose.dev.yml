@@ -17,6 +17,9 @@ services:
       dockerfile: Dockerfile.dev
     image: tier1-api:dev
     container_name: tier1-dev-api
+    # `dotnet watch` exits when its polling watcher fails (it did on a local build writing into the shared tree, now moved
+    # to artifacts/); the container then comes back by itself. A deliberate `stop` or `down` is not undone.
+    restart: on-failure:5
     ports:
       - "127.0.0.1:5150:5150"   # loopback only: Development enables demo accounts and no MFA
     environment:

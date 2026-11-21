@@ -9,5 +9,12 @@
     <AnalysisModeSecurity>All</AnalysisModeSecurity>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <InvariantGlobalization>false</InvariantGlobalization>
+    <!--
+      Build output outside the project folders: artifacts/bin and artifacts/obj at the repository root. The dev containers
+      bind-mount this tree and run `dotnet watch` with a polling watcher over the project folders; a local build rewriting
+      src/*/bin under it crashed the watcher ("An item with the same key has already been added"). The containers set
+      ArtifactsPath=/work/out themselves, which wins over this default.
+    -->
+    <ArtifactsPath Condition="'$(ArtifactsPath)' == ''">$(MSBuildThisFileDirectory)artifacts</ArtifactsPath>
   </PropertyGroup>
 </Project>

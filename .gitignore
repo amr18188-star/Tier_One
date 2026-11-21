@@ -1,4 +1,5 @@
-# .NET
+# .NET (build output goes to artifacts/, see Directory.Build.props; bin/ and obj/ stay ignored for older builds)
+artifacts/
 bin/
 obj/
 *.user

@@ -41,6 +41,7 @@ docker compose -p tier1-dev -f docker-compose.dev.yml up      # أول مرة ب
 - القاعدتان والبيانات مشتركة بين الخيارين (المشروع `tier1-dev`). لا تشغل الخيارين معًا (المنفذ 5150).
 - الرسائل تكتب ملفات `.eml` في `data/mail`.
 - الخادم في الحاوية يستمع على كل عناوينها (`ASPNETCORE_HTTP_PORTS`)، لأن حاجز التطوير في `StartupGuards` يمنع غير loopback في `ASPNETCORE_URLS`؛ والمنفذان منشوران على `127.0.0.1` فلا ينكشفان على الشبكة.
+- البناء المحلي (`dotnet build` على جهازك) يكتب في `artifacts/` بجذر المستودع لا في مجلدات المشاريع، فلا يمس مراقب `dotnet watch` في الحاوية. وإن توقف المراقب عادت حاوية الخادم وحدها (`restart: on-failure`).
 - تُبنى الصورة من جديد (`up --build`) فقط عند تغيير `Dockerfile.dev`. لمخرجات بناء قديمة: `down` ثم `docker volume rm tier1-dev_tier1_api_out`.
 - الإيقاف: `docker compose -p tier1-dev -f docker-compose.dev.yml down` (البيانات تبقى)، ومع `-v` تحذف كل البيانات ويعاد ملؤها عند البدء التالي.
 - أوامر الصيانة في مشروع الأدوات `tools/Tier1.Tools`، خارج الخادم (ARCH-4، [ADR-0015](docs/adr/0015-tools-project.md)): `dotnet run --project tools/Tier1.Tools -- --reset-kpi --confirm` و`--load-structure --confirm` و`--backup <مجلد>` و`--restore-test <نسخة>` و`--data-fixes` و`--demo-data` و`--growth-data`. بلا وسائط يعرض القائمة كلها.
