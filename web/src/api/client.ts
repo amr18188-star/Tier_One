@@ -86,10 +86,12 @@ export interface ApiClient {
  * عميل الواجهة: رمز CSRF من csrfUrl مرتبط بالجلسة، وكوكي الجلسة HttpOnly يرسله المتصفح وحده. لا رموز في التخزين المحلي.
  * الكتابات الأولى المتزامنة تنتظر طلب رمز واحدًا، ورفض الرمز يجدده مرة واحدة ثم يعاد الطلب.
  */
-export function createApiClient({ csrfUrl, onUnauthorized }: {
+export function createApiClient({ csrfUrl, onUnauthorized, onAddressRefused }: {
   csrfUrl: string;
   /** UX-1: a 401 from any call except the session check and sign-in itself means the session ended under the user. */
   onUnauthorized?: (path: string) => void;
+  /** ADR-0016: a signed-in request refused because of the address it came from (403 ip_not_allowed), with the server's message. */
+  onAddressRefused?: (message: string) => void;
 }): ApiClient {
   let token: string | null = null;
   let pending: Promise<string> | null = null;
@@ -140,6 +142,8 @@ export function createApiClient({ csrfUrl, onUnauthorized }: {
         return again();
       }
       if (r.status === 401 && path !== "/api/me" && !path.startsWith("/api/auth/")) onUnauthorized?.(path);
+      // The sign-in form shows its own refusal; elsewhere the whole application is closed from this address.
+      if (r.status === 403 && data?.code === "ip_not_allowed" && path !== "/api/auth/login") onAddressRefused?.(data.title ?? "");
       throw new ApiError(r.status, data?.code ?? (r.status >= 500 ? "server_unavailable" : "error"), data?.title ?? fallbackTitle(r.status),
         data?.traceId ?? r.headers.get("X-Trace-Id") ?? undefined, fieldErrors(data?.errors));
     }
@@ -198,7 +202,13 @@ export function onSessionEnded(handler: ((path: string) => void) | null) {
   sessionEnded = handler;
 }
 
-const staff = createApiClient({ csrfUrl: "/api/auth/csrf", onUnauthorized: (path) => sessionEnded?.(path) });
+/** ADR-0016: who hears that the network address is refused mid-session (the dialog that explains it registers itself). */
+let addressRefused: ((message: string) => void) | null = null;
+export function onAddressRefused(handler: ((message: string) => void) | null) {
+  addressRefused = handler;
+}
+
+const staff = createApiClient({ csrfUrl: "/api/auth/csrf", onUnauthorized: (path) => sessionEnded?.(path), onAddressRefused: (m) => addressRefused?.(m) });
 
 export const api = { get: staff.get, poll: staff.poll, post: staff.post, put: staff.put, del: staff.del };
 export const uploadFile = staff.upload;

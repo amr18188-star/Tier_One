@@ -1,6 +1,8 @@
 using Tier1.Api.Startup;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using Tier1.Application.Abstractions;
+using Tier1.Application.Access;
 using Tier1.Application.Accounts;
 using Tier1.Domain.Common;
 using Tier1.Infrastructure.Security;
@@ -28,9 +30,14 @@ public sealed class SessionAuthenticationHandler(
     ILoggerFactory logger,
     UrlEncoder encoder,
     ISessionService sessions,
+    NetworkAccessService network,
+    ICurrentUser current,
     IOptions<CookieNames> cookies) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
     public const string SchemeName = "Session";
+
+    /// <summary>Set when a valid session came from an address its allowlists refuse (ADR-0016); the challenge then answers 403.</summary>
+    private const string IpDenied = "tier1.ip_denied";
 
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
@@ -40,6 +47,15 @@ public sealed class SessionAuthenticationHandler(
         var passive = Request.Headers["X-Passive"] == "1";
         var principal = await sessions.ValidateAsync(token, Context.RequestAborted, passive);
         if (principal is null) return AuthenticateResult.Fail("invalid_session");
+        // ADR-0016: the global and the user's own IP allowlists, on every request of the session (backend, not only the sign-in).
+        // Signing out stays possible from anywhere: it only ends the session.
+        if (!Request.Path.StartsWithSegments("/api/auth/logout", StringComparison.OrdinalIgnoreCase)
+            && await network.DecideAsync(principal.UserId, current.Ip, Context.RequestAborted) == IpDecision.Denied)
+        {
+            Context.Items[IpDenied] = true;
+            await network.RecordDeniedRequestAsync(principal.UserId, principal.SessionId, current.Ip, Context.RequestAborted);
+            return AuthenticateResult.Fail("ip_not_allowed");
+        }
         var claims = new List<Claim>
         {
             new(ClaimNames.UserId, principal.UserId.ToString()),
@@ -56,6 +72,12 @@ public sealed class SessionAuthenticationHandler(
 
     protected override async Task HandleChallengeAsync(AuthenticationProperties properties)
     {
+        if (Context.Items.ContainsKey(IpDenied))
+        {
+            var denied = NetworkAccessService.Denied(current.Ip);
+            await ApiErrors.WriteAsync(Context, StatusCodes.Status403Forbidden, denied.Code, denied.Message);
+            return;
+        }
         await ApiErrors.WriteAsync(Context, StatusCodes.Status401Unauthorized, "unauthenticated", Lang.Pick("انتهت الجلسة. سجّل الدخول مرة أخرى.", "Your session has ended. Sign in again."));
     }
 

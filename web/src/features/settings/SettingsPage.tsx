@@ -11,6 +11,8 @@ import { QueryState } from "../../shared/QueryState";
 import { usePermissions } from "../../shared/session";
 import { DataTable, EmptyNote, PageHeader } from "../../shared/ui";
 import { queryKeys } from "../../api/queries";
+import { DomainsPanel } from "../security/DomainsPanel";
+import { IpAllowlistPanel } from "../security/IpAllowlistPanel";
 
 /** إعداد نظام كما يعيده GET /api/admin/settings (أوله seat_hold_hours: مهلة المقعد المؤقت، D12). */
 export interface SystemSetting {
@@ -44,6 +46,8 @@ const numeric = (s: SystemSetting) => typeof s.value === "number" || s.min != nu
 export default function SettingsPage() {
   const perms = usePermissions();
   const canView = perms.can("adm.settings", "V");
+  // ADR-0016: sign-in security has its own permission (adm.security), apart from the operational settings.
+  const canSecurity = perms.can("adm.security", "V");
   const list = useQuery({ queryKey: queryKeys.adminSettings, queryFn: () => api.get<SystemSetting[]>("/api/admin/settings"), enabled: canView });
   const [editing, setEditing] = useState<SystemSetting | null>(null);
   const value = (s: SystemSetting, v: number | string) => s.isSwitch
@@ -73,7 +77,7 @@ export default function SettingsPage() {
           </Link>
         ))}
       </nav>
-      {!canView ? <EmptyNote>{L("لا صلاحية لعرض الإعدادات.", "You are not allowed to view the settings.")}</EmptyNote> : (
+      {!canView ? (!canSecurity && <EmptyNote>{L("لا صلاحية لعرض الإعدادات.", "You are not allowed to view the settings.")}</EmptyNote>) : (
         <QueryState query={list}>
           <DataTable<SystemSetting> rowKey={(s) => s.key} loading={list.isLoading} data={list.data ?? []} minWidth={720}
             empty={<EmptyNote>{L("لا إعدادات.", "No settings.")}</EmptyNote>}
@@ -91,6 +95,18 @@ export default function SettingsPage() {
               { title: "", key: "e", render: (_, s) => edit(s) },
             ]} />
         </QueryState>
+      )}
+      {canSecurity && (
+        <>
+          <section className="mb" aria-labelledby="set-domains">
+            <h2 id="set-domains" className="t1-form-sec">{L("إعدادات المصادقة: نطاقات البريد الجامعي المعتمدة", "Authentication settings: allowed university domains")}</h2>
+            <DomainsPanel />
+          </section>
+          <section className="mb" aria-labelledby="set-ip">
+            <h2 id="set-ip" className="t1-form-sec">{L("الأمان: قيود عناوين IP العامة", "Security: global IP restrictions")}</h2>
+            <IpAllowlistPanel scope={{ kind: "global" }} />
+          </section>
+        </>
       )}
       {editing && <EditSetting setting={editing} onClose={() => setEditing(null)} onDone={async () => { setEditing(null); await list.refetch(); }} />}
     </>

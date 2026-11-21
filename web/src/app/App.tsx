@@ -11,6 +11,7 @@ import { canOpen, ROUTE_NEEDS } from "./routeAccess";
 import { ErrorScreen, NoAccess } from "../shared/QueryState";
 import { SessionProvider, usePermissions, useSession } from "../shared/session";
 import { SessionExpiredDialog } from "../shared/SessionExpiredDialog";
+import { AddressRefusedDialog } from "../shared/AddressRefusedDialog";
 import { AppearanceProvider } from "../styles/design-system/appearance";
 
 /**
@@ -167,6 +168,7 @@ function Gate() {
           </Routes>
         </Suspense>
         <SessionExpiredDialog />
+        <AddressRefusedDialog />
       </Shell>
     </Suspense>
   );

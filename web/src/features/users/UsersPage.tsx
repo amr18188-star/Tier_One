@@ -6,6 +6,7 @@ import { api } from "../../api/client";
 import type { UserListItem } from "../../api/types";
 import { errorText, formatDateTime } from "../../shared/format";
 import { markFieldErrors } from "../../shared/useFieldErrors";
+import { useEmailDomainRule } from "./emailDomainRule";
 import { L } from "../../shared/i18n";
 import { QueryState } from "../../shared/QueryState";
 import { usePermissions } from "../../shared/session";
@@ -83,6 +84,7 @@ function UserStatus({ user: u }: { user: UserListItem }) {
 
 function CreateUserModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [form] = Form.useForm();
+  const emailRule = useEmailDomainRule();
   const qc = useQueryClient();
   const { modal } = App.useApp();
   const [error, setError] = useState<string | null>(null);
@@ -123,7 +125,7 @@ function CreateUserModal({ open, onClose }: { open: boolean; onClose: () => void
     >
       {error && <Alert type="error" showIcon message={error} className="mb" />}
       <Form form={form} layout="vertical">
-        <Form.Item name="email" label={L("البريد الجامعي", "University email")} rules={[{ required: true, type: "email" }]}><Input dir="ltr" /></Form.Item>
+        <Form.Item name="email" label={L("البريد الجامعي (اسم الدخول)", "University email (sign-in name)")} rules={[{ required: true, type: "email" }, emailRule]}><Input dir="ltr" /></Form.Item>
         <Form.Item name="fullNameAr" label={L("الاسم بالعربية", "Arabic name")} rules={[{ required: true }]}><Input /></Form.Item>
         <Form.Item name="fullNameEn" label={L("الاسم بالإنجليزية", "English name")}><Input dir="ltr" /></Form.Item>
       </Form>

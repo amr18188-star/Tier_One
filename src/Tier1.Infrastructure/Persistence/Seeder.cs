@@ -361,6 +361,13 @@ public sealed class Seeder(Tier1DbContext db, IPasswordHasher hasher, ISecretPro
         if (string.IsNullOrWhiteSpace(password) || password.Length < 12)
             throw new InvalidOperationException("Seed:DemoPassword (>= 12 chars) is required for demo accounts.");
         var totp = config["Seed:DemoTotpSecret"];
+        // ADR-0016: the demo accounts' domain is approved on development databases only (Seed:Demo is refused anywhere else),
+        // so tests and demos can create accounts there; production starts with the universities' domains from the migration.
+        if (!await db.EmailDomains.AnyAsync(d => d.Domain == DemoDomain, ct))
+        {
+            db.EmailDomains.Add(new EmailDomain { Domain = DemoDomain, UniversityAr = "حسابات تجريبية (التطوير فقط)", UniversityEn = "Demo accounts (development only)", CreatedAt = now });
+            await db.SaveChangesAsync(ct);
+        }
         var roles = await db.Roles.ToDictionaryAsync(r => r.Code, ct);
         foreach (var (email, demoName, nameEn, roleCode, demoScope) in DemoUsers)
         {
@@ -400,6 +407,11 @@ public sealed class Seeder(Tier1DbContext db, IPasswordHasher hasher, ISecretPro
     {
         var normalized = email.Trim().ToLowerInvariant();
         if (await db.Users.AnyAsync(u => u.Email == normalized, ct)) throw new InvalidOperationException($"{normalized} already exists.");
+        // ADR-0016: the first super administrator signs in with a university email too.
+        var roots = await db.EmailDomains.AsNoTracking().Where(d => d.Active).Select(d => d.Domain).ToListAsync(ct);
+        if (!System.Net.Mail.MailAddress.TryCreate(normalized, out var parsed) || parsed.Address != normalized || EmailDomainRules.MatchingRoot(normalized, roots) is null)
+            throw new InvalidOperationException($"{normalized} is not a university email at an approved domain ({string.Join(", ", roots)}). " +
+                "Use such an email, or add the domain in iam.email_domains first.");
         var sa = await db.Roles.FirstAsync(r => r.Code == PermissionCatalog.SuperAdminRole, ct);
         var temporary = Application.Security.Tokens.NewTemporaryPassword();
         var now = DateTimeOffset.UtcNow;

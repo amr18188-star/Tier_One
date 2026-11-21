@@ -88,7 +88,9 @@ public sealed class HttpCurrentUser(IHttpContextAccessor accessor) : ICurrentUse
 
     public string? DisplayName => User?.FindFirstValue(ClaimNames.Name);
 
-    public string? Ip => accessor.HttpContext?.Connection.RemoteIpAddress?.ToString();
+    // The address after ForwardedHeaders (trusted proxies only). An IPv4 client on a dual-stack socket arrives as ::ffff:a.b.c.d;
+    // it is written as IPv4, as the allowlists (ADR-0016), the counters and the logs expect.
+    public string? Ip => accessor.HttpContext?.Connection.RemoteIpAddress is { } a ? (a.IsIPv4MappedToIPv6 ? a.MapToIPv4() : a).ToString() : null;
 
     public string? UserAgent => accessor.HttpContext?.Request.Headers.UserAgent.ToString();
 

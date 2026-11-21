@@ -42,6 +42,9 @@ public sealed class AppUser
 
     public DateTimeOffset? LastLoginAt { get; set; }
 
+    /// <summary>Signs in and works only from the addresses of the global list or of this user's own list (iam.ip_allow_rules).</summary>
+    public bool IpRestricted { get; set; }
+
     /// <summary>رقم إصدار للتزامن المتفائل (xmin في PostgreSQL).</summary>
     public uint Version { get; set; }
 }

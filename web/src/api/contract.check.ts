@@ -7,6 +7,7 @@ import type { Inbox } from "../features/notifications/NotificationBell";
 import type { Cycle, Form, FormItem, FormRow, ImportPreview, IndicatorResults } from "./collection";
 import type { components } from "./schema";
 import type { Progress, Review, Scorecard } from "./scorecard";
+import type { EmailDomain, IpAllowlist } from "./security";
 import type {
   CollegeChart, ConflictList, Distribution, Home, IndicatorDetail, IndicatorRow, IndicatorTargets, OrgUnit, StrategyTree, UnitIndicators,
 } from "./tier1";
@@ -32,6 +33,8 @@ type Fits<Server, Web> = [DeepDiff<Server, Web>] extends [never] ? true : { mism
 type Check<T extends true> = T;
 
 export type ContractChecks = [
+  Check<Fits<S["EmailDomainDto"], EmailDomain>>,
+  Check<Fits<S["IpAllowlistDto"], IpAllowlist>>,
   Check<Fits<S["CycleDto"], Cycle>>,
   Check<Fits<S["FormRow"], FormRow>>,
   Check<Fits<S["FormDto"], Form>>,

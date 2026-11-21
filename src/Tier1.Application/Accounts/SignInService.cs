@@ -28,7 +28,8 @@ public sealed class SignInService(
     ILoginAttempts attempts,
     IOptions<AuthOptions> options,
     Access.IAccessService access,
-    Settings.SettingsService settings)
+    Settings.SettingsService settings,
+    NetworkAccessService network)
 {
     private const string Surface = "staff";
 
@@ -90,6 +91,14 @@ public sealed class SignInService(
         }
         await db.Users.Where(u => u.Id == user.Id).ExecuteUpdateAsync(s => s.SetProperty(u => u.FailedLogins, 0).SetProperty(u => u.LockedUntil, (DateTimeOffset?)null), ct);
         await attempts.ClearAccountAddressAsync(Surface, user.Id, ip, ct);
+        // ADR-0016: the address is checked only after the right password, so a guesser learns nothing of the account or its rules.
+        var ipAccess = await network.DecideAsync(user.Id, ip, ct);
+        if (ipAccess == IpDecision.Denied)
+        {
+            await attempts.RecordAsync(Surface, user.Id, email, ip, LoginOutcome.Blocked, "ip_not_allowed", now, ct);
+            await audit.RecordNowAsync(NetworkAccessService.DeniedEvent(user, ip, "login"), ct);
+            throw NetworkAccessService.Denied(ip);
+        }
         await attempts.RecordAsync(Surface, user.Id, email, ip, LoginOutcome.Succeeded, "password", now, ct);
         db.Users.Entry(user).State = EntityState.Detached;
         user = await db.Users.FirstAsync(u => u.Id == user.Id, ct);
@@ -102,7 +111,7 @@ public sealed class SignInService(
         audit.Record(AuditEvents.Security("auth.login", Features.Users, "تسجيل دخول", "Signed in") with
         {
             Target = new AuditTarget("User", user.Id.ToString(), user.Email),
-            Details = new { mfa = mfaRequired },
+            Details = new { mfa = mfaRequired, ipAccess = IpAllowlist.Name(ipAccess) },
             ActorOverride = user.Id,
             ActorName = Lang.Name(user.FullNameAr, user.FullNameEn),
         });

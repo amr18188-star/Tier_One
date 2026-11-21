@@ -132,6 +132,8 @@ dotnet test tests/Tier1.E2E                                    # شاملة: و�
 راجع [docs/deployment.md](docs/deployment.md): Docker Compose أو IIS، والشهادات، وأمري الخادم `--migrate` و`--create-superadmin`،
 وأوامر صورة الأدوات (`--mongo-setup` و`--load-structure` و`--apply-data-fixes`)، والنسخ الاحتياطي اليومي (`--backup`) واختبار الاسترجاع الشهري (`--restore-test`).
 
+اسم الدخول بريد جامعي من نطاق معتمد أو نطاق فرعي منه. يدير مسؤول النظام النطاقات (جامعة العاصمة وجامعة حلوان أولًا) وقيود عناوين IP، العامة ولكل حساب، من الإعدادات وتفاصيل الحساب، بلا تغيير في الشيفرة ([ADR-0016](docs/adr/0016-university-access.md)).
+
 ## إعادة بناء البيانات المرجعية
 
 البذرة ملفات JSON مضمنة في الخادم (`src/Tier1.Infrastructure/Persistence/Seed`)، وتستخرج من ملفي Excel بأمرين في مشروع الأدوات (لا بايثون):

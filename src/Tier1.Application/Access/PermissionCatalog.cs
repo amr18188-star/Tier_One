@@ -194,6 +194,9 @@ public static class Features
     public const string AccessLog = "log.access";
     public const string TechLog = "log.tech";
 
+    /// <summary>ADR-0016: approved university email domains and the global and per-user IP allowlists.</summary>
+    public const string Security = "adm.security";
+
     /// <summary>BE-11: the outgoing mail, its failures, and resending a failed notification.</summary>
     public const string Mail = "adm.mail";
     public const string Dashboard = "dash.home";

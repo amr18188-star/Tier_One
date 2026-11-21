@@ -6,6 +6,8 @@ import { api } from "../../api/client";
 import { CAPS, type Assignment, type Catalog, type Effective, type GrantView, type Override, type RoleSummary, type UserDetail } from "../../api/types";
 import { errorText, formatDate, formatDateTime } from "../../shared/format";
 import { markFieldErrors } from "../../shared/useFieldErrors";
+import { IpAllowlistPanel } from "../security/IpAllowlistPanel";
+import { useEmailDomainRule } from "./emailDomainRule";
 import { dirArrow, L, useLang } from "../../shared/i18n";
 import { QueryError } from "../../shared/QueryState";
 import { usePermissions, useSession } from "../../shared/session";
@@ -108,6 +110,8 @@ export function UserDrawer({ userId, onClose }: { userId: string; onClose: () =>
             items={[
               { key: "roles", label: L("الأدوار", "Roles"), children: <Assignments user={u} self={locked} onChanged={refresh} setReasonFor={setReasonFor} onError={setError} /> },
               { key: "overrides", label: L("الاستثناءات الفردية", "Individual overrides"), children: <Overrides user={u} catalog={catalog.data} self={locked} onChanged={refresh} setReasonFor={setReasonFor} onError={setError} /> },
+              // ADR-0016: the addresses this account may use, in addition to the global list.
+              ...(perms.can("adm.security", "V") ? [{ key: "ip", label: L("قيود عناوين IP", "IP access restrictions"), children: <IpAllowlistPanel scope={{ kind: "user", userId }} readOnly={locked} /> }] : []),
               ...(perms.can("adm.grants", "V") ? [{ key: "effective", label: L("الصلاحيات الفعلية", "Effective permissions"), children: <EffectiveView userId={userId} catalog={catalog.data} /> }] : []),
             ]}
           />
@@ -132,6 +136,7 @@ export function UserDrawer({ userId, onClose }: { userId: string; onClose: () =>
 function EditNames({ user, onSaved }: { user: UserDetail; onSaved: () => Promise<void> }) {
   const [open, setOpen] = useState(false);
   const [form] = Form.useForm();
+  const emailRule = useEmailDomainRule();
   const [error, setError] = useState<string | null>(null);
   return (
     <>
@@ -147,7 +152,8 @@ function EditNames({ user, onSaved }: { user: UserDetail; onSaved: () => Promise
         }
       }}>
         {error && <Alert type="error" showIcon message={error} className="mb" />}
-        <Form form={form} layout="vertical" initialValues={{ fullNameAr: user.fullNameAr, fullNameEn: user.fullNameEn }}>
+        <Form form={form} layout="vertical" initialValues={{ fullNameAr: user.fullNameAr, fullNameEn: user.fullNameEn, email: user.email }}>
+          <Form.Item name="email" label={L("البريد الجامعي (اسم الدخول)", "University email (sign-in name)")} rules={[{ required: true, type: "email" }, emailRule]}><Input dir="ltr" /></Form.Item>
           <Form.Item name="fullNameAr" label={L("الاسم بالعربية", "Arabic name")} rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item name="fullNameEn" label={L("الاسم بالإنجليزية", "English name")}><Input dir="ltr" /></Form.Item>
         </Form>

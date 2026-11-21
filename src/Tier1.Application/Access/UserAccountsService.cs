@@ -13,15 +13,16 @@ using Tier1.Domain.Identity;
 namespace Tier1.Application.Access;
 
 /// <summary>ARCH-2: staff accounts: create, edit, deactivate and reactivate, unlock, reset two-step verification, set a temporary password.</summary>
-public sealed class UserAccountsService(IIdentityStore db, IClock clock, ICurrentUser current, IAccessService access, IPasswordHasher hasher, ISessionService sessions, IAuditLog audit, IamPolicy policy, IIamLock iamLock)
+public sealed class UserAccountsService(IIdentityStore db, IClock clock, ICurrentUser current, IAccessService access, IPasswordHasher hasher, ISessionService sessions, IAuditLog audit, IamPolicy policy, IIamLock iamLock, UniversityDomainsService domains)
 {
     public async Task<TemporaryPasswordDto> CreateAsync(CreateUserRequest req, CancellationToken ct)
     {
-        var email = IamPolicy.NormalizeEmail(req.Email);
+        // ADR-0016: the login name is a university email at an approved domain or one of its subdomains.
+        var email = await domains.EnsureAllowedEmailAsync(req.Email, ct);
         if (string.IsNullOrWhiteSpace(req.FullNameAr))
             throw new DomainException("name_required", "اكتب الاسم بالعربية.", "Enter the Arabic name.", 400) { Field = "fullNameAr" };
         if (await db.Users.AnyAsync(u => u.Email == email, ct))
-            throw new DomainException("duplicate_email", "يوجد حساب بهذا البريد.", "An account with this email already exists.", 409);
+            throw new DomainException("duplicate_email", "يوجد حساب بهذا البريد.", "An account with this email already exists.", 409) { Field = "email" };
         var temporary = Tokens.NewTemporaryPassword();
         var user = new AppUser
         {
@@ -54,9 +55,19 @@ public sealed class UserAccountsService(IIdentityStore db, IClock clock, ICurren
         var en = string.IsNullOrWhiteSpace(req.FullNameEn) ? null : req.FullNameEn.Trim();
         if (user.FullNameAr != ar) changes.Add(new FieldChange("fullNameAr", user.FullNameAr, ar));
         if (user.FullNameEn != en) changes.Add(new FieldChange("fullNameEn", user.FullNameEn, en));
+        // ADR-0016: a new email (the login name) must be at an active approved domain and unused; the old one keeps working until changed.
+        var email = user.Email;
+        if (req.Email is { } wanted && !string.Equals(wanted.Trim(), user.Email, StringComparison.OrdinalIgnoreCase))
+        {
+            email = await domains.EnsureAllowedEmailAsync(wanted, ct);
+            if (await db.Users.AnyAsync(u => u.Email == email && u.Id != user.Id, ct))
+                throw new DomainException("duplicate_email", "يوجد حساب بهذا البريد.", "An account with this email already exists.", 409) { Field = "email" };
+            changes.Add(new FieldChange("email", user.Email, email));
+        }
         if (changes.Count == 0) return;
         user.FullNameAr = ar;
         user.FullNameEn = en;
+        user.Email = email;
         audit.Record(IamPolicy.UserEvent("iam.user_update", "تعديل بيانات حساب", "Updated an account", user, "E") with { Changes = changes });
         await db.SaveChangesAsync(ct);
     }
