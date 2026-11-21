@@ -78,7 +78,7 @@ export interface ReviewRow {
 }
 export interface Review { cycles: ReviewCycle[]; cycle: ReviewCycle | null; rows: ReviewRow[]; canTransfer: boolean }
 
-// ----- تقدم الكلية مقابل مستهدف الجامعة -----
+// ----- تقدم الكلية مقابل مستهدفها، ومستهدف الجامعة للاطلاع (ADR-0017) -----
 export interface ProgressIndicator {
   id: string; code: string; name: string; standardCode: string; unit: string; direction: Direction; accumulation: Accumulation;
   quarters: (number | null)[]; latest: number | null; latestIndex: number;

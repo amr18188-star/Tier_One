@@ -13,6 +13,7 @@ import { DataTable, EmptyNote, PageHeader } from "../../shared/ui";
 import { queryKeys } from "../../api/queries";
 import { DomainsPanel } from "../security/DomainsPanel";
 import { IpAllowlistPanel } from "../security/IpAllowlistPanel";
+import { PlanPeriodPanel } from "./PlanPeriodPanel";
 
 /** إعداد نظام كما يعيده GET /api/admin/settings (أوله seat_hold_hours: مهلة المقعد المؤقت، D12). */
 export interface SystemSetting {
@@ -77,6 +78,12 @@ export default function SettingsPage() {
           </Link>
         ))}
       </nav>
+      {canView && (
+        <section className="mb" aria-labelledby="set-plan">
+          <h2 id="set-plan" className="t1-form-sec">{L("فترة خطة Tier 1 ودوراتها الربع سنوية", "Tier 1 plan period and its quarters")}</h2>
+          <PlanPeriodPanel />
+        </section>
+      )}
       {!canView ? (!canSecurity && <EmptyNote>{L("لا صلاحية لعرض الإعدادات.", "You are not allowed to view the settings.")}</EmptyNote>) : (
         <QueryState query={list}>
           <DataTable<SystemSetting> rowKey={(s) => s.key} loading={list.isLoading} data={list.data ?? []} minWidth={720}

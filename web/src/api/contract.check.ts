@@ -9,7 +9,7 @@ import type { components } from "./schema";
 import type { Progress, Review, Scorecard } from "./scorecard";
 import type { EmailDomain, IpAllowlist } from "./security";
 import type {
-  CollegeChart, ConflictList, Distribution, Home, IndicatorDetail, IndicatorRow, IndicatorTargets, OrgUnit, StrategyTree, UnitIndicators,
+  CollegeChart, ConflictList, Distribution, Home, IndicatorDetail, IndicatorRow, IndicatorTargets, InitiativeActivity, PlanPeriod, OrgUnit, StrategyTree, UnitIndicators,
 } from "./tier1";
 import type { Catalog, Effective, LogPage, LogsStatus, Me, RbacChange, RoleDetail, RoleSummary, UserDetail, UserListItem } from "./types";
 
@@ -36,6 +36,8 @@ export type ContractChecks = [
   Check<Fits<S["EmailDomainDto"], EmailDomain>>,
   Check<Fits<S["IpAllowlistDto"], IpAllowlist>>,
   Check<Fits<S["CycleDto"], Cycle>>,
+  Check<Fits<S["ActivityDto"], InitiativeActivity>>,
+  Check<Fits<S["PlanPeriodDto"], PlanPeriod>>,
   Check<Fits<S["FormRow"], FormRow>>,
   Check<Fits<S["FormDto"], Form>>,
   Check<Fits<S["FormItem"], FormItem>>,

@@ -2,7 +2,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { Button, Tag, Tooltip } from "antd";
 import {
   AimOutlined, ApartmentOutlined, BulbOutlined, CalendarOutlined, DeleteOutlined, EditOutlined, FileTextOutlined, FlagFilled,
-  FlagOutlined, LeftOutlined, PlusOutlined, RightOutlined, RocketOutlined, TrophyOutlined,
+  FlagOutlined, LeftOutlined, PlusOutlined, RightOutlined, RocketOutlined, TrophyOutlined, UnorderedListOutlined,
 } from "@ant-design/icons";
 import { Link, Navigate, useSearchParams } from "react-router-dom";
 import type { IndicatorNode, InitiativeNode, PillarNode, StandardNode } from "../../api/tier1";
@@ -11,6 +11,7 @@ import { L, useLang } from "../../shared/i18n";
 import { aggregation, definitionStatus, direction, horizon, initiativeStatus, level, num, performance, withUnit } from "../../shared/labels";
 import { EmptyNote } from "../../shared/ui";
 import { IndicatorPlan } from "./IndicatorPlan";
+import { InitiativeActivities } from "./InitiativeActivities";
 import {
   allIndicators, allInitiatives, boardSearch, detailSearch, dotState, dotText, finalTarget, find, pillarIndexOf, pillarNum, span, targetOf,
   targetsComplete, tint, usePlan, type Selection,
@@ -320,9 +321,14 @@ function InitiativeDetail({ initiative: m, standard }: { initiative: InitiativeN
           { label: L("الجهة المسؤولة", "Responsible unit"), value: m.ownerUnitName ?? "—" },
           { label: L("المدة", "Duration"), value: <span className="ltr-nums">{m.startYear}–{m.endYear}</span>, hint: years === 1 ? L("سنة واحدة", "1 year") : years === 2 ? L("سنتان", "2 years") : L(`${years} سنوات`, `${years} years`) },
           { label: L("مؤشرات تسهم فيها", "Linked indicators"), value: indicators.length },
+          { label: L("الأنشطة", "Activities"), value: m.activityCount, hint: m.activityProgress !== null ? L(`إنجاز ${m.activityProgress}%`, `${m.activityProgress}% done`) : undefined },
         ]} />
         <div className="sp-dhead-bar"><YearBar years={tree.years} start={m.startYear} end={m.endYear} label={L(`تنفذ من ${m.startYear} إلى ${m.endYear}`, `${m.startYear}–${m.endYear}`)} /></div>
       </DetailHead>
+
+      <Section title={L(`أنشطة المبادرة (${m.activityCount})`, `Activities (${m.activityCount})`)} icon={<UnorderedListOutlined aria-hidden />}>
+        <InitiativeActivities initiativeId={m.id} canAdd={a.canAdd} canEdit={a.canEdit} canDelete={a.canDelete} />
+      </Section>
 
       <Section title={L("المخرجات المتوقعة", "Expected outcome")} icon={<TrophyOutlined aria-hidden />}>
         <Desc text={m.expectedOutcome} empty={L("لم تكتب المخرجات المتوقعة بعد.", "Not written yet.")} />

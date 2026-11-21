@@ -33,16 +33,17 @@ public class ApprovedTargetsTests
     }
 
     [Fact]
-    public void A_proposed_college_target_does_not_override_the_approved_each_college_or_university_target()
+    public void A_proposed_college_target_does_not_override_the_approved_each_college_target()
     {
         var each = new List<IndicatorTarget> { T(College, 2027, 40, TargetStatus.Proposed), T(University, 2027, 70, TargetStatus.Approved, TargetKind.EachCollege) };
         var a = Lookup(each, College);
         Assert.Equal((70m, TargetSource.EachCollege), (a.Value!.Value, a.Source));
         Assert.Equal(40m, a.PendingValue);
 
+        // ADR-0017: the university's approved target is not the college's measure; the college has none until its own is approved.
         var uni = new List<IndicatorTarget> { T(College, 2027, 40, TargetStatus.Proposed), T(University, 2027, 85, TargetStatus.Approved) };
         var b = Lookup(uni, College);
-        Assert.Equal((85m, TargetSource.University), (b.Value!.Value, b.Source));
+        Assert.Equal((null, TargetSource.None), (b.Value, b.Source));
         Assert.Equal(40m, b.PendingValue);
     }
 

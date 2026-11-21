@@ -14,7 +14,7 @@ public sealed record StandardDto(Guid Id, string Code, string NameAr, string? Pi
 public sealed record IndicatorRowDto(
     string Code, string StandardCode, string NameAr, string Unit, Direction Direction, CollectionLevel Level, Aggregation Aggregation,
     DefinitionStatus Status, int VersionNumber, bool HasApproved, bool Suspended, int MissingCount, int OpenConflicts,
-    decimal? Baseline, decimal? Target2031, string? CollegeTarget);
+    decimal? Baseline, decimal? FinalTarget, string? CollegeTarget);
 
 public sealed record VersionDto(
     Guid Id, int Number, DefinitionStatus Status, string NameAr, string? NameEn, string? AlternateName, string? Definition,
@@ -51,7 +51,8 @@ public sealed record CommitteeDecisionRequest(string? DecisionRef, string? Note)
 /// قاموس المؤشرات: القراءة للجميع بصلاحية العرض، والتعديل ينشئ إصدارًا جديدًا للمعتمد، والاعتماد بقرار اللجنة العليا
 /// من غير من أعدّ التعريف.
 /// </summary>
-public sealed class DictionaryService(IKpiStore db, IReadModel read, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit)
+public sealed class DictionaryService(IKpiStore db, IReadModel read, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit,
+    Settings.PlanPeriodService planPeriod)
 {
     private const string Feature = Features.Dictionary;
 
@@ -86,6 +87,8 @@ public sealed class DictionaryService(IKpiStore db, IReadModel read, IClock cloc
         var openConflicts = await OpenConflictScopesAsync(ct);
         var term = q?.Trim();
 
+        // ADR-0017: the target of the plan's last year (the final target), whatever the period.
+        var finalYear = (await planPeriod.CurrentAsync(ct)).LastYear;
         return indicators
             .Select(i =>
             {
@@ -97,7 +100,7 @@ public sealed class DictionaryService(IKpiStore db, IReadModel read, IClock cloc
                     IndicatorRules.MissingForApproval(v).Count,
                     openConflicts.Count(scope => scope.Contains(i.Code) || scope.Contains(stdCode)),
                     mine.FirstOrDefault(t => t.Kind == TargetKind.Baseline)?.Value,
-                    mine.FirstOrDefault(t => t.Kind == TargetKind.Target && t.Year == 2031)?.Value,
+                    mine.FirstOrDefault(t => t.Kind == TargetKind.Target && t.Year == finalYear)?.Value,
                     mine.FirstOrDefault(t => t.Kind == TargetKind.EachCollege) is { } each ? each.Text ?? each.Value?.ToString(System.Globalization.CultureInfo.InvariantCulture) : null);
             })
             .Where(r => standard is null || r.StandardCode == standard)

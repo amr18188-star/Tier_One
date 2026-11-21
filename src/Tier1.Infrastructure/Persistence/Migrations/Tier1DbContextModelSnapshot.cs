@@ -2219,6 +2219,83 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Tier1.Domain.Kpi.InitiativeActivity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
+                    b.Property<DateOnly?>("EndDate")
+                        .HasColumnType("date")
+                        .HasColumnName("end_date");
+
+                    b.Property<Guid>("InitiativeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("initiative_id");
+
+                    b.Property<Guid?>("OwnerUnitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_unit_id");
+
+                    b.Property<int>("Progress")
+                        .HasColumnType("integer")
+                        .HasColumnName("progress");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<DateOnly?>("StartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("start_date");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TitleAr")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("title_ar");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_initiative_activities");
+
+                    b.HasIndex("OwnerUnitId")
+                        .HasDatabaseName("ix_initiative_activities_owner_unit_id");
+
+                    b.HasIndex("InitiativeId", "SortOrder")
+                        .HasDatabaseName("ix_initiative_activities_initiative_id_sort_order");
+
+                    b.ToTable("initiative_activities", "kpi", t =>
+                        {
+                            t.HasCheckConstraint("ck_activities_dates", "end_date IS NULL OR start_date IS NULL OR end_date >= start_date");
+
+                            t.HasCheckConstraint("ck_activities_progress", "progress BETWEEN 0 AND 100");
+                        });
+                });
+
             modelBuilder.Entity("Tier1.Domain.Kpi.Pillar", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3648,6 +3725,22 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_initiatives_standards_standard_id");
+                });
+
+            modelBuilder.Entity("Tier1.Domain.Kpi.InitiativeActivity", b =>
+                {
+                    b.HasOne("Tier1.Domain.Kpi.Initiative", null)
+                        .WithMany()
+                        .HasForeignKey("InitiativeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_initiative_activities_initiatives_initiative_id");
+
+                    b.HasOne("Tier1.Domain.Organization.OrgUnit", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_initiative_activities_units_owner_unit_id");
                 });
 
             modelBuilder.Entity("Tier1.Domain.Kpi.Standard", b =>

@@ -18,9 +18,21 @@ public sealed record IndicatorNode(
     decimal? Baseline, IReadOnlyList<YearTargetDto> Targets, string? EachCollege, uint Version,
     string? NameEn, string? Formula, Accumulation Accumulation, IReadOnlyList<int> Perspectives, int? SdgPrimary, int? SdgSecondary, int? SdgInduced);
 
+/// <param name="ActivityCount">ADR-0017: the initiative's activities.</param>
+/// <param name="ActivityProgress">Their average completion (0–100), or null without activities.</param>
 public sealed record InitiativeNode(
     Guid Id, string Code, string NameAr, string? Description, string? ExpectedOutcome, Guid? OwnerUnitId, string? OwnerUnitName,
-    int StartYear, int EndYear, InitiativeStatus Status, IReadOnlyList<string> IndicatorCodes, uint Version);
+    int StartYear, int EndYear, InitiativeStatus Status, IReadOnlyList<string> IndicatorCodes, uint Version,
+    int ActivityCount = 0, int? ActivityProgress = null);
+
+/// <summary>ADR-0017: one activity of an initiative.</summary>
+public sealed record ActivityDto(
+    Guid Id, Guid InitiativeId, string TitleAr, string? Description, Guid? OwnerUnitId, string? OwnerUnitName,
+    DateOnly? StartDate, DateOnly? EndDate, InitiativeStatus Status, int Progress, int SortOrder, uint Version);
+
+public sealed record SaveActivityRequest(
+    string TitleAr, string? Description, Guid? OwnerUnitId, DateOnly? StartDate, DateOnly? EndDate, InitiativeStatus Status, int Progress,
+    int? SortOrder, uint? Version);
 
 public sealed record StandardNode(
     Guid Id, string Code, string NameAr, string? NameEn, string? Description, Guid? PillarId, int SortOrder, uint Version,
@@ -51,7 +63,7 @@ public sealed record DeleteRequest(string? Reason);
 /// إضافة الركائز والمعايير والمبادرات وتعديلها وحذفها بصلاحية «الخطة الاستراتيجية»؛ المؤشرات وتعريفاتها ومستهدفاتها بصلاحياتها في القاموس والمستهدفات.
 /// لا يحذف ما يقوم عليه غيره: الركيزة بمعاييرها والمعيار بمؤشراته ومبادراته تنقل أو تحذف أولًا.
 /// </summary>
-public sealed class StrategyService(IKpiStore db, IReadModel read, IClock clock, IAccessService access, IAuditLog audit)
+public sealed class StrategyService(IKpiStore db, IReadModel read, IClock clock, IAccessService access, IAuditLog audit, Settings.PlanPeriodService planPeriod)
 {
     private const string Feature = Features.Strategy;
 
@@ -61,6 +73,7 @@ public sealed class StrategyService(IKpiStore db, IReadModel read, IClock clock,
         var pillars = await db.Pillars.AsNoTracking().OrderBy(p => p.SortOrder).ThenBy(p => p.Code).ToListAsync(ct);
         var standards = await db.Standards.AsNoTracking().OrderBy(s => s.SortOrder).ThenBy(s => s.Code).ToListAsync(ct);
         var initiatives = await db.Initiatives.AsNoTracking().OrderBy(i => i.SortOrder).ThenBy(i => i.Code).ToListAsync(ct);
+        var activities = await ActivitySummaryAsync(null, ct);
         var indicators = await db.Indicators.AsNoTracking().Include(i => i.Versions).OrderBy(i => i.SortOrder).ToListAsync(ct);
         var university = await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().Where(u => u.Kind == OrgUnitKind.University).Select(u => u.Id).FirstOrDefaultAsync(ct);
         var targets = (await db.Targets.AsNoTracking().Where(t => t.UnitId == university).ToListAsync(ct)).ToLookup(t => t.IndicatorId);
@@ -69,7 +82,8 @@ public sealed class StrategyService(IKpiStore db, IReadModel read, IClock clock,
 
         StandardNode Node(Standard s) => new(s.Id, s.Code, s.NameAr, s.NameEn, s.Description, s.PillarId, s.SortOrder, s.Version,
             initiatives.Where(i => i.StandardId == s.Id).Select(i => new InitiativeNode(i.Id, i.Code, i.NameAr, i.Description, i.ExpectedOutcome, i.OwnerUnitId,
-                i.OwnerUnitId is { } o ? owners.GetValueOrDefault(o) : null, i.StartYear, i.EndYear, i.Status, i.IndicatorCodes, i.Version)).ToList(),
+                i.OwnerUnitId is { } o ? owners.GetValueOrDefault(o) : null, i.StartYear, i.EndYear, i.Status, i.IndicatorCodes, i.Version,
+                activities.GetValueOrDefault(i.Id)?.Count ?? 0, activities.GetValueOrDefault(i.Id)?.Progress)).ToList(),
             indicators.Where(i => i.StandardId == s.Id).Select(i =>
             {
                 var v = i.Current;
@@ -83,9 +97,11 @@ public sealed class StrategyService(IKpiStore db, IReadModel read, IClock clock,
             }).ToList());
 
         var targetsEdit = UnitScope.For(me, Features.Targets, Cap.Edit).All;
+        // ADR-0017: the plan years of the period in force.
+        var plan = await planPeriod.CurrentAsync(ct);
         return new StrategyTreeDto(
-            TargetsService.PlanStart,
-            Enumerable.Range(TargetsService.PlanStart + 1, TargetsService.PlanEnd - TargetsService.PlanStart).ToList(),
+            plan.BaselineYear,
+            plan.Years.ToList(),
             pillars.Select(p => new PillarNode(p.Id, p.Code, p.NameAr, p.NameEn, p.Description, p.SortOrder, p.Version,
                 standards.Where(s => s.PillarId == p.Id).Select(Node).ToList())).ToList(),
             standards.Where(s => s.PillarId is null || pillars.All(p => p.Id != s.PillarId)).Select(Node).ToList(),
@@ -252,7 +268,7 @@ public sealed class StrategyService(IKpiStore db, IReadModel read, IClock clock,
     private async Task ApplyAsync(Initiative initiative, SaveInitiativeRequest req, DateTimeOffset now, CancellationToken ct)
     {
         initiative.NameAr = Name(req.NameAr, 300, "اسم المبادرة");
-        PlanRules.ValidateYears(req.StartYear, req.EndYear, TargetsService.PlanStart, "مدة المبادرة");
+        PlanRules.ValidateYears(req.StartYear, req.EndYear, await planPeriod.CurrentAsync(ct), "مدة المبادرة");
         if (req.OwnerUnitId is { } owner && !await read.Query<Domain.Organization.OrgUnit>().AnyAsync(u => u.Id == owner && u.Active, ct))
             throw new DomainException("owner_not_found", "الجهة المسؤولة غير موجودة أو معطلة.", "The owner unit was not found.", 400) { Field = "ownerUnitId" };
         var codes = (req.IndicatorCodes ?? []).Select(c => c.Trim().ToUpperInvariant()).Where(c => c.Length > 0).Distinct().ToList();
@@ -273,8 +289,116 @@ public sealed class StrategyService(IKpiStore db, IReadModel read, IClock clock,
     private async Task<InitiativeNode> InitiativeDtoAsync(Initiative i, CancellationToken ct)
     {
         var owner = i.OwnerUnitId is { } o ? await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().Where(u => u.Id == o).Select(u => u.NameAr).FirstOrDefaultAsync(ct) : null;
-        return new InitiativeNode(i.Id, i.Code, i.NameAr, i.Description, i.ExpectedOutcome, i.OwnerUnitId, owner, i.StartYear, i.EndYear, i.Status, i.IndicatorCodes, i.Version);
+        var summary = (await ActivitySummaryAsync(i.Id, ct)).GetValueOrDefault(i.Id);
+        return new InitiativeNode(i.Id, i.Code, i.NameAr, i.Description, i.ExpectedOutcome, i.OwnerUnitId, owner, i.StartYear, i.EndYear, i.Status, i.IndicatorCodes, i.Version,
+            summary?.Count ?? 0, summary?.Progress);
     }
+
+    private sealed record ActivitySummary(int Count, int Progress);
+
+    /// <summary>The number of activities of each initiative and their average completion, in one query.</summary>
+    private async Task<Dictionary<Guid, ActivitySummary>> ActivitySummaryAsync(Guid? initiativeId, CancellationToken ct) =>
+        (await db.InitiativeActivities.AsNoTracking().Where(a => initiativeId == null || a.InitiativeId == initiativeId)
+            .GroupBy(a => a.InitiativeId).Select(g => new { g.Key, Count = g.Count(), Progress = g.Average(a => (double)a.Progress) }).ToListAsync(ct))
+        .ToDictionary(x => x.Key, x => new ActivitySummary(x.Count, (int)Math.Round(x.Progress)));
+
+    // ----------------------------------------------------------------- أنشطة المبادرة (ADR-0017)
+
+    /// <summary>The activities of an initiative, in their order.</summary>
+    public async Task<IReadOnlyList<ActivityDto>> ActivitiesAsync(Guid initiativeId, CancellationToken ct)
+    {
+        await access.RequireAsync(Feature, Cap.View, ct);
+        if (!await db.Initiatives.AnyAsync(i => i.Id == initiativeId, ct)) throw DomainException.NotFound();
+        var list = await db.InitiativeActivities.AsNoTracking().Where(a => a.InitiativeId == initiativeId)
+            .OrderBy(a => a.SortOrder).ThenBy(a => a.CreatedAt).ToListAsync(ct);
+        var owners = await OwnerNamesAsync(list.Select(a => a.OwnerUnitId), ct);
+        return list.Select(a => ActivityDto(a, owners)).ToList();
+    }
+
+    public async Task<ActivityDto> CreateActivityAsync(Guid initiativeId, SaveActivityRequest req, CancellationToken ct)
+    {
+        await access.RequireAsync(Feature, Cap.Add, ct);
+        var initiative = await db.Initiatives.AsNoTracking().FirstOrDefaultAsync(i => i.Id == initiativeId, ct) ?? throw DomainException.NotFound();
+        var now = clock.UtcNow;
+        var last = await db.InitiativeActivities.Where(a => a.InitiativeId == initiativeId).Select(a => (int?)a.SortOrder).MaxAsync(ct) ?? 0;
+        var activity = new InitiativeActivity { InitiativeId = initiativeId, CreatedAt = now, SortOrder = req.SortOrder ?? last + 1 };
+        await ApplyActivityAsync(activity, req, now, ct);
+        db.InitiativeActivities.Add(activity);
+        RecordActivity("kpi.activity_created", "إضافة نشاط لمبادرة", "Added an initiative activity", activity, initiative.Code, null, null);
+        await db.SaveChangesAsync(ct);
+        return ActivityDto(activity, await OwnerNamesAsync([activity.OwnerUnitId], ct));
+    }
+
+    public async Task<ActivityDto> UpdateActivityAsync(Guid id, SaveActivityRequest req, CancellationToken ct)
+    {
+        await access.RequireAsync(Feature, Cap.Edit, ct);
+        var activity = await db.InitiativeActivities.FirstOrDefaultAsync(a => a.Id == id, ct) ?? throw DomainException.NotFound();
+        Concurrency.Expect(db, activity, req.Version);
+        var before = new { activity.TitleAr, activity.Status, activity.Progress, activity.StartDate, activity.EndDate, activity.OwnerUnitId };
+        await ApplyActivityAsync(activity, req, clock.UtcNow, ct);
+        if (req.SortOrder is { } order) activity.SortOrder = order;
+        var changes = new ChangeSet().Add("titleAr", before.TitleAr, activity.TitleAr).Add("status", before.Status, activity.Status)
+            .Add("progress", before.Progress, activity.Progress).Add("startDate", before.StartDate, activity.StartDate)
+            .Add("endDate", before.EndDate, activity.EndDate).Add("ownerUnitId", before.OwnerUnitId, activity.OwnerUnitId);
+        var code = await db.Initiatives.Where(i => i.Id == activity.InitiativeId).Select(i => i.Code).FirstAsync(ct);
+        RecordActivity("kpi.activity_updated", "تعديل نشاط مبادرة", "Edited an initiative activity", activity, code, null, changes);
+        await db.SaveChangesAsync(ct);
+        return ActivityDto(activity, await OwnerNamesAsync([activity.OwnerUnitId], ct));
+    }
+
+    public async Task DeleteActivityAsync(Guid id, DeleteRequest req, CancellationToken ct)
+    {
+        await access.RequireAsync(Feature, Cap.Delete, ct);
+        var why = Require.Reason(req.Reason);
+        var activity = await db.InitiativeActivities.FirstOrDefaultAsync(a => a.Id == id, ct) ?? throw DomainException.NotFound();
+        var code = await db.Initiatives.Where(i => i.Id == activity.InitiativeId).Select(i => i.Code).FirstAsync(ct);
+        db.InitiativeActivities.Remove(activity);
+        RecordActivity("kpi.activity_deleted", "حذف نشاط مبادرة", "Deleted an initiative activity", activity, code, why, null);
+        await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// The rules of an activity: a title; the end on or after the start; completion from 0 to 100, and 100 once completed;
+    /// an active responsible unit if one is given.
+    /// </summary>
+    private async Task ApplyActivityAsync(InitiativeActivity activity, SaveActivityRequest req, DateTimeOffset now, CancellationToken ct)
+    {
+        activity.TitleAr = Name(req.TitleAr, 300, "اسم النشاط", "titleAr");
+        if (!Enum.IsDefined(req.Status))
+            throw new DomainException("invalid_status", "حالة النشاط غير صالحة.", "Invalid activity status.", 400) { Field = "status" };
+        if (req.Progress is < 0 or > 100)
+            throw new DomainException("invalid_progress", "نسبة الإنجاز من 0 إلى 100.", "Progress is from 0 to 100.", 400) { Field = "progress" };
+        if (req.StartDate is { } start && req.EndDate is { } end && end < start)
+            throw new DomainException("end_before_start", "تاريخ نهاية النشاط قبل بدايته.", "The activity ends before it starts.", 400) { Field = "endDate" };
+        if (req.OwnerUnitId is { } owner && !await read.Query<Domain.Organization.OrgUnit>().AnyAsync(u => u.Id == owner && u.Active, ct))
+            throw new DomainException("owner_not_found", "الجهة المسؤولة غير موجودة أو معطلة.", "The owner unit was not found.", 400) { Field = "ownerUnitId" };
+        activity.Description = Require.Optional(req.Description, 2000);
+        activity.OwnerUnitId = req.OwnerUnitId;
+        activity.StartDate = req.StartDate;
+        activity.EndDate = req.EndDate;
+        activity.Status = req.Status;
+        activity.Progress = req.Status == InitiativeStatus.Completed ? 100 : req.Progress;
+        activity.UpdatedAt = now;
+    }
+
+    private async Task<Dictionary<Guid, string>> OwnerNamesAsync(IEnumerable<Guid?> ids, CancellationToken ct)
+    {
+        var list = ids.OfType<Guid>().Distinct().ToList();
+        return list.Count == 0 ? [] : await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().Where(u => list.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.NameAr, ct);
+    }
+
+    private static ActivityDto ActivityDto(InitiativeActivity a, Dictionary<Guid, string> owners) =>
+        new(a.Id, a.InitiativeId, a.TitleAr, a.Description, a.OwnerUnitId, a.OwnerUnitId is { } o ? owners.GetValueOrDefault(o) : null,
+            a.StartDate, a.EndDate, a.Status, a.Progress, a.SortOrder, a.Version);
+
+    private void RecordActivity(string verb, string ar, string en, InitiativeActivity a, string initiativeCode, string? reason, ChangeSet? changes) =>
+        audit.Record(AuditEvents.Audit("kpi", Feature, verb, ar, en) with
+        {
+            Target = new AuditTarget("initiative_activity", a.Id.ToString(), a.TitleAr),
+            Related = [new AuditTarget("initiative", a.InitiativeId.ToString(), initiativeCode)],
+            Reason = reason,
+            Changes = changes?.ToList(),
+        });
 
     // ----------------------------------------------------------------- مشترك
 
@@ -282,11 +406,12 @@ public sealed class StrategyService(IKpiStore db, IReadModel read, IClock clock,
     public static int NextNumber(IEnumerable<string> codes, string prefix) =>
         codes.Select(c => c.StartsWith(prefix, StringComparison.Ordinal) && int.TryParse(c.AsSpan(prefix.Length), out var n) ? n : 0).DefaultIfEmpty(0).Max() + 1;
 
-    private static string Name(string? value, int max, string field)
+    /// <param name="jsonField">The request field the name came from, for the error (BE-6).</param>
+    private static string Name(string? value, int max, string field, string jsonField = "nameAr")
     {
         var v = value?.Trim();
-        if (string.IsNullOrEmpty(v)) throw new DomainException("name_required", $"اكتب {field}.", "Enter the name.", 400) { Field = "nameAr" };
-        return v.Length <= max ? v : throw new DomainException("text_too_long", $"«{field}» أطول من {max} حرف.", "The name is too long.", 400) { Field = "nameAr" };
+        if (string.IsNullOrEmpty(v)) throw new DomainException("name_required", $"اكتب {field}.", "Enter the name.", 400) { Field = jsonField };
+        return v.Length <= max ? v : throw new DomainException("text_too_long", $"«{field}» أطول من {max} حرف.", "The name is too long.", 400) { Field = jsonField };
     }
 
     private void Record(string verb, string ar, string en, string type, Guid id, string code, string? reason) =>
@@ -301,10 +426,10 @@ public sealed class StrategyService(IKpiStore db, IReadModel read, IClock clock,
 public static class PlanRules
 {
     /// <summary>سنتا البداية والنهاية داخل سنوات الخطة، والنهاية لا تسبق البداية.</summary>
-    public static void ValidateYears(int? start, int? end, int baselineYear, string field)
+    public static void ValidateYears(int? start, int? end, Scorecard.PlanPeriod plan, string field)
     {
-        var first = baselineYear + 1;
-        var last = TargetsService.PlanEnd;
+        var first = plan.FirstYear;
+        var last = plan.LastYear;
         if (start is { } s && (s < first || s > last))
             throw new DomainException("plan_year", $"{field}: سنة البداية من {first} إلى {last}.", "Start year is outside the plan.", 400) { Field = "startYear" };
         if (end is { } e && (e < first || e > last))

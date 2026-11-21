@@ -14,7 +14,10 @@ public enum TargetSource
     /// <summary>المستهدف الموحد لكل كلية.</summary>
     EachCollege = 2,
 
-    /// <summary>مستهدف الجامعة: لمؤشر نسبة أو متوسط بلا مستهدف خاص بالكلية، فتعرف الكلية بعدها عن نسبة الجامعة المرجوة.</summary>
+    /// <summary>
+    /// مستهدف الجامعة: للجهة المركزية التي تدخل رقم الجامعة كلها، وللقسم في نسبة أو متوسط بلا مستهدف خاص.
+    /// لا تقاس به الكلية (ADR-0017): الكلية تقاس بمستهدفاتها، ويعرض مستهدف الجامعة بجانبها فقط.
+    /// </summary>
     University = 3,
 }
 
@@ -33,7 +36,8 @@ public sealed record TargetInfo(decimal? Value, TargetSource Source, int? Year, 
 /// المستهدف الساري (دالة نقية)، بالقواعد نفسها في النماذج والنتائج وبطاقة الأداء والتقدم:
 /// **المعتمد وحده** يقاس عليه الأداء (D3)؛ فالمقترح لا يغير مقياس جهة قبل أن تعتمده اللجنة العليا، ويسري آخر معتمد قبله.
 /// قبل سنة بدء المؤشر «لم يبدأ»؛ وفي السنة نفسها مستهدفها، وإلا آخر مستهدف محدد قبلها (يستمر المستهدف بعد سنة تحقيقه)؛
-/// والكلية بلا مستهدف خاص يسري عليها الموحد لكل كلية، ثم مستهدف الجامعة إن كان المؤشر نسبة أو متوسطًا لا يجمع.
+/// والكلية بلا مستهدف خاص يسري عليها الموحد لكل كلية، وإلا فلا مستهدف لها (ADR-0017): لا تقاس الكلية بمستهدف الجامعة،
+/// ويعرض بجانب مستهدفها. القسم في نسبة أو متوسط بلا مستهدف خاص يقاس بمستهدف الجامعة كما كان.
 /// المجموع لا يقارن بمستهدف الجامعة، لأن الجامعة مجموع الكليات.
 /// </summary>
 public static class TargetLookup
@@ -72,7 +76,8 @@ public static class TargetLookup
         var each = Latest(targets.Where(t => t.Kind == TargetKind.EachCollege), year);
         if (each?.Value is not null) return (new(each.Value, TargetSource.EachCollege, each.Year, false), each);
 
-        if (ComparableAcrossLevels(aggregation))
+        // ADR-0017: the college is measured against its own targets only; the university's is shown beside them, not used.
+        if (unit.Kind == OrgUnitKind.Department && ComparableAcrossLevels(aggregation))
         {
             var uni = Latest(targets.Where(t => t.UnitId == universityId && t.Kind == TargetKind.Target), year);
             if (uni?.Value is not null) return (new(uni.Value, TargetSource.University, uni.Year, false), uni);

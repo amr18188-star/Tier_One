@@ -37,6 +37,15 @@ public static class SettingKeys
     /// <summary>شهر بداية الربع الأول من السنة الأولى؛ كل ربع ثلاثة أشهر بعده.</summary>
     public const string PlanStartMonth = "plan_q1_start_month";
 
+    /// <summary>سنة آخر شهر في الخطة (ADR-0017).</summary>
+    public const string PlanEndYear = "plan_end_year";
+
+    /// <summary>آخر شهر في الخطة؛ تنتهي الخطة في آخر يوم منه.</summary>
+    public const string PlanEndMonth = "plan_end_month";
+
+    /// <summary>ADR-0017: the plan period's four settings change together, by the super administrator, through the plan period only.</summary>
+    public static readonly IReadOnlySet<string> PlanPeriodKeys = new HashSet<string>(StringComparer.Ordinal) { PlanStartYear, PlanStartMonth, PlanEndYear, PlanEndMonth };
+
     /// <summary>الحد الأدنى لدرجة الركيزة في كل فئة (جدول حدود تصنيف الركائز)؛ الفئة 5 ما دون الفئة 4.</summary>
     public const string Tier1Min = "tier1_min";
     public const string Tier2Min = "tier2_min";
@@ -57,8 +66,10 @@ public static class SettingKeys
         new(NearTargetPercent, 90, 50, 99, "حد «قريب من المستهدف» (اللون الأصفر)", "Near-target threshold (amber)", "% من المستهدف", "% of target"),
         new(BigChangePercent, 50, 10, 500, "حد تحذير الاختلاف عن آخر قيمة معتمدة", "Large-change warning threshold", "%", "%"),
         new(ReminderDaysBeforeDue, 3, 1, 14, "بدء تذكير الجهات قبل الموعد النهائي", "Start reminders before the deadline", "يوم", "days"),
-        new(PlanStartYear, 2026, 2024, 2030, "سنة بداية الربع الأول من السنة الأولى للخطة", "Year in which quarter 1 of plan year 1 starts", "سنة ميلادية", "year"),
-        new(PlanStartMonth, 9, 1, 12, "شهر بداية الربع الأول من السنة الأولى للخطة", "Month in which quarter 1 of plan year 1 starts", "رقم الشهر (1–12)", "month (1-12)"),
+        new(PlanStartYear, 2026, 2024, 2040, "سنة بداية الخطة", "Year the plan starts", "سنة ميلادية", "year", SuperAdminOnly: true),
+        new(PlanStartMonth, 9, 1, 12, "شهر بداية الخطة", "Month the plan starts", "رقم الشهر (1–12)", "month (1-12)", SuperAdminOnly: true),
+        new(PlanEndYear, 2031, 2025, 2050, "سنة نهاية الخطة", "Year the plan ends", "سنة ميلادية", "year", SuperAdminOnly: true),
+        new(PlanEndMonth, 8, 1, 12, "شهر نهاية الخطة", "Month the plan ends", "رقم الشهر (1–12)", "month (1-12)", SuperAdminOnly: true),
         new(Tier1Min, 85, 50, 100, "الفئة 1 (جامعة بحثية عالمية): أدنى درجة للركيزة", "Tier 1 minimum pillar score", "من 100", "of 100"),
         new(Tier2Min, 70, 30, 99, "الفئة 2 (جامعة وطنية للبحث والابتكار): أدنى درجة للركيزة", "Tier 2 minimum pillar score", "من 100", "of 100"),
         new(Tier3Min, 55, 20, 98, "الفئة 3 (جامعة شاملة): أدنى درجة للركيزة", "Tier 3 minimum pillar score", "من 100", "of 100"),

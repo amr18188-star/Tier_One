@@ -13,7 +13,7 @@ import { Panel } from "../../shared/ui";
 import { TargetEditor, type TargetSlot } from "./TargetEditor";
 import { queryKeys } from "../../api/queries";
 
-/** مستهدفات الجامعة: الرسم من خط الأساس حتى 2031، وبطاقة لكل سنة تعدل أو تعتمد من مكانها، والمستهدف الموحد لكل كلية. */
+/** مستهدفات الجامعة: الرسم من خط الأساس حتى آخر سنوات الخطة، وبطاقة لكل سنة تعدل أو تعتمد من مكانها، والمستهدف الموحد لكل كلية. */
 export function TargetsPanel({ code, universityId }: { code: string; universityId: string | undefined }) {
   const qc = useQueryClient();
   const { message } = App.useApp();
@@ -53,18 +53,18 @@ export function TargetsPanel({ code, universityId }: { code: string; universityI
       {() => (
         <>
           <div className="t1-years">{t!.years.map(tile)}</div>
-          <TrendChart title={L("مستهدفات الجامعة من خط الأساس حتى 2031", "University targets from the baseline to 2031")} unit={t!.unit}
+          <TrendChart title={L(`مستهدفات الجامعة من خط الأساس حتى ${t!.years.at(-1)}`, `University targets from the baseline to ${t!.years.at(-1)}`)} unit={t!.unit}
             points={t!.years.map((y) => {
               const x = t!.university.find((u) => u.year === y);
-              return { year: y, value: x?.value ?? null, kind: y === 2026 ? "baseline" as const : "target" as const };
+              return { year: y, value: x?.value ?? null, kind: y === t!.years[0] ? "baseline" as const : "target" as const };
             })} />
           <div className="t1-summary mt">
-            <b>{L("المستهدف الموحد لكل كلية (ملف الكليات، 2027):", "Per-college target (colleges file, 2027):")}</b>{" "}
+            <b>{L("المستهدف الموحد لكل كلية (يسري على كل كلية بلا مستهدف خاص):", "Per-college target (for each college without its own):")}</b>{" "}
             {t!.eachCollege ? (t!.eachCollege.value !== null ? withUnit(t!.eachCollege.value, t!.unit) : `«${t!.eachCollege.text}»`) : L("لم يحدد.", "Not set.")}
             {t!.eachCollege?.source && <span className="t1-help"> — {t!.eachCollege.source}</span>}
             {t!.actions.canEditUniversity && universityId && (
               <Button size="small" type="link" icon={<EditOutlined />}
-                onClick={() => setSlot({ unitId: universityId, unitName: L("كل كلية", "Each college"), year: 2027, kind: "EachCollege", existing: t!.eachCollege })}>
+                onClick={() => setSlot({ unitId: universityId, unitName: L("كل كلية", "Each college"), year: t!.years[1] ?? t!.years[0], kind: "EachCollege", existing: t!.eachCollege })}>
                 {t!.eachCollege ? L("تعديل", "Edit") : L("تحديد", "Set")}
               </Button>
             )}

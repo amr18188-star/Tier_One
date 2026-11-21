@@ -45,7 +45,9 @@ public sealed class SettingsService(ISettingsStore db, IClock clock, ICurrentUse
         var saved = await db.Settings.AsNoTracking().ToDictionaryAsync(s => s.Key, ct);
         var me = await access.CurrentAsync(ct);
         var canEdit = me.Has(Feature, Cap.Edit);
-        return SettingKeys.All.Select(d => ToDto(d, saved.GetValueOrDefault(d.Key), canEdit && (!d.SuperAdminOnly || me.IsSuperAdmin))).ToList();
+        // ADR-0017: the plan period's four settings are shown and changed together, in the plan period (PlanPeriodService).
+        return SettingKeys.All.Where(d => !SettingKeys.PlanPeriodKeys.Contains(d.Key))
+            .Select(d => ToDto(d, saved.GetValueOrDefault(d.Key), canEdit && (!d.SuperAdminOnly || me.IsSuperAdmin))).ToList();
     }
 
     public async Task<int> IntAsync(string key, CancellationToken ct)
@@ -58,6 +60,8 @@ public sealed class SettingsService(ISettingsStore db, IClock clock, ICurrentUse
     public async Task<SettingDto> SaveAsync(string key, SaveSettingRequest req, CancellationToken ct)
     {
         var d = SettingKeys.Find(key) ?? throw DomainException.NotFound();
+        if (SettingKeys.PlanPeriodKeys.Contains(key))
+            throw new DomainException("plan_period_only", "فترة الخطة تعدل كاملة من «فترة الخطة»، لا إعدادًا واحدًا.", "Change the plan period as a whole, in the plan period.");
         EnsureCanEdit(d, await access.CurrentAsync(ct));
         var reason = Require.Reason(req.Reason);
         if (req.Value < d.Min || req.Value > d.Max)

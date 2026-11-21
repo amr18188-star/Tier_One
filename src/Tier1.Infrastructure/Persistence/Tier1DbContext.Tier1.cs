@@ -28,6 +28,8 @@ public sealed partial class Tier1DbContext
 
     public DbSet<Initiative> Initiatives => Set<Initiative>();
 
+    public DbSet<InitiativeActivity> InitiativeActivities => Set<InitiativeActivity>();
+
     public DbSet<Indicator> Indicators => Set<Indicator>();
 
     public DbSet<IndicatorVersion> IndicatorVersions => Set<IndicatorVersion>();
@@ -166,6 +168,21 @@ public sealed partial class Tier1DbContext
             e.Property(x => x.ExpectedOutcome).HasMaxLength(2000);
             e.Property(x => x.Version).IsRowVersion();
             e.HasOne<Standard>().WithMany().HasForeignKey(x => x.StandardId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<OrgUnit>().WithMany().HasForeignKey(x => x.OwnerUnitId).OnDelete(DeleteBehavior.Restrict);
+        });
+        // ADR-0017: an initiative's own activities, removed with it.
+        b.Entity<InitiativeActivity>(e =>
+        {
+            e.ToTable("initiative_activities", "kpi", t =>
+            {
+                t.HasCheckConstraint("ck_activities_progress", "progress BETWEEN 0 AND 100");
+                t.HasCheckConstraint("ck_activities_dates", "end_date IS NULL OR start_date IS NULL OR end_date >= start_date");
+            });
+            e.HasIndex(x => new { x.InitiativeId, x.SortOrder });
+            e.Property(x => x.TitleAr).HasMaxLength(300);
+            e.Property(x => x.Description).HasMaxLength(2000);
+            e.Property(x => x.Version).IsRowVersion();
+            e.HasOne<Initiative>().WithMany().HasForeignKey(x => x.InitiativeId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne<OrgUnit>().WithMany().HasForeignKey(x => x.OwnerUnitId).OnDelete(DeleteBehavior.Restrict);
         });
         b.Entity<Indicator>(e =>

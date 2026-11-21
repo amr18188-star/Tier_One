@@ -24,6 +24,11 @@ internal static class ReferenceSeed
     private static readonly Dictionary<string, (bool Required, string? Role)> PositionRules = new(StringComparer.Ordinal)
     {
         ["عميد الكلية"] = (true, "DEAN"),
+        // إدارة الكلية: الوكلاء الثلاثة، ومسئول الجودة في مركز التوظيف والجودة؛ أدوارهم ينشئها المدير الأعلى (ADR-0017).
+        ["وكيل الكلية للدراسات العليا والبحوث"] = (true, null),
+        ["وكيل الكلية لشئون التعليم والطلاب"] = (true, null),
+        ["وكيل الكلية لشئون خدمة المجتمع وتنمية البيئة"] = (true, null),
+        ["مسئول الجودة بالكلية"] = (true, null),
         ["رئيس اللجنة"] = (true, "CTC"),
         ["مقرر اللجنة"] = (true, "CTC"),
         ["رئيس المجلس"] = (true, null),

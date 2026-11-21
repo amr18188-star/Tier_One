@@ -47,3 +47,38 @@ public sealed class Initiative
 
     public uint Version { get; set; }
 }
+
+/// <summary>
+/// نشاط من أنشطة مبادرة (ADR-0017): كل مبادرة أنشطتها الخاصة بها، بمسؤوله ومدته وحالته ونسبة إنجازه.
+/// يحذف مع مبادرته. الحالات نفسها حالات المبادرة.
+/// </summary>
+public sealed class InitiativeActivity
+{
+    public Guid Id { get; set; } = Guid.CreateVersion7();
+
+    public Guid InitiativeId { get; set; }
+
+    public string TitleAr { get; set; } = "";
+
+    public string? Description { get; set; }
+
+    /// <summary>الجهة المسؤولة عن تنفيذ النشاط، إن حددت.</summary>
+    public Guid? OwnerUnitId { get; set; }
+
+    public DateOnly? StartDate { get; set; }
+
+    public DateOnly? EndDate { get; set; }
+
+    public InitiativeStatus Status { get; set; } = InitiativeStatus.Planned;
+
+    /// <summary>نسبة الإنجاز من 0 إلى 100؛ النشاط المكتمل 100.</summary>
+    public int Progress { get; set; }
+
+    public int SortOrder { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; }
+
+    public DateTimeOffset UpdatedAt { get; set; }
+
+    public uint Version { get; set; }
+}

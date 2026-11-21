@@ -50,10 +50,9 @@ public sealed record ScorecardDto(
 /// بطاقة أداء الجامعة وفئتها بمعادلات الإطار الشامل (ScorecardRules)، من القيم الرسمية للجامعة في كل ربع (ينقلها مسئول ملف Tier 1).
 /// تعرض لمن يرى النتائج.
 /// </summary>
-public sealed class ScorecardService(IScorecardStore db, IReadModel read, IAccessService access, IClock clock, IAuditLog audit, Settings.SettingsService settings)
+public sealed class ScorecardService(IScorecardStore db, IReadModel read, IAccessService access, IClock clock, IAuditLog audit, Settings.SettingsService settings, Settings.PlanPeriodService planPeriod)
 {
     private const string Feature = Features.Results;
-    private static readonly int[] Years = PlanCalendar.Years;
 
     public async Task<ScorecardDto> GetAsync(CancellationToken ct)
     {
@@ -80,7 +79,7 @@ public sealed class ScorecardService(IScorecardStore db, IReadModel read, IAcces
     public async Task<IReadOnlyList<PlanQuarter>> CalendarAsync(CancellationToken ct)
     {
         await access.CurrentAsync(ct);
-        return PlanCalendar.Quarters(await settings.IntAsync(SettingKeys.PlanStartYear, ct), await settings.IntAsync(SettingKeys.PlanStartMonth, ct), CairoTime.DateOf(clock.UtcNow));
+        return (await planPeriod.CurrentAsync(ct)).Quarters(CairoTime.DateOf(clock.UtcNow));
     }
 
     private async Task<TierThresholds> ThresholdsAsync(CancellationToken ct) => new(
@@ -92,6 +91,9 @@ public sealed class ScorecardService(IScorecardStore db, IReadModel read, IAcces
     internal async Task<ScorecardDto> ComputeAsync(bool canExport, CancellationToken ct)
     {
         var thresholds = await ThresholdsAsync(ct);
+        // ADR-0017: the plan period in force gives the quarters and the plan years.
+        var plan = await planPeriod.CurrentAsync(ct);
+        var Years = plan.Years;
         var quarters = await CalendarAsync(ct);
         var pillars = await read.Query<Pillar>().AsNoTracking().OrderBy(p => p.SortOrder).ToListAsync(ct);
         var standards = await read.Query<Standard>().AsNoTracking().OrderBy(s => s.SortOrder).ToListAsync(ct);
@@ -104,7 +106,7 @@ public sealed class ScorecardService(IScorecardStore db, IReadModel read, IAcces
             .GroupBy(v => (v.Year, v.Quarter))
             .ToDictionary(g => g.Key, g => g.ToDictionary(v => v.IndicatorId, v => v.Value));
 
-        var lastSlot = values.Where(v => v.Value.Values.Any(x => x is not null)).Select(v => PlanCalendar.Slot(v.Key.Year, v.Key.Quarter)).DefaultIfEmpty(-1).Max();
+        var lastSlot = values.Where(v => v.Value.Values.Any(x => x is not null)).Select(v => plan.Slot(v.Key.Year, v.Key.Quarter)).DefaultIfEmpty(-1).Max();
 
         IndicatorScore Score(Indicator i, string standardCode)
         {
@@ -112,14 +114,14 @@ public sealed class ScorecardService(IScorecardStore db, IReadModel read, IAcces
             var mine = targets[i.Id].ToList();
             var yearTargets = Years.Select(y => mine.FirstOrDefault(t => t.Year == y)?.Value).ToList();
             var final = yearTargets[^1] ?? yearTargets.LastOrDefault(t => t is not null);
-            var series = new decimal?[20];
+            var series = new decimal?[plan.QuarterCount];
             foreach (var ((year, q), vals) in values)
             {
-                var slot = PlanCalendar.Slot(year, q);
-                if (slot is >= 0 and < 20 && vals.TryGetValue(i.Id, out var x)) series[slot] = x;
+                var slot = plan.Slot(year, q);
+                if (slot >= 0 && vals.TryGetValue(i.Id, out var x)) series[slot] = x;
             }
             var (latest, index) = ScorecardRules.Latest(series);
-            var yearValues = Enumerable.Range(0, 5).Select(y => ScorecardRules.YearValue(series.Skip(y * 4).Take(4).ToList(), v.Accumulation)).ToList();
+            var yearValues = Enumerable.Range(0, plan.YearCount).Select(y => ScorecardRules.YearValue(series.Skip(y * 4).Take(4).ToList(), v.Accumulation)).ToList();
             return new IndicatorScore(
                 i.Id, i.Code, v.NameAr, v.NameEn, standardCode, v.Unit, v.Direction, v.Accumulation,
                 i.Perspectives, i.SdgPrimary, i.SdgSecondary, i.SdgInduced,
@@ -139,8 +141,8 @@ public sealed class ScorecardService(IScorecardStore db, IReadModel read, IAcces
             {
                 var list = indicators.Where(i => i.StandardId == s.Id).Select(i => Score(i, s.Code)).ToList();
                 return new StandardScore(s.Code, s.NameAr, ScorecardRules.Average(list.Select(x => x.Score)),
-                    Enumerable.Range(0, 5).Select(y => ScorecardRules.Average(list.Select(x => x.YearScores[y]))).ToList(),
-                    Enumerable.Range(0, 5).Select(y => ScorecardRules.AverageKnown(list.Select(x => x.YearScoresVsYearly[y]))).ToList(),
+                    Enumerable.Range(0, plan.YearCount).Select(y => ScorecardRules.Average(list.Select(x => x.YearScores[y]))).ToList(),
+                    Enumerable.Range(0, plan.YearCount).Select(y => ScorecardRules.AverageKnown(list.Select(x => x.YearScoresVsYearly[y]))).ToList(),
                     list);
             }).Where(s => s.Indicators.Count > 0).ToList();
             if (stds.Count == 0) continue;
@@ -148,17 +150,17 @@ public sealed class ScorecardService(IScorecardStore db, IReadModel read, IAcces
             var score = ScorecardRules.Average(stds.Select(s => s.Score));
             pillarScores.Add(new PillarScore(p.Id, p.Code, p.NameAr, p.NameEn, score, ScorecardRules.PillarTier(score, thresholds), ScorecardRules.RagOf(score),
                 all.Count, all.Count(x => x.Level != Level.NoData), all.Count(x => x.Level == Level.InLevel),
-                Enumerable.Range(0, 5).Select(y => ScorecardRules.Average(stds.Select(s => s.YearScores[y]))).ToList(),
-                Enumerable.Range(0, 5).Select(y => ScorecardRules.Average(stds.Select(s => s.YearScoresVsYearly[y]))).ToList(),
+                Enumerable.Range(0, plan.YearCount).Select(y => ScorecardRules.Average(stds.Select(s => s.YearScores[y]))).ToList(),
+                Enumerable.Range(0, plan.YearCount).Select(y => ScorecardRules.Average(stds.Select(s => s.YearScoresVsYearly[y]))).ToList(),
                 stds));
         }
 
         var everyone = pillarScores.SelectMany(p => p.Standards).SelectMany(s => s.Indicators).ToList();
         var overall = ScorecardRules.Average(pillarScores.Select(p => p.Score));
         var weakest = pillarScores.OrderBy(p => p.Score).ThenBy(p => p.Code, StringComparer.Ordinal).FirstOrDefault();
-        var yearScores = Enumerable.Range(0, 5).Select(y => ScorecardRules.Average(pillarScores.Select(p => p.YearScores[y]))).ToList();
-        var yearVsYearly = Enumerable.Range(0, 5).Select(y => ScorecardRules.Average(pillarScores.Select(p => p.YearScoresVsYearly[y]))).ToList();
-        var yearTiers = Enumerable.Range(0, 5).Select(y => ScorecardRules.Tier(yearVsYearly[y], pillarScores.Select(p => p.YearScoresVsYearly[y]).DefaultIfEmpty(0).Min(), thresholds)).ToList();
+        var yearScores = Enumerable.Range(0, plan.YearCount).Select(y => ScorecardRules.Average(pillarScores.Select(p => p.YearScores[y]))).ToList();
+        var yearVsYearly = Enumerable.Range(0, plan.YearCount).Select(y => ScorecardRules.Average(pillarScores.Select(p => p.YearScoresVsYearly[y]))).ToList();
+        var yearTiers = Enumerable.Range(0, plan.YearCount).Select(y => ScorecardRules.Tier(yearVsYearly[y], pillarScores.Select(p => p.YearScoresVsYearly[y]).DefaultIfEmpty(0).Min(), thresholds)).ToList();
 
         var overallDto = new OverallScore(overall, ScorecardRules.Tier(overall, weakest?.Score ?? 0, thresholds), weakest?.Name, weakest?.Score ?? 0,
             yearScores, yearVsYearly, yearTiers, everyone.Count, everyone.Count(x => x.Latest is not null), everyone.Count(x => x.Level == Level.InLevel));
@@ -179,8 +181,8 @@ public sealed class ScorecardService(IScorecardStore db, IReadModel read, IAcces
             var inLevel = linked.Count(x => x.Level == Level.InLevel);
             return new PerspectiveScore(n.Number, n.NameAr, n.NameEn, linked.Count, evaluated, inLevel, linked.Count(x => x.Level == Level.Below),
                 evaluated == 0 ? null : ScorecardRules.Round1(100m * inLevel / linked.Count),
-                Enumerable.Range(0, 5).Select(y => linked.Any(x => x.YearValues[y] is not null) ? ScorecardRules.Round1(100m * linked.Count(x => x.YearScores[y] >= 100) / linked.Count) : (decimal?)null).ToList(),
-                Enumerable.Range(0, 5).Select(y =>
+                Enumerable.Range(0, plan.YearCount).Select(y => linked.Any(x => x.YearValues[y] is not null) ? ScorecardRules.Round1(100m * linked.Count(x => x.YearScores[y] >= 100) / linked.Count) : (decimal?)null).ToList(),
+                Enumerable.Range(0, plan.YearCount).Select(y =>
                 {
                     var judged = linked.Where(x => x.YearScoresVsYearly[y] is not null).ToList();
                     return judged.Count == 0 ? (decimal?)null : ScorecardRules.Round1(100m * judged.Count(x => x.YearScoresVsYearly[y] >= 100) / judged.Count);
@@ -199,7 +201,7 @@ public sealed class ScorecardService(IScorecardStore db, IReadModel read, IAcces
             decimal? pct = evaluated == 0 || total == 0 ? null : ScorecardRules.Round1(100m * inLevel / total);
             return new SdgScore(n.Number, n.NameAr, n.NameEn, primary, secondary, induced, total, evaluated, inLevel, linked.Count(x => x.Level == Level.Below),
                 pct, pct is { } v ? ScorecardRules.RagOf(v) : null,
-                Enumerable.Range(0, 5).Select(y => linked.Any(x => x.YearValues[y] is not null) ? ScorecardRules.Round1(100m * linked.Count(x => x.YearScores[y] >= 100) / linked.Count) : (decimal?)null).ToList());
+                Enumerable.Range(0, plan.YearCount).Select(y => linked.Any(x => x.YearValues[y] is not null) ? ScorecardRules.Round1(100m * linked.Count(x => x.YearScores[y] >= 100) / linked.Count) : (decimal?)null).ToList());
         }).ToList();
 
         return new ScorecardDto(Years, quarters, lastSlot >= 0 ? quarters[lastSlot] : null, thresholds, overallDto, bands, pillarScores, perspectives, sdgs, canExport);

@@ -1,3 +1,4 @@
+using Tier1.Application.Scorecard;
 using Tier1.Application.Kpi;
 using Tier1.Application.Organization;
 using Tier1.Application.Structure;
@@ -68,23 +69,23 @@ public class TargetRulesTests
     private static SaveTargetRequest Req(int year = 2027, TargetKind kind = TargetKind.Target, decimal? value = 50, decimal? num = null, decimal? den = null) =>
         new(Guid.Empty, year, kind, value, null, num, den, null, null, null, null, null);
 
-    private static string Code(SaveTargetRequest r, OrgUnit u, IndicatorVersion v) => Assert.Throws<DomainException>(() => TargetRules.Validate(r, u, v)).Code;
+    private static string Code(SaveTargetRequest r, OrgUnit u, IndicatorVersion v) => Assert.Throws<DomainException>(() => TargetRules.Validate(r, u, v, PlanPeriod.Default)).Code;
 
     [Fact]
     public void A_valid_target_passes()
     {
-        TargetRules.Validate(Req(), College, Percent);
-        TargetRules.Validate(Req(2026, TargetKind.Baseline), University, Percent);
-        TargetRules.Validate(Req(kind: TargetKind.EachCollege, value: 2), University, Count);
+        TargetRules.Validate(Req(), College, Percent, PlanPeriod.Default);
+        TargetRules.Validate(Req(2026, TargetKind.Baseline), University, Percent, PlanPeriod.Default);
+        TargetRules.Validate(Req(kind: TargetKind.EachCollege, value: 2), University, Count, PlanPeriod.Default);
     }
 
     [Fact]
     public void The_ratio_is_computed_on_the_server_from_numerator_and_denominator()
     {
         // القيمة المرسلة تهمل: النتيجة المحسوبة لا تعدل يدويًا.
-        Assert.Equal(62.5m, TargetRules.Validate(Req(value: 99, num: 125, den: 200), College, Percent));
-        Assert.Equal(62.5m, TargetRules.Validate(Req(value: null, num: 125, den: 200), College, Percent));
-        Assert.Equal(50m, TargetRules.Validate(Req(value: 50), College, Percent));
+        Assert.Equal(62.5m, TargetRules.Validate(Req(value: 99, num: 125, den: 200), College, Percent, PlanPeriod.Default));
+        Assert.Equal(62.5m, TargetRules.Validate(Req(value: null, num: 125, den: 200), College, Percent, PlanPeriod.Default));
+        Assert.Equal(50m, TargetRules.Validate(Req(value: 50), College, Percent, PlanPeriod.Default));
     }
 
     [Fact]
@@ -96,7 +97,7 @@ public class TargetRulesTests
         Assert.Equal("baseline_year", Code(Req(2027, TargetKind.Baseline), University, Percent));
         Assert.Equal("each_college_unit", Code(Req(kind: TargetKind.EachCollege), College, Count));
         Assert.Equal("numerator_denominator", Code(Req(num: 5), College, Percent));
-        var e = Assert.Throws<DomainException>(() => TargetRules.Validate(Req(num: 520, den: 500), College, Percent));
+        var e = Assert.Throws<DomainException>(() => TargetRules.Validate(Req(num: 520, den: 500), College, Percent, PlanPeriod.Default));
         Assert.Equal("numerator_exceeds", e.Code);
         Assert.Contains("520", e.Message, StringComparison.Ordinal);
         Assert.Equal("value_required", Code(Req(value: null), College, Percent));

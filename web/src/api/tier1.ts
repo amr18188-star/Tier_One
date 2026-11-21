@@ -28,6 +28,13 @@ export interface IndicatorNode {
 export interface InitiativeNode {
   id: string; code: string; nameAr: string; description: string | null; expectedOutcome: string | null; ownerUnitId: string | null; ownerUnitName: string | null;
   startYear: number; endYear: number; status: InitiativeStatus; indicatorCodes: string[]; version: number;
+  /** ADR-0017: the initiative's activities and their average completion (null without activities). */
+  activityCount: number; activityProgress: number | null;
+}
+/** ADR-0017: one activity of an initiative. */
+export interface InitiativeActivity {
+  id: string; initiativeId: string; titleAr: string; description: string | null; ownerUnitId: string | null; ownerUnitName: string | null;
+  startDate: string | null; endDate: string | null; status: InitiativeStatus; progress: number; sortOrder: number; version: number;
 }
 export interface StandardNode {
   id: string; code: string; nameAr: string; nameEn: string | null; description: string | null; pillarId: string | null; sortOrder: number; version: number;
@@ -72,6 +79,12 @@ export interface Home {
   standards: StandardProgress[]; structureAveragePercent: number | null; collegeCount: number;
 }
 
+/** ADR-0017: the plan's period, as GET /api/admin/settings/plan-period returns it. */
+export interface PlanPeriod {
+  startYear: number; startMonth: number; endYear: number; endMonth: number; start: string; end: string;
+  years: number[]; quarters: number; editable: boolean; updatedAt: string | null;
+}
+
 // ----- القاموس -----
 export interface Standard {
   id: string; code: string; nameAr: string; pillarCode: string | null; pillarName: string | null; classificationNote: string | null;
@@ -81,7 +94,8 @@ export interface Standard {
 export interface IndicatorRow {
   code: string; standardCode: string; nameAr: string; unit: string; direction: Direction; level: CollectionLevel; aggregation: Aggregation;
   status: DefinitionStatus; versionNumber: number; hasApproved: boolean; suspended: boolean; missingCount: number; openConflicts: number;
-  baseline: number | null; target2031: number | null; collegeTarget: string | null;
+  /** ADR-0017: the university target for the plan's last year. */
+  baseline: number | null; finalTarget: number | null; collegeTarget: string | null;
 }
 
 export interface Version {

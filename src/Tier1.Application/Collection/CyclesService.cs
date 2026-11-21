@@ -22,7 +22,7 @@ public sealed record OpenCyclePreview(int Indicators, int Forms, int Departments
 /// دورات جمع البيانات: الإنشاء والفتح والإغلاق. الفتح يأخذ لقطة من التعريفات المعتمدة (أو قيد العمل في الدورة التجريبية)،
 /// وينشئ نموذجًا لكل جهة تنطبق عليها مؤشرات بحسب مستوى جمع بياناتها: القسم، أو الكلية، أو الجهة المالكة للمؤشر المركزي.
 /// </summary>
-public sealed class CyclesService(ICollectionStore db, IReadModel read, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit)
+public sealed class CyclesService(ICollectionStore db, IReadModel read, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, Settings.PlanPeriodService plan)
 {
     private const string Feature = Features.Cycles;
 
@@ -63,7 +63,7 @@ public sealed class CyclesService(ICollectionStore db, IReadModel read, IClock c
     {
         await access.RequireAsync(Feature, Cap.Add, ct);
         var cycle = new CollectionCycle { CreatedBy = current.UserId, CreatedAt = clock.UtcNow };
-        Apply(cycle, req);
+        Apply(cycle, req, await plan.CurrentAsync(ct));
         await EnsureQuarterFreeAsync(cycle, ct);
         db.Cycles.Add(cycle);
         audit.Record(AuditEvents.Audit("dc", Feature, "dc.cycle_created", "إنشاء دورة جمع بيانات", "Created a collection cycle") with
@@ -85,7 +85,7 @@ public sealed class CyclesService(ICollectionStore db, IReadModel read, IClock c
         if (cycle.Status == CycleStatus.Open && (req.TargetYear != cycle.TargetYear || req.Trial != cycle.Trial || req.Quarter != cycle.Quarter))
             throw new DomainException("cycle_open", "بعد الفتح يعدل الاسم والمواعيد فقط.", "After opening only the name and dates can change.");
         var oldDue = cycle.DueOn;
-        Apply(cycle, req);
+        Apply(cycle, req, await plan.CurrentAsync(ct));
         await EnsureQuarterFreeAsync(cycle, ct);
         if (cycle.Status == CycleStatus.Open && oldDue != cycle.DueOn)
         {
@@ -209,19 +209,22 @@ public sealed class CyclesService(ICollectionStore db, IReadModel read, IClock c
     {
         if (c.Quarter is not { } q || c.Trial) return;
         if (await db.Cycles.AnyAsync(x => x.Id != c.Id && !x.Trial && x.TargetYear == c.TargetYear && x.Quarter == q, ct))
-            throw new DomainException("quarter_taken", $"توجد دورة رسمية لـ{Scorecard.PlanCalendar.Label(c.TargetYear, q)} بالفعل.", "A cycle for this quarter already exists.", 409);
+            throw new DomainException("quarter_taken", $"توجد دورة رسمية لـ{(await plan.CurrentAsync(ct)).Label(c.TargetYear, q)} بالفعل.", "A cycle for this quarter already exists.", 409);
     }
 
-    private static void Apply(CollectionCycle c, SaveCycleRequest req)
+    /// <summary>The cycle's fields, checked against the plan period in force (ADR-0017): a quarter of a plan year, a target year of the plan.</summary>
+    private static void Apply(CollectionCycle c, SaveCycleRequest req, Scorecard.PlanPeriod plan)
     {
         c.Name = string.IsNullOrWhiteSpace(req.Name) ? throw new DomainException("name_required", "اكتب اسم الدورة.", "Enter the cycle name.", 400) { Field = "name" } : req.Name.Trim();
-        if (req.Quarter is { } q && (q is < 1 or > 4 || req.TargetYear is < Scorecard.PlanCalendar.FirstYear or > Scorecard.PlanCalendar.LastYear))
-            throw new DomainException("invalid_quarter", "الدورة الربعية لسنة من 2027 إلى 2031 وربع من 1 إلى 4.", "Quarterly cycles: year 2027-2031, quarter 1-4.", 400);
+        if (req.Quarter is { } q && !plan.HasQuarter(req.TargetYear, q))
+            throw new DomainException("invalid_quarter", $"الدورة الربعية لسنة من سنوات الخطة ({plan.FirstYear}–{plan.LastYear}) وربع من 1 إلى 4.",
+                $"Quarterly cycles: a plan year ({plan.FirstYear}-{plan.LastYear}), quarter 1-4.", 400);
         c.Quarter = req.Quarter;
         c.PeriodLabel = !string.IsNullOrWhiteSpace(req.PeriodLabel) ? req.PeriodLabel.Trim()
-            : req.Quarter is { } quarter ? Scorecard.PlanCalendar.Label(req.TargetYear, quarter)
+            : req.Quarter is { } quarter ? plan.Label(req.TargetYear, quarter)
             : throw new DomainException("period_required", "اكتب الفترة التي تقيسها الدورة.", "Enter the period.", 400) { Field = "periodLabel" };
-        if (req.TargetYear is < 2026 or > 2031) throw new DomainException("invalid_year", "سنة المستهدف من 2026 إلى 2031.", "Target year 2026-2031.", 400) { Field = "targetYear" };
+        if (req.TargetYear < plan.BaselineYear || req.TargetYear > plan.LastYear)
+            throw new DomainException("invalid_year", $"سنة المستهدف من {plan.BaselineYear} إلى {plan.LastYear}.", $"Target year {plan.BaselineYear}-{plan.LastYear}.", 400) { Field = "targetYear" };
         if (req.DueOn < req.OpensOn) throw new DomainException("dates", "الموعد النهائي بعد تاريخ الفتح.", "The deadline is after the opening date.", 400) { Field = "dueOn" };
         c.TargetYear = req.TargetYear;
         c.OpensOn = req.OpensOn;

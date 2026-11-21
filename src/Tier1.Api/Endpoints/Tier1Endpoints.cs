@@ -145,6 +145,19 @@ public static class Tier1Endpoints
                 return Results.NoContent();
             })
             .RequirePermission(Features.Strategy, Cap.Delete);
+        // ADR-0017: an initiative's own activities, with the initiatives' permissions.
+        g.MapGet("/initiatives/{id:guid}/activities", async (Guid id, StrategyService svc, CancellationToken ct) => TypedResults.Ok(await svc.ActivitiesAsync(id, ct)))
+            .RequirePermission(Features.Strategy, Cap.View);
+        g.MapPost("/initiatives/{id:guid}/activities", async (Guid id, SaveActivityRequest req, StrategyService svc, CancellationToken ct) => TypedResults.Ok(await svc.CreateActivityAsync(id, req, ct)))
+            .RequirePermission(Features.Strategy, Cap.Add);
+        g.MapPut("/activities/{id:guid}", async (Guid id, SaveActivityRequest req, StrategyService svc, CancellationToken ct) => TypedResults.Ok(await svc.UpdateActivityAsync(id, req, ct)))
+            .RequirePermission(Features.Strategy, Cap.Edit);
+        g.MapPost("/activities/{id:guid}/delete", async (Guid id, DeleteRequest req, StrategyService svc, CancellationToken ct) =>
+            {
+                await svc.DeleteActivityAsync(id, req, ct);
+                return Results.NoContent();
+            })
+            .RequirePermission(Features.Strategy, Cap.Delete);
         g.MapPost("/initiatives", async (SaveInitiativeRequest req, StrategyService svc, CancellationToken ct) => TypedResults.Ok(await svc.CreateInitiativeAsync(req, ct)))
             .RequirePermission(Features.Strategy, Cap.Add);
         g.MapPut("/initiatives/{id:guid}", async (Guid id, SaveInitiativeRequest req, StrategyService svc, CancellationToken ct) => TypedResults.Ok(await svc.UpdateInitiativeAsync(id, req, ct)))

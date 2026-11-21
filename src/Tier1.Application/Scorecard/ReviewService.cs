@@ -65,7 +65,7 @@ public sealed record TransferAllRequest(Guid CycleId);
 /// مراجعة مسئول ملف Tier 1: كل مؤشر في الربع بقيمة كل كلية وحساب الجامعة منها، ثم نقل القيمة إلى مؤشر الجامعة.
 /// القيمة المنقولة وحدها تدخل بطاقة الأداء والفئة وملف المجلس. تعديلها عن المحسوبة، أو نقلها قبل اكتمال الجهات، بسبب مكتوب.
 /// </summary>
-public sealed class ReviewService(IScorecardStore db, IReadModel read, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, ResultsService results)
+public sealed class ReviewService(IScorecardStore db, IReadModel read, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, ResultsService results, Settings.PlanPeriodService planPeriod)
 {
     private const string Feature = Features.University;
 
@@ -77,7 +77,8 @@ public sealed class ReviewService(IScorecardStore db, IReadModel read, IClock cl
             // الافتراضي: أحدث ربع فيه قيم معتمدة لم تنقل، وإلا أحدث ربع.
             : cycles.FirstOrDefault();
         if (cycle is null) return new ReviewDto([], null, [], me.Has(Feature, Cap.Edit));
-        return new ReviewDto(cycles.Select(Dto).ToList(), Dto(cycle), await RowsAsync(cycle, ct), me.Has(Feature, Cap.Edit));
+        var plan = await planPeriod.CurrentAsync(ct);
+        return new ReviewDto(cycles.Select(c => Dto(c, plan)).ToList(), Dto(cycle, plan), await RowsAsync(cycle, ct), me.Has(Feature, Cap.Edit));
     }
 
     public async Task<ReviewRow> TransferAsync(TransferRequest req, CancellationToken ct)
@@ -141,7 +142,7 @@ public sealed class ReviewService(IScorecardStore db, IReadModel read, IClock cl
 
         audit.Record(AuditEvents.Audit("dc", Feature, "dc.university_value_transferred", "نقل قيمة إلى مؤشر الجامعة", "Transferred a value to the university indicator") with
         {
-            Target = new AuditTarget("indicator", row.IndicatorId.ToString(), row.Code, PlanCalendar.Label(cycle.TargetYear, cycle.Quarter!.Value)),
+            Target = new AuditTarget("indicator", row.IndicatorId.ToString(), row.Code, (await planPeriod.CurrentAsync(ct)).Label(cycle.TargetYear, cycle.Quarter!.Value)),
             Changes = [new FieldChange("value", old?.ToString(System.Globalization.CultureInfo.InvariantCulture), final.ToString(System.Globalization.CultureInfo.InvariantCulture))],
             Reason = why,
             Details = new { computed = row.Computed, row.Reported, row.Expected, adjusted },
@@ -152,7 +153,7 @@ public sealed class ReviewService(IScorecardStore db, IReadModel read, IClock cl
         await read.Query<Domain.Collection.CollectionCycle>().AsNoTracking().Where(c => c.Status != CycleStatus.Draft && !c.Trial && c.Quarter != null)
             .OrderByDescending(c => c.TargetYear).ThenByDescending(c => c.Quarter).ToListAsync(ct);
 
-    private static ReviewCycle Dto(CollectionCycle c) => new(c.Id, c.Name, c.TargetYear, c.Quarter!.Value, PlanCalendar.Label(c.TargetYear, c.Quarter!.Value), c.Status);
+    private static ReviewCycle Dto(CollectionCycle c, PlanPeriod plan) => new(c.Id, c.Name, c.TargetYear, c.Quarter!.Value, plan.Label(c.TargetYear, c.Quarter!.Value), c.Status);
 
     private async Task<List<ReviewRow>> RowsAsync(CollectionCycle cycle, CancellationToken ct)
     {

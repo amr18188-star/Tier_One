@@ -14,6 +14,8 @@ export const queryKeys = {
   cycles: ["cycles"] as const,
   units: ["units"] as const,
   strategy: ["strategy"] as const,
+  /** ADR-0017: under the strategy prefix, so a refresh of the plan refreshes them too. */
+  initiativeActivities: (initiativeId: string) => ["strategy", "initiative", initiativeId, "activities"] as const,
   /** The default results view (latest cycle, whole scope); other results views extend the "results" prefix. */
   latestResults: ["results", undefined, undefined] as const,
 
@@ -73,6 +75,7 @@ export const queryKeys = {
   logs: (collection: unknown, params: unknown, page: number) => ["logs", collection, params, page] as const,
   logsStatus: ["logs-status"] as const,
   adminSettings: ["admin-settings"] as const,
+  planPeriod: ["admin-settings", "plan-period"] as const,
   adminMail: (filter: unknown) => ["admin-mail", filter] as const,
 
   // Sign-in security (ADR-0016): university email domains and the IP allowlists.

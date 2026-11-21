@@ -1,3 +1,4 @@
+using Tier1.Application.Scorecard;
 using Tier1.Application.Collection;
 using Tier1.Application.Kpi;
 using Tier1.Domain.Collection;
@@ -41,13 +42,23 @@ public class StrategyRulesTests
     }
 
     [Fact]
-    public void A_college_without_its_own_target_is_compared_with_the_university_ratio_but_not_with_a_university_sum()
+    public void AC_T1_a_college_is_never_measured_against_the_university_target()
     {
+        // ADR-0017: neither for a rate (the university's 85% is shown beside the college's, not used) nor for a sum.
         var targets = new[] { T(University, 2027, 85) };
-        var ratio = TargetLookup.For(targets, College, University.Id, 2027, null, Aggregation.RatioOfSums);
-        Assert.Equal((85m, TargetSource.University), (ratio.Value!.Value, ratio.Source));
+        Assert.Equal(TargetInfo.None, TargetLookup.For(targets, College, University.Id, 2027, null, Aggregation.RatioOfSums));
+        Assert.Equal(TargetInfo.None, TargetLookup.For(targets, College, University.Id, 2027, null, Aggregation.WeightedAverage));
         // مجموع الجامعة (175 ألف طالب) ليس مستهدفًا لكلية واحدة.
         Assert.Equal(TargetInfo.None, TargetLookup.For(targets, College, University.Id, 2027, null, Aggregation.Sum));
+    }
+
+    /// <summary>ADR-0017 (assumption): a department keeps the university's rate as its measure when it has no target of its own.</summary>
+    [Fact]
+    public void A_department_without_its_own_target_still_uses_the_university_rate()
+    {
+        var department = new OrgUnit { Code = "ENG-CIV", Kind = OrgUnitKind.Department, Path = "/CU/ENG/ENG-CIV/", ParentId = College.Id };
+        var info = TargetLookup.For([T(University, 2027, 85)], department, University.Id, 2027, null, Aggregation.RatioOfSums);
+        Assert.Equal((85m, TargetSource.University), (info.Value!.Value, info.Source));
     }
 
     [Fact]
@@ -164,9 +175,9 @@ public class StrategyRulesTests
     [Fact]
     public void Plan_years_stay_inside_the_plan_and_in_order()
     {
-        PlanRules.ValidateYears(2029, 2031, 2026, "فترة المستهدف");
-        Assert.Equal("plan_year", Assert.Throws<DomainException>(() => PlanRules.ValidateYears(2026, 2031, 2026, "x")).Code);
-        Assert.Equal("plan_order", Assert.Throws<DomainException>(() => PlanRules.ValidateYears(2030, 2028, 2026, "x")).Code);
+        PlanRules.ValidateYears(2029, 2031, PlanPeriod.Default, "فترة المستهدف");
+        Assert.Equal("plan_year", Assert.Throws<DomainException>(() => PlanRules.ValidateYears(2026, 2031, PlanPeriod.Default, "x")).Code);
+        Assert.Equal("plan_order", Assert.Throws<DomainException>(() => PlanRules.ValidateYears(2030, 2028, PlanPeriod.Default, "x")).Code);
     }
 
     [Theory]

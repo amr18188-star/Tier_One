@@ -112,14 +112,15 @@ export default function ResultsPage() {
           title: L("المستهدف", "Target"), key: "t", width: 130, render: (_, i) => (
             <span>
               <span className="ltr">{withUnit(i.target, i.unit)}</span>
-              {i.targetSource === "University" && <Tooltip title={L("لا مستهدف خاص بالكلية؛ تقارن بمستهدف الجامعة.", "No college target; compared with the university target.")}><small className="muted"> ({L("الجامعة", "univ.")})</small></Tooltip>}
+              {/* ADR-0017: a college is measured against its own target only; without one it says so. */}
+              {i.target === null && r?.unit.kind !== "University" && i.pendingTarget === null && <small className="muted">{L("لا مستهدف للكلية", "No college target")}</small>}
               <PendingTarget value={i.pendingTarget} year={i.pendingTargetYear} unit={i.unit} />
             </span>
           ),
         },
         { title: L("الإنجاز", "Achievement"), key: "p", width: 190, render: (_, i) => <Achievement i={i} /> },
         ...(r && r.unit.kind !== "University" ? [{
-          title: L("مقارنة بمستهدف الجامعة", "vs university target"), key: "u", width: 170,
+          title: L("مستهدف الجامعة (للاطلاع)", "University target (reference)"), key: "u", width: 170,
           render: (_: unknown, i: IndicatorResult) => i.universityTotalTarget != null ? (
             // مؤشر مجموع (عدد): مساهمة الكلية في رقم الجامعة المرجو، مستهدفًا وإنجازًا.
             <Tooltip title={L(`مستهدف الجامعة كلها ${withUnit(i.universityTotalTarget, i.unit)}${i.targetShare != null ? `؛ مستهدف كليتك ${pct(i.targetShare)} منه` : ""}${i.actualShare != null ? `، وما حققته ${pct(i.actualShare)} منه` : ""}.`,
@@ -130,7 +131,7 @@ export default function ResultsPage() {
                 {i.actualShare != null && <> · <small className="muted">{L("حققت", "Done")}</small> <b className="ltr">{pct(i.actualShare)}</b></>}
               </span>
             </Tooltip>
-          ) : i.universityTarget === null || i.targetSource === "University" ? <span className="muted">—</span> : (
+          ) : i.universityTarget === null ? <span className="muted">—</span> : (
             <Tooltip title={L(`مستهدف الجامعة ${withUnit(i.universityTarget, i.unit)}`, `University target ${withUnit(i.universityTarget, i.unit)}`)}>
               <span className="ltr">{withUnit(i.universityTarget, i.unit)}</span>
               {i.universityAchievement !== null && <b className="ltr ms">{Math.round(i.universityAchievement * 100)}%</b>}

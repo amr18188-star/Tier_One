@@ -94,6 +94,8 @@ public interface IKpiStore : IUnitOfWork
 
     DbSet<Domain.Kpi.Initiative> Initiatives { get; }
 
+    DbSet<Domain.Kpi.InitiativeActivity> InitiativeActivities { get; }
+
     DbSet<Domain.Kpi.Indicator> Indicators { get; }
 
     DbSet<Domain.Kpi.IndicatorVersion> IndicatorVersions { get; }

@@ -17,8 +17,8 @@ import "./progress.css";
 import { queryKeys } from "../../api/queries";
 
 /**
- * تقدم الكلية: قيمها المعتمدة لكل مؤشر مقارنة بمستهدف الجامعة لذلك العام، وكم تبعد عنه، وبمستهدفها الخاص إن وضع،
- * وبالقيمة الرسمية للجامعة التي نقلها مسئول ملف Tier 1. ودرجتها في كل ركيزة بجوار درجة الجامعة.
+ * تقدم الكلية: قيمها المعتمدة لكل مؤشر مقارنة بمستهدف الكلية لذلك العام (مستهدفها الخاص، وإلا الموحد «لكل كلية»)، وكم تبعد عنه.
+ * ومستهدف الجامعة وقيمتها الرسمية التي نقلها مسئول ملف Tier 1 للاطلاع فقط (ADR-0017). ودرجتها في كل ركيزة بجوار درجة الجامعة.
  */
 const fmt = (v: number | null | undefined, unit: string) => (v === null || v === undefined ? "—" : unit.trim() === "%" ? `${num(v)}%` : num(v));
 const LEVEL: Record<Level, { ar: string; en: string; color: string }> = {
@@ -54,7 +54,7 @@ export default function ProgressPage() {
   return (
     <>
       <PageHeader title={p ? L(`تقدم ${p.unit.name}`, `${p.unit.name} progress`) : L("تقدم الكلية", "College progress")}
-        subtitle={L("قيم الكلية المعتمدة في كل مؤشر مقارنة بمستهدف الجامعة للعام، وكم تبعد عنه، وبقيمة الجامعة الرسمية.", "College values vs the university target.")}
+        subtitle={L("قيم الكلية المعتمدة في كل مؤشر مقارنة بمستهدف الكلية للعام، وكم تبعد عنه، ومعها مستهدف الجامعة وقيمتها الرسمية للاطلاع.", "College values vs the college's own target, with the university's for reference.")}
         stats={p ? [
           { label: L("درجة الكلية", "College score"), value: <span className="ltr">{num(p.score)}%</span> },
           ...(p.universityScore !== null ? [{ label: L("درجة الجامعة", "University score"), value: <span className="ltr">{num(p.universityScore)}%</span> }] : []),
@@ -153,11 +153,11 @@ function Indicators({ pillar, quarters, filter, q }: { pillar: ProgressPillar; q
             <div className="pg-tr head" role="row">
               <span role="columnheader">{L("المؤشر", "Indicator")}</span>
               <span role="columnheader">{L("قيمة الكلية", "College value")}</span>
-              <span role="columnheader">{L("مستهدف الجامعة للعام", "University target")}</span>
+              <span role="columnheader">{L("مستهدف الكلية للعام", "College target")}</span>
               <span role="columnheader">{L("البعد عن المستهدف", "Distance to target")}</span>
               {/* للمجموع والعدد: البعد عن مستهدف الكلية نفسها إن وضع، وإلا حصتها من رقم الجامعة. */}
               <span role="columnheader">{L("الإنجاز", "Achievement")}</span>
-              <span role="columnheader">{L("مستهدف الكلية", "Own target")}</span>
+              <span role="columnheader">{L("مستهدف الجامعة (للاطلاع)", "University target (reference)")}</span>
               <span role="columnheader">{L("الأرباع", "Quarters")}</span>
             </div>
             <StandardPanels standards={standards} quarters={quarters} pillarId={pillar.id} />
@@ -197,12 +197,8 @@ function Row({ i, quarters }: { i: ProgressIndicator; quarters: PlanQuarter[] })
         {i.latestIndex >= 0 && <small className="muted">{quarters[i.latestIndex]?.label}</small>}
       </span>
       <span role="cell" className="ltr pg-num">
-        {i.comparable ? <b>{fmt(i.yearTarget, i.unit)}</b> : (
-          // مجموع أو عدد: مستهدف الجامعة للجامعة كلها، فلا يقارن به رقم كلية واحدة.
-          <Tooltip title={L("مؤشر مجموع أو عدد: مستهدف الجامعة لمجموع الكليات كلها، فتقارن الكلية بمستهدفها هي إن وضع، وتظهر حصتها من رقم الجامعة.", "A sum: the target is for all colleges together.")}>
-            <span className="muted">{fmt(i.universityYearTarget, i.unit)}</span><small className="muted">{L("للجامعة كلها", "whole university")}</small>
-          </Tooltip>
-        )}
+        {/* ADR-0017: the college is measured against its own target only (its own, else the one for each college). */}
+        {i.yearTarget === null ? <small className="muted">{L("لا مستهدف للكلية", "No college target")}</small> : <b>{fmt(i.yearTarget, i.unit)}</b>}
       </span>
       <span role="cell" className="ltr pg-num">
         {i.gap === null ? (i.share !== null ? <><b className="pg-share">{num(i.share)}%</b><small className="muted">{L("حصتها من رقم الجامعة", "share of university")}</small></> : <span className="muted">—</span>) : (
@@ -219,7 +215,15 @@ function Row({ i, quarters }: { i: ProgressIndicator; quarters: PlanQuarter[] })
         )}
       </span>
       <span role="cell" className="ltr pg-num">
-        {i.ownTarget === null ? <span className="muted">—</span> : <><b>{fmt(i.ownTarget, i.unit)}</b>{i.ownAchievement !== null && <small className="muted">{num(i.ownAchievement)}%</small>}</>}
+        {/* The university's target beside the college's, for reference; a sum's is for all colleges together. */}
+        {i.universityYearTarget === null ? <span className="muted">—</span> : (
+          <Tooltip title={i.comparable
+            ? L("مستهدف الجامعة للعام، للاطلاع؛ الكلية تقاس بمستهدفها.", "The university's target for the year, for reference; the college is measured against its own.")
+            : L("مؤشر مجموع أو عدد: مستهدف الجامعة لمجموع الكليات كلها، للاطلاع.", "A sum: the university's target for all colleges together, for reference.")}>
+            <span className="muted">{fmt(i.universityYearTarget, i.unit)}</span>
+            {!i.comparable && <small className="muted">{L("للجامعة كلها", "whole university")}</small>}
+          </Tooltip>
+        )}
       </span>
       <span role="cell"><Spark i={i} quarters={quarters} /></span>
     </div>
@@ -232,8 +236,9 @@ function Spark({ i, quarters }: { i: ProgressIndicator; quarters: PlanQuarter[] 
   const uni = i.comparable ? i.universityQuarters : i.universityQuarters.map(() => null);
   const lastUni = uni.reduce<number>((m, v, k) => (v !== null ? k : m), -1);
   const end = Math.max(i.latestIndex, lastUni, 3);
-  const n = Math.min(20, end + 1);
-  const targets = Array.from({ length: n }, (_, k) => (i.comparable ? i.universityTargets : i.collegeTargets)[Math.floor(k / 4)]);
+  const n = Math.min(i.quarters.length, end + 1);
+  // ADR-0017: the target line is the college's own; the university's values stay as points for comparable indicators.
+  const targets = Array.from({ length: n }, (_, k) => i.collegeTargets[Math.floor(k / 4)]);
   const all = [...i.quarters.slice(0, n), ...uni.slice(0, n), ...targets].filter((v): v is number => v !== null);
   if (all.length === 0) return <span className="muted">—</span>;
   const lo = Math.min(...all), hi = Math.max(...all), span = hi - lo || 1;

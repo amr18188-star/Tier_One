@@ -24,6 +24,7 @@ public static class DependencyInjection
         services.AddScoped<IAccessService, AccessService>();
         services.AddScoped<IAccessCache>(sp => sp.GetRequiredService<IAccessService>());
         services.AddScoped<IAuditLog, AuditLog>();
+        services.AddScoped<Settings.PlanPeriodService>();
         services.AddScoped<ISessionService, SessionService>();
         services.AddScoped<SignInService>();
         services.AddScoped<MeService>();

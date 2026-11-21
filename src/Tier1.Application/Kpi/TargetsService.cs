@@ -46,10 +46,9 @@ public sealed record DeleteTargetRequest(string? Reason, string? DecisionRef);
 /// خط الأساس والمستهدفات: مستهدفات الجامعة (من ملف Tier 1) وتوزيعها على الكليات (من ملف الكليات)، والاعتماد بقرار،
 /// وتعديل المعتمد بسبب ورقم قرار مع حفظ القيمة السابقة.
 /// </summary>
-public sealed class TargetsService(IKpiStore db, IReadModel read, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit)
+public sealed class TargetsService(IKpiStore db, IReadModel read, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit,
+    Settings.PlanPeriodService planPeriod)
 {
-    public const int PlanStart = 2026;
-    public const int PlanEnd = 2031;
     private const string Feature = Features.Targets;
 
     public async Task<IndicatorTargetsDto> GetAsync(string code, CancellationToken ct)
@@ -67,9 +66,11 @@ public sealed class TargetsService(IKpiStore db, IReadModel read, IClock clock, 
 
         TargetDto Dto(IndicatorTarget t) => ToDto(t, units[t.UnitId]);
         var editScope = UnitScope.For(me, Feature, Cap.Edit);
+        // ADR-0017: the baseline year and the plan years of the period in force.
+        var plan = await planPeriod.CurrentAsync(ct);
         return new IndicatorTargetsDto(
             indicator.Code, version.Unit, version.Direction, version.Aggregation, version.Level,
-            Enumerable.Range(PlanStart, PlanEnd - PlanStart + 1).ToList(),
+            Enumerable.Range(plan.BaselineYear, plan.YearCount + 1).ToList(),
             targets.Where(t => t.UnitId == university.Id && t.Kind != TargetKind.EachCollege).OrderBy(t => t.Year).Select(Dto).ToList(),
             targets.FirstOrDefault(t => t.Kind == TargetKind.EachCollege) is { } each ? Dto(each) : null,
             targets.Where(t => t.UnitId != university.Id && viewScope.Covers(units[t.UnitId])).OrderBy(t => units[t.UnitId].NameAr).ThenBy(t => t.Year).Select(Dto).ToList(),
@@ -84,7 +85,7 @@ public sealed class TargetsService(IKpiStore db, IReadModel read, IClock clock, 
         var (indicator, version) = await LoadIndicatorAsync(code, ct);
         var unit = await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().FirstOrDefaultAsync(u => u.Id == req.UnitId, ct) ?? throw DomainException.NotFound();
         UnitScope.For(me, Feature, Cap.Edit).Require(unit);
-        var value = TargetRules.Validate(req, unit, version);
+        var value = TargetRules.Validate(req, unit, version, await planPeriod.CurrentAsync(ct));
 
         var target = await db.Targets.FirstOrDefaultAsync(t => t.IndicatorId == indicator.Id && t.UnitId == unit.Id && t.Year == req.Year && t.Kind == req.Kind, ct);
         var now = clock.UtcNow;
@@ -140,7 +141,8 @@ public sealed class TargetsService(IKpiStore db, IReadModel read, IClock clock, 
         var indicator = await db.Indicators.Include(i => i.Versions).FirstOrDefaultAsync(i => i.Code == code.Trim().ToUpperInvariant(), ct) ?? throw DomainException.NotFound();
         Concurrency.Expect(db, indicator, req.Version);
         var version = indicator.Effective ?? indicator.Current;
-        PlanRules.ValidateYears(req.StartYear, req.EndYear, PlanStart, "فترة المستهدف");
+        var plan = await planPeriod.CurrentAsync(ct);
+        PlanRules.ValidateYears(req.StartYear, req.EndYear, plan, "فترة المستهدف");
 
         var values = req.Values ?? [];
         if (values.GroupBy(v => v.Year).FirstOrDefault(g => g.Count() > 1) is { } dup)
@@ -149,8 +151,8 @@ public sealed class TargetsService(IKpiStore db, IReadModel read, IClock clock, 
         {
             if (req.StartYear is { } s && v.Year < s)
                 throw new DomainException("before_start", $"مستهدف {v.Year} قبل سنة بدء المؤشر ({s}). احذف القيمة أو قدّم سنة البدء.", "A target precedes the start year.", 400);
-            if (v.Year <= PlanStart || v.Year > PlanEnd)
-                throw new DomainException("invalid_year", $"سنوات المستهدفات من {PlanStart + 1} إلى {PlanEnd}.", "Target years are outside the plan.", 400);
+            if (v.Year < plan.FirstYear || v.Year > plan.LastYear)
+                throw new DomainException("invalid_year", $"سنوات المستهدفات من {plan.FirstYear} إلى {plan.LastYear}.", "Target years are outside the plan.", 400);
         }
 
         var changes = new ChangeSet().Add("planStartYear", indicator.PlanStartYear, req.StartYear).Add("planEndYear", indicator.PlanEndYear, req.EndYear)
@@ -171,7 +173,7 @@ public sealed class TargetsService(IKpiStore db, IReadModel read, IClock clock, 
             }
             if (row is not null && row.Value == v.Value) continue;
             var save = new SaveTargetRequest(university.Id, v.Year, TargetKind.Target, v.Value, null, null, null, row?.Source ?? "خطة المؤشر", row?.Note, req.Reason, req.DecisionRef, null);
-            var value = TargetRules.Validate(save, university, version);
+            var value = TargetRules.Validate(save, university, version, plan);
             if (row is null)
             {
                 db.Targets.Add(new IndicatorTarget
@@ -336,12 +338,13 @@ public sealed class TargetsService(IKpiStore db, IReadModel read, IClock clock, 
 /// </summary>
 public static class TargetRules
 {
-    public static decimal? Validate(SaveTargetRequest req, OrgUnit unit, IndicatorVersion version)
+    /// <param name="plan">The plan period in force (ADR-0017): its baseline year and plan years.</param>
+    public static decimal? Validate(SaveTargetRequest req, OrgUnit unit, IndicatorVersion version, Scorecard.PlanPeriod plan)
     {
-        if (req.Year is < TargetsService.PlanStart or > TargetsService.PlanEnd)
-            throw Invalid("invalid_year", $"السنة من {TargetsService.PlanStart} إلى {TargetsService.PlanEnd}.");
-        if (req.Kind == TargetKind.Baseline && req.Year != TargetsService.PlanStart)
-            throw Invalid("baseline_year", $"خط الأساس لسنة {TargetsService.PlanStart} فقط.");
+        if (req.Year < plan.BaselineYear || req.Year > plan.LastYear)
+            throw Invalid("invalid_year", $"السنة من {plan.BaselineYear} إلى {plan.LastYear}.");
+        if (req.Kind == TargetKind.Baseline && req.Year != plan.BaselineYear)
+            throw Invalid("baseline_year", $"خط الأساس لسنة {plan.BaselineYear} فقط.");
         if (req.Kind == TargetKind.EachCollege && unit.Kind != OrgUnitKind.University)
             throw Invalid("each_college_unit", "المستهدف الموحد لكل كلية يسجل على مستوى الجامعة.");
         if (req.Kind != TargetKind.EachCollege && unit.Kind is not (OrgUnitKind.University or OrgUnitKind.College or OrgUnitKind.Institute))

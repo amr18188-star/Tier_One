@@ -2194,6 +2194,64 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/settings/plan-period": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PlanPeriodDto"];
+                    };
+                };
+            };
+        };
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SavePlanPeriodRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PlanPeriodDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/security/domains": {
         parameters: {
             query?: never;
@@ -4225,6 +4283,148 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/strategy/initiatives/{id}/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ActivityDto"][];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SaveActivityRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ActivityDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/strategy/activities/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SaveActivityRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ActivityDto"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/strategy/activities/{id}/delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["DeleteRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/strategy/initiatives": {
         parameters: {
             query?: never;
@@ -5627,6 +5827,28 @@ export interface components {
     schemas: {
         /** @enum {unknown} */
         Accumulation: "Snapshot" | "Cumulative";
+        ActivityDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            initiativeId: string;
+            titleAr: string;
+            description: null | string;
+            /** Format: uuid */
+            ownerUnitId: null | string;
+            ownerUnitName: null | string;
+            /** Format: date */
+            startDate: null | string;
+            /** Format: date */
+            endDate: null | string;
+            status: components["schemas"]["InitiativeStatus"];
+            /** Format: int32 */
+            progress: number;
+            /** Format: int32 */
+            sortOrder: number;
+            /** Format: uint32 */
+            version: number;
+        };
         AddOverrideRequest: {
             feature: string;
             caps: string;
@@ -6382,7 +6604,7 @@ export interface components {
             /** Format: double */
             baseline: number | null;
             /** Format: double */
-            target2031: number | null;
+            finalTarget: number | null;
             collegeTarget: null | string;
         };
         IndicatorScore: {
@@ -6453,6 +6675,13 @@ export interface components {
             indicatorCodes: string[];
             /** Format: uint32 */
             version: number;
+            /**
+             * Format: int32
+             * @default 0
+             */
+            activityCount: number;
+            /** Format: int32 */
+            activityProgress: number | null;
         };
         /** @enum {unknown} */
         InitiativeStatus: "Planned" | "InProgress" | "Completed" | "Stopped";
@@ -6804,6 +7033,26 @@ export interface components {
             document: components["schemas"]["DocDto"];
             uploadedBy: null | string;
         };
+        PlanPeriodDto: {
+            /** Format: int32 */
+            startYear: number;
+            /** Format: int32 */
+            startMonth: number;
+            /** Format: int32 */
+            endYear: number;
+            /** Format: int32 */
+            endMonth: number;
+            /** Format: date */
+            start: string;
+            /** Format: date */
+            end: string;
+            years: number[];
+            /** Format: int32 */
+            quarters: number;
+            editable: boolean;
+            /** Format: date-time */
+            updatedAt: null | string;
+        };
         PlanQuarter: {
             /** Format: int32 */
             year: number;
@@ -7087,6 +7336,23 @@ export interface components {
             /** Format: uuid */
             pendingChangeId: null | string;
         };
+        SaveActivityRequest: {
+            titleAr: string;
+            description: null | string;
+            /** Format: uuid */
+            ownerUnitId: null | string;
+            /** Format: date */
+            startDate: null | string;
+            /** Format: date */
+            endDate: null | string;
+            status: components["schemas"]["InitiativeStatus"];
+            /** Format: int32 */
+            progress: number;
+            /** Format: int32 */
+            sortOrder: number | null;
+            /** Format: uint32 */
+            version: number | null;
+        };
         SaveCycleRequest: {
             name: string;
             periodLabel: null | string;
@@ -7199,6 +7465,17 @@ export interface components {
             sortOrder: number | null;
             /** Format: uint32 */
             version: number | null;
+        };
+        SavePlanPeriodRequest: {
+            /** Format: int32 */
+            startYear: number;
+            /** Format: int32 */
+            startMonth: number;
+            /** Format: int32 */
+            endYear: number;
+            /** Format: int32 */
+            endMonth: number;
+            reason: null | string;
         };
         SavePlanRequest: {
             /** Format: int32 */

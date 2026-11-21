@@ -10,7 +10,7 @@ using Tier1.Domain.Organization;
 
 namespace Tier1.Application.Scorecard;
 
-/// <summary>مؤشر في تقدم الكلية: قيمها في الأرباع، ومستهدف الجامعة ومستهدفها هي، وبعدها عن مستهدف الجامعة، وقيمة الجامعة الرسمية.</summary>
+/// <summary>مؤشر في تقدم الكلية: قيمها في الأرباع، ومستهدفها هي وبعدها عنه، ومستهدف الجامعة وقيمتها الرسمية للاطلاع (ADR-0017).</summary>
 public sealed record ProgressIndicator(
     Guid Id, string Code, string Name, string StandardCode, string Unit, Direction Direction, Accumulation Accumulation,
     IReadOnlyList<decimal?> Quarters, decimal? Latest, int LatestIndex,
@@ -29,15 +29,13 @@ public sealed record ProgressDto(
     int Indicators, int Reported, int InLevel, IReadOnlyList<ProgressPillar> Pillars, IReadOnlyList<PlanQuarter> Quarters);
 
 /// <summary>
-/// تقدم الكلية: قيمها المعتمدة في كل ربع لكل مؤشر يجمع منها، مقارنة بمستهدف الجامعة (وبمستهدفها الخاص إن وجد)، وكم تبعد عنه.
+/// تقدم الكلية: قيمها المعتمدة في كل ربع لكل مؤشر يجمع منها، مقارنة بمستهدف الكلية (الخاص، وإلا الموحد «لكل كلية»)، وكم تبعد عنه.
 /// درجتها بقواعد بطاقة الجامعة نفسها (الإنجاز من المستهدف النهائي، والمعيار متوسط مؤشراته، والركيزة متوسط معاييرها) فتقارن بدرجة الجامعة.
 /// كل مستخدم يرى كليات نطاقه فقط.
 /// </summary>
-public sealed class ProgressService(IScorecardStore db, IReadModel read, IAccessService access, IClock clock, ResultsService results, ScorecardService scorecard, Settings.SettingsService settings,
+public sealed class ProgressService(IScorecardStore db, IReadModel read, IAccessService access, IClock clock, ResultsService results, ScorecardService scorecard, Settings.PlanPeriodService planPeriod,
     Organization.UnitIndicatorsService assignments)
 {
-    private static readonly int[] Years = PlanCalendar.Years;
-
     public async Task<ProgressDto?> GetAsync(Guid? unitId, CancellationToken ct)
     {
         var me = await access.RequireAsync(Features.Results, Cap.View, ct);
@@ -48,7 +46,10 @@ public sealed class ProgressService(IScorecardStore db, IReadModel read, IAccess
         if (colleges.Count == 0) return null;
         var unit = unitId is { } id ? colleges.FirstOrDefault(c => c.Id == id) ?? throw DomainException.NotFound() : colleges[0];
 
-        var quarters = PlanCalendar.Quarters(await settings.IntAsync(SettingKeys.PlanStartYear, ct), await settings.IntAsync(SettingKeys.PlanStartMonth, ct), CairoTime.DateOf(clock.UtcNow));
+        // ADR-0017: the quarters and years of the plan period in force.
+        var plan = await planPeriod.CurrentAsync(ct);
+        var Years = plan.Years;
+        var quarters = plan.Quarters(CairoTime.DateOf(clock.UtcNow));
         var values = await results.UnitQuartersAsync(unit.Id, ct);
         var official = (await db.UniversityValues.AsNoTracking().ToListAsync(ct)).ToLookup(v => v.IndicatorId);
         var pillars = await read.Query<Pillar>().AsNoTracking().OrderBy(p => p.SortOrder).ToListAsync(ct);
@@ -65,17 +66,17 @@ public sealed class ProgressService(IScorecardStore db, IReadModel read, IAccess
             if (v.Level == CollectionLevel.University) return null;
             // ما لم تكلف به الكلية (هي أو أقسامها) لا يظهر في تقدمها ولا يدخل درجتها.
             if (!map.CountsFor(unit, new Organization.IndicatorRef(i.Id, v.Level, v.Aggregation == Aggregation.DistinctCount))) return null;
-            var series = new decimal?[20];
+            var series = new decimal?[plan.QuarterCount];
             foreach (var ((year, q), vals) in values)
             {
-                var slot = PlanCalendar.Slot(year, q);
-                if (slot is >= 0 and < 20 && vals.TryGetValue(i.Id, out var a)) series[slot] = a.Value;
+                var slot = plan.Slot(year, q);
+                if (slot >= 0 && vals.TryGetValue(i.Id, out var a)) series[slot] = a.Value;
             }
-            var uniSeries = new decimal?[20];
+            var uniSeries = new decimal?[plan.QuarterCount];
             foreach (var o in official[i.Id])
             {
-                var slot = PlanCalendar.Slot(o.Year, o.Quarter);
-                if (slot is >= 0 and < 20) uniSeries[slot] = o.Value;
+                var slot = plan.Slot(o.Year, o.Quarter);
+                if (slot >= 0) uniSeries[slot] = o.Value;
             }
             var mine = targets[i.Id].ToList();
             var uniTargets = Years.Select(y => TargetLookup.University(mine, root.Id, y, i.PlanStartYear)).ToList();
@@ -86,15 +87,16 @@ public sealed class ProgressService(IScorecardStore db, IReadModel read, IAccess
             }).ToList();
             var (latest, index) = ScorecardRules.Latest(series);
             var yearIndex = index >= 0 ? index / 4 : -1;
-            // النسب والمتوسطات: الكلية مقابل مستهدف الجامعة نفسه. المجموع والعدد: رقم الكلية جزء من رقم الجامعة فلا يقارن بمستهدفها كله؛
-            // يقارن بمستهدف الكلية إن وضع، وإلا تظهر حصتها من قيمة الجامعة ولا يدخل درجتها.
+            // ADR-0017: the college is measured against its own targets (its own, else the one for each college) for every indicator;
+            // the university's targets are shown beside them. Without a college target the year is not scored. For a sum or a count,
+            // the college's share of the university's value is shown too.
             var comparable = TargetLookup.ComparableAcrossLevels(v.Aggregation);
-            var against = comparable ? uniTargets : ownTargets;
+            var against = ownTargets;
             var uniYearTarget = yearIndex >= 0 ? uniTargets[yearIndex] : null;
             var yearTarget = yearIndex >= 0 ? against[yearIndex] : null;
             var ownTarget = yearIndex >= 0 ? ownTargets[yearIndex] : null;
             var final = against[^1];
-            var yearValues = Enumerable.Range(0, 5).Select(y => ScorecardRules.YearValue(series.Skip(y * 4).Take(4).ToList(), v.Accumulation)).ToList();
+            var yearValues = Enumerable.Range(0, plan.YearCount).Select(y => ScorecardRules.YearValue(series.Skip(y * 4).Take(4).ToList(), v.Accumulation)).ToList();
             var share = !comparable && latest is { } part && index >= 0 && uniSeries[index] is { } whole && whole != 0 ? Math.Round(part / whole * 100, 1) : (decimal?)null;
             return new ProgressIndicator(i.Id, i.Code, v.NameAr, standardCode, v.Unit, v.Direction, v.Accumulation,
                 series, latest, index, uniTargets, ownTargets, uniSeries,

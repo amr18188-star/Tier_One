@@ -15,6 +15,7 @@ import { PanelSkeleton } from "../../shared/PanelSkeleton";
 import { NewIndicatorModal } from "./NewIndicatorModal";
 import "./indicators.css";
 import { queryKeys } from "../../api/queries";
+import { usePlanCalendar } from "../../shared/usePeriodParams";
 
 const STATUSES: DefinitionStatus[] = ["Draft", "UnderReview", "Approved"];
 
@@ -22,6 +23,8 @@ const STATUSES: DefinitionStatus[] = ["Draft", "UnderReview", "Approved"];
 export default function IndicatorsPage() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
+  // ADR-0017: the final target is the plan's last year, from the plan calendar.
+  const finalYear = usePlanCalendar().data?.at(-1)?.year;
   const standard = params.get("standard") ?? undefined;
   const status = oneOf(params.get("status"), STATUSES);
   const q = params.get("q") ?? "";
@@ -140,7 +143,7 @@ export default function IndicatorsPage() {
               render: (n: number) => n === 0 ? <Tag color="success">{L("مكتمل", "Complete")}</Tag> : <Tag color="warning">{L(`${n} بند`, `${n} items`)}</Tag>,
             },
             { title: L("خط الأساس", "Baseline"), dataIndex: "baseline", width: 110, render: (v: number | null) => <span className="ltr">{num(v)}</span> },
-            { title: L("مستهدف 2031", "2031 target"), dataIndex: "target2031", width: 120, render: (v: number | null, r) => <b className="ltr">{withUnit(v, r.unit)}</b> },
+            { title: L(`المستهدف النهائي${finalYear ? ` (${finalYear})` : ""}`, "Final target"), dataIndex: "finalTarget", width: 120, render: (v: number | null, r) => <b className="ltr">{withUnit(v, r.unit)}</b> },
             {
               title: L("التعارضات", "Conflicts"), dataIndex: "openConflicts", width: 100, align: "center",
               render: (n: number) => n > 0 ? <Badge count={n} color="var(--ds-status-late-ink)" /> : <span className="muted">—</span>,
@@ -150,7 +153,7 @@ export default function IndicatorsPage() {
             <>
               <div className="dt-card-row"><StdCode code={r.code} standard={r.standardCode} map={pillarMap.map} /><Tag color={definitionStatus[r.status].color}>{definitionStatus[r.status].text}</Tag></div>
               <b>{r.nameAr}</b>
-              <div className="dt-card-row"><span>{L("مستهدف 2031", "2031 target")}</span><b className="ltr">{withUnit(r.target2031, r.unit)}</b></div>
+              <div className="dt-card-row"><span>{L("المستهدف النهائي", "Final target")}</span><b className="ltr">{withUnit(r.finalTarget, r.unit)}</b></div>
               {r.openConflicts > 0 && <div className="dt-card-row"><span>{L("تعارضات مفتوحة", "Open conflicts")}</span><Badge count={r.openConflicts} color="var(--ds-status-late-ink)" /></div>}
             </>
           )}

@@ -443,10 +443,12 @@ public sealed class ResultsService(ICollectionStore db, IReadModel read, IAccess
         if (previous is not null && previous.ById.TryGetValue(i.Ci.IndicatorId, out var pi) && previous.Units.TryGetValue(unit.Id, out var pu))
             prev = Actual(previous, pi, pu).Value;
         var who = unit.Kind == OrgUnitKind.University ? "الجامعة" : unit.NameAr;
-        // للكلية في نسبة أو متوسط: مستهدف الجامعة بجانب مستهدفها، لتعرف قربها من نسبة الجامعة المرجوة.
-        var uniTarget = unit.Kind != OrgUnitKind.University && Kpi.TargetLookup.ComparableAcrossLevels(i.Version.Aggregation)
+        // ADR-0017: the college is judged against its own target (above); the university's target is shown beside it for every
+        // indicator. Achievement against it only where the values compare (a rate or an average); a sum shows the college's share.
+        var uniTarget = unit.Kind != OrgUnitKind.University && i.Version.Aggregation != Aggregation.Sum
             ? Kpi.TargetLookup.University(s.TargetsFor(i.Ci.IndicatorId), s.Root.Id, s.Cycle.TargetYear, s.PlanStart.GetValueOrDefault(i.Ci.IndicatorId))
             : null;
+        var uniAchievement = Kpi.TargetLookup.ComparableAcrossLevels(i.Version.Aggregation) ? ResultsRules.Achievement(i.Version.Direction, agg.Value, uniTarget) : null;
         // للكلية في مؤشر مجموع (عدد): مستهدف الجامعة الكلي وحصتها منه، مستهدفًا وإنجازًا، لتعرف مساهمتها في رقم الجامعة.
         var universityTotal = unit.Kind != OrgUnitKind.University && i.Version.Aggregation == Aggregation.Sum
             ? Kpi.TargetLookup.University(s.TargetsFor(i.Ci.IndicatorId), s.Root.Id, s.Cycle.TargetYear, s.PlanStart.GetValueOrDefault(i.Ci.IndicatorId))
@@ -456,7 +458,7 @@ public sealed class ResultsService(ICollectionStore db, IReadModel read, IAccess
             agg.Value, target.Value, baseline, prev, ResultsRules.Achievement(i.Version.Direction, agg.Value, target.Value),
             ResultsRules.Status(i.Version.Aggregation, i.Version.Direction, agg, target.Value, target.NotStarted, near), agg.Reported, agg.Expected, note,
             ResultsRules.Summary(who, i.Version.Unit, i.Version.Direction, agg.Value, target.Value, prev),
-            target.Source, target.Year, uniTarget, ResultsRules.Achievement(i.Version.Direction, agg.Value, uniTarget), target.PendingValue, target.PendingYear,
+            target.Source, target.Year, uniTarget, uniAchievement, target.PendingValue, target.PendingYear,
             universityTotal, ResultsRules.ShareOfUniversity(target.Value, universityTotal), ResultsRules.ShareOfUniversity(agg.Value, universityTotal));
     }
 

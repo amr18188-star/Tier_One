@@ -1,38 +1,72 @@
 namespace Tier1.Application.Scorecard;
 
-/// <summary>ربع من أرباع الخطة العشرين: السنة (2027–2031)، ورقمه في السنة، وترتيبه (1–20)، وتاريخا بدايته ونهايته.</summary>
+/// <summary>ربع من أرباع الخطة: سنة الخطة (باسم السنة التي تنتهي فيها)، ورقمه في السنة، وترتيبه في الخطة (1…)، وتاريخا بدايته ونهايته.</summary>
 public sealed record PlanQuarter(int Year, int YearIndex, int Quarter, int Index, DateOnly Start, DateOnly End, string Label, bool Current);
 
 /// <summary>
-/// تقويم الخطة: خمس سنوات (2027 هي السنة الأولى) في كل منها أربعة أرباع من ثلاثة أشهر. بداية الربع الأول من السنة الأولى
-/// يحددها المدير من الإعدادات (سبتمبر 2026 افتراضيًا، كما في بوابة المجلس الأعلى للجامعات).
+/// فترة الخطة (ADR-0017): من أول شهر البداية إلى آخر يوم في شهر النهاية، يحددها المدير الأعلى بتعليمات وزارة التعليم العالي
+/// (الافتراضي 1 سبتمبر 2026 إلى 31 أغسطس 2031). الفترة سنوات خطة كاملة من اثني عشر شهرًا، في كل سنة أربعة أرباع من ثلاثة أشهر.
+/// تسمى سنة الخطة بالسنة الميلادية التي تنتهي فيها (سبتمبر 2026 – أغسطس 2027 هي 2027)، وهي سنة مستهدفاتها،
+/// وخط الأساس للسنة التي قبل الأولى.
 /// </summary>
-public static class PlanCalendar
+public sealed record PlanPeriod(int StartYear, int StartMonth, int EndYear, int EndMonth)
 {
-    public const int FirstYear = 2027;
-    public const int LastYear = 2031;
-    public static readonly int[] Years = [2027, 2028, 2029, 2030, 2031];
+    public const int MaxYears = 10;
 
-    public static int YearIndex(int year) => year - FirstYear + 1;
+    public static readonly PlanPeriod Default = new(2026, 9, 2031, 8);
 
-    /// <summary>ترتيب الربع في الأرباع العشرين (0–19).</summary>
-    public static int Slot(int year, int quarter) => (year - FirstYear) * 4 + quarter - 1;
+    public DateOnly Start => new(StartYear, StartMonth, 1);
 
-    public static string Label(int year, int quarter) => $"السنة {YearIndex(year)} ({year}) — الربع {quarter}";
+    public DateOnly End => new DateOnly(EndYear, EndMonth, 1).AddMonths(1).AddDays(-1);
 
-    public static IReadOnlyList<PlanQuarter> Quarters(int startYear, int startMonth, DateOnly today)
+    public int Months => EndYear * 12 + EndMonth - (StartYear * 12 + StartMonth) + 1;
+
+    public int YearCount => Months / 12;
+
+    public int QuarterCount => YearCount * 4;
+
+    /// <summary>The plan years by name: the calendar year in which each twelve-month plan year ends.</summary>
+    public IReadOnlyList<int> Years => Enumerable.Range(1, YearCount).Select(k => Start.AddMonths(12 * k).AddDays(-1).Year).ToList();
+
+    public int FirstYear => Years[0];
+
+    public int LastYear => Years[^1];
+
+    /// <summary>The year of the baselines: the one before the first plan year.</summary>
+    public int BaselineYear => FirstYear - 1;
+
+    /// <summary>The plan year's number (1…), or 0 outside the plan.</summary>
+    public int YearIndex(int year) => year - FirstYear + 1 is var k && k >= 1 && k <= YearCount ? k : 0;
+
+    public bool HasQuarter(int year, int quarter) => YearIndex(year) > 0 && quarter is >= 1 and <= 4;
+
+    /// <summary>The quarter's place in the plan (0…QuarterCount-1), or -1 outside it.</summary>
+    public int Slot(int year, int quarter) => HasQuarter(year, quarter) ? (YearIndex(year) - 1) * 4 + quarter - 1 : -1;
+
+    public string Label(int year, int quarter) => $"السنة {YearIndex(year)} ({year}) — الربع {quarter}";
+
+    public IReadOnlyList<PlanQuarter> Quarters(DateOnly today)
     {
-        var first = new DateOnly(startYear, startMonth, 1);
         var list = new List<PlanQuarter>();
         foreach (var year in Years)
             for (var q = 1; q <= 4; q++)
             {
                 var slot = Slot(year, q);
-                var start = first.AddMonths(slot * 3);
+                var start = Start.AddMonths(slot * 3);
                 var end = start.AddMonths(3).AddDays(-1);
                 list.Add(new PlanQuarter(year, YearIndex(year), q, slot + 1, start, end, Label(year, q), today >= start && today <= end));
             }
         return list;
+    }
+
+    /// <summary>Why a period cannot be the plan's, or null: whole plan years of twelve months, from one to ten.</summary>
+    public static string? Problem(PlanPeriod p)
+    {
+        if (p.StartMonth is < 1 or > 12 || p.EndMonth is < 1 or > 12) return "الشهر من 1 إلى 12.";
+        if (p.Months < 12) return "نهاية الخطة بعد بدايتها بسنة على الأقل.";
+        if (p.Months % 12 != 0) return "الخطة سنوات كاملة من اثني عشر شهرًا (أربعة أرباع في كل سنة)؛ اجعل النهاية في الشهر السابق لشهر البداية.";
+        if (p.YearCount > MaxYears) return $"الخطة {MaxYears} سنوات على الأكثر.";
+        return null;
     }
 }
 

@@ -18,9 +18,10 @@ import { queryKeys } from "../../api/queries";
  * الكلية بلا مستهدف خاص يسري عليها المستهدف الموحد «لكل كلية» ويظهر بلون مختلف.
  */
 export function DistributionPanel({ code }: { code: string }) {
-  // السنة حالة اللوحة نفسها (لا رابط)، والافتراضي 2027 كما كان. السنوات من تقويم الخطة، وبدونه من سنوات مستهدفات المؤشر.
-  const [year, setYear] = useState(2027);
+  // السنة حالة اللوحة نفسها (لا رابط)، والافتراضي أولى سنوات الخطة (ADR-0017). السنوات من تقويم الخطة، وبدونه من سنوات مستهدفات المؤشر.
   const calendar = usePlanCalendar();
+  const [picked, setYear] = useState<number | null>(null);
+  const year = picked ?? calendar.data?.[0]?.year ?? 2027;
   const [slot, setSlot] = useState<TargetSlot | null>(null);
   const dist = useQuery({ queryKey: queryKeys.distributionYear(code, year), queryFn: () => api.get<Distribution>(`/api/kpi/indicators/${code}/distribution?year=${year}`) });
   const targets = useQuery({ queryKey: queryKeys.targets(code), queryFn: () => api.get<IndicatorTargets>(`/api/kpi/indicators/${code}/targets`) });

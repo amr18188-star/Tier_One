@@ -99,7 +99,7 @@ public class ScorecardRulesTests
     [Fact]
     public void The_quarter_calendar_starts_from_the_configured_month()
     {
-        var q = PlanCalendar.Quarters(2026, 9, new DateOnly(2026, 11, 12));
+        var q = PlanPeriod.Default.Quarters(new DateOnly(2026, 11, 12));
         Assert.Equal(20, q.Count);
         Assert.Equal(new DateOnly(2026, 9, 1), q[0].Start);
         Assert.Equal(new DateOnly(2026, 11, 30), q[0].End);
@@ -107,6 +107,39 @@ public class ScorecardRulesTests
         Assert.Equal((2028, 2), (q[5].Year, q[5].Quarter));
         Assert.Equal(new DateOnly(2031, 6, 1), q[19].Start);
     }
+
+    /// <summary>AC-P1 (ADR-0017): the default plan runs 1 September 2026 – 31 August 2031: five plan years named 2027–2031, twenty quarters.</summary>
+    [Fact]
+    public void AC_P1_the_default_plan_is_september_2026_to_august_2031()
+    {
+        var p = PlanPeriod.Default;
+        Assert.Equal((new DateOnly(2026, 9, 1), new DateOnly(2031, 8, 31)), (p.Start, p.End));
+        Assert.Equal([2027, 2028, 2029, 2030, 2031], p.Years);
+        Assert.Equal((20, 2026), (p.QuarterCount, p.BaselineYear));
+        Assert.Equal(19, p.Slot(2031, 4));
+        Assert.Equal(-1, p.Slot(2032, 1));
+    }
+
+    /// <summary>AC-P2: another period from the ministry moves every quarter and plan year with it.</summary>
+    [Fact]
+    public void AC_P2_a_changed_period_moves_the_quarters_and_years()
+    {
+        var p = new PlanPeriod(2027, 1, 2032, 12);
+        Assert.Null(PlanPeriod.Problem(p));
+        Assert.Equal([2027, 2028, 2029, 2030, 2031, 2032], p.Years);
+        var q = p.Quarters(new DateOnly(2032, 12, 31));
+        Assert.Equal((24, new DateOnly(2032, 10, 1), true), (q.Count, q[^1].Start, q[^1].Current));
+        Assert.Equal(2026, p.BaselineYear);
+    }
+
+    /// <summary>AC-P3: the plan is whole plan years of twelve months, from one to ten.</summary>
+    [Theory]
+    [InlineData(2026, 9, 2031, 7)]   // a partial last year
+    [InlineData(2026, 9, 2026, 12)]  // under a year
+    [InlineData(2026, 9, 2037, 8)]   // eleven years
+    [InlineData(2026, 13, 2031, 8)]  // no month 13
+    public void AC_P3_a_period_that_is_not_whole_plan_years_is_refused(int sy, int sm, int ey, int em) =>
+        Assert.NotNull(PlanPeriod.Problem(new PlanPeriod(sy, sm, ey, em)));
 }
 
 /// <summary>سلامة بذرة الإطار الشامل المستخرجة من KPI.xlsx (Tier1.Tools --import-kpi).</summary>
