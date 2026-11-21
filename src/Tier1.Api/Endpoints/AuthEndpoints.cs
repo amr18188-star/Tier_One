@@ -19,7 +19,8 @@ public static class AuthEndpoints
 {
     public static void MapAuth(this RouteGroupBuilder api)
     {
-        var auth = api.MapGroup("/auth");
+        // Sign-in, sign-out and their cookies are never replayed from a stored answer (ADR-0018).
+        var auth = api.MapGroup("/auth").WithoutIdempotency();
         auth.MapGet("/csrf", (HttpContext ctx, IAntiforgery af) =>
         {
             var tokens = af.GetAndStoreTokens(ctx);
@@ -67,7 +68,7 @@ public static class AuthEndpoints
             var count = await signIn.LogoutAllAsync(ct);
             SessionCookies.Clear(ctx.Response, cookies.Value);
             return TypedResults.Ok(new { revoked = count });
-        }).RequireAuthorization(Policies.Staff);
+        }).RequireAuthorization(Policies.Staff).WithoutIdempotency();
 
         api.MapGet("/me", async (MeService me, HttpContext ctx, CancellationToken ct) =>
             TypedResults.Ok(await me.GetAsync(ctx.User.HasClaim(ClaimNames.MfaPending, "true"), ct))).RequireAuthorization(Policies.Partial);

@@ -38,6 +38,8 @@ public sealed partial class Tier1DbContext(DbContextOptions<Tier1DbContext> opti
 
     public DbSet<IpAllowRule> IpAllowRules => Set<IpAllowRule>();
 
+    public DbSet<IdempotencyRecord> IdempotencyKeys => Set<IdempotencyRecord>();
+
     public DbSet<OutboxEvent> Outbox => Set<OutboxEvent>();
 
     public DbSet<ChainState> ChainStates => Set<ChainState>();
@@ -103,6 +105,18 @@ public sealed partial class Tier1DbContext(DbContextOptions<Tier1DbContext> opti
             e.HasKey(c => c.Key);
             e.Property(c => c.Key).HasMaxLength(200);
             e.HasIndex(c => c.BlockedUntil);
+        });
+        // BE-8 (ADR-0018): the answers to POSTs sent with an Idempotency-Key, replayed to a retry (see PostgresIdempotencyStore).
+        b.Entity<IdempotencyRecord>(e =>
+        {
+            e.ToTable("idempotency_keys", "iam");
+            e.HasKey(r => new { r.UserId, r.Key });
+            e.Property(r => r.Key).HasMaxLength(100);
+            e.Property(r => r.Route).HasMaxLength(400);
+            e.Property(r => r.RequestHash).HasMaxLength(64);
+            e.Property(r => r.ContentType).HasMaxLength(100);
+            e.HasIndex(r => r.CreatedAt);
+            e.HasOne<AppUser>().WithMany().HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
         });
         b.Entity<LoginAttempt>(e =>
         {

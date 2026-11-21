@@ -112,3 +112,31 @@ public sealed class LoginAttempt
 
     public string Reason { get; set; } = "";
 }
+
+/// <summary>
+/// One Idempotency-Key a user sent with a POST (iam.idempotency_keys, BE-8, ADR-0018). While <see cref="StatusCode"/> is null the
+/// first request with the key is still running (or its outcome was never recorded); once set, the same request with the same key
+/// gets this answer back instead of being done again. A key is its user's own, and is free again after the replay window.
+/// </summary>
+public sealed class IdempotencyRecord
+{
+    public Guid UserId { get; set; }
+
+    public string Key { get; set; } = "";
+
+    /// <summary>The path and query the key was first used on.</summary>
+    public string Route { get; set; } = "";
+
+    /// <summary>SHA-256 (hex) of the method, path, query and body: the same key with another request is refused.</summary>
+    public string RequestHash { get; set; } = "";
+
+    public int? StatusCode { get; set; }
+
+    public string? ContentType { get; set; }
+
+    public byte[]? Response { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; }
+
+    public DateTimeOffset? CompletedAt { get; set; }
+}

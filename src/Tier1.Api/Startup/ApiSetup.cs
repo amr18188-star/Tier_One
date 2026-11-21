@@ -103,6 +103,8 @@ public static class ApiSetup
         app.UseRateLimiter();
         app.UseAuthorization();
         app.UseMiddleware<CsrfMiddleware>();
+        // After CSRF and authorization: only a request that may run claims its Idempotency-Key (ADR-0018).
+        app.UseMiddleware<IdempotencyMiddleware>();
         return app;
     }
 

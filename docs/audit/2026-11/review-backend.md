@@ -438,7 +438,7 @@ External integrations today: SMTP only. No inbound webhooks, no HTTP clients, no
 | ADR-001 | Modular monolith on Postgres; module-owned schemas and ports; architecture tests enforce boundaries (BE-14) | Proposed |
 | ADR-002 | Error contract: RFC 9457 problem+json with `code`, `traceId`, `errors[]`; 400 vs 422 rule; error-code registry (BE-6) | Proposed |
 | ADR-003 | Concurrency: mandatory version tokens on all updates and transitions (409 on mismatch, 428 when missing); no aggregate-row touch on child edits (BE-1, BE-2) | Proposed |
-| ADR-004 | Idempotency-Key for POST creates, uploads and decisions; storage, TTL, replay semantics (BE-8) | Proposed |
+| ADR-004 | Idempotency-Key for POST creates, uploads and decisions; storage, TTL, replay semantics (BE-8) | Implemented as [ADR-0018](../../adr/0018-idempotency-keys.md) |
 | ADR-005 | Generic domain-event outbox and handler idempotency; notifications are always post-commit and asynchronous (BE-3) | Proposed |
 | ADR-006 | Notification model: channels, templates per (event, channel, lang), user contact and consent fields, in-app inbox, delivery statuses (BE-10, BE-11) | Proposed |
 | ADR-007 | Integration adapter standard: typed validated options, HttpClient resilience, webhook verification and inbound dedup, secret rotation | Proposed |

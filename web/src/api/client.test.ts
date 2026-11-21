@@ -145,6 +145,78 @@ describe("duplicate writes (BE-8)", () => {
   });
 });
 
+describe("idempotency keys (BE-8, ADR-0018)", () => {
+  function recorder(answers: (() => Response | Promise<Response>)[]) {
+    const sent: { url: string; key: string | undefined }[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === "/csrf") return json(200, { token: "t" });
+      sent.push({ url, key: (init?.headers as Record<string, string> | undefined)?.["Idempotency-Key"] });
+      const next = answers.shift();
+      if (!next) throw new Error("no answer left");
+      return next();
+    }));
+    return sent;
+  }
+
+  it("retries a write whose answer was lost with the same key, so the server replays it", async () => {
+    const sent = recorder([() => { throw new TypeError("network"); }, () => json(200, { id: 1 })]);
+    const c = createApiClient({ csrfUrl: "/csrf" });
+    await expect(c.post("/api/members", { name: "أ" })).rejects.toMatchObject({ status: 0 });
+    await expect(c.post("/api/members", { name: "أ" })).resolves.toEqual({ id: 1 });
+    expect(sent).toHaveLength(2);
+    expect(sent[0].key).toBeTruthy();
+    expect(sent[1].key).toBe(sent[0].key);
+  });
+
+  it("keeps the key after a server error or while the first request still runs", async () => {
+    const sent = recorder([
+      () => json(503, { code: "server_unavailable", title: "x" }),
+      () => json(409, { code: "request_in_progress", title: "x" }),
+      () => json(200, { id: 1 }),
+    ]);
+    const c = createApiClient({ csrfUrl: "/csrf" });
+    await expect(c.post("/api/cycles", { name: "د" })).rejects.toMatchObject({ status: 503 });
+    await expect(c.post("/api/cycles", { name: "د" })).rejects.toMatchObject({ code: "request_in_progress" });
+    await c.post("/api/cycles", { name: "د" });
+    expect(new Set(sent.map((s) => s.key)).size).toBe(1);
+  });
+
+  it("starts a new key after a success or a refusal, and for a different write", async () => {
+    const sent = recorder([
+      () => json(200, { id: 1 }),
+      () => json(200, { id: 2 }),
+      () => json(400, { code: "invalid_value", title: "x" }),
+      () => json(200, { id: 3 }),
+      () => json(200, { id: 4 }),
+    ]);
+    const c = createApiClient({ csrfUrl: "/csrf" });
+    await c.post("/api/members", { name: "أ" });
+    await c.post("/api/members", { name: "أ" });
+    await expect(c.post("/api/members", { name: "" })).rejects.toMatchObject({ status: 400 });
+    await c.post("/api/members", { name: "" });
+    await c.post("/api/members", { name: "ب" });
+    expect(new Set(sent.map((s) => s.key)).size).toBe(5);
+  });
+
+  it("sends no key on reads, updates and deletes, which repeat safely", async () => {
+    const sent = recorder([() => json(200, {}), () => json(200, {}), () => json(200, {})]);
+    const c = createApiClient({ csrfUrl: "/csrf" });
+    await c.get("/api/forms");
+    await c.put("/api/forms/1", { v: 1 });
+    await c.del("/api/forms/1");
+    expect(sent.map((s) => s.key)).toEqual([undefined, undefined, undefined]);
+  });
+
+  it("gives an upload a key that a retry of the same file reuses", async () => {
+    const sent = recorder([() => { throw new TypeError("network"); }, () => json(200, { id: 1 })]);
+    const c = createApiClient({ csrfUrl: "/csrf" });
+    const file = new File(["%PDF-1.4"], "a.pdf", { type: "application/pdf", lastModified: 1 });
+    await expect(c.upload("/api/strategy/documents", file, { title: "خطة" })).rejects.toMatchObject({ status: 0 });
+    await c.upload("/api/strategy/documents", file, { title: "خطة" });
+    expect(sent[1].key).toBe(sent[0].key);
+  });
+});
+
 describe("cancellation (FE-12)", () => {
   it("passes the caller's signal to fetch, so an answer no longer wanted is cancelled", async () => {
     const fetchMock = vi.fn(async () => json(200, { ok: true }));

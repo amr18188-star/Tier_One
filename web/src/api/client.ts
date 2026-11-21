@@ -38,6 +38,24 @@ export function shouldRetry(failureCount: number, error: unknown): boolean {
   return failureCount < 1;
 }
 
+/** BE-8 (ADR-0018): how long a write whose answer never came keeps its key for a retry (the server replays for 24 hours). */
+export const UNSETTLED_KEY_MS = 12 * 60 * 60 * 1000;
+
+/** A new Idempotency-Key: a random UUID where the browser has one (always on https and localhost). */
+function newIdempotencyKey(): string {
+  if (typeof globalThis.crypto?.randomUUID === "function") return globalThis.crypto.randomUUID();
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+}
+
+/**
+ * BE-8 (ADR-0018): whether an error settles a write. The server answered with a refusal (4xx), so nothing was done and the next
+ * identical write is a new one. A network error, a server error, or "the first one is still running" leaves the outcome unknown,
+ * and a retry must reuse the key so the server returns the first answer instead of doing the write twice.
+ */
+function settles(error: unknown): boolean {
+  return error instanceof ApiError && error.status >= 400 && error.status < 500 && error.code !== "request_in_progress";
+}
+
 /** FE-12: the message when the answer is not the API's JSON (a proxy's 502 or 504 page, or an empty body). */
 function fallbackTitle(status: number): string {
   return status >= 500
@@ -163,25 +181,52 @@ export function createApiClient({ csrfUrl, onUnauthorized, onAddressRefused }: {
     return p;
   }
 
-  function write<T>(method: string, path: string, body?: unknown): Promise<T> {
-    return once(`${method} ${path} ${JSON.stringify(body ?? null)}`, () => request<T>(method, path, body));
+  /**
+   * BE-8 (ADR-0018): every POST carries an Idempotency-Key. The key of a write whose outcome is unknown (the answer was lost, or
+   * the server failed) is kept, so sending the same write again reuses it: the server then returns the first answer instead of
+   * creating the member, cycle or decision twice. Any answer that settles the write frees the key, so a later identical write
+   * (adding the same name again on purpose) is new.
+   */
+  const unsettled = new Map<string, { key: string; at: number }>();
+  async function idempotent<T>(fingerprint: string, send: (key: string) => Promise<T>): Promise<T> {
+    const now = Date.now();
+    for (const [f, k] of unsettled) if (now - k.at >= UNSETTLED_KEY_MS) unsettled.delete(f);
+    const key = unsettled.get(fingerprint)?.key ?? newIdempotencyKey();
+    unsettled.set(fingerprint, { key, at: unsettled.get(fingerprint)?.at ?? now });
+    try {
+      const result = await send(key);
+      unsettled.delete(fingerprint);
+      return result;
+    } catch (e) {
+      if (settles(e)) unsettled.delete(fingerprint);
+      throw e;
+    }
   }
 
-  async function request<T>(method: string, path: string, body?: unknown, retry = true, passive = false, signal?: AbortSignal): Promise<T> {
+  function write<T>(method: string, path: string, body?: unknown): Promise<T> {
+    const fingerprint = `${method} ${path} ${JSON.stringify(body ?? null)}`;
+    return once(fingerprint, () => method === "POST"
+      ? idempotent(fingerprint, (key) => request<T>(method, path, body, true, false, undefined, key))
+      : request<T>(method, path, body));
+  }
+
+  async function request<T>(method: string, path: string, body?: unknown, retry = true, passive = false, signal?: AbortSignal, idempotencyKey?: string): Promise<T> {
     const headers: Record<string, string> = { "Accept-Language": getLang() };
     if (passive) headers["X-Passive"] = "1";
     if (body !== undefined) headers["Content-Type"] = "application/json";
     if (method !== "GET") headers["X-XSRF-TOKEN"] = await csrf();
+    if (idempotencyKey) headers["Idempotency-Key"] = idempotencyKey;
     const r = await send(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), signal });
-    return finish<T>(path, r, retry, () => request<T>(method, path, body, false, passive, signal));
+    return finish<T>(path, r, retry, () => request<T>(method, path, body, false, passive, signal, idempotencyKey));
   }
 
-  async function upload<T>(path: string, file: File, fields?: Record<string, string>, retry = true): Promise<T> {
+  async function upload<T>(path: string, file: File, fields: Record<string, string> | undefined, idempotencyKey: string, retry = true): Promise<T> {
     const body = new FormData();
     body.append("file", file, file.name);
     for (const [k, v] of Object.entries(fields ?? {})) body.append(k, v);
-    const r = await send(path, { method: "POST", headers: { "Accept-Language": getLang(), "X-XSRF-TOKEN": await csrf() }, body });
-    return finish<T>(path, r, retry, () => upload<T>(path, file, fields, false));
+    const headers = { "Accept-Language": getLang(), "X-XSRF-TOKEN": await csrf(), "Idempotency-Key": idempotencyKey };
+    const r = await send(path, { method: "POST", headers, body });
+    return finish<T>(path, r, retry, () => upload<T>(path, file, fields, idempotencyKey, false));
   }
 
   return {
@@ -190,8 +235,10 @@ export function createApiClient({ csrfUrl, onUnauthorized, onAddressRefused }: {
     post: <T>(path: string, body: unknown = {}) => write<T>("POST", path, body),
     put: <T>(path: string, body: unknown = {}) => write<T>("PUT", path, body),
     del: <T>(path: string) => write<T>("DELETE", path),
-    upload: <T>(path: string, file: File, fields?: Record<string, string>) =>
-      once(`UPLOAD ${path} ${file.name} ${file.size} ${file.lastModified} ${JSON.stringify(fields ?? {})}`, () => upload<T>(path, file, fields)),
+    upload: <T>(path: string, file: File, fields?: Record<string, string>) => {
+      const fingerprint = `UPLOAD ${path} ${file.name} ${file.size} ${file.lastModified} ${JSON.stringify(fields ?? {})}`;
+      return once(fingerprint, () => idempotent(fingerprint, (key) => upload<T>(path, file, fields, key)));
+    },
     refreshCsrf,
   };
 }

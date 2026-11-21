@@ -1336,6 +1336,59 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                     b.ToTable("email_domains", "iam");
                 });
 
+            modelBuilder.Entity("Tier1.Domain.Identity.IdempotencyRecord", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("Key")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("key");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_at");
+
+                    b.Property<string>("ContentType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("content_type");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("RequestHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("request_hash");
+
+                    b.Property<byte[]>("Response")
+                        .HasColumnType("bytea")
+                        .HasColumnName("response");
+
+                    b.Property<string>("Route")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)")
+                        .HasColumnName("route");
+
+                    b.Property<int?>("StatusCode")
+                        .HasColumnType("integer")
+                        .HasColumnName("status_code");
+
+                    b.HasKey("UserId", "Key")
+                        .HasName("pk_idempotency_keys");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_idempotency_keys_created_at");
+
+                    b.ToTable("idempotency_keys", "iam");
+                });
+
             modelBuilder.Entity("Tier1.Domain.Identity.IpAllowRule", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3637,6 +3690,16 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_value_snapshots_submissions_submission_id");
+                });
+
+            modelBuilder.Entity("Tier1.Domain.Identity.IdempotencyRecord", b =>
+                {
+                    b.HasOne("Tier1.Domain.Identity.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_idempotency_keys_users_user_id");
                 });
 
             modelBuilder.Entity("Tier1.Domain.Identity.IpAllowRule", b =>

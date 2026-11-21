@@ -91,6 +91,22 @@ internal sealed class DemoClient : IDisposable
         return (status, parsed);
     }
 
+    /// <summary>
+    /// A POST of JSON or a form, with extra request headers (e.g. Idempotency-Key) and this session's CSRF token; returns the
+    /// response headers as well.
+    /// </summary>
+    public async Task<(int Status, JsonNode? Body, IReadOnlyDictionary<string, string> Headers)> PostWithHeadersAsync(
+        string path, HttpContent content, IReadOnlyDictionary<string, string> headers, CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, path) { Content = content };
+        request.Headers.Add("X-XSRF-TOKEN", await TokenAsync(ct));
+        foreach (var (k, v) in headers) request.Headers.Add(k, v);
+        using var response = await http.SendAsync(request, ct);
+        var all = response.Headers.Concat(response.Content.Headers).ToDictionary(h => h.Key, h => string.Join(",", h.Value), StringComparer.OrdinalIgnoreCase);
+        var (status, body) = await FinishAsync(HttpMethod.Post, path, response, null, ct);
+        return (status, body, all);
+    }
+
     /// <summary>A request as built by the caller (custom headers, e.g. X-Passive), on this session's cookies.</summary>
     public Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) => http.SendAsync(request, ct);
 
