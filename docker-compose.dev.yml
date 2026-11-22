@@ -61,7 +61,8 @@ services:
 
   # Demo data (cycles, forms, values, college structures) through the API once it answers, with each role's demo account;
   # it skips itself when the data is already there. ARCH-4: a tool beside the server, not a job inside it. Its own build
-  # output volume, so its build never collides with `dotnet watch` in the api container.
+  # output and NuGet cache, so its build never collides with `dotnet watch` in the api container: on a fresh environment both
+  # restore at once, and two restores writing one package folder left half-extracted packages that broke both builds.
   demo-data:
     image: tier1-api:dev
     container_name: tier1-dev-demo-data
@@ -74,7 +75,7 @@ services:
     volumes:
       - .:/work/repo
       - tier1_tools_out:/work/out-tools
-      - tier1_api_nuget:/root/.nuget/packages
+      - tier1_tools_nuget:/root/.nuget/packages
     depends_on:
       - api
     restart: "no"
@@ -99,6 +100,7 @@ services:
 volumes:
   tier1_api_out:
   tier1_tools_out:
+  tier1_tools_nuget:
   tier1_api_nuget:
   tier1_api_data:
   tier1_web_node_modules:

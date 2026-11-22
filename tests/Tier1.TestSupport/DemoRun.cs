@@ -76,6 +76,8 @@ internal sealed class DemoRun(Uri baseAddress, string password, ILogger log) : I
     {
         ct = token;
         var planner = await UserAsync("planner");
+        // Before the "already loaded" check: an environment loaded before ADR-0017 gets its college targets on the next run.
+        await CollegeTargetsAsync(planner);
         var existing = (await planner.GetAsync("/api/cycles", ct)).Items().Select(c => c["name"].Str()).ToHashSet();
         if (Cycles.Any(c => existing.Contains(c.Name)))
         {
@@ -97,6 +99,44 @@ internal sealed class DemoRun(Uri baseAddress, string password, ILogger log) : I
         await StructuresAsync();
         foreach (var spec in Cycles) await RunCycleAsync(spec);
         log.LogInformation("Demo data loaded in {Seconds:0} seconds.", (DateTime.UtcNow - started).TotalSeconds);
+    }
+
+    // ---------------------------------------------------------------------------------------------------- college targets
+    /// <summary>
+    /// ADR-0017: a college is measured against its own target or the unified "each college" target, never the university's. The
+    /// framework (KPI.xlsx) gives university targets only, so without this every demo college would show "no college target".
+    /// For each indicator comparable across levels (a ratio or weighted mean) the planner proposes the unified target, equal to
+    /// the university's for the first plan year, and the higher committee approves it (SOD-K2: two people). Indicators that add
+    /// up (sums, distinct counts) are left to the distribution of the university target between colleges. Skips what exists.
+    /// </summary>
+    private async Task CollegeTargetsAsync(DemoClient planner)
+    {
+        var committee = await UserAsync("committee");
+        var added = 0;
+        foreach (var indicator in (await planner.GetAsync("/api/kpi/indicators", ct)).Items().ToList())
+        {
+            var code = indicator["code"].Str()!;
+            var targets = (await planner.GetAsync($"/api/kpi/indicators/{code}/targets", ct))!;
+            if (targets["eachCollege"].Truthy() || targets["aggregation"].Str() is not ("RatioOfSums" or "WeightedAverage")) continue;
+            var first = targets["university"].Items().Where(t => t["kind"].Str() == "Target" && t["value"].Num() is not null)
+                .OrderBy(t => t["year"].Num()).FirstOrDefault();
+            if (first is null) continue;
+            var body = new JsonObject
+            {
+                ["unitId"] = first["unitId"].Copy(), ["year"] = first["year"].Copy(), ["kind"] = "EachCollege", ["value"] = first["value"].Copy(),
+                ["source"] = "مستهدف الجامعة للعام الأول (بيانات تجريبية)",
+            };
+            var (status, saved) = await planner.CallAsync(HttpMethod.Put, $"/api/kpi/indicators/{code}/targets", body, null, ct);
+            if (status != 200)
+            {
+                log.LogWarning("  No unified college target for {Code}: {Status} {Body}", code, status, saved?.ToJsonString());
+                continue;
+            }
+            await committee.CallAsync(HttpMethod.Post, $"/api/kpi/targets/{saved!["id"].Str()}/approve",
+                new JsonObject { ["decisionRef"] = "محضر اللجنة العليا (بيانات تجريبية)" }, 200, ct);
+            added++;
+        }
+        if (added > 0) log.LogInformation("  Approved the unified college target of {Count} indicators.", added);
     }
 
     // ---------------------------------------------------------------------------------------------------- structures

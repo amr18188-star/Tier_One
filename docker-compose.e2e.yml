@@ -42,5 +42,6 @@ volumes:
   tier1_mongodata:
   tier1_api_out:
   tier1_tools_out:
+  tier1_tools_nuget:
   tier1_api_nuget:
   tier1_api_data:

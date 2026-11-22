@@ -165,11 +165,14 @@ internal static class Calls
     public static async Task<JsonNode> Fill(this DemoClient entry, JsonNode form, string note = "")
     {
         var id = form["id"].Str();
+        // The caller's copy may be older than values saved since (each save moves the value's version), and a stale version is
+        // refused with 409: read the form again, and fail on any refusal instead of leaving an indicator as it was.
+        form = (await entry.Get($"/api/forms/{id}"))!;
         foreach (var item in form.ItemsOf().ToList())
         {
             var body = InputFor(item);
             var (status, saved) = await entry.Call("PUT", $"/api/forms/{id}/values", body);
-            if (status == 400 && saved.Code().Length > 0) throw new InvalidOperationException($"{item["code"].Str()}: {saved}");
+            if (status != 200) throw new InvalidOperationException($"{item["code"].Str()}: {status} {saved}");
             if (saved!["issues"].Items().Any(i => i["code"].Str() == "big_change"))
             {
                 body["explanation"] = "تغير متوقع بعد إعادة هيكلة البرامج " + note;
