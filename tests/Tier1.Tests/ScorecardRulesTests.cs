@@ -140,6 +140,20 @@ public class ScorecardRulesTests
     [InlineData(2026, 13, 2031, 8)]  // no month 13
     public void AC_P3_a_period_that_is_not_whole_plan_years_is_refused(int sy, int sm, int ey, int em) =>
         Assert.NotNull(PlanPeriod.Problem(new PlanPeriod(sy, sm, ey, em)));
+
+    /// <summary>
+    /// AC-P4: the plan year in progress on a date. A college with no value yet is shown this year's targets on its progress page,
+    /// so it sees what it is measured against instead of "no college target". Before the plan the first year, after it the last.
+    /// </summary>
+    [Theory]
+    [InlineData(2026, 3, 15, 0)]   // before the plan starts
+    [InlineData(2026, 9, 1, 0)]    // the first day
+    [InlineData(2027, 8, 31, 0)]   // the last day of plan year 2027
+    [InlineData(2027, 9, 1, 1)]    // plan year 2028 starts
+    [InlineData(2031, 8, 31, 4)]   // the last day of the plan
+    [InlineData(2033, 1, 1, 4)]    // after the plan ends
+    public void AC_P4_the_plan_year_in_progress_on_a_date(int y, int m, int d, int place) =>
+        Assert.Equal(place, PlanPeriod.Default.YearPlaceOn(new DateOnly(y, m, d)));
 }
 
 /// <summary>سلامة بذرة الإطار الشامل المستخرجة من KPI.xlsx (Tier1.Tools --import-kpi).</summary>

@@ -49,7 +49,9 @@ public sealed class ProgressService(IScorecardStore db, IReadModel read, IAccess
         // ADR-0017: the quarters and years of the plan period in force.
         var plan = await planPeriod.CurrentAsync(ct);
         var Years = plan.Years;
-        var quarters = plan.Quarters(CairoTime.DateOf(clock.UtcNow));
+        var today = CairoTime.DateOf(clock.UtcNow);
+        var quarters = plan.Quarters(today);
+        var currentYear = plan.YearPlaceOn(today);
         var values = await results.UnitQuartersAsync(unit.Id, ct);
         var official = (await db.UniversityValues.AsNoTracking().ToListAsync(ct)).ToLookup(v => v.IndicatorId);
         var pillars = await read.Query<Pillar>().AsNoTracking().OrderBy(p => p.SortOrder).ToListAsync(ct);
@@ -86,7 +88,9 @@ public sealed class ProgressService(IScorecardStore db, IReadModel read, IAccess
                 return t.Source is TargetSource.Unit or TargetSource.EachCollege ? t.Value : null;
             }).ToList();
             var (latest, index) = ScorecardRules.Latest(series);
-            var yearIndex = index >= 0 ? index / 4 : -1;
+            // Before the college's first value there is no "year of the latest value": show the targets of the plan year in progress,
+            // so the college sees what it will be measured against instead of "no college target".
+            var yearIndex = index >= 0 ? index / 4 : currentYear;
             // ADR-0017: the college is measured against its own targets (its own, else the one for each college) for every indicator;
             // the university's targets are shown beside them. Without a college target the year is not scored. For a sum or a count,
             // the college's share of the university's value is shown too.

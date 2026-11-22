@@ -43,6 +43,10 @@ public sealed record PlanPeriod(int StartYear, int StartMonth, int EndYear, int 
     /// <summary>The quarter's place in the plan (0…QuarterCount-1), or -1 outside it.</summary>
     public int Slot(int year, int quarter) => HasQuarter(year, quarter) ? (YearIndex(year) - 1) * 4 + quarter - 1 : -1;
 
+    /// <summary>The plan year in progress on a date, by place (0…YearCount-1): the first before the plan starts, the last after it ends.</summary>
+    public int YearPlaceOn(DateOnly today) =>
+        Math.Clamp((int)Math.Floor((today.Year * 12 + today.Month - (StartYear * 12 + StartMonth)) / 12m), 0, YearCount - 1);
+
     public string Label(int year, int quarter) => $"السنة {YearIndex(year)} ({year}) — الربع {quarter}";
 
     public IReadOnlyList<PlanQuarter> Quarters(DateOnly today)
