@@ -7,7 +7,7 @@ The values below are the exact strings used by the frontend. The labels are the 
 | Type | Value → Arabic label |
 | --- | --- |
 | `CycleStatus` | `Draft` → قيد الإعداد · `Open` → مفتوحة · `Closed` → مغلقة |
-| `ApprovalStep` | `Entry` → إدخال البيانات · `DepartmentReview` → ممثل Tier 1 بالقسم · `CollegeCommittee` → لجنة Tier 1 بالكلية · `Dean` → عميد الكلية · `Quality` → الجودة المركزية · `Done` → معتمد |
+| `ApprovalStep` | `Entry` → إدخال البيانات · `DepartmentReview` → ممثل Tier 1 بالقسم · `CollegeCommittee` → لجنة Tier 1 بالكلية · `Dean` → عميد الكلية · `Quality` → لجنة Tier 1 بالجامعة (الاسم البرمجي باق كما هو) · `Done` → معتمد |
 | `SubmissionStatus` | `NotStarted` → لم يبدأ · `InProgress` → قيد الإدخال · `InReview` → قيد المراجعة · `Returned` → معاد للتصحيح · `Approved` → معتمد |
 | `SubmissionAction` | `Submitted` → أرسل للمراجعة · `Approved` → اعتمد · `Returned` → أعيد للتصحيح · `Reopened` → أعيد فتحه |
 | `ValueKind` | `Number` → قيمة · `NotAvailable` → غير متاح · `NotApplicable` → لا ينطبق |

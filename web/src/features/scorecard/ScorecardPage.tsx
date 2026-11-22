@@ -49,7 +49,7 @@ export default function ScorecardPage() {
         title={L("بطاقة أداء الجامعة وتصنيفها", "University scorecard and tier")}
         subtitle={c && (c.lastReported
           ? L(`محسوبة بمعادلات الإطار الشامل من قيم الجامعة المنقولة حتى ${c.lastReported.label}.`, `Computed from transferred university values up to ${c.lastReported.label}.`)
-          : L("لم تنقل قيم أي ربع إلى مؤشرات الجامعة بعد. تظهر الدرجات بعد أن ينقلها مسئول ملف Tier 1 من «مراجعة مؤشرات الكليات».", "No transferred quarter yet."))}
+          : L("لم تنقل قيم أي ربع إلى مؤشرات الجامعة بعد. تظهر الدرجات بعد أن تنقلها لجنة Tier 1 بالجامعة من «مراجعة مؤشرات الكليات».", "No transferred quarter yet."))}
         stats={c ? [
           { label: L("الدرجة الكلية", "Overall score"), value: <span className="ltr">{num(c.overall.score)}</span> },
           { label: L("الفئة النهائية", "Final tier"), value: L(`الفئة ${c.overall.tier.finalTier}`, `Tier ${c.overall.tier.finalTier}`), tone: c.overall.tier.finalTier <= 2 ? "ok" : c.overall.tier.finalTier === 3 ? "warn" : "bad" },
@@ -78,7 +78,7 @@ export default function ScorecardPage() {
           <>
             {!c!.lastReported && (
               <Alert type="info" showIcon message={L("الدرجات أصفار حتى تنقل قيم أول ربع إلى مؤشرات الجامعة", "Scores are zero until a quarter is transferred")}
-                description={L("كما في ملف الإطار: المؤشر بلا قيمة يحسب صفرًا في درجة معياره وركيزته. تعتمد الكليات قيمها في نماذج الدورة الربعية، ثم يراجعها مسئول ملف Tier 1 وينقلها إلى مؤشرات الجامعة، فتظهر الدرجات والفئة هنا.",
+                description={L("كما في ملف الإطار: المؤشر بلا قيمة يحسب صفرًا في درجة معياره وركيزته. تعتمد الكليات قيمها في نماذج الدورة الربعية، ثم تعتمدها لجنة Tier 1 بالجامعة نهائيًا وتراجعها وتنقلها إلى مؤشرات الجامعة، فتظهر الدرجات والفئة هنا.",
                   "As in the workbook, an indicator without a value counts as zero.")} />
             )}
             {view === "tier" && <TierView c={c!} tierName={tierName} onPick={setOpen} />}

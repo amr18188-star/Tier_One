@@ -77,9 +77,9 @@
     },
     {
       "code": "T1O",
-      "ar": "مسئول ملف Tier 1",
-      "en": "Tier 1 file officer",
-      "descriptionAr": "يراجع مؤشرات الكليات مؤشرًا مؤشرًا بحساب كل كلية وحساب الجامعة، وينقل القيمة إلى مؤشر الجامعة في كل ربع؛ منها تحسب بطاقة الأداء والفئة وملف المجلس.",
+      "ar": "لجنة Tier 1 بالجامعة",
+      "en": "University Tier 1 committee",
+      "descriptionAr": "آخر خطوة اعتماد لنماذج الجهات: تعتمدها نهائيًا بعد العميد. ثم تراجع مؤشرات الكليات مؤشرًا مؤشرًا بحساب كل كلية وحساب الجامعة، وتنقل القيمة إلى مؤشر الجامعة في كل ربع؛ منها تحسب بطاقة الأداء والفئة وملف المجلس.",
       "isNew": true
     },
     {
@@ -462,18 +462,18 @@
         },
         {
           "key": "approve_as_dean_directly",
-          "ar": "اعتماد مباشر من العميد وإحالة للجودة المركزية",
-          "en": "Direct dean approval and referral to central quality",
+          "ar": "اعتماد مباشر من العميد وإحالة للجنة Tier 1 بالجامعة",
+          "en": "Direct dean approval and referral to the university Tier 1 committee",
           "roles": [
             "DEAN"
           ]
         },
         {
           "key": "approve_final",
-          "ar": "الاعتماد النهائي (الجودة المركزية)",
-          "en": "Final approval (quality)",
+          "ar": "الاعتماد النهائي (لجنة Tier 1 بالجامعة)",
+          "en": "Final approval (university Tier 1 committee)",
           "roles": [
-            "QA"
+            "T1O"
           ]
         }
       ],

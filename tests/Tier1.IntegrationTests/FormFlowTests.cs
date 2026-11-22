@@ -67,11 +67,13 @@ public sealed class FormFlowTests(Tier1App app, ITestOutputHelper output)
         var (status, _) = await (await app.As("college")).Call("POST", $"/api/forms/{id}/approve", Flow.Approve(form));
         t.Check(status == 403, "The committee cannot also approve the dean's step (403)");
         form = await (await app.As("dean")).Ok("POST", $"/api/forms/{id}/approve", Flow.Approve(form));
-        t.Check(form["step"].Str() == "Quality", "The Engineering dean approved; the form is at central quality");
+        t.Check(form["step"].Str() == "Quality", "The Engineering dean approved; the form is at the university Tier 1 committee");
 
-        t.Step("Central quality step");
-        form = await (await app.As("quality")).Ok("POST", $"/api/forms/{id}/approve", Flow.Approve(form));
-        t.Check(form["status"].Str() == "Approved", "Central quality approved the form");
+        t.Step("University Tier 1 committee step");
+        // 2026-11-23: the final approval moved from central quality (QA) to the university Tier 1 committee (T1O).
+        t.Check((await (await app.As("quality")).Call("POST", $"/api/forms/{id}/approve", Flow.Approve(form))).Status == 403, "Central quality no longer gives the final approval (403)");
+        form = await (await app.As("tier1")).Ok("POST", $"/api/forms/{id}/approve", Flow.Approve(form));
+        t.Check(form["status"].Str() == "Approved", "The university Tier 1 committee approved the form");
         t.Finish();
     }
 

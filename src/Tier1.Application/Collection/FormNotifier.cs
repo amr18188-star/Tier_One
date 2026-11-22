@@ -48,7 +48,7 @@ public sealed class FormNotifier(ICollectionStore db, IReadModel read, IAccessSe
                 $"أعيد نموذج {unit.NameAr} في دورة «{cycle.Name}» بالملاحظة:\n{s.ReturnNote}\nالمؤشرات المطلوب تصحيحها مميزة في النموذج."),
             SubmissionStatus.Approved => (await EditorsAsync(s.SubmissionId, unit, ct),
                 $"اعتمد نموذج {unit.NameAr} نهائيًا — {cycle.Name}",
-                $"اعتمدت الجودة المركزية نموذج {unit.NameAr} في دورة «{cycle.Name}». شكرًا لكم."),
+                $"اعتمدت لجنة Tier 1 بالجامعة نموذج {unit.NameAr} في دورة «{cycle.Name}». شكرًا لكم."),
             _ => ([], "", ""),
         };
         // Adds the messages only; the event dispatcher saves them together with the record that this handler ran.

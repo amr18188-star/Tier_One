@@ -10,6 +10,7 @@ const roles = [
   ["rep.mec", "ممثل قسم الميكانيكية", "Mechanical engineering representative"],
   ["college", "لجنة الكلية", "College committee"],
   ["dean", "عميد الكلية", "Dean"],
+  ["tier1", "لجنة Tier 1 بالجامعة", "University Tier 1 committee"],
   ["quality", "الجودة المركزية", "Central quality"],
   ["entry.cs", "مدخل بيانات الحاسبات", "Computing data entry"],
   ["college.cs", "لجنة كلية الحاسبات", "Computing college committee"],
@@ -19,7 +20,6 @@ const roles = [
   ["entry.uni", "مدخل بيانات الجامعة", "University data entry"],
   ["president", "رئيس الجامعة", "University president"],
   ["committee", "اللجنة العليا", "Higher committee"],
-  ["tier1", "مسؤول ملف Tier 1", "Tier 1 file officer"],
   ["sa1", "المدير الأعلى الأول", "First super admin"],
   ["sa2", "المدير الأعلى الثاني (sa2)", "Second super admin (sa2)"],
 ] as const;

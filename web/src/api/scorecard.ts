@@ -46,7 +46,7 @@ export interface Scorecard {
   overall: OverallScore; tiers: TierBand[]; pillars: PillarScore[]; perspectives: PerspectiveScore[]; sdgs: SdgScore[]; canExport: boolean;
 }
 
-// ----- مراجعة مسئول ملف Tier 1 ونقل القيم إلى مؤشرات الجامعة -----
+// ----- مراجعة لجنة Tier 1 بالجامعة ونقل القيم إلى مؤشرات الجامعة -----
 export type ReviewState = "NoData" | "Incomplete" | "Ready" | "Transferred" | "Changed";
 export interface ReviewCycle { id: string; name: string; year: number; quarter: number; label: string; status: import("./collection").CycleStatus }
 export interface ReviewUnit {

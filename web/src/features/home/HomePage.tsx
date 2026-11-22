@@ -130,7 +130,7 @@ function GeneralHome() {
         <Panel title={L(`الأداء — ${r.cycle.name}`, `Performance — ${r.cycle.name}`)} icon={<BarChartOutlined aria-hidden />}
           extra={<Link to="/results">{L("النتائج والمقارنات", "Results")}</Link>}>
           {r.formsApproved === 0 ? (
-            <EmptyNote>{L(`لم يعتمد نهائيًا أي نموذج ${r.unit.kind === "University" ? "في الجامعة" : `في ${r.unit.name}`} بعد؛ تظهر النتائج بعد اعتماد الجودة المركزية.`, "No approved forms yet.")}</EmptyNote>
+            <EmptyNote>{L(`لم يعتمد نهائيًا أي نموذج ${r.unit.kind === "University" ? "في الجامعة" : `في ${r.unit.name}`} بعد؛ تظهر النتائج بعد اعتماد لجنة Tier 1 بالجامعة.`, "No approved forms yet.")}</EmptyNote>
           ) : (
             <>
               <SegmentBar label={L("حالة المؤشرات", "Indicator status")} segments={[

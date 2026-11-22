@@ -29,7 +29,7 @@ export function ReportView({ r, onClose }: { r: Results; onClose: () => void }) 
           <div><b>{count("NoData") + count("NoTarget")}</b>{L("بلا بيانات أو مستهدف", "No data or target")}</div>
           <div><b className="ltr">{r.formsApproved}/{r.formsTotal}</b>{L("نماذج معتمدة", "Approved forms")}</div>
         </div>
-        <p className="t1-help">{L("النتائج من القيم المعتمدة نهائيًا من الجودة المركزية فقط. «بلا بيانات» لا يعني ضعف الأداء.", "Results use final approved values only.")}</p>
+        <p className="t1-help">{L("النتائج من القيم المعتمدة نهائيًا من لجنة Tier 1 بالجامعة فقط. «بلا بيانات» لا يعني ضعف الأداء.", "Results use final approved values only.")}</p>
 
         {r.standards.map((s) => (
           <section key={s.code}>

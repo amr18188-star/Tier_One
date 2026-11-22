@@ -16,7 +16,7 @@ namespace Tier1.E2E;
 public sealed class ScorecardTests(ITestOutputHelper output)
 {
     private static readonly string[] Entry = ["entry", "entry.cs", "entry.com", "entry.central", "entry.uni", "deptrep", "rep.ele", "rep.mec", "rep.se", "rep.ai", "rep.acc", "rep.bus", "planner"];
-    private static readonly string[] Review = ["deptrep", "rep.ele", "rep.mec", "rep.se", "rep.ai", "rep.acc", "rep.bus", "college", "college.cs", "college.com", "dean", "dean.cs", "dean.com", "quality", "planner"];
+    private static readonly string[] Review = ["deptrep", "rep.ele", "rep.mec", "rep.se", "rep.ai", "rep.acc", "rep.bus", "college", "college.cs", "college.com", "dean", "dean.cs", "dean.com", "tier1", "planner"];
 
     public sealed class OptInFactAttribute : FactAttribute
     {
@@ -62,7 +62,7 @@ public sealed class ScorecardTests(ITestOutputHelper output)
         t.Check(cycle["status"].Str() == "Open", "The cycle is open");
         var cycleId = cycle["id"].Str()!;
 
-        t.Step("3. Enter every form and approve it to central quality");
+        t.Step("3. Enter every form and approve it to the university Tier 1 committee");
         var forms = (await planner.Get($"/api/forms?cycleId={cycleId}")).Items().ToList();
         t.Check(forms.Count > 0, $"{forms.Count} forms in the cycle");
         var approved = 0;
@@ -192,7 +192,7 @@ public sealed class ScorecardTests(ITestOutputHelper output)
 /// </summary>
 public sealed class LoadTests(ITestOutputHelper output)
 {
-    private static readonly string[] Accounts = ["planner", "quality", "dean", "college", "entry", "deptrep", "viewer", "vp", "president", "committee"];
+    private static readonly string[] Accounts = ["planner", "tier1", "dean", "college", "entry", "deptrep", "viewer", "vp", "president", "committee"];
 
     public sealed class LoadFactAttribute : FactAttribute
     {
@@ -306,8 +306,8 @@ public sealed class LoadTests(ITestOutputHelper output)
                 }
             }
 
-            // Every step of the path has its reviewer: department representatives, college committees, deans, central quality.
-            var reviewerAccounts = new[] { "deptrep", "rep.ele", "rep.mec", "rep.se", "rep.ai", "rep.acc", "rep.bus", "college", "college.cs", "college.com", "dean", "dean.cs", "dean.com", "quality" };
+            // Every step of the path has its reviewer: department representatives, college committees, deans, the university Tier 1 committee.
+            var reviewerAccounts = new[] { "deptrep", "rep.ele", "rep.mec", "rep.se", "rep.ai", "rep.acc", "rep.bus", "college", "college.cs", "college.com", "dean", "dean.cs", "dean.com", "tier1" };
             var dashboardAccounts = new[] { "president", "vp", "planner", "viewer" };
             var writers = (int)Math.Round(users * 0.7);
             var reviewers = Math.Clamp((int)Math.Round(users * 0.1), 1, reviewerAccounts.Length);

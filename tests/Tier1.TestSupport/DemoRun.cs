@@ -269,8 +269,8 @@ internal sealed class DemoRun(Uri baseAddress, string password, ILogger log) : I
     private static Dictionary<string, string> Reviewers(JsonNode unit)
     {
         var c = CollegeOf(unit);
-        if (c is null) return new() { ["Quality"] = "quality" };
-        var steps = new Dictionary<string, string> { ["CollegeCommittee"] = c.Committee, ["Dean"] = c.Dean, ["Quality"] = "quality" };
+        if (c is null) return new() { ["Quality"] = "tier1" };
+        var steps = new Dictionary<string, string> { ["CollegeCommittee"] = c.Committee, ["Dean"] = c.Dean, ["Quality"] = "tier1" };
         if (unit["code"].Str() != c.Code) steps["DepartmentReview"] = c.Departments.First(d => d.Code == unit["code"].Str()).Rep;
         return steps;
     }

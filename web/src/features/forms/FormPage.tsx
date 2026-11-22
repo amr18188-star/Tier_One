@@ -106,7 +106,7 @@ export default function FormPage() {
   const canReturn = reviewing;
   const directStep = f.actions.directStepName ?? f.nextStepName;
   const directLabel = directDeanApproval
-    ? L("اعتماد مباشر وإحالة للجودة المركزية", "Approve directly and forward to central quality")
+    ? L("اعتماد مباشر وإحالة للجنة Tier 1 بالجامعة", "Approve directly and forward to the university Tier 1 committee")
     : L("اعتماد مباشر وإحالة للعميد", "Approve directly and forward to the dean");
   const skippedByDean = f.path.some((p) => p.step === "CollegeCommittee" && p.state === "skipped");
   const current = f.path.findIndex((p) => p.state === "current");

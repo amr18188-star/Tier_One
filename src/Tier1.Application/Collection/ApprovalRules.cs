@@ -7,7 +7,7 @@ namespace Tier1.Application.Collection;
 
 /// <summary>
 /// مسار اعتماد النموذج بحسب نوع الجهة (دالة نقية):
-/// القسم: الإدخال ← ممثل القسم ← لجنة الكلية ← العميد ← الجودة المركزية.
+/// القسم: الإدخال ← ممثل القسم ← لجنة الكلية ← العميد ← لجنة Tier 1 بالجامعة.
 /// الكلية: الإدخال ← لجنة الكلية ← العميد ← الجودة. الجهات المركزية: الإدخال ← الجودة.
 /// </summary>
 public static class ApprovalRules
@@ -97,7 +97,7 @@ public static class ApprovalRules
         ApprovalStep.DepartmentReview => "ممثل Tier 1 بالقسم",
         ApprovalStep.CollegeCommittee => "لجنة Tier 1 بالكلية",
         ApprovalStep.Dean => "عميد الكلية",
-        ApprovalStep.Quality => "الجودة المركزية",
+        ApprovalStep.Quality => "لجنة Tier 1 بالجامعة",
         _ => "معتمد",
     };
 
@@ -140,7 +140,7 @@ public static class ApprovalRules
         SubmissionAction.Approved when from == ApprovalStep.DepartmentReview && to == ApprovalStep.Dean
             => ("dc.form_approved_department_directly", "اعتماد مباشر لنموذج القسم من لجنة الكلية", "College committee approved a department form directly"),
         SubmissionAction.Approved when to == ApprovalStep.Quality && from is ApprovalStep.DepartmentReview or ApprovalStep.CollegeCommittee
-            => ("dc.form_approved_as_dean_directly", "اعتماد مباشر من العميد وإحالة للجودة المركزية", "Dean approved the form directly and forwarded it to central quality"),
+            => ("dc.form_approved_as_dean_directly", "اعتماد مباشر من العميد وإحالة للجنة Tier 1 بالجامعة", "Dean approved the form directly and forwarded it to central quality"),
         SubmissionAction.Approved => (to == ApprovalStep.Done ? "dc.form_approved_final" : "dc.form_approved", to == ApprovalStep.Done ? "الاعتماد النهائي لنموذج جهة" : "اعتماد خطوة في نموذج جهة", "Approved a unit form step"),
         SubmissionAction.Returned => ("dc.form_returned", "إعادة نموذج جهة للتصحيح", "Returned a unit form"),
         _ => ("dc.form_reopened", "إعادة فتح نموذج معتمد", "Reopened an approved form"),

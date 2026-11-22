@@ -33,7 +33,7 @@ public sealed class CollectionTests(ITestOutputHelper output)
         var entry = await Env.As("entry");
         var college = await Env.As("college");
         var dean = await Env.As("dean");
-        var quality = await Env.As("quality");
+        var uniCommittee = await Env.As("tier1");
         var deptrep = await Env.As("deptrep");
         var viewer = await Env.As("viewer");
         var units = await Env.UnitsAsync(planner);
@@ -143,8 +143,8 @@ public sealed class CollectionTests(ITestOutputHelper output)
         t.Step("3. Return with notes, then the approval path with separation of duties");
         (status, _) = await entry.Call("POST", $"/api/forms/{form["id"].Str()}/approve", await entry.Versioned($"/api/forms/{form["id"].Str()}", Scenario.O(("note", null))));
         t.Check(status == 403, "The entry user cannot approve");
-        (status, _) = await quality.Call("POST", $"/api/forms/{form["id"].Str()}/approve", await quality.Versioned($"/api/forms/{form["id"].Str()}", Scenario.O(("note", null))));
-        t.Check(status == 403, "Central quality cannot approve before its turn");
+        (status, _) = await uniCommittee.Call("POST", $"/api/forms/{form["id"].Str()}/approve", await uniCommittee.Versioned($"/api/forms/{form["id"].Str()}", Scenario.O(("note", null))));
+        t.Check(status == 403, "The university Tier 1 committee cannot approve before its turn");
         t.Check((await college.Get($"/api/forms?cycleId={cycleId}&awaitingMe=true")).Items().Any(f => f["id"].Str() == form["id"].Str()), "The form is in 'required from me' for the college committee");
         (status, _) = await college.Call("POST", $"/api/forms/{form["id"].Str()}/return", await college.Versioned($"/api/forms/{form["id"].Str()}", Scenario.O(("note", ""), ("items", new JsonArray()))));
         t.Check(status == 400, "Returning asks for a note");
@@ -164,9 +164,9 @@ public sealed class CollectionTests(ITestOutputHelper output)
         form = await college.Ok("POST", $"/api/forms/{form["id"].Str()}/approve", await college.Versioned($"/api/forms/{form["id"].Str()}", Scenario.O(("note", "مراجع"))));
         t.Check(form["step"].Str() == "Dean", "The college committee approved and it moved to the dean");
         form = await dean.Ok("POST", $"/api/forms/{form["id"].Str()}/approve", await dean.Versioned($"/api/forms/{form["id"].Str()}", Scenario.O(("note", null))));
-        t.Check(form["step"].Str() == "Quality", "The dean approved and it moved to central quality");
-        form = await quality.Ok("POST", $"/api/forms/{form["id"].Str()}/approve", await quality.Versioned($"/api/forms/{form["id"].Str()}", Scenario.O(("note", null))));
-        t.Check(form["status"].Str() == "Approved" && form["step"].Str() == "Done", "Final approval by central quality");
+        t.Check(form["step"].Str() == "Quality", "The dean approved and it moved to the university Tier 1 committee");
+        form = await uniCommittee.Ok("POST", $"/api/forms/{form["id"].Str()}/approve", await uniCommittee.Versioned($"/api/forms/{form["id"].Str()}", Scenario.O(("note", null))));
+        t.Check(form["status"].Str() == "Approved" && form["step"].Str() == "Done", "Final approval by the university Tier 1 committee");
         t.Check(form["events"].Items().Count(e => e["action"].Str() == "Approved") == 3, "The form's log keeps every approval step");
         (status, _) = await entry.Call("PUT", $"/api/forms/{form["id"].Str()}/values", Calls.InputFor(items[0]));
         t.Check(status == 409, "An approved form is locked");
@@ -221,7 +221,7 @@ public sealed class CollectionTests(ITestOutputHelper output)
             ef = await dean.Ok("POST", path + "/approve", Scenario.O(("version", ef["version"]), ("direct", true), ("note", "اعتماد مباشر لضيق موعد الدورة")));
             t.Check(ef["step"].Str() == "Quality"
                 && ef["path"].Items().Count(p => p["state"].Str() == "skipped") == 2,
-                "Direct dean approval skips department and college review and advances to central quality");
+                "Direct dean approval skips department and college review and advances to the university Tier 1 committee");
         }
 
         t.Step("5. Reopening by request and higher-committee decision (D4), then Excel import");
@@ -307,7 +307,7 @@ public sealed class CollectionTests(ITestOutputHelper output)
         t.Check(during["formsUnderCorrection"].Num() >= 1, "The results show the form as under correction");
 
         form = await entry.Ok("POST", $"/api/forms/{form["id"].Str()}/submit", await entry.Versioned($"/api/forms/{form["id"].Str()}"));
-        foreach (var who in new[] { college, dean, quality }) form = await who.Ok("POST", $"/api/forms/{form["id"].Str()}/approve", await who.Versioned($"/api/forms/{form["id"].Str()}", Scenario.O(("note", null))));
+        foreach (var who in new[] { college, dean, uniCommittee }) form = await who.Ok("POST", $"/api/forms/{form["id"].Str()}/approve", await who.Versioned($"/api/forms/{form["id"].Str()}", Scenario.O(("note", null))));
         t.Check(form["status"].Str() == "Approved", "The form was approved again after the correction");
         t.Check((await planner.Get($"/api/results?cycleId={cycleId}&unitId={eng["id"].Str()}"))!["formsUnderCorrection"].Num() == 0,
             "After re-approval the form is no longer under correction");

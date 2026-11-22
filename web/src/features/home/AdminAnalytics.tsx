@@ -129,7 +129,7 @@ function ResultsCard({ results, periods, period, onPeriod }: {
         {() => !r ? (
           <p className="han-empty">{L("لا توجد دورة لها نتائج بعد.", "No cycle has results yet.")}</p>
         ) : r.formsApproved === 0 ? (
-          <p className="han-empty">{L(`لم يعتمد نهائيًا أي نموذج في ${r.cycle.periodLabel || r.cycle.name} بعد؛ تظهر النتائج بعد اعتماد الجودة المركزية.`, "No approved forms in this period yet.")}</p>
+          <p className="han-empty">{L(`لم يعتمد نهائيًا أي نموذج في ${r.cycle.periodLabel || r.cycle.name} بعد؛ تظهر النتائج بعد اعتماد لجنة Tier 1 بالجامعة.`, "No approved forms in this period yet.")}</p>
         ) : (
           <div className="han-results">
             <div className="han-summary">

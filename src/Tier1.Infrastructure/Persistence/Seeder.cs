@@ -76,7 +76,7 @@ public sealed class Seeder(Tier1DbContext db, IPasswordHasher hasher, ISecretPro
         ("rep.bus@" + DemoDomain, "ممثل Tier 1 بقسم إدارة الأعمال", "Business administration representative", "DREP", ["COM-BUS"]),
         ("entry.central@" + DemoDomain, "مدخل بيانات الجهات المركزية", "Central units data entry", "DE", ["QAC", "STU", "DIG", "INTL"]),
         // مؤشرات الإطار التي تقاس على مستوى الجامعة كلها (المالية والحوكمة والتحول الرقمي...) تدخل في نموذج الجامعة نفسها.
-        ("tier1@" + DemoDomain, "مسئول ملف Tier 1", "Tier 1 file officer", "T1O", []),
+        ("tier1@" + DemoDomain, "لجنة Tier 1 بالجامعة", "University Tier 1 committee", "T1O", []),
         ("entry.uni@" + DemoDomain, "مدخل بيانات الجامعة (المؤشرات المركزية)", "University-level data entry", "DE", ["CU"]),
         // على الهيكل الرسمي: وحدة التخطيط الاستراتيجي (QAC ← SPU) ومركز الاتصالات وتكنولوجيا المعلومات (DIG ← ICT)، يطلعان على الجامعة كاملة.
         // الوحدة تعد الخطة الاستراتيجية، فحسابها بدور مدير متابعة الخطة (يرفع وثيقة الخطة ويدير شجرتها).
@@ -214,6 +214,10 @@ public sealed class Seeder(Tier1DbContext db, IPasswordHasher hasher, ISecretPro
         yield return new($"catalog:{Features.Cycles}:{ApprovalRules.ApproveReopen}", "منح اللجنة العليا اعتماد طلبات إعادة فتح النماذج المعتمدة (D4)",
             "Grant the higher committee approval of reopen requests (D4)",
             ct => AddSpecialAsync(Features.Cycles, "HC", null, ApprovalRules.ApproveReopen, ct));
+        yield return new("catalog-fix:dc.forms-final-approval-university-committee",
+            "نقل الاعتماد النهائي لنماذج الجهات من الجودة المركزية إلى لجنة Tier 1 بالجامعة (الدور T1O) وتسمية الدور بذلك",
+            "Move the final approval of unit forms from central quality to the university Tier 1 committee (role T1O) and name the role so",
+            MoveFinalApprovalAsync);
     }
 
     /// <summary>الإصلاحات التي لم تطبق بعد على هذه القاعدة.</summary>
@@ -261,6 +265,43 @@ public sealed class Seeder(Tier1DbContext db, IPasswordHasher hasher, ISecretPro
     }
 
     /// <summary>إجراء خاص جديد في الكتالوج لدور قائم، وللمدير الأعلى. إن أعطي existingSpecial فلمن يملك تلك المراجعة في الخاصية فقط.</summary>
+    /// <summary>
+    /// قرار الجامعة (2026-11-23): آخر خطوة اعتماد لنماذج الجهات للجنة Tier 1 بالجامعة (الدور T1O، وكان «مسئول ملف Tier 1»)
+    /// بدل الجودة المركزية. يأخذ الدور الاعتماد النهائي واسمه الجديد، ويسحب الاعتماد النهائي من دور الجودة المركزية (QA) الذي
+    /// يبقى بصلاحياته الأخرى. ما يسنده المدير بعدها من المصفوفة يبقى.
+    /// </summary>
+    private async Task<int> MoveFinalApprovalAsync(CancellationToken ct)
+    {
+        var roles = await db.Roles.Include(r => r.Grants).Where(r => r.IsSystem && (r.Code == "T1O" || r.Code == "QA")).ToListAsync(ct);
+        var changed = 0;
+        if (roles.FirstOrDefault(r => r.Code == "T1O") is { } committee)
+        {
+            var def = PermissionCatalog.Roles.First(r => r.Code == "T1O");
+            if (committee.NameAr != def.Name.Ar)
+            {
+                (committee.NameAr, committee.NameEn, committee.DescriptionAr) = (def.Name.Ar, def.Name.En, def.DescriptionAr);
+                changed++;
+            }
+            var grant = committee.Grants.FirstOrDefault(g => g.Feature == Features.Forms);
+            if (grant is null)
+            {
+                db.RoleGrants.Add(new RoleGrant { RoleId = committee.Id, Feature = Features.Forms, Caps = Cap.View | Cap.Print, Scope = AccessScope.All, Specials = [ApprovalRules.ApproveFinal] });
+                changed++;
+            }
+            else if (!grant.Specials.Contains(ApprovalRules.ApproveFinal))
+            {
+                grant.Specials.Add(ApprovalRules.ApproveFinal);
+                changed++;
+            }
+        }
+        foreach (var grant in roles.Where(r => r.Code == "QA").SelectMany(r => r.Grants).Where(g => g.Feature == Features.Forms && g.Specials.Contains(ApprovalRules.ApproveFinal)))
+        {
+            grant.Specials.Remove(ApprovalRules.ApproveFinal);
+            changed++;
+        }
+        return changed;
+    }
+
     private async Task<int> AddSpecialAsync(string feature, string roleCode, string? existingSpecial, string newSpecial, CancellationToken ct)
     {
         var grants = await (from g in db.RoleGrants

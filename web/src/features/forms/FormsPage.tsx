@@ -114,8 +114,8 @@ export default function FormsPage() {
       <PageHeader title={L("نماذج الجهات", "Unit forms")}
         subtitle={readOnly
           ? L("اطلاع على نماذج الجهات في نطاقك ومراحلها، دون إدخال أو مراجعة.", "A read-only view of the unit forms in your scope and their stages.")
-          : L("كل جهة تدخل قيم مؤشراتها في نموذج واحد، ثم يمر على المراجعين حتى اعتماد الجودة المركزية.",
-            "Each unit enters its values in one form, which then passes through reviewers up to central quality approval.")}
+          : L("كل جهة تدخل قيم مؤشراتها في نموذج واحد، ثم يمر على المراجعين حتى اعتماد لجنة Tier 1 بالجامعة.",
+            "Each unit enters its values in one form, which then passes through reviewers up to the approval of the university Tier 1 committee.")}
         stats={all.data ? [
           ...(readOnly ? [] : [{ label: L("مطلوب مني الآن", "Waiting for me"), value: waiting, tone: waiting > 0 ? "warn" as const : undefined }]),
           { label: L("متأخر عن الموعد", "Overdue"), value: overdue, tone: overdue > 0 ? "bad" as const : undefined },
