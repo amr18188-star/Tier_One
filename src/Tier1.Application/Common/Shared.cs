@@ -68,7 +68,7 @@ public static class People
     public static async Task<Dictionary<Guid, PersonDto>> LookupAsync(IQueryable<Domain.Identity.AppUser> users, IEnumerable<Guid> ids, CancellationToken ct)
     {
         var list = ids.Distinct().ToList();
-        return await users.AsNoTracking().Where(u => list.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => new PersonDto(u.Id, Lang.Name(u.FullNameAr, u.FullNameEn)), ct);
+        return await users.AsNoTracking().Where(u => list.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => new PersonDto(u.Id, u.DisplayName), ct);
     }
 }
 

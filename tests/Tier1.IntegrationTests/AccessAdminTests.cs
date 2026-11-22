@@ -111,4 +111,46 @@ public sealed class AccessAdminTests(Tier1App app, ITestOutputHelper output)
         t.Check(after["grants"]![dropped] is null && after["role"]!["grantsVersion"].Num() == version + 1, "The change is in force and the role version moved on");
         t.Finish();
     }
+
+    /// <summary>
+    /// ADR-0019: the account's title comes from a closed list and goes before the two-part name wherever the name is shown.
+    /// AC-N5: the list is served; AC-N6: a title outside it is refused; AC-N7: title and two-part name in the accounts list and
+    /// the account's page; AC-N8: clearing the title shows the full name again.
+    /// </summary>
+    [Fact]
+    public async Task AC_N5_to_N8_an_account_title_goes_before_the_two_part_name()
+    {
+        var t = new Scenario(output);
+        var sys = await app.As("sysadmin");
+
+        t.Step("The list of titles");
+        var titles = (await sys.Get("/api/iam/users/titles")).Items().ToList();
+        t.Check(titles.Any(x => x["title"].Str() == "أ.د." && x["group"].Str() == "Faculty") && titles.Any(x => x["title"].Str() == "السيدة" && x["group"].Str() == "Staff")
+            && titles.Any(x => x["title"].Str() == "لواء" && x["group"].Str() == "Officer"), "Faculty titles, Mr and Ms, and military ranks are offered (AC-N5)");
+        t.Check((await (await app.As("entry")).Call("GET", "/api/iam/users/titles")).Status == 403, "Someone who does not manage accounts does not read the list (403)");
+        // The value sent and saved is the Arabic title; the label beside it is what the interface language shows.
+        t.Check(titles.All(x => x["title"].Str() is { Length: > 0 } && x["label"].Str() is { Length: > 0 } && x["meaning"].Str() is { Length: > 0 }),
+            "Each title carries its saved value, the label shown and its meaning");
+
+        t.Step("Creating an account with a title");
+        var email = $"it.{Calls.Tag()}@tier1.local";
+        var body = Scenario.O(("email", email), ("fullNameAr", "أحمد عبد الرحمن علي حسن"), ("fullNameEn", null), ("title", "أ.د."));
+        var (status, error) = await sys.Call("POST", "/api/iam/users", Scenario.With(body, ("title", "فخامة")));
+        t.Check(status == 400 && error.Code() == "invalid_title", $"A title outside the list is refused (AC-N6), got {status} {error.Code()}");
+        var userId = (await sys.Ok("POST", "/api/iam/users", body))["userId"].Str();
+        var listed = (await sys.Get($"/api/iam/users?q={Uri.EscapeDataString(email)}")).Items().Single();
+        t.Check(listed["name"].Str() == "أ.د. أحمد عبد الرحمن", $"The accounts list shows the title and the two-part name (AC-N7), got {listed["name"].Str()}");
+        var detail = (await sys.Get($"/api/iam/users/{userId}"))!;
+        t.Check(detail["title"].Str() == "أ.د." && detail["displayName"].Str() == "أ.د. أحمد عبد الرحمن" && detail["fullNameAr"].Str() == "أحمد عبد الرحمن علي حسن",
+            "The account keeps its full name and its title beside the shown name");
+
+        t.Step("Changing and clearing the title");
+        var update = Scenario.O(("fullNameAr", "أحمد عبد الرحمن علي حسن"), ("fullNameEn", null), ("title", "عقيد"));
+        t.Check((await sys.Call("PUT", $"/api/iam/users/{userId}", Scenario.With(update, ("title", "أستاذ")))).Status == 400, "A free-text title is refused on edit too");
+        t.Check((await sys.Call("PUT", $"/api/iam/users/{userId}", update)).Status == 204, "The title is changed");
+        t.Check((await sys.Get($"/api/iam/users/{userId}"))!["displayName"].Str() == "عقيد أحمد عبد الرحمن", "The new title is shown");
+        t.Check((await sys.Call("PUT", $"/api/iam/users/{userId}", Scenario.With(update, ("title", null)))).Status == 204, "The title is cleared");
+        t.Check((await sys.Get($"/api/iam/users/{userId}"))!["displayName"].Str() == "أحمد عبد الرحمن علي حسن", "Without a title the full name is shown as written (AC-N8)");
+        t.Finish();
+    }
 }

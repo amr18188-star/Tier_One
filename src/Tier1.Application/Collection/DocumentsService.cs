@@ -110,7 +110,7 @@ public sealed class DocumentsService(ICollectionStore db, IReadModel read, ICloc
         // الإصدارات المبطلة لمن يدير الوثيقة فقط؛ غيره يرى الساري.
         var manager = me.Has(Features.Strategy, Cap.Delete);
         var users = docs.Select(d => d.UploadedBy).Distinct().ToList();
-        var names = await read.Query<Domain.Identity.AppUser>().AsNoTracking().Where(u => users.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.FullNameAr, ct);
+        var names = await read.Query<Domain.Identity.AppUser>().AsNoTracking().Where(u => users.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.DisplayName, ct);
         return docs.Where(d => manager || d.VoidedAt is null)
             .Select(d => new PlanDocDto(FormReader.ToDoc(d), names.GetValueOrDefault(d.UploadedBy))).ToList();
     }

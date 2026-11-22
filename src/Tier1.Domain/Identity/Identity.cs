@@ -12,6 +12,12 @@ public sealed class AppUser
 
     public string? FullNameEn { get; set; }
 
+    /// <summary>اللقب قبل الاسم (أ.د.، السيد، عقيد...) من <see cref="PersonTitles"/>، أو فارغ لحساب قديم بلا لقب (ADR-0019).</summary>
+    public string? Title { get; set; }
+
+    /// <summary>الاسم كما يعرض: اللقب ثم الاسم ثنائيًا؛ وبلا لقب الاسم الكامل.</summary>
+    public string DisplayName => PersonName.Display(Title, FullNameAr, FullNameEn);
+
     public bool Active { get; set; } = true;
 
     public string? PasswordHash { get; set; }

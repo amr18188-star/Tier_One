@@ -2,6 +2,8 @@ using Tier1.Api.Security;
 using Tier1.Api.Startup;
 using Tier1.Application.Access;
 using Tier1.Domain.Access;
+using Tier1.Domain.Common;
+using Tier1.Domain.Identity;
 
 namespace Tier1.Api.Endpoints;
 
@@ -42,6 +44,9 @@ public static class IamEndpoints
 
         // ----- حسابات الموظفين -----
         var users = iam.MapGroup("/users");
+        // ADR-0019: the closed list of titles the account form offers.
+        users.MapGet("/titles", () => TypedResults.Ok(PersonTitles.All.Select(t => new TitleDto(t.Ar, Lang.Pick(t.Ar, t.En), Lang.Pick(t.MeaningAr, t.MeaningEn), t.Group)).ToList()))
+            .RequireAnyPermission("adm.users:V", "adm.grants:V");
         users.MapGet("/", async (string? q, UsersAdminService svc, CancellationToken ct) => TypedResults.Ok(await svc.ListAsync(q, ct)))
             .RequireAnyPermission("adm.users:V", "adm.grants:V");
         users.MapGet("/{id:guid}", async (Guid id, UsersAdminService svc, CancellationToken ct) => TypedResults.Ok(await svc.GetAsync(id, ct)))

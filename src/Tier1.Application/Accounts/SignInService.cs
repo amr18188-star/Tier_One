@@ -113,7 +113,7 @@ public sealed class SignInService(
             Target = new AuditTarget("User", user.Id.ToString(), user.Email),
             Details = new { mfa = mfaRequired, ipAccess = IpAllowlist.Name(ipAccess) },
             ActorOverride = user.Id,
-            ActorName = Lang.Name(user.FullNameAr, user.FullNameEn),
+            ActorName = user.DisplayName,
         });
         await db.SaveChangesAsync(ct);
         // من فعّل التحقق بخطوتين يتحقق أولًا ثم يغير الكلمة المؤقتة؛ تغييرها لا يقبل من جلسة لم تتحقق.

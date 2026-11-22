@@ -24,7 +24,7 @@
 
 | الحالة | المعنى | ماذا يفعل المستخدم | أمثلة |
 |---|---|---|---|
-| 400 | مدخل غير صالح: الطلب لا يقرأ، أو قيمة حقل مرفوضة | يصحح الحقل ثم يعيد الإرسال | `bad_request`، `invalid_body`، `invalid_value`، `text_too_long`، `reason_required`، `invalid_email`، `email_domain_not_allowed`، `invalid_domain`، `invalid_ip`، `invalid_plan_period`، `end_before_start`، `invalid_progress`، `csrf`، `invalid_idempotency_key` ([ADR-0018](../adr/0018-idempotency-keys.md)) |
+| 400 | مدخل غير صالح: الطلب لا يقرأ، أو قيمة حقل مرفوضة | يصحح الحقل ثم يعيد الإرسال | `bad_request`، `invalid_body`، `invalid_value`، `text_too_long`، `invalid_title` (لقب خارج القائمة، [ADR-0019](../adr/0019-account-titles.md))، `reason_required`، `invalid_email`، `email_domain_not_allowed`، `invalid_domain`، `invalid_ip`، `invalid_plan_period`، `end_before_start`، `invalid_progress`، `csrf`، `invalid_idempotency_key` ([ADR-0018](../adr/0018-idempotency-keys.md)) |
 | 401 | لا جلسة أو انتهت | يدخل من جديد | `unauthenticated` |
 | 403 | لا صلاحية، أو قاعدة فصل المهام | يطلب الصلاحية ممن يملكها | `forbidden`، `sod_*`، `ip_not_allowed` (عنوان IP غير مسموح، [ADR-0016](../adr/0016-university-access.md)) |
 | 404 | غير موجود، أو خارج نطاق المستخدم (لا يكشف وجوده) | — | `not_found` |

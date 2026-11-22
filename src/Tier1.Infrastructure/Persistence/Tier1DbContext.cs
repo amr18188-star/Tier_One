@@ -65,6 +65,8 @@ public sealed partial class Tier1DbContext(DbContextOptions<Tier1DbContext> opti
             e.Property(u => u.Email).HasMaxLength(254);
             e.Property(u => u.FullNameAr).HasMaxLength(200);
             e.Property(u => u.FullNameEn).HasMaxLength(200);
+            e.Property(u => u.Title).HasMaxLength(Domain.Identity.PersonTitles.MaxLength);
+            e.Ignore(u => u.DisplayName);
             e.Property(u => u.PreferredLanguage).HasMaxLength(5);
             e.Property(u => u.Version).IsRowVersion();
         });

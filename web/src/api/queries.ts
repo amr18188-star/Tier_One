@@ -66,6 +66,7 @@ export const queryKeys = {
   user: (userId: string) => ["user", userId] as const,
   effective: (userId: string) => ["effective", userId] as const,
   roles: ["roles"] as const,
+  titles: ["iam", "titles"] as const,
   role: (roleId: string | undefined) => ["role", roleId] as const,
   catalog: ["catalog"] as const,
   changes: ["changes"] as const,

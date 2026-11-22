@@ -151,11 +151,19 @@ export interface Override {
   active: boolean;
 }
 
+export type TitleGroup = "Faculty" | "Staff" | "Officer";
+/** لقب في قائمة الاختيار (ADR-0019): `title` نصه العربي (القيمة المحفوظة بأي لغة)، و`label` و`meaning` ما يعرض بلغة الواجهة. */
+export interface TitleOption { title: string; label: string; meaning: string; group: TitleGroup }
+
 export interface UserDetail {
   id: string;
   email: string;
   fullNameAr: string;
   fullNameEn: string | null;
+  /** اللقب قبل الاسم، أو لا شيء لحساب قديم. */
+  title?: string | null;
+  /** الاسم كما يعرض: اللقب ثم الاسم ثنائيًا. */
+  displayName?: string | null;
   active: boolean;
   mfaEnabled: boolean;
   mustChangePassword: boolean;

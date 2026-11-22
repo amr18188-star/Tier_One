@@ -115,7 +115,7 @@ public sealed class SessionService(IIdentityStore db, IClock clock, ICurrentUser
             .FirstOrDefaultAsync(ct);
         if (row is null || now - row.Session.LastSeenAt > idle) return null;
         var s = row.Session;
-        var principal = new SessionPrincipal(s.Id, row.User.Id, Lang.Name(row.User.FullNameAr, row.User.FullNameEn), row.User.PreferredLanguage,
+        var principal = new SessionPrincipal(s.Id, row.User.Id, row.User.DisplayName, row.User.PreferredLanguage,
             s.MfaRequired && s.MfaVerifiedAt is null, row.User.MustChangePassword, s.MfaVerifiedAt is not null);
         // FE-2: a background poll neither slides the idle window nor fills the cache (the next real request must still slide it).
         if (passive) return principal;

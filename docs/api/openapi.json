@@ -1100,6 +1100,28 @@
         }
       }
     },
+    "/api/iam/users/titles": {
+      "get": {
+        "tags": [
+          "Tier1.Api"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TitleDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/iam/users": {
       "get": {
         "tags": [
@@ -6339,6 +6361,12 @@
             "type": "string"
           },
           "fullNameEn": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "title": {
             "type": [
               "null",
               "string"
@@ -14264,6 +14292,36 @@
           }
         }
       },
+      "TitleDto": {
+        "required": [
+          "title",
+          "label",
+          "meaning",
+          "group"
+        ],
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "meaning": {
+            "type": "string"
+          },
+          "group": {
+            "$ref": "#/components/schemas/TitleGroup"
+          }
+        }
+      },
+      "TitleGroup": {
+        "enum": [
+          "Faculty",
+          "Staff",
+          "Officer"
+        ]
+      },
       "TransferAllRequest": {
         "required": [
           "cycleId"
@@ -14701,6 +14759,12 @@
               "null",
               "string"
             ]
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -14779,6 +14843,18 @@
             "items": {
               "$ref": "#/components/schemas/OverrideDto"
             }
+          },
+          "title": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "displayName": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },

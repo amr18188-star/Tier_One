@@ -21,12 +21,21 @@ public sealed record OverrideDto(Guid Id, string Feature, string Caps, IReadOnly
     PersonDto? GrantedBy, string Reason, DateTimeOffset? RevokedAt, bool Active);
 
 public sealed record UserDetailDto(Guid Id, string Email, string FullNameAr, string? FullNameEn, bool Active, bool MfaEnabled, bool MustChangePassword, DateTimeOffset? LockedUntil,
-    DateTimeOffset CreatedAt, DateTimeOffset? LastLoginAt, bool HoldsReservedRole, IReadOnlyList<AssignmentDto> Assignments, IReadOnlyList<OverrideDto> Overrides);
+    DateTimeOffset CreatedAt, DateTimeOffset? LastLoginAt, bool HoldsReservedRole, IReadOnlyList<AssignmentDto> Assignments, IReadOnlyList<OverrideDto> Overrides,
+    string? Title = null, string? DisplayName = null);
 
-public sealed record CreateUserRequest(string Email, string FullNameAr, string? FullNameEn);
+/// <param name="Title">The title before the name, one of <see cref="Domain.Identity.PersonTitles"/> (ADR-0019), or null for none.</param>
+public sealed record CreateUserRequest(string Email, string FullNameAr, string? FullNameEn, string? Title = null);
+
+/// <summary>
+/// لقب في قائمة الاختيار. <c>Title</c> نصه العربي، وهو القيمة التي ترسل وتحفظ بأي لغة للواجهة؛ <c>Label</c> و<c>Meaning</c> ما يعرض
+/// بلغة الواجهة؛ ومجموعته (هيئة التدريس، الموظفون، الرتب العسكرية).
+/// </summary>
+public sealed record TitleDto(string Title, string Label, string Meaning, Domain.Identity.TitleGroup Group);
 
 /// <param name="Email">A new university email (the user's login name), or null to keep it. Checked against the approved domains.</param>
-public sealed record UpdateUserRequest(string FullNameAr, string? FullNameEn, string? Email = null);
+/// <param name="Title">The title before the name, or null for none; saved with the names (not "keep what is there").</param>
+public sealed record UpdateUserRequest(string FullNameAr, string? FullNameEn, string? Email = null, string? Title = null);
 
 /// <summary>كلمة المرور المؤقتة تعرض مرة واحدة فقط ولا تحفظ إلا بصمتها.</summary>
 public sealed record TemporaryPasswordDto(Guid UserId, string TemporaryPassword);
@@ -58,7 +67,7 @@ public sealed class UsersAdminService(IIdentityStore db, IClock clock, ICurrentU
             .Where(a => ids.Contains(a.UserId) && a.RevokedAt == null && a.ApprovedAt != null && a.ValidFrom <= now && (a.ValidTo == null || a.ValidTo > now))
             .Join(db.Roles, a => a.RoleId, r => r.Id, (a, r) => new { a.UserId, r.Code })
             .ToListAsync(ct);
-        return users.Select(u => new UserListItemDto(u.Id, u.Email, Lang.Name(u.FullNameAr, u.FullNameEn), u.Active, u.MfaEnabled, u.LockedUntil > now, u.LastLoginAt,
+        return users.Select(u => new UserListItemDto(u.Id, u.Email, u.DisplayName, u.Active, u.MfaEnabled, u.LockedUntil > now, u.LastLoginAt,
             roles.Where(r => r.UserId == u.Id).Select(r => r.Code).Distinct().Order(StringComparer.Ordinal).ToList())).ToList();
     }
 
@@ -80,7 +89,8 @@ public sealed class UsersAdminService(IIdentityStore db, IClock clock, ICurrentU
                 x.A.IsPendingApproval, x.A.ApprovedBy is { } ab ? people.GetValueOrDefault(ab) : null,
                 x.A.IsPendingApproval && iAmSa && me != x.A.GrantedBy && me != id)).ToList(),
             overrides.Select(o => new OverrideDto(o.Id, o.Feature, PermissionCatalog.Letters(o.Caps), o.Specials, o.Effect, GrantView.ScopeCode(o.Scope), o.ValidFrom, o.ValidTo,
-                o.GrantedBy is { } g ? people.GetValueOrDefault(g) : null, o.Reason, o.RevokedAt, o.IsActiveAt(now))).ToList());
+                o.GrantedBy is { } g ? people.GetValueOrDefault(g) : null, o.Reason, o.RevokedAt, o.IsActiveAt(now))).ToList(),
+            u.Title, u.DisplayName);
     }
 
     public async Task<EffectiveDto> EffectiveAsync(Guid userId, CancellationToken ct)

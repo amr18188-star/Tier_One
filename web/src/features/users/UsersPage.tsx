@@ -12,6 +12,7 @@ import { QueryState } from "../../shared/QueryState";
 import { usePermissions } from "../../shared/session";
 import { DataTable, EmptyNote, PageHeader } from "../../shared/ui";
 import { UserDrawer } from "./UserDrawer";
+import { TitleSelect } from "./TitleSelect";
 import { queryKeys } from "../../api/queries";
 
 export default function UsersPage() {
@@ -126,7 +127,13 @@ function CreateUserModal({ open, onClose }: { open: boolean; onClose: () => void
       {error && <Alert type="error" showIcon message={error} className="mb" />}
       <Form form={form} layout="vertical">
         <Form.Item name="email" label={L("البريد الجامعي (اسم الدخول)", "University email (sign-in name)")} rules={[{ required: true, type: "email" }, emailRule]}><Input dir="ltr" /></Form.Item>
-        <Form.Item name="fullNameAr" label={L("الاسم بالعربية", "Arabic name")} rules={[{ required: true }]}><Input /></Form.Item>
+        <Form.Item name="title" label={L("اللقب", "Title")} rules={[{ required: true, message: L("اختر اللقب.", "Choose a title.") }]}
+          extra={L("يسبق الاسم في كل الشاشات، ويعرض الاسم بعده ثنائيًا (الاسم الأول واسم الأب). للموظف: السيد أو السيدة بحسب النوع.",
+            "Shown before the name everywhere, followed by the first two names. For staff: Mr or Ms.")}>
+          <TitleSelect />
+        </Form.Item>
+        <Form.Item name="fullNameAr" label={L("الاسم بالعربية", "Arabic name")} rules={[{ required: true }]}
+          extra={L("اكتب الاسم كاملًا بلا لقب.", "The full name, without a title.")}><Input /></Form.Item>
         <Form.Item name="fullNameEn" label={L("الاسم بالإنجليزية", "English name")}><Input dir="ltr" /></Form.Item>
       </Form>
     </Modal>

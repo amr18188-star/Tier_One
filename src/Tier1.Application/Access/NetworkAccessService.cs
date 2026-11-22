@@ -27,7 +27,7 @@ public sealed class NetworkAccessService(IIdentityStore db, IMemoryCache cache, 
             Outcome = "denied",
             Target = new AuditTarget("User", user.Id.ToString(), user.Email),
             ActorOverride = user.Id,
-            ActorName = Lang.Name(user.FullNameAr, user.FullNameEn),
+            ActorName = user.DisplayName,
             Details = new { ip, decision = "denied", surface, username = user.Email },
         };
 

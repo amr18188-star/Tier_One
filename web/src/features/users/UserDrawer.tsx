@@ -8,6 +8,7 @@ import { errorText, formatDate, formatDateTime } from "../../shared/format";
 import { markFieldErrors } from "../../shared/useFieldErrors";
 import { IpAllowlistPanel } from "../security/IpAllowlistPanel";
 import { useEmailDomainRule } from "./emailDomainRule";
+import { TitleSelect } from "./TitleSelect";
 import { dirArrow, L, useLang } from "../../shared/i18n";
 import { QueryError } from "../../shared/QueryState";
 import { usePermissions, useSession } from "../../shared/session";
@@ -41,7 +42,7 @@ export function UserDrawer({ userId, onClose }: { userId: string; onClose: () =>
   // الخادم يرفض على أي حال؛ الواجهة تخفي ما لا يملكه المستخدم هنا (حسابه، أو حامل دور محجوز لغير المدير الأعلى).
   const locked = self || (!!u?.holdsReservedRole && !perms.isSuperAdmin);
   return (
-    <Drawer open onClose={onClose} width={Math.min(1100, window.innerWidth)} placement={lang === "ar" ? "left" : "right"} title={u ? `${u.fullNameAr}` : L("الحساب", "Account")} destroyOnHidden>
+    <Drawer open onClose={onClose} width={Math.min(1100, window.innerWidth)} placement={lang === "ar" ? "left" : "right"} title={u ? (u.displayName ?? u.fullNameAr) : L("الحساب", "Account")} destroyOnHidden>
       {/* FE-10: a 403, a 404 (deleted in another tab) or a 500 shows why, with a retry, instead of an endless spinner. */}
       {(user.isError && !u) || (catalog.isError && !catalog.data) ? (
         <QueryError error={user.error ?? catalog.error} onRetry={() => { void user.refetch(); void catalog.refetch(); }} />
@@ -140,8 +141,8 @@ function EditNames({ user, onSaved }: { user: UserDetail; onSaved: () => Promise
   const [error, setError] = useState<string | null>(null);
   return (
     <>
-      <Button onClick={() => setOpen(true)}>{L("تعديل الاسم", "Edit name")}</Button>
-      <Modal open={open} title={L("تعديل الاسم", "Edit name")} onCancel={() => setOpen(false)} destroyOnHidden onOk={async () => {
+      <Button onClick={() => setOpen(true)}>{L("تعديل الاسم واللقب", "Edit name and title")}</Button>
+      <Modal open={open} title={L("تعديل الاسم واللقب", "Edit name and title")} onCancel={() => setOpen(false)} destroyOnHidden onOk={async () => {
         const v = await form.validateFields();
         try {
           await api.put(`/api/iam/users/${user.id}`, v);
@@ -152,8 +153,12 @@ function EditNames({ user, onSaved }: { user: UserDetail; onSaved: () => Promise
         }
       }}>
         {error && <Alert type="error" showIcon message={error} className="mb" />}
-        <Form form={form} layout="vertical" initialValues={{ fullNameAr: user.fullNameAr, fullNameEn: user.fullNameEn, email: user.email }}>
+        <Form form={form} layout="vertical" initialValues={{ fullNameAr: user.fullNameAr, fullNameEn: user.fullNameEn, email: user.email, title: user.title ?? null }}>
           <Form.Item name="email" label={L("البريد الجامعي (اسم الدخول)", "University email (sign-in name)")} rules={[{ required: true, type: "email" }, emailRule]}><Input dir="ltr" /></Form.Item>
+          <Form.Item name="title" label={L("اللقب", "Title")}
+            extra={L("يسبق الاسم، ويعرض الاسم بعده ثنائيًا. بلا لقب يعرض الاسم كاملًا كما كتب.", "Shown before the first two names. Without a title the full name is shown as written.")}>
+            <TitleSelect allowClear />
+          </Form.Item>
           <Form.Item name="fullNameAr" label={L("الاسم بالعربية", "Arabic name")} rules={[{ required: true }]}><Input /></Form.Item>
           <Form.Item name="fullNameEn" label={L("الاسم بالإنجليزية", "English name")}><Input dir="ltr" /></Form.Item>
         </Form>

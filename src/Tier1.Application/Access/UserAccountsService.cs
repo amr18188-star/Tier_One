@@ -23,12 +23,14 @@ public sealed class UserAccountsService(IIdentityStore db, IClock clock, ICurren
             throw new DomainException("name_required", "اكتب الاسم بالعربية.", "Enter the Arabic name.", 400) { Field = "fullNameAr" };
         if (await db.Users.AnyAsync(u => u.Email == email, ct))
             throw new DomainException("duplicate_email", "يوجد حساب بهذا البريد.", "An account with this email already exists.", 409) { Field = "email" };
+        var title = TitleOf(req.Title);
         var temporary = Tokens.NewTemporaryPassword();
         var user = new AppUser
         {
             Email = email,
             FullNameAr = req.FullNameAr.Trim(),
             FullNameEn = string.IsNullOrWhiteSpace(req.FullNameEn) ? null : req.FullNameEn.Trim(),
+            Title = title,
             PasswordHash = hasher.Hash(temporary),
             MustChangePassword = true,
             CreatedAt = clock.UtcNow,
@@ -39,10 +41,18 @@ public sealed class UserAccountsService(IIdentityStore db, IClock clock, ICurren
         {
             Permission = $"{Features.Users}:A",
             Target = new AuditTarget("User", user.Id.ToString(), email),
-            Changes = [new FieldChange("email", null, email), new FieldChange("fullNameAr", null, user.FullNameAr)],
+            Changes = [new FieldChange("email", null, email), new FieldChange("fullNameAr", null, user.FullNameAr), new FieldChange("title", null, title)],
         });
         await db.SaveChangesAsync(ct);
         return new TemporaryPasswordDto(user.Id, temporary);
+    }
+
+    /// <summary>ADR-0019: the title is one of the closed list, or none. A free-text title is refused, so names read the same everywhere.</summary>
+    private static string? TitleOf(string? title)
+    {
+        if (string.IsNullOrWhiteSpace(title)) return null;
+        return PersonTitles.Find(title)?.Ar
+            ?? throw new DomainException("invalid_title", "اختر اللقب من القائمة.", "Choose the title from the list.", 400) { Field = "title" };
     }
 
     public async Task UpdateAsync(Guid id, UpdateUserRequest req, CancellationToken ct)
@@ -55,6 +65,8 @@ public sealed class UserAccountsService(IIdentityStore db, IClock clock, ICurren
         var en = string.IsNullOrWhiteSpace(req.FullNameEn) ? null : req.FullNameEn.Trim();
         if (user.FullNameAr != ar) changes.Add(new FieldChange("fullNameAr", user.FullNameAr, ar));
         if (user.FullNameEn != en) changes.Add(new FieldChange("fullNameEn", user.FullNameEn, en));
+        var title = TitleOf(req.Title);
+        if (user.Title != title) changes.Add(new FieldChange("title", user.Title, title));
         // ADR-0016: a new email (the login name) must be at an active approved domain and unused; the old one keeps working until changed.
         var email = user.Email;
         if (req.Email is { } wanted && !string.Equals(wanted.Trim(), user.Email, StringComparison.OrdinalIgnoreCase))
@@ -67,6 +79,7 @@ public sealed class UserAccountsService(IIdentityStore db, IClock clock, ICurren
         if (changes.Count == 0) return;
         user.FullNameAr = ar;
         user.FullNameEn = en;
+        user.Title = title;
         user.Email = email;
         audit.Record(IamPolicy.UserEvent("iam.user_update", "تعديل بيانات حساب", "Updated an account", user, "E") with { Changes = changes });
         await db.SaveChangesAsync(ct);
