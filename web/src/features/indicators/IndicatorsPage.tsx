@@ -6,6 +6,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, query } from "../../api/client";
 import type { DefinitionStatus, IndicatorRow, Standard } from "../../api/tier1";
 import { L } from "../../shared/i18n";
+import { UniTarget } from "../../shared/CollegeTarget";
 import { definitionStatus, num, withUnit } from "../../shared/labels";
 import { StdCode, stdLabel, tint, usePillarMap } from "../../shared/pillars";
 import { usePermissions } from "../../shared/session";
@@ -143,7 +144,7 @@ export default function IndicatorsPage() {
               render: (n: number) => n === 0 ? <Tag color="success">{L("مكتمل", "Complete")}</Tag> : <Tag color="warning">{L(`${n} بند`, `${n} items`)}</Tag>,
             },
             { title: L("خط الأساس", "Baseline"), dataIndex: "baseline", width: 110, render: (v: number | null) => <span className="ltr">{num(v)}</span> },
-            { title: L(`المستهدف النهائي${finalYear ? ` (${finalYear})` : ""}`, "Final target"), dataIndex: "finalTarget", width: 120, render: (v: number | null, r) => <b className="ltr">{withUnit(v, r.unit)}</b> },
+            { title: L(`المستهدف النهائي${finalYear ? ` (${finalYear})` : ""}`, "Final target"), dataIndex: "finalTarget", width: 120, render: (v: number | null, r) => <b className="ltr"><UniTarget>{withUnit(v, r.unit)}</UniTarget></b> },
             {
               title: L("التعارضات", "Conflicts"), dataIndex: "openConflicts", width: 100, align: "center",
               render: (n: number) => n > 0 ? <Badge count={n} color="var(--ds-status-late-ink)" /> : <span className="muted">—</span>,
@@ -153,7 +154,7 @@ export default function IndicatorsPage() {
             <>
               <div className="dt-card-row"><StdCode code={r.code} standard={r.standardCode} map={pillarMap.map} /><Tag color={definitionStatus[r.status].color}>{definitionStatus[r.status].text}</Tag></div>
               <b>{r.nameAr}</b>
-              <div className="dt-card-row"><span>{L("المستهدف النهائي", "Final target")}</span><b className="ltr">{withUnit(r.finalTarget, r.unit)}</b></div>
+              <div className="dt-card-row"><span>{L("المستهدف النهائي", "Final target")}</span><b className="ltr"><UniTarget>{withUnit(r.finalTarget, r.unit)}</UniTarget></b></div>
               {r.openConflicts > 0 && <div className="dt-card-row"><span>{L("تعارضات مفتوحة", "Open conflicts")}</span><Badge count={r.openConflicts} color="var(--ds-status-late-ink)" /></div>}
             </>
           )}

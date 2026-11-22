@@ -9,7 +9,7 @@ import { L } from "../../shared/i18n";
 import { num } from "../../shared/labels";
 import { stdLabel, tint } from "../../shared/pillars";
 import { AccordionPanel } from "../../shared/AccordionPanel";
-import { CollegeTarget } from "../../shared/CollegeTarget";
+import { CollegeTarget, UniTarget } from "../../shared/CollegeTarget";
 import { PillarCarousel, type CarouselSlide } from "../strategy/PillarCarousel";
 import { QueryState } from "../../shared/QueryState";
 import { EmptyNote, FilterMeta, PageHeader } from "../../shared/ui";
@@ -222,7 +222,7 @@ function Row({ i, quarters }: { i: ProgressIndicator; quarters: PlanQuarter[] })
           <Tooltip title={i.comparable
             ? L("مستهدف الجامعة للعام، للاطلاع؛ الكلية تقاس بمستهدفها.", "The university's target for the year, for reference; the college is measured against its own.")
             : L("مؤشر مجموع أو عدد: مستهدف الجامعة لمجموع الكليات كلها، للاطلاع.", "A sum: the university's target for all colleges together, for reference.")}>
-            <span className="muted">{fmt(i.universityYearTarget, i.unit)}</span>
+            <span className="muted"><UniTarget>{fmt(i.universityYearTarget, i.unit)}</UniTarget></span>
             {!i.comparable && <small className="muted">{L("للجامعة كلها", "whole university")}</small>}
           </Tooltip>
         )}

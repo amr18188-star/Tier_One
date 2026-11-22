@@ -11,7 +11,7 @@ import { L } from "../../shared/i18n";
 import { PeriodNav } from "../../shared/PeriodNav";
 import { num, performance as perfText, withUnit } from "../../shared/labels";
 import { PendingTarget } from "../../shared/PendingTarget";
-import { CollegeTarget, shownOf } from "../../shared/CollegeTarget";
+import { CollegeTarget, shownOf, UniTarget } from "../../shared/CollegeTarget";
 import { DataTable, EmptyNote, FilterMeta, oneOf, PageHeader, Panel } from "../../shared/ui";
 import { usePeriodParams, useSearchState } from "../../shared/usePeriodParams";
 import { ReportView } from "./ReportView";
@@ -113,7 +113,7 @@ export default function ResultsPage() {
           // DEC-5: the college's target right after its value; without one, the university's target underlined (display only).
           title: r?.unit.kind === "University" ? L("المستهدف", "Target") : L("مستهدف الكلية", "College target"), key: "t", width: 140, render: (_, i) => (
             <span>
-              <CollegeTarget target={shownOf(i)} unit={i.unit} />
+              <CollegeTarget target={shownOf(i)} unit={i.unit} university={r?.unit.kind === "University"} />
               <PendingTarget value={i.pendingTarget} year={i.pendingTargetYear} unit={i.unit} />
             </span>
           ),
@@ -133,7 +133,7 @@ export default function ResultsPage() {
             </Tooltip>
           ) : i.universityTarget === null ? <span className="muted">—</span> : (
             <Tooltip title={L(`مستهدف الجامعة ${withUnit(i.universityTarget, i.unit)}`, `University target ${withUnit(i.universityTarget, i.unit)}`)}>
-              <span className="ltr">{withUnit(i.universityTarget, i.unit)}</span>
+              <span className="ltr"><UniTarget>{withUnit(i.universityTarget, i.unit)}</UniTarget></span>
               {i.universityAchievement !== null && <b className="ltr ms">{Math.round(i.universityAchievement * 100)}%</b>}
             </Tooltip>
           ),

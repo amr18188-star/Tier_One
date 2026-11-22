@@ -9,6 +9,7 @@ import { DecisionModal } from "../../shared/DecisionModal";
 import { formatDateTime } from "../../shared/format";
 import { L } from "../../shared/i18n";
 import { direction, withUnit } from "../../shared/labels";
+import { UniTarget } from "../../shared/CollegeTarget";
 import { Panel } from "../../shared/ui";
 import { TargetEditor, type TargetSlot } from "./TargetEditor";
 import { queryKeys } from "../../api/queries";
@@ -28,7 +29,9 @@ export function TargetsPanel({ code, universityId }: { code: string; universityI
     return (
       <div key={year} className={`t1-year${kind === "Baseline" ? " baseline" : ""}${existing ? "" : " empty"}`}>
         <small>{kind === "Baseline" ? L(`خط الأساس ${year}`, `Baseline ${year}`) : year}</small>
-        <b className="ltr">{existing?.value !== null && existing?.value !== undefined ? withUnit(existing.value, t!.unit) : existing?.text ?? "—"}</b>
+        <b className="ltr">{kind === "Target"
+          ? <UniTarget>{existing?.value !== null && existing?.value !== undefined ? withUnit(existing.value, t!.unit) : existing?.text ?? "—"}</UniTarget>
+          : existing?.value !== null && existing?.value !== undefined ? withUnit(existing.value, t!.unit) : existing?.text ?? "—"}</b>
         {existing && <Tag color={existing.status === "Approved" ? "success" : "default"}>{existing.status === "Approved" ? L("معتمد", "Approved") : L("مقترح", "Proposed")}</Tag>}
         <div>
           {t!.actions.canEditUniversity && universityId && (

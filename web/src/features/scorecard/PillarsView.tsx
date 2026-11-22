@@ -3,6 +3,7 @@ import { Input, Tag, Tooltip } from "antd";
 import type { IndicatorScore, Level, PillarScore, Scorecard } from "../../api/scorecard";
 import { AccordionPanel, useSingleOpen } from "../../shared/AccordionPanel";
 import { L, useLang } from "../../shared/i18n";
+import { UniTarget } from "../../shared/CollegeTarget";
 import { num } from "../../shared/labels";
 import { tint } from "../../shared/pillars";
 import { EmptyNote } from "../../shared/ui";
@@ -115,7 +116,7 @@ export const PillarStandards = memo(function PillarStandards({ stds, onPick }: {
               <div key={i.id} className="sc-row" role="row" onClick={() => onPick(i)} tabIndex={0} onKeyDown={(e) => e.key === "Enter" && onPick(i)}>
                 <span role="cell" className="sc-name"><code className="ltr">{i.code}</code> {i.name} <small className="muted">({i.unit})</small></span>
                 <span role="cell" className="ltr">{fmt(i.latest, i.unit)}{i.latestIndex >= 0 && <small className="muted"> Q{(i.latestIndex % 4) + 1}/Y{Math.floor(i.latestIndex / 4) + 1}</small>}</span>
-                <span role="cell" className="ltr">{fmt(i.finalTarget, i.unit)}</span>
+                <span role="cell" className="ltr"><UniTarget>{fmt(i.finalTarget, i.unit)}</UniTarget></span>
                 <span role="cell" className="sc-ach"><Bar value={i.latest === null ? null : i.score} /><b className="ltr">{i.latest === null ? "—" : pct(i.score)}</b>
                   {i.rawAchievement !== null && i.rawAchievement > 100 && <Tooltip title={L("النسبة الفعلية قبل حد الـ100 (للعلم)", "Uncapped (info)")}><small className="sc-raw ltr">{pct(i.rawAchievement)}</small></Tooltip>}
                 </span>

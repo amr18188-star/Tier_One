@@ -318,7 +318,8 @@
 .f-std-nav + .f-std-nav { margin-top: -4px; }
 .t1-entry-note { color: var(--teal-ink); background: var(--ds-app-note-bg); border-radius: var(--ds-radius-md); padding: 4px 8px; font-size: 12px; margin-top: 4px; }
 
-/* DEC-5 (ADR-0017): the university's target shown in the "college target" column when the college has none. The underline
-   is the mark; the tooltip says why. A descriptive target ("two projects for each college") wraps inside its cell. */
-.t1-uni-target { text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 4px; cursor: help; }
+/* DEC-5 (ADR-0017): a university target is underlined wherever it is shown, a college target is not. In the "college target"
+   column the university's target stands in when the college has none; there the tooltip says why. A descriptive target ("two projects for each college") wraps inside its cell. */
+.t1-uni-target { text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 4px; }
+.t1-uni-target.has-tip { cursor: help; }
 .t1-target-text { font-size: 0.85em; white-space: normal; direction: rtl; unicode-bidi: plaintext; }

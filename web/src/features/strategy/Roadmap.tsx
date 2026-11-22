@@ -4,6 +4,7 @@ import { AimOutlined, DownOutlined, FlagFilled, RocketOutlined } from "@ant-desi
 import { useSearchParams } from "react-router-dom";
 import type { IndicatorNode, InitiativeNode, StandardNode } from "../../api/tier1";
 import { L } from "../../shared/i18n";
+import { UniTarget } from "../../shared/CollegeTarget";
 import { stdLabel } from "../../shared/pillars";
 import { horizon, initiativeStatus, num } from "../../shared/labels";
 import { EmptyNote, FilterMeta } from "../../shared/ui";
@@ -215,11 +216,11 @@ function StandardRows({ initiatives, indicators }: { initiatives: InitiativeNode
               if (y < start) return <span key={y} role="cell" style={at} className="sp-road-cell off" aria-label={L(`${y}: لم يبدأ`, `${y}: not started`)}>—</span>;
               if (y > end)
                 return v !== null
-                  ? <span key={y} role="cell" style={at} className="sp-road-cell ltr-nums">{val(i, v)}</span>
-                  : <span key={y} role="cell" style={at} className="sp-road-cell after ltr-nums" title={L("يستمر آخر مستهدف", "Latest target carries on")}>{val(i, carried)}</span>;
+                  ? <span key={y} role="cell" style={at} className="sp-road-cell ltr-nums"><UniTarget>{val(i, v)}</UniTarget></span>
+                  : <span key={y} role="cell" style={at} className="sp-road-cell after ltr-nums" title={L("يستمر آخر مستهدف", "Latest target carries on")}><UniTarget>{val(i, carried)}</UniTarget></span>;
               return (
                 <span key={y} role="cell" style={at} className={`sp-road-cell ltr-nums${y === end ? " goal" : ""}${v === null ? " missing" : ""}`}>
-                  {y === end && <FlagFilled aria-label={L("سنة التحقق", "Target year")} />}{v === null ? L("ناقص", "missing") : val(i, v)}
+                  {y === end && <FlagFilled aria-label={L("سنة التحقق", "Target year")} />}{v === null ? L("ناقص", "missing") : <UniTarget>{val(i, v)}</UniTarget>}
                 </span>
               );
             })}

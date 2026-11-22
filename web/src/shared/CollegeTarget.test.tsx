@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/react";
-import { CollegeTarget, shownOf } from "./CollegeTarget";
+import { CollegeTarget, shownOf, UniTarget } from "./CollegeTarget";
 
 // antd in jsdom: the first render loads the whole library, so give each test room.
 vi.setConfig({ testTimeout: 30_000 });
@@ -42,6 +42,18 @@ describe("CollegeTarget", () => {
   it("drops a non-percent unit in a compact cell", () => {
     const { container } = render(<CollegeTarget compact target={{ value: 2, text: null, source: "EachCollege" }} unit="عدد" />);
     expect(container.textContent).toBe("2");
+  });
+
+  it("underlines the target of the university's own row", () => {
+    const { container } = render(<CollegeTarget university target={{ value: 85, text: null, source: "Unit" }} unit="%" />);
+    expect(container.querySelector("u.t1-uni-target")?.textContent).toBe("85%");
+  });
+
+  it("underlines a university target wherever it is shown, but not the dash of a missing one", () => {
+    expect(render(<UniTarget>175,000</UniTarget>).container.querySelector("u.t1-uni-target")?.textContent).toBe("175,000");
+    const none = render(<UniTarget>—</UniTarget>).container;
+    expect(none.querySelector("u")).toBeNull();
+    expect(none.textContent).toBe("—");
   });
 
   it("falls back to the measured target for a row from an older API", () => {

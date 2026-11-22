@@ -8,6 +8,7 @@ import { Link, Navigate, useSearchParams } from "react-router-dom";
 import type { IndicatorNode, InitiativeNode, PillarNode, StandardNode } from "../../api/tier1";
 import { howCalculated } from "../../shared/calc";
 import { L, useLang } from "../../shared/i18n";
+import { UniTarget } from "../../shared/CollegeTarget";
 import { aggregation, definitionStatus, direction, horizon, initiativeStatus, level, num, performance, withUnit } from "../../shared/labels";
 import { EmptyNote } from "../../shared/ui";
 import { IndicatorPlan } from "./IndicatorPlan";
@@ -169,7 +170,7 @@ function IndicatorRow({ i }: { i: IndicatorNode }) {
         <Sparkline values={[i.baseline, ...years.map((y) => (y < start ? null : targetOf(i, y)))]} label={L(`مسار مستهدف ${i.code}`, `Target path of ${i.code}`)} />
         <span className="sp-irow-goal">
           <small>{L(`مستهدف ${end}`, `Target ${end}`)}</small>
-          <b className="ltr-nums">{fmt(i, goal)}</b>
+          <b className="ltr-nums"><UniTarget>{fmt(i, goal)}</UniTarget></b>
         </span>
         <span className="sp-irow-state">
           {r && r.actual !== null ? (
@@ -380,7 +381,7 @@ function IndicatorDetail({ indicator: i, standard }: { indicator: IndicatorNode;
         <Desc text={i.definition} empty={L("لم يكتب تعريف المؤشر بعد.", "No definition yet.")} />
         <Facts items={[
           { label: L(`خط الأساس ${tree.baselineYear}`, `Baseline ${tree.baselineYear}`), value: <span className="ltr-nums">{fmt(i, i.baseline)}</span> },
-          { label: L(`المستهدف في ${end}`, `Target in ${end}`), value: <span className="ltr-nums"><FlagFilled aria-hidden className="sp-goal-flag" /> {fmt(i, goal)}</span>,
+          { label: L(`المستهدف في ${end}`, `Target in ${end}`), value: <span className="ltr-nums"><FlagFilled aria-hidden className="sp-goal-flag" /> <UniTarget>{fmt(i, goal)}</UniTarget></span>,
             hint: start > years[0] ? L(`يبدأ في ${start}`, `Starts ${start}`) : L("من أول الخطة", "From plan start"), tone: "goal" },
           r && r.actual !== null
             ? { label: L("آخر قياس معتمد", "Latest approved"), value: <span className="ltr-nums">{fmt(i, r.actual)}</span>,

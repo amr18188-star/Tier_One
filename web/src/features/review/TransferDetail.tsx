@@ -8,7 +8,7 @@ import type { ReviewRow } from "../../api/scorecard";
 import { howCalculated } from "../../shared/calc";
 import { errorText, formatDateTime } from "../../shared/format";
 import { L } from "../../shared/i18n";
-import { CollegeTarget, shownOf } from "../../shared/CollegeTarget";
+import { CollegeTarget, shownOf, UniTarget } from "../../shared/CollegeTarget";
 import { num, submissionStatus } from "../../shared/labels";
 import { fmt } from "./reviewParts";
 
@@ -82,7 +82,7 @@ export function Detail({ row, cycleId, canTransfer }: { row: ReviewRow; cycleId:
           {ratio && <span role="cell" className="ltr" data-label={col.num}><b>{row.computedNumerator === null ? "—" : num(row.computedNumerator)}</b></span>}
           {ratio && <span role="cell" className="ltr" data-label={col.den}><b>{row.computedDenominator === null ? "—" : num(row.computedDenominator)}</b></span>}
           <span role="cell" className="ltr" data-label={col.value}><b>{fmt(row.computed, row.unit)}</b></span>
-          <span role="cell" className="rv-td-target">{L("مستهدف الجامعة", "Univ. target")} <b className="ltr">{fmt(row.universityTarget, row.unit)}</b></span>
+          <span role="cell" className="rv-td-target">{L("مستهدف الجامعة", "Univ. target")} <b className="ltr"><UniTarget>{fmt(row.universityTarget, row.unit)}</UniTarget></b></span>
           <span role="cell" className="ltr" data-label={col.a}>{row.computedAchievement === null ? "—" : `${num(row.computedAchievement)}%`}</span>
           <span role="cell" className="ltr" data-label={col.b}>{!row.comparable ? (row.computed !== null ? "100%" : "—") : row.computed !== null && row.universityTarget !== null ? `${row.computed - row.universityTarget > 0 ? "+" : ""}${num(row.computed - row.universityTarget)}` : "—"}</span>
         </div>
