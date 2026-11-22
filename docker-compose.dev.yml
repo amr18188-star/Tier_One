@@ -1,6 +1,7 @@
 # Option 1: the API and the web UI run INSIDE Docker next to the infrastructure services.
 #
 #   docker compose -p tier1-dev -f docker-compose.dev.yml up
+#   docker compose -p tier1-dev -f docker-compose.dev.yml --profile demo up     # the same, and loads the demo data
 #
 # `include` pulls in docker-compose.yml, so the same Postgres / Mongo containers and
 # volumes are shared with Option 2 (API via `dotnet run`).
@@ -63,7 +64,10 @@ services:
   # it skips itself when the data is already there. ARCH-4: a tool beside the server, not a job inside it. Its own build
   # output and NuGet cache, so its build never collides with `dotnet watch` in the api container: on a fresh environment both
   # restore at once, and two restores writing one package folder left half-extracted packages that broke both builds.
+  # Opt-in (`--profile demo`): a plain `up` never loads it, so a database that holds real targets and entries is not filled
+  # with generated cycles and "each college" targets by starting the environment. The E2E environment always loads it.
   demo-data:
+    profiles: ["demo"]
     image: tier1-api:dev
     container_name: tier1-dev-demo-data
     command: ["dotnet", "run", "--project", "tools/Tier1.Tools", "--no-launch-profile", "--",

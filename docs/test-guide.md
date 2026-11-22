@@ -110,8 +110,8 @@ docker compose -p tier1-dev -f docker-compose.dev.yml up
 | الـ API | http://localhost:5150 |
 | قاعدة البيانات PostgreSQL | `127.0.0.1:5440` (`tier1_dev` / `tier1_dev`) |
 
-- أول تشغيل يحمّل الهيكل الرسمي، ثم تحمّل حاوية `tier1-dev-demo-data` البيانات التجريبية عبر الخادم (نحو 35 ثانية بعد أن يجيب). سجلها يقول `Demo data loaded in ... seconds` ثم تنتهي: `docker logs tier1-dev-demo-data`.
-- **لإعادة كل شيء من الصفر:** `docker compose -p tier1-dev -f docker-compose.dev.yml down -v` ثم `up`.
+- أول تشغيل يحمّل الهيكل الرسمي. البيانات التجريبية اختيارية: شغّل `up` مع `--profile demo` فتحمّلها حاوية `tier1-dev-demo-data` عبر الخادم (نحو 35 ثانية بعد أن يجيب). سجلها يقول `Demo data loaded in ... seconds` ثم تنتهي: `docker logs tier1-dev-demo-data`.
+- **لإعادة كل شيء من الصفر:** `docker compose -p tier1-dev -f docker-compose.dev.yml down -v` ثم `up` (مع `--profile demo` إن أردت البيانات التجريبية).
 - **الرسائل (البريد):** لا خادم بريد في التطوير؛ كل رسالة تُكتب ملف `.eml` في `data/mail`.
 - **ملاحظة:** سجّل الدخول بحساب واحد في كل متصفح. لاختبار حسابين معًا استخدم نافذتين: عادية وخاصة (Incognito).
 - **اختبارات آلية** (تغطي معظم ما في هذا الدليل): `dotnet test tests/Tier1.E2E` والخادم يعمل.
