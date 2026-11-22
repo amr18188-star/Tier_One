@@ -8,6 +8,7 @@ import type { ReviewRow } from "../../api/scorecard";
 import { howCalculated } from "../../shared/calc";
 import { errorText, formatDateTime } from "../../shared/format";
 import { L } from "../../shared/i18n";
+import { CollegeTarget, shownOf } from "../../shared/CollegeTarget";
 import { num, submissionStatus } from "../../shared/labels";
 import { fmt } from "./reviewParts";
 
@@ -36,8 +37,9 @@ export function Detail({ row, cycleId, canTransfer }: { row: ReviewRow; cycleId:
     den: row.denominatorLabel ?? L("المقام", "Denominator"),
     value: L("القيمة", "Value"),
     target: L("مستهدف الكلية", "College target"),
-    a: row.comparable ? L("من مستهدف الجامعة", "vs university target") : L("إنجازها من مستهدفها", "vs own target"),
-    b: row.comparable ? L("البعد عنه", "Gap") : L("حصتها من رقم الجامعة", "Share of university"),
+    // تقييم إنجاز الكلية من مستهدفها وحده (DEC-5)؛ البعد عن مستهدف الجامعة للنسب، والحصة من رقمها للمجموع، للاطلاع.
+    a: L("إنجازها من مستهدفها", "vs own target"),
+    b: row.comparable ? L("البعد عن مستهدف الجامعة", "Gap to university target") : L("حصتها من رقم الجامعة", "Share of university"),
   };
 
   return (
@@ -60,10 +62,10 @@ export function Detail({ row, cycleId, canTransfer }: { row: ReviewRow; cycleId:
             {ratio && <span role="cell" className="ltr" data-label={col.num}>{u.numerator === null ? "—" : num(u.numerator)}</span>}
             {ratio && <span role="cell" className="ltr" data-label={col.den}>{u.denominator === null ? "—" : num(u.denominator)}</span>}
             <span role="cell" className="ltr" data-label={col.value}><b>{fmt(u.value, row.unit)}</b></span>
-            <span role="cell" className="ltr" data-label={col.target}>{u.targetSource === "Unit" || u.targetSource === "EachCollege" ? fmt(u.target, row.unit) : <span className="muted">—</span>}</span>
+            <span role="cell" className="ltr" data-label={col.target}><CollegeTarget compact unit={row.unit} target={shownOf(u)} /></span>
             {row.comparable ? (
               <>
-                <span role="cell" className="ltr" data-label={col.a}>{u.universityAchievement === null ? "—" : `${num(u.universityAchievement)}%`}</span>
+                <span role="cell" className="ltr" data-label={col.a}>{u.achievement === null ? "—" : `${num(u.achievement)}%`}</span>
                 <span role="cell" className="ltr" data-label={col.b}>{u.gapToUniversity === null ? "—" : <span className={(row.direction === "LowerIsBetter" ? u.gapToUniversity <= 0 : u.gapToUniversity >= 0) ? "rv-up" : "rv-down"}>{u.gapToUniversity > 0 ? "+" : ""}{num(u.gapToUniversity)}</span>}</span>
               </>
             ) : (

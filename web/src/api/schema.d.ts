@@ -6352,6 +6352,7 @@ export interface components {
             /** Format: int32 */
             pendingTargetYear: number | null;
             approvedBefore: null | components["schemas"]["ApprovedValueDto"];
+            shownTarget: null | components["schemas"]["ShownTarget"];
         };
         FormReopenDto: {
             /** Format: uuid */
@@ -6578,6 +6579,7 @@ export interface components {
             targetShare: number | null;
             /** Format: double */
             actualShare: number | null;
+            shownTarget: null | components["schemas"]["ShownTarget"];
         };
         IndicatorResultsDto: {
             university: components["schemas"]["IndicatorResult"];
@@ -7143,6 +7145,7 @@ export interface components {
             share: number | null;
             /** Format: double */
             universityYearTarget: number | null;
+            shownTarget: null | components["schemas"]["ShownTarget"];
         };
         ProgressPillar: {
             /** Format: uuid */
@@ -7307,6 +7310,7 @@ export interface components {
             gapToUniversity: number | null;
             /** Format: double */
             share: number | null;
+            shownTarget: null | components["schemas"]["ShownTarget"];
         };
         RoleDefinitionDto: {
             code: string;
@@ -7617,6 +7621,12 @@ export interface components {
             isSwitch: boolean;
             /** @default false */
             editable: boolean;
+        };
+        ShownTarget: {
+            /** Format: double */
+            value: number | null;
+            text: null | string;
+            source: components["schemas"]["TargetSource"];
         };
         StandardDto: {
             /** Format: uuid */

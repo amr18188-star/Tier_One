@@ -40,7 +40,7 @@ public enum ReviewState
 public sealed record ReviewUnit(
     Guid UnitId, string Name, OrgUnitKind Kind, decimal? Value, decimal? Numerator, decimal? Denominator, int Reported, int Expected, string? Note,
     SubmissionStatus? FormStatus, decimal? Target, Kpi.TargetSource TargetSource, decimal? Achievement, decimal? UniversityAchievement, decimal? GapToUniversity,
-    decimal? Share);
+    decimal? Share, Kpi.ShownTarget? ShownTarget = null);
 
 public sealed record OfficialValue(
     decimal? Value, decimal? Numerator, decimal? Denominator, decimal? ComputedValue, string? Note, string? TransferredByName, DateTimeOffset TransferredAt, uint Version);
@@ -184,7 +184,7 @@ public sealed class ReviewService(IScorecardStore db, IReadModel read, IClock cl
                 ScorecardRules.Achievement(u.Value, u.Target, v.Direction),
                 comparable ? ScorecardRules.Achievement(u.Value, b.UniversityTarget, v.Direction) : null,
                 comparable && u.Value is { } x && b.UniversityTarget is { } t ? x - t : null,
-                !comparable && u.Value is { } s && computed is { } all && all != 0 ? Math.Round(s / all * 100, 1) : null)).ToList();
+                !comparable && u.Value is { } s && computed is { } all && all != 0 ? Math.Round(s / all * 100, 1) : null, u.ShownTarget)).ToList();
             return new ReviewRow(b.IndicatorId, b.Code, v.NameAr, b.StandardCode, pillarIndex >= 0 ? pillars[pillarIndex].Code : null, pillarIndex, v.Unit, v.Direction,
                 v.Aggregation, b.Level, v.Numerator, v.Denominator, v.Formula,
                 computed, b.University.Numerator, b.University.Denominator, b.University.Reported, b.University.Expected, b.University.Note,

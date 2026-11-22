@@ -11,6 +11,7 @@ import { L } from "../../shared/i18n";
 import { PeriodNav } from "../../shared/PeriodNav";
 import { num, performance as perfText, withUnit } from "../../shared/labels";
 import { PendingTarget } from "../../shared/PendingTarget";
+import { CollegeTarget, shownOf } from "../../shared/CollegeTarget";
 import { DataTable, EmptyNote, FilterMeta, oneOf, PageHeader, Panel } from "../../shared/ui";
 import { usePeriodParams, useSearchState } from "../../shared/usePeriodParams";
 import { ReportView } from "./ReportView";
@@ -109,11 +110,10 @@ export default function ResultsPage() {
         { title: L("المؤشر", "Indicator"), dataIndex: "name", ellipsis: true },
         { title: L("الفعلي", "Actual"), key: "a", width: 110, render: (_, i) => <b className="ltr">{withUnit(i.actual, i.unit)}</b> },
         {
-          title: L("المستهدف", "Target"), key: "t", width: 130, render: (_, i) => (
+          // DEC-5: the college's target right after its value; without one, the university's target underlined (display only).
+          title: r?.unit.kind === "University" ? L("المستهدف", "Target") : L("مستهدف الكلية", "College target"), key: "t", width: 140, render: (_, i) => (
             <span>
-              <span className="ltr">{withUnit(i.target, i.unit)}</span>
-              {/* ADR-0017: a college is measured against its own target only; without one it says so. */}
-              {i.target === null && r?.unit.kind !== "University" && i.pendingTarget === null && <small className="muted">{L("لا مستهدف للكلية", "No college target")}</small>}
+              <CollegeTarget target={shownOf(i)} unit={i.unit} />
               <PendingTarget value={i.pendingTarget} year={i.pendingTargetYear} unit={i.unit} />
             </span>
           ),

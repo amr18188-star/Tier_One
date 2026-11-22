@@ -9,6 +9,7 @@ import { L } from "../../shared/i18n";
 import { num } from "../../shared/labels";
 import { stdLabel, tint } from "../../shared/pillars";
 import { AccordionPanel } from "../../shared/AccordionPanel";
+import { CollegeTarget } from "../../shared/CollegeTarget";
 import { PillarCarousel, type CarouselSlide } from "../strategy/PillarCarousel";
 import { QueryState } from "../../shared/QueryState";
 import { EmptyNote, FilterMeta, PageHeader } from "../../shared/ui";
@@ -197,8 +198,9 @@ function Row({ i, quarters }: { i: ProgressIndicator; quarters: PlanQuarter[] })
         {i.latestIndex >= 0 && <small className="muted">{quarters[i.latestIndex]?.label}</small>}
       </span>
       <span role="cell" className="ltr pg-num">
-        {/* ADR-0017: the college is measured against its own target only (its own, else the one for each college). */}
-        {i.yearTarget === null ? <small className="muted">{L("لا مستهدف للكلية", "No college target")}</small> : <b>{fmt(i.yearTarget, i.unit)}</b>}
+        {/* ADR-0017: the college is measured against its own target only (its own, else the one for each college).
+            DEC-5: without one the university's target is shown here underlined, for display only. */}
+        <CollegeTarget compact unit={i.unit} target={i.shownTarget ?? { value: i.yearTarget, text: null, source: i.yearTarget === null ? "None" : "Unit" }} />
       </span>
       <span role="cell" className="ltr pg-num">
         {i.gap === null ? (i.share !== null ? <><b className="pg-share">{num(i.share)}%</b><small className="muted">{L("حصتها من رقم الجامعة", "share of university")}</small></> : <span className="muted">—</span>) : (

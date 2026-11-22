@@ -17,7 +17,7 @@ public sealed record ProgressIndicator(
     IReadOnlyList<decimal?> UniversityTargets, IReadOnlyList<decimal?> CollegeTargets, IReadOnlyList<decimal?> UniversityQuarters,
     decimal? YearTarget, decimal? Gap, decimal? YearAchievement, decimal? OwnTarget, decimal? OwnAchievement,
     decimal? Score, Level Level, IReadOnlyList<decimal?> YearValues, IReadOnlyList<decimal?> YearScores,
-    bool Comparable, decimal? Share, decimal? UniversityYearTarget);
+    bool Comparable, decimal? Share, decimal? UniversityYearTarget, ShownTarget? ShownTarget = null);
 
 /// <summary>درجة المعيار متوسط مؤشراته التي لها مستهدف تقارن به الكلية.</summary>
 public sealed record ProgressStandard(string Code, string Name, decimal Score, IReadOnlyList<ProgressIndicator> Indicators);
@@ -82,11 +82,8 @@ public sealed class ProgressService(IScorecardStore db, IReadModel read, IAccess
             }
             var mine = targets[i.Id].ToList();
             var uniTargets = Years.Select(y => TargetLookup.University(mine, root.Id, y, i.PlanStartYear)).ToList();
-            var ownTargets = Years.Select(y =>
-            {
-                var t = TargetLookup.For(mine, unit, root.Id, y, i.PlanStartYear, v.Aggregation);
-                return t.Source is TargetSource.Unit or TargetSource.EachCollege ? t.Value : null;
-            }).ToList();
+            var infos = Years.Select(y => TargetLookup.For(mine, unit, root.Id, y, i.PlanStartYear, v.Aggregation)).ToList();
+            var ownTargets = infos.Select(t => t.Source is TargetSource.Unit or TargetSource.EachCollege ? t.Value : null).ToList();
             var (latest, index) = ScorecardRules.Latest(series);
             // Before the college's first value there is no "year of the latest value": show the targets of the plan year in progress,
             // so the college sees what it will be measured against instead of "no college target".
@@ -108,7 +105,9 @@ public sealed class ProgressService(IScorecardStore db, IReadModel read, IAccess
                 ownTarget, ScorecardRules.Achievement(latest, ownTarget, v.Direction),
                 final is null ? null : ScorecardRules.Achievement(latest, final, v.Direction) ?? 0, ScorecardRules.LevelOf(latest, yearTarget, v.Direction),
                 yearValues, yearValues.Select((y, k) => ScorecardRules.Achievement(y, against[k], v.Direction)).ToList(),
-                comparable, share, uniYearTarget);
+                comparable, share, uniYearTarget,
+                // DEC-5: the column beside the value shows the college's target of that year, else the university's (display only).
+                yearIndex >= 0 ? infos[yearIndex].Display : ShownTarget.None);
         }
 
         var result = new List<ProgressPillar>();

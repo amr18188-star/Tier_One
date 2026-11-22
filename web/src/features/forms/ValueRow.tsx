@@ -10,6 +10,7 @@ import { errorText } from "../../shared/format";
 import { L } from "../../shared/i18n";
 import { direction as directionText, fileSize, num, withUnit } from "../../shared/labels";
 import { PendingTarget } from "../../shared/PendingTarget";
+import { CollegeTarget, shownOf } from "../../shared/CollegeTarget";
 import { DecisionModal } from "../../shared/DecisionModal";
 import { NoteCard } from "./NoteCard";
 import { incompleteReason, useValueAutosave, type Draft, type SaveError, type SaveState } from "./useValueAutosave";
@@ -74,8 +75,8 @@ export function ValueRow({ formId, item, editable, reviewing, mark, onMark, onSa
         <div className="f-meta">
           <span>{L("الوحدة:", "Unit:")} <b>{item.unit}</b></span>
           <span>
-            {L("المستهدف:", "Target:")} <b className="ltr">{withUnit(item.target, item.unit)}</b>
-            {item.targetSource === "University" && <small className="muted"> ({L("مستهدف الجامعة؛ لا مستهدف خاص بالجهة", "university target")})</small>}
+            {L("المستهدف:", "Target:")} <CollegeTarget target={shownOf(item)} unit={item.unit} />
+            {shownOf(item).source === "University" && <small className="muted"> ({L("مستهدف الجامعة؛ لا مستهدف خاص بالجهة", "university target")})</small>}
             <PendingTarget value={item.pendingTarget} year={item.pendingTargetYear} unit={item.unit} />
           </span>
           <span>{L("آخر قيمة معتمدة:", "Last approved:")} <b className="ltr">{withUnit(item.previous, item.unit)}</b></span>

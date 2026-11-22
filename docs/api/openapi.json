@@ -7412,6 +7412,16 @@
                 "$ref": "#/components/schemas/ApprovedValueDto"
               }
             ]
+          },
+          "shownTarget": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ShownTarget"
+              }
+            ]
           }
         }
       },
@@ -8466,6 +8476,16 @@
               "string"
             ],
             "format": "double"
+          },
+          "shownTarget": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ShownTarget"
+              }
+            ]
           }
         }
       },
@@ -11136,6 +11156,16 @@
               "string"
             ],
             "format": "double"
+          },
+          "shownTarget": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ShownTarget"
+              }
+            ]
           }
         }
       },
@@ -11869,6 +11899,16 @@
               "string"
             ],
             "format": "double"
+          },
+          "shownTarget": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ShownTarget"
+              }
+            ]
           }
         }
       },
@@ -13318,6 +13358,34 @@
           "editable": {
             "type": "boolean",
             "default": false
+          }
+        }
+      },
+      "ShownTarget": {
+        "required": [
+          "value",
+          "text",
+          "source"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "text": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "source": {
+            "$ref": "#/components/schemas/TargetSource"
           }
         }
       },

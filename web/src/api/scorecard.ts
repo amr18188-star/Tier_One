@@ -55,6 +55,7 @@ export interface ReviewUnit {
   target: number | null; targetSource: import("./collection").TargetSource; achievement: number | null; universityAchievement: number | null; gapToUniversity: number | null;
   /** حصة الجهة من قيمة الجامعة المحسوبة، للمجموع والعدد. */
   share: number | null;
+  shownTarget?: import("./collection").ShownTarget | null;
 }
 export interface OfficialValue {
   value: number | null; numerator: number | null; denominator: number | null; computedValue: number | null; note: string | null;
@@ -87,6 +88,8 @@ export interface ProgressIndicator {
   score: number | null; level: Level; yearValues: (number | null)[]; yearScores: (number | null)[];
   /** النسب والمتوسطات تقارن بمستهدف الجامعة؛ المجموع والعدد بمستهدف الكلية إن وجد وبحصتها من رقم الجامعة. */
   comparable: boolean; share: number | null; universityYearTarget: number | null;
+  /** خانة مستهدف الكلية للعام: مستهدفها، وإلا مستهدف الجامعة (للعرض فقط). */
+  shownTarget?: import("./collection").ShownTarget | null;
 }
 export interface ProgressStandard { code: string; name: string; score: number; indicators: ProgressIndicator[] }
 export interface ProgressPillar { id: string; code: string; name: string; index: number; score: number; universityScore: number | null; standards: ProgressStandard[] }

@@ -46,10 +46,60 @@ public class StrategyRulesTests
     {
         // ADR-0017: neither for a rate (the university's 85% is shown beside the college's, not used) nor for a sum.
         var targets = new[] { T(University, 2027, 85) };
-        Assert.Equal(TargetInfo.None, TargetLookup.For(targets, College, University.Id, 2027, null, Aggregation.RatioOfSums));
-        Assert.Equal(TargetInfo.None, TargetLookup.For(targets, College, University.Id, 2027, null, Aggregation.WeightedAverage));
-        // مجموع الجامعة (175 ألف طالب) ليس مستهدفًا لكلية واحدة.
-        Assert.Equal(TargetInfo.None, TargetLookup.For(targets, College, University.Id, 2027, null, Aggregation.Sum));
+        foreach (var aggregation in new[] { Aggregation.RatioOfSums, Aggregation.WeightedAverage, Aggregation.Sum })
+        {
+            // مجموع الجامعة (175 ألف طالب) ليس مستهدفًا لكلية واحدة، ولا نسبتها مقياسًا لها.
+            var info = TargetLookup.For(targets, College, University.Id, 2027, null, aggregation);
+            Assert.Equal((null, TargetSource.None), (info.Value, info.Source));
+        }
+    }
+
+    /// <summary>
+    /// AC-T6 (ADR-0017, DEC-5): the "college target" column beside the value. With a college target (its own, else the one for each
+    /// college) it shows that target; without one it shows the university's target of the year, marked as the university's
+    /// (underlined on screen). Display only: the measure (Value) stays empty, so no achievement is computed from it.
+    /// </summary>
+    [Fact]
+    public void AC_T6_the_target_column_shows_the_college_target_else_the_university_one_for_display_only()
+    {
+        var each = new IndicatorTarget { UnitId = University.Id, Year = 2027, Value = 2, Kind = TargetKind.EachCollege, Status = TargetStatus.Approved };
+        var own = TargetLookup.For([T(University, 2027, 85), each, T(College, 2027, 90)], College, University.Id, 2027, null, Aggregation.RatioOfSums);
+        Assert.Equal(new ShownTarget(90, null, TargetSource.Unit), own.Display);
+
+        var unified = TargetLookup.For([T(University, 2027, 85), each], College, University.Id, 2027, null, Aggregation.Sum);
+        Assert.Equal(new ShownTarget(2, null, TargetSource.EachCollege), unified.Display);
+        Assert.Equal(2m, unified.Value);
+
+        foreach (var aggregation in new[] { Aggregation.RatioOfSums, Aggregation.Sum })
+        {
+            var fallback = TargetLookup.For([T(University, 2027, 85), T(University, 2028, 88)], College, University.Id, 2027, null, aggregation);
+            Assert.Equal(new ShownTarget(85, null, TargetSource.University), fallback.Display);
+            Assert.Equal((null, TargetSource.None), (fallback.Value, fallback.Source));   // shown, never measured against
+        }
+        // The year the value is entered for: 2028 shows 2028's target.
+        Assert.Equal(88m, TargetLookup.For([T(University, 2027, 85), T(University, 2028, 88)], College, University.Id, 2028, null, Aggregation.RatioOfSums).Display.Value);
+    }
+
+    /// <summary>AC-T7: a descriptive college target ("two projects for each college" on a rate) is shown as written, not replaced by the university's.</summary>
+    [Fact]
+    public void AC_T7_a_descriptive_college_target_is_shown_as_written()
+    {
+        var text = new IndicatorTarget { UnitId = University.Id, Year = 2027, Text = "مشروعين لكل كلية", Kind = TargetKind.EachCollege, Status = TargetStatus.Approved };
+        var info = TargetLookup.For([T(University, 2027, 1), text], College, University.Id, 2027, null, Aggregation.RatioOfSums);
+        Assert.Equal(new ShownTarget(null, "مشروعين لكل كلية", TargetSource.EachCollege), info.Display);
+        Assert.Null(info.Value);
+    }
+
+    /// <summary>AC-T8: only approved targets are shown, nothing before the indicator's start year, and the university's own row has no fallback.</summary>
+    [Fact]
+    public void AC_T8_the_shown_target_is_approved_started_and_has_no_fallback_for_the_university()
+    {
+        var proposed = new IndicatorTarget { UnitId = College.Id, Year = 2027, Value = 50, Kind = TargetKind.Target, Status = TargetStatus.Proposed };
+        Assert.Equal(new ShownTarget(85, null, TargetSource.University),
+            TargetLookup.For([T(University, 2027, 85), proposed], College, University.Id, 2027, null, Aggregation.RatioOfSums).Display);
+        Assert.Equal(ShownTarget.None, TargetLookup.For([T(University, 2029, 85)], College, University.Id, 2027, planStart: 2029, Aggregation.RatioOfSums).Display);
+        Assert.Equal(ShownTarget.None, TargetLookup.For([T(College, 2027, 85)], University, University.Id, 2027, null, Aggregation.RatioOfSums).Display);
+        Assert.Equal(new ShownTarget(85, null, TargetSource.Unit), TargetLookup.For([T(University, 2027, 85)], University, University.Id, 2027, null, Aggregation.Sum).Display);
     }
 
     /// <summary>ADR-0017 (assumption): a department keeps the university's rate as its measure when it has no target of its own.</summary>

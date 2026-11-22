@@ -158,7 +158,7 @@ public sealed class FormReader(ICollectionStore db, IReadModel read, IClock cloc
             v.Definition, v.DataSource, v.EvidenceRequired, v.Direction, ctx.Previous.GetValueOrDefault(i.Ci.IndicatorId), target.Value,
             value is null ? null : new ValueDto(value.Kind, value.Value, value.Numerator, value.Denominator, value.Reason, value.Explanation, value.ReviewNote, value.EditedAt, value.Version),
             issues, docs.GetValueOrDefault(i.Ci.IndicatorId) ?? [], FormAssignmentRules.EntryNote(i.Ci, v, ctx.Unit), target.Source, target.PendingValue, target.PendingYear,
-            before?.GetValueOrDefault(i.Ci.IndicatorId));
+            before?.GetValueOrDefault(i.Ci.IndicatorId), target.Display);
     }
 
     internal static DocDto ToDoc(StoredDocument d) => new(d.Id, d.FileName, d.ContentType, d.SizeBytes, d.UploadedAt, d.Description, d.VoidedAt is not null, d.VoidReason);

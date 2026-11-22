@@ -9,6 +9,11 @@ export type IssueSeverity = "Error" | "Warning";
 export type SubmissionAction = "Submitted" | "Approved" | "Returned" | "Reopened";
 export type Performance = "Achieved" | "Near" | "Behind" | "NoTarget" | "NoData" | "NotJudged" | "NotStarted" | "Incomplete";
 export type TargetSource = "None" | "Unit" | "EachCollege" | "University";
+/**
+ * ما يعرض في عمود «مستهدف الكلية» بجانب القيمة (ADR-0017، DEC-5): مستهدف الجهة (رقمًا أو نصًا)، وإلا مستهدف الجامعة ومصدره
+ * "University" فيعرض وتحته خط. للعرض فقط؛ الإنجاز يحسب من `target`.
+ */
+export interface ShownTarget { value: number | null; text: string | null; source: TargetSource }
 
 export interface Cycle {
   id: string; name: string; periodLabel: string; targetYear: number; opensOn: string; dueOn: string; status: CycleStatus; trial: boolean;
@@ -43,6 +48,7 @@ export interface FormItem {
   value: Value | null; issues: Issue[]; evidence: Doc[]; entryNote: string | null; targetSource: TargetSource;
   /** مستهدف مقترح بانتظار الاعتماد (D3)، للعرض فقط. */ pendingTarget?: number | null; pendingTargetYear?: number | null;
   /** القيمة المعتمدة قبل إعادة الفتح (D4). */ approvedBefore?: ApprovedValue | null;
+  shownTarget?: ShownTarget | null;
 }
 
 export interface FormSection { pillarCode: string | null; pillarName: string | null; standardCode: string; standardName: string; items: FormItem[] }
@@ -91,6 +97,7 @@ export interface IndicatorResult {
   /** مستهدف مقترح بانتظار الاعتماد (D3)، للعرض فقط. */ pendingTarget?: number | null; pendingTargetYear?: number | null;
   /** لكلية في مؤشر مجموع: مستهدف الجامعة الكلي، وحصة مستهدف الكلية وما حققته منه (0–1). */
   universityTotalTarget?: number | null; targetShare?: number | null; actualShare?: number | null;
+  shownTarget?: ShownTarget | null;
 }
 
 export interface StandardResult { code: string; name: string; indicators: number; achieved: number; near: number; behind: number; noData: number; noTarget: number }

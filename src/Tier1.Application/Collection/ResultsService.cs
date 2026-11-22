@@ -21,7 +21,7 @@ public sealed record IndicatorResult(
     decimal? Actual, decimal? Target, decimal? Baseline, decimal? Previous, decimal? Achievement, Performance Performance,
     int Reported, int Expected, string? Note, string Summary,
     Kpi.TargetSource TargetSource, int? TargetYear, decimal? UniversityTarget, decimal? UniversityAchievement, decimal? PendingTarget = null, int? PendingTargetYear = null,
-    decimal? UniversityTotalTarget = null, decimal? TargetShare = null, decimal? ActualShare = null);
+    decimal? UniversityTotalTarget = null, decimal? TargetShare = null, decimal? ActualShare = null, Kpi.ShownTarget? ShownTarget = null);
 
 public sealed record StandardResult(string Code, string Name, int Indicators, int Achieved, int Near, int Behind, int NoData, int NoTarget);
 
@@ -46,7 +46,7 @@ public sealed record TrendPoint(Guid CycleId, string Label, decimal? Actual, dec
 public sealed record UnitBreakdown(
     Guid UnitId, string UnitName, OrgUnitKind Kind, decimal? Value, decimal? Numerator, decimal? Denominator, int Reported, int Expected, string? Note,
     SubmissionStatus? FormStatus, decimal? Target, Kpi.TargetSource TargetSource, decimal? PendingTarget = null, int? PendingTargetYear = null,
-    bool UnderCorrection = false);
+    bool UnderCorrection = false, Kpi.ShownTarget? ShownTarget = null);
 
 /// <summary>مؤشر في دورة: قيمة الجامعة المحسوبة من الجهات ومستهدفها، وقيمة كل جهة.</summary>
 public sealed record IndicatorBreakdown(
@@ -208,7 +208,7 @@ public sealed class ResultsService(ICollectionStore db, IReadModel read, IAccess
                 var a = u.Kind == OrgUnitKind.University ? uni : Actual(snap, i, u);
                 var t = TargetFor(snap, i, u);
                 return new UnitBreakdown(u.Id, u.NameAr, u.Kind, a.Value, a.Numerator, a.Denominator, a.Reported, a.Expected, a.Note,
-                    formOf.TryGetValue(u.Id, out var st) ? st : null, t.Value, t.Source, t.PendingValue, t.PendingYear, correcting.Contains(u.Id));
+                    formOf.TryGetValue(u.Id, out var st) ? st : null, t.Value, t.Source, t.PendingValue, t.PendingYear, correcting.Contains(u.Id), t.Display);
             }).ToList();
             list.Add(new IndicatorBreakdown(i.Ci.IndicatorId, i.Ci.Code, i.Version, i.Standard.Code, i.Ci.Level, uni, uniTarget, units));
         }
@@ -459,7 +459,8 @@ public sealed class ResultsService(ICollectionStore db, IReadModel read, IAccess
             ResultsRules.Status(i.Version.Aggregation, i.Version.Direction, agg, target.Value, target.NotStarted, near), agg.Reported, agg.Expected, note,
             ResultsRules.Summary(who, i.Version.Unit, i.Version.Direction, agg.Value, target.Value, prev),
             target.Source, target.Year, uniTarget, uniAchievement, target.PendingValue, target.PendingYear,
-            universityTotal, ResultsRules.ShareOfUniversity(target.Value, universityTotal), ResultsRules.ShareOfUniversity(agg.Value, universityTotal));
+            universityTotal, ResultsRules.ShareOfUniversity(target.Value, universityTotal), ResultsRules.ShareOfUniversity(agg.Value, universityTotal),
+            target.Display);
     }
 
     private static List<ResultUnit> VisibleUnits(Snapshot s, UnitScope scope)

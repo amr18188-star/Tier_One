@@ -27,7 +27,7 @@ public sealed record FormItem(
     Guid IndicatorId, string Code, string Name, string Unit, Aggregation Aggregation, bool UsesRatio, string? NumeratorLabel, string? DenominatorLabel,
     string? Definition, string? DataSource, string? EvidenceRequired, Direction Direction, decimal? Previous, decimal? Target,
     ValueDto? Value, IReadOnlyList<IssueDto> Issues, IReadOnlyList<DocDto> Evidence, string? EntryNote, Kpi.TargetSource TargetSource,
-    decimal? PendingTarget = null, int? PendingTargetYear = null, ApprovedValueDto? ApprovedBefore = null);
+    decimal? PendingTarget = null, int? PendingTargetYear = null, ApprovedValueDto? ApprovedBefore = null, Kpi.ShownTarget? ShownTarget = null);
 
 /// <summary>معيار في النموذج بركيزته، فيعرض الإدخال مصنفًا: الركيزة ← المعيار ← مؤشراته.</summary>
 public sealed record FormSection(string? PillarCode, string? PillarName, string StandardCode, string StandardName, IReadOnlyList<FormItem> Items);

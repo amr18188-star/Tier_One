@@ -44,8 +44,8 @@ export function PillarHeader({ group, filtering, loading }: { group: PillarGroup
 
 export function IndicatorRow({ row, cycleId, canTransfer, open, onToggle }: { row: ReviewRow; cycleId: string; canTransfer: boolean; open: boolean; onToggle: () => void }) {
   const st = stateOf(row.state);
-  // النسب والمتوسطات: ارتفاع العمود نسبة الكلية من مستهدف الجامعة ولونه حكمها. المجموع والعدد: حصتها من رقم الجامعة بلون محايد.
-  const measure = (u: ReviewRow["units"][number]) => (row.comparable ? u.universityAchievement : u.share) ?? 0;
+  // DEC-5: ارتفاع العمود إنجاز الكلية من مستهدفها ولونه حكمها. بلا مستهدف لها: حصتها من رقم الجامعة (للمجموع والعدد) بلون محايد.
+  const measure = (u: ReviewRow["units"][number]) => u.achievement ?? (row.comparable ? 0 : u.share ?? 0);
   const max = Math.max(1, ...row.units.map(measure));
   return (
     <article className={`rv-row${open ? " open" : ""}`}>
@@ -55,15 +55,15 @@ export function IndicatorRow({ row, cycleId, canTransfer, open, onToggle }: { ro
           <b>{row.name}</b>
           <small className="muted">{stdLabel(row.standardCode)} · {L(levelText[row.level], row.level)} · {aggregation[row.aggregation]}</small>
         </span>
-        {/* تقدم الكليات: نسبة كل كلية من مستهدف الجامعة. */}
+        {/* تقدم الكليات: إنجاز كل كلية من مستهدفها. */}
         <span className="rv-colleges" aria-label={L("تقدم الكليات", "College progress")}>
           {row.units.length === 0 ? <small className="muted">—</small> : row.units.slice(0, 8).map((u) => (
-            <Tooltip key={u.unitId} title={`${u.name}: ${fmt(u.value, row.unit)}${row.comparable
-              ? u.universityAchievement !== null ? ` (${num(u.universityAchievement)}% ${L("من مستهدف الجامعة", "of target")})` : ""
-              : u.share !== null ? ` (${num(u.share)}% ${L("من رقم الجامعة", "of the university total")})` : ""}`}>
+            <Tooltip key={u.unitId} title={`${u.name}: ${fmt(u.value, row.unit)}${u.achievement !== null
+              ? ` (${num(u.achievement)}% ${L("من مستهدفها", "of its target")})`
+              : !row.comparable && u.share !== null ? ` (${num(u.share)}% ${L("من رقم الجامعة", "of the university total")})` : ""}`}>
               <span className="rv-col">
                 <i style={{ height: `${u.value === null ? 4 : Math.max(6, (measure(u) / max) * 36)}px` }}
-                  className={u.value === null ? "none" : !row.comparable ? "share" : measure(u) >= 100 ? "ok" : measure(u) >= 90 ? "near" : "low"} />
+                  className={u.value === null ? "none" : u.achievement === null ? "share" : measure(u) >= 100 ? "ok" : measure(u) >= 90 ? "near" : "low"} />
               </span>
             </Tooltip>
           ))}

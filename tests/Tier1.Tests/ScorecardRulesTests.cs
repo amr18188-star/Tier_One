@@ -142,7 +142,7 @@ public class ScorecardRulesTests
         Assert.NotNull(PlanPeriod.Problem(new PlanPeriod(sy, sm, ey, em)));
 
     /// <summary>
-    /// AC-P4: the plan year in progress on a date. A college with no value yet is shown this year's targets on its progress page,
+    /// AC-P7: the plan year in progress on a date. A college with no value yet is shown this year's targets on its progress page,
     /// so it sees what it is measured against instead of "no college target". Before the plan the first year, after it the last.
     /// </summary>
     [Theory]
@@ -152,7 +152,7 @@ public class ScorecardRulesTests
     [InlineData(2027, 9, 1, 1)]    // plan year 2028 starts
     [InlineData(2031, 8, 31, 4)]   // the last day of the plan
     [InlineData(2033, 1, 1, 4)]    // after the plan ends
-    public void AC_P4_the_plan_year_in_progress_on_a_date(int y, int m, int d, int place) =>
+    public void AC_P7_the_plan_year_in_progress_on_a_date(int y, int m, int d, int place) =>
         Assert.Equal(place, PlanPeriod.Default.YearPlaceOn(new DateOnly(y, m, d)));
 }
 

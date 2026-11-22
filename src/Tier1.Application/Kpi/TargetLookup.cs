@@ -25,11 +25,25 @@ public enum TargetSource
 /// المستهدف الساري لجهة في سنة: القيمة ومصدرها وسنته، أو «لم يبدأ» قبل سنة بدء المؤشر في الخطة.
 /// PendingValue وPendingYear: مستهدف مقترح كان سيسري لو اعتمد (D3)؛ للعرض «بانتظار الاعتماد» فقط، ولا يدخل أي حساب.
 /// </summary>
-public sealed record TargetInfo(decimal? Value, TargetSource Source, int? Year, bool NotStarted, decimal? PendingValue = null, int? PendingYear = null)
+public sealed record TargetInfo(decimal? Value, TargetSource Source, int? Year, bool NotStarted, decimal? PendingValue = null, int? PendingYear = null,
+    ShownTarget? Shown = null)
 {
     public bool HasPending => PendingYear is not null;
 
+    /// <summary>What the target column shows beside the value; see <see cref="ShownTarget"/>.</summary>
+    public ShownTarget Display => Shown ?? ShownTarget.None;
+
     public static readonly TargetInfo None = new(null, TargetSource.None, null, false);
+}
+
+/// <summary>
+/// ما يعرض في عمود «مستهدف الكلية» بجانب قيمة المؤشر (ADR-0017، DEC-5): مستهدف الجهة إن وجد (الخاص، وإلا الموحد لكل كلية)،
+/// رقمًا أو نصًا كما سجل؛ وإن لم يوجد فمستهدف الجامعة للعام نفسه، ومصدره <see cref="TargetSource.University"/> فيعرض وتحته خط.
+/// **للعرض فقط**: إنجاز الكلية يحسب من مستهدفها وحده (<see cref="TargetInfo.Value"/>)، ولا يحسب من مستهدف الجامعة المعروض مكانه.
+/// </summary>
+public sealed record ShownTarget(decimal? Value, string? Text, TargetSource Source)
+{
+    public static readonly ShownTarget None = new(null, null, TargetSource.None);
 }
 
 /// <summary>
@@ -48,7 +62,9 @@ public static class TargetLookup
     public static TargetInfo For(IReadOnlyCollection<IndicatorTarget> targets, OrgUnit unit, Guid universityId, int year, int? planStart, Aggregation aggregation)
     {
         if (planStart is { } start && year < start) return new(null, TargetSource.None, start, true);
-        var (info, row) = Resolve(targets.Where(IsApproved), unit, universityId, year, aggregation);
+        var approved = targets.Where(IsApproved).ToList();
+        var (info, row) = Resolve(approved, unit, universityId, year, aggregation);
+        info = info with { Shown = Show(approved, unit, universityId, year) };
         // المقترح الذي كان سيسري لو احتسب كل شيء: يعرض «بانتظار الاعتماد» بجانب المعتمد، ولا يمسه.
         var (_, anyRow) = Resolve(targets, unit, universityId, year, aggregation);
         return anyRow is { Status: TargetStatus.Proposed } pending && !ReferenceEquals(pending, row)
@@ -83,6 +99,24 @@ public static class TargetLookup
             if (uni?.Value is not null) return (new(uni.Value, TargetSource.University, uni.Year, false), uni);
         }
         return (TargetInfo.None, null);
+    }
+
+    /// <summary>
+    /// عمود المستهدف بجانب القيمة: مستهدف الجهة نفسها، ثم الموحد لكل كلية (للكلية والقسم)، ثم مستهدف الجامعة. المعتمد وحده،
+    /// والنصي يعرض كما كتب. يختلف عن <see cref="Resolve"/> في أمرين: يعرض النص، ويعرض مستهدف الجامعة حين لا مستهدف للجهة.
+    /// </summary>
+    private static ShownTarget Show(IReadOnlyCollection<IndicatorTarget> approved, OrgUnit unit, Guid universityId, int year)
+    {
+        var own = Latest(approved.Where(t => t.UnitId == unit.Id && t.Kind == TargetKind.Target), year);
+        if (own is not null) return new(own.Value, own.Text, TargetSource.Unit);
+        if (unit.Kind == OrgUnitKind.University) return ShownTarget.None;
+        if (unit.IsCollegeLevel || unit.Kind == OrgUnitKind.Department)
+        {
+            var each = Latest(approved.Where(t => t.Kind == TargetKind.EachCollege), year);
+            if (each is not null) return new(each.Value, each.Text, TargetSource.EachCollege);
+        }
+        var uni = Latest(approved.Where(t => t.UnitId == universityId && t.Kind == TargetKind.Target), year);
+        return uni is null ? ShownTarget.None : new(uni.Value, uni.Text, TargetSource.University);
     }
 
     /// <summary>مستهدف الجامعة الساري المعتمد، للمقارنة بجانب مستهدف الكلية.</summary>
