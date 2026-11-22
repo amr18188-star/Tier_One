@@ -28,6 +28,13 @@ public static partial class OrgRules
     [GeneratedRegex("^[A-Z0-9][A-Z0-9-]{0,31}$")]
     private static partial Regex CodePattern();
 
+    /// <summary>
+    /// ترتيب قائمة الجهات: الأعلى في الهيكل أولًا، ثم ترتيب الجهة بين أخواتها، ثم الرمز. العمق عدد أجزاء المسار لا طول نصه:
+    /// كان الترتيب بطول المسار، فجاءت جهة رمزها أطول من أخواتها (SE01 بين L02 وF01) بعدها كلها مهما كان ترتيبها.
+    /// </summary>
+    public static IEnumerable<OrgUnit> InListOrder(IEnumerable<OrgUnit> units) =>
+        units.OrderBy(u => u.Path.Count(c => c == '/')).ThenBy(u => u.SortOrder).ThenBy(u => u.Code, StringComparer.Ordinal);
+
     public static string NormalizeCode(string? code)
     {
         var c = (code ?? "").Trim().ToUpperInvariant();
@@ -71,10 +78,9 @@ public sealed class OrgUnitsService(IOrgStore db, IClock clock, ICurrentUser cur
     {
         // مستخدم الكلية أو الإدارة يرى جهته وما تحتها فقط، لا بقية الجامعة.
         var scope = UnitScope.For(await access.RequireAsync(Feature, Cap.View, ct), Feature, Cap.View);
-        var units = (await db.OrgUnits.AsNoTracking()
+        var units = OrgRules.InListOrder((await db.OrgUnits.AsNoTracking()
             .Where(u => includeInactive || u.Active)
-            .OrderBy(u => u.Path.Length).ThenBy(u => u.SortOrder).ThenBy(u => u.Code)
-            .ToListAsync(ct)).Where(scope.Covers).ToList();
+            .ToListAsync(ct)).Where(scope.Covers)).ToList();
         var counts = await assignments.CountsAsync(units, ct);
         return units.Select(u => ToDto(u) with { IndicatorCount = counts.GetValueOrDefault(u.Id) }).ToList();
     }

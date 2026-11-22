@@ -106,6 +106,48 @@ public class TargetRulesTests
 
 public class OrgRulesTests
 {
+    /// <summary>
+    /// The units list goes by depth, then the unit's order among its siblings, then its code. A sector whose code is longer than
+    /// its siblings' (SE01 beside L02 and F01) keeps its place after the secretary general's sector and before the colleges; ordering
+    /// by the path's text length put it after every college.
+    /// </summary>
+    [Fact]
+    public void The_units_list_is_ordered_by_depth_then_sort_order_not_by_code_length()
+    {
+        static OrgUnit U(string code, string path, int order) => new() { Code = code, Path = path, SortOrder = order };
+        var listed = OrgRules.InListOrder([
+            U("F01", "/CU/F01/", 100), U("SPU", "/CU/SE01/SPU/", 1), U("SE01", "/CU/SE01/", 6), U("L02", "/CU/L02/", 5), U("CU", "/CU/", 0), U("A17", "/CU/L02/A17/", 17),
+        ]).Select(u => u.Code);
+        Assert.Equal(["CU", "L02", "SE01", "F01", "SPU", "A17"], listed);
+    }
+
+    /// <summary>
+    /// The strategic entities (2026-11-23): a group of their own after the secretary general's sector and before the colleges, with the
+    /// university's eighteen entities in the order given. The planning unit and the ICT centre moved into it and still see the whole university.
+    /// </summary>
+    [Fact]
+    public void The_strategic_entities_come_after_the_secretary_general_and_before_the_colleges()
+    {
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+        while (root is not null && !File.Exists(Path.Combine(root.FullName, "Tier1.sln"))) root = root.Parent;
+        Assert.NotNull(root);
+        var file = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(root!.FullName, "src", "Tier1.Infrastructure", "Persistence", "Seed", "university-structure.json")));
+        var units = file.RootElement.GetProperty("units").EnumerateArray()
+            .Select(u => (Code: u.GetProperty("code").GetString()!, Name: u.GetProperty("nameAr").GetString()!, Kind: u.GetProperty("kind").GetString()!,
+                Parent: u.GetProperty("parent").GetString(), Order: u.GetProperty("sortOrder").GetInt32(), Whole: u.GetProperty("viewsWholeUniversity").GetBoolean())).ToList();
+        var group = units.Single(u => u.Name == "الكيانات الاستراتيجية");
+        Assert.Equal(("Sector", (string?)null), (group.Kind, group.Parent));
+        var top = units.Where(u => u.Parent is null).OrderBy(u => u.Order).Select(u => u.Name).ToList();
+        Assert.Equal("قطاع أمين الجامعة", top[top.IndexOf(group.Name) - 1]);
+        Assert.StartsWith("كلية", top[top.IndexOf(group.Name) + 1]);
+
+        var entities = units.Where(u => u.Parent == group.Code).OrderBy(u => u.Order).ToList();
+        Assert.Equal(18, entities.Count);
+        Assert.Equal(["وحدة التخطيط الاستراتيجي", "وحدة ضمان الجودة", "وحدة إدارة المشروعات", "مركز الاتصالات وتكنولوجيا المعلومات"], entities.Take(4).Select(u => u.Name));
+        Assert.Equal("مركز النانو تكنولوجي", entities[^1].Name);
+        Assert.Equal(["ICT", "SPU"], entities.Where(u => u.Whole).Select(u => u.Code).Order());
+    }
+
     [Theory]
     [InlineData(" eng-civ ", "ENG-CIV")]
     [InlineData("CS", "CS")]

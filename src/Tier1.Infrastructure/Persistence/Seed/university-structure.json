@@ -1955,20 +1955,156 @@
    "viewsWholeUniversity": false
   },
   {
+   "code": "SE01",
+   "nameAr": "الكيانات الاستراتيجية",
+   "kind": "Sector",
+   "parent": null,
+   "sortOrder": 6,
+   "viewsWholeUniversity": false
+  },
+  {
    "code": "SPU",
    "nameAr": "وحدة التخطيط الاستراتيجي",
    "kind": "Administration",
-   "parent": "L01",
+   "parent": "SE01",
    "viewsWholeUniversity": true,
-   "sortOrder": 50
+   "sortOrder": 1
+  },
+  {
+   "code": "QAU",
+   "nameAr": "وحدة ضمان الجودة",
+   "kind": "Administration",
+   "parent": "SE01",
+   "viewsWholeUniversity": false,
+   "sortOrder": 2
+  },
+  {
+   "code": "PMU",
+   "nameAr": "وحدة إدارة المشروعات",
+   "kind": "Administration",
+   "parent": "SE01",
+   "viewsWholeUniversity": false,
+   "sortOrder": 3
   },
   {
    "code": "ICT",
    "nameAr": "مركز الاتصالات وتكنولوجيا المعلومات",
    "kind": "Center",
-   "parent": "L01",
+   "parent": "SE01",
    "viewsWholeUniversity": true,
-   "sortOrder": 51
+   "sortOrder": 4
+  },
+  {
+   "code": "IRO",
+   "nameAr": "مكتب العلاقات الدولية",
+   "kind": "Administration",
+   "parent": "SE01",
+   "viewsWholeUniversity": false,
+   "sortOrder": 5
+  },
+  {
+   "code": "RSU",
+   "nameAr": "وحدة دعم البحث العلمي",
+   "kind": "Administration",
+   "parent": "SE01",
+   "viewsWholeUniversity": false,
+   "sortOrder": 6
+  },
+  {
+   "code": "IRU",
+   "nameAr": "وحدة التصنيف الدولي",
+   "kind": "Administration",
+   "parent": "SE01",
+   "viewsWholeUniversity": false,
+   "sortOrder": 7
+  },
+  {
+   "code": "CRC",
+   "nameAr": "مجمع الإبداع والبحث العلمي",
+   "kind": "Center",
+   "parent": "SE01",
+   "viewsWholeUniversity": false,
+   "sortOrder": 8
+  },
+  {
+   "code": "ISO",
+   "nameAr": "مكتب الطلاب الوافدين",
+   "kind": "Administration",
+   "parent": "SE01",
+   "viewsWholeUniversity": false,
+   "sortOrder": 9
+  },
+  {
+   "code": "CDC",
+   "nameAr": "مركز تنمية القدرات والتدريب المستمر",
+   "kind": "Center",
+   "parent": "SE01",
+   "viewsWholeUniversity": false,
+   "sortOrder": 10
+  },
+  {
+   "code": "TICO",
+   "nameAr": "مكتب دعم الابتكار ونقل وتسويق التكنولوجيا (TICO)",
+   "kind": "Administration",
+   "parent": "SE01",
+   "viewsWholeUniversity": false,
+   "sortOrder": 11
+  },
+  {
+   "code": "TIO",
+   "nameAr": "مكتب الحاضنات التكنولوجية",
+   "kind": "Administration",
+   "parent": "SE01",
+   "viewsWholeUniversity": false,
+   "sortOrder": 12
+  },
+  {
+   "code": "IPU",
+   "nameAr": "وحدة الملكية الفكرية",
+   "kind": "Administration",
+   "parent": "SE01",
+   "viewsWholeUniversity": false,
+   "sortOrder": 13
+  },
+  {
+   "code": "MEC",
+   "nameAr": "مركز القياس والتقويم",
+   "kind": "Center",
+   "parent": "SE01",
+   "viewsWholeUniversity": false,
+   "sortOrder": 14
+  },
+  {
+   "code": "CAD",
+   "nameAr": "مركز التطوير الوظيفي",
+   "kind": "Center",
+   "parent": "SE01",
+   "viewsWholeUniversity": false,
+   "sortOrder": 15
+  },
+  {
+   "code": "ACC",
+   "nameAr": "مجمع الفنون والثقافة",
+   "kind": "Center",
+   "parent": "SE01",
+   "viewsWholeUniversity": false,
+   "sortOrder": 16
+  },
+  {
+   "code": "MED",
+   "nameAr": "المركز الإعلامي للجامعة",
+   "kind": "Center",
+   "parent": "SE01",
+   "viewsWholeUniversity": false,
+   "sortOrder": 17
+  },
+  {
+   "code": "NTC",
+   "nameAr": "مركز النانو تكنولوجي",
+   "kind": "Center",
+   "parent": "SE01",
+   "viewsWholeUniversity": false,
+   "sortOrder": 18
   }
  ]
 }

@@ -159,9 +159,37 @@ public static partial class SeedImporters
             Add(code, name, Kinds[kind], college, int.Parse(code[(code.LastIndexOf('D') + 1)..], CultureInfo.InvariantCulture));
         }
 
-        // Requested by the university but not in the file: both report to the president's sector and see the whole university.
-        units.Add(new JsonObject { ["code"] = "SPU", ["nameAr"] = "وحدة التخطيط الاستراتيجي", ["kind"] = "Administration", ["parent"] = "L01", ["viewsWholeUniversity"] = true, ["sortOrder"] = 50 });
-        units.Add(new JsonObject { ["code"] = "ICT", ["nameAr"] = "مركز الاتصالات وتكنولوجيا المعلومات", ["kind"] = "Center", ["parent"] = "L01", ["viewsWholeUniversity"] = true, ["sortOrder"] = 51 });
+        // Requested by the university but not in the file (2026-11-23): the strategic entities, a group of their own after the
+        // secretary general's sector and before the colleges. The strategic planning unit and the ICT centre moved into it from the
+        // president's sector, with their codes; both still see the whole university.
+        units.Add(new JsonObject { ["code"] = "SE01", ["nameAr"] = "الكيانات الاستراتيجية", ["kind"] = "Sector", ["parent"] = null, ["sortOrder"] = 6, ["viewsWholeUniversity"] = false });
+        (string Code, string Name, string Kind, bool WholeUniversity)[] strategic =
+        [
+            ("SPU", "وحدة التخطيط الاستراتيجي", "Administration", true),
+            ("QAU", "وحدة ضمان الجودة", "Administration", false),
+            ("PMU", "وحدة إدارة المشروعات", "Administration", false),
+            ("ICT", "مركز الاتصالات وتكنولوجيا المعلومات", "Center", true),
+            ("IRO", "مكتب العلاقات الدولية", "Administration", false),
+            ("RSU", "وحدة دعم البحث العلمي", "Administration", false),
+            ("IRU", "وحدة التصنيف الدولي", "Administration", false),
+            ("CRC", "مجمع الإبداع والبحث العلمي", "Center", false),
+            ("ISO", "مكتب الطلاب الوافدين", "Administration", false),
+            ("CDC", "مركز تنمية القدرات والتدريب المستمر", "Center", false),
+            ("TICO", "مكتب دعم الابتكار ونقل وتسويق التكنولوجيا (TICO)", "Administration", false),
+            ("TIO", "مكتب الحاضنات التكنولوجية", "Administration", false),
+            ("IPU", "وحدة الملكية الفكرية", "Administration", false),
+            ("MEC", "مركز القياس والتقويم", "Center", false),
+            ("CAD", "مركز التطوير الوظيفي", "Center", false),
+            ("ACC", "مجمع الفنون والثقافة", "Center", false),
+            ("MED", "المركز الإعلامي للجامعة", "Center", false),
+            ("NTC", "مركز النانو تكنولوجي", "Center", false),
+        ];
+        for (var i = 0; i < strategic.Length; i++)
+            units.Add(new JsonObject
+            {
+                ["code"] = strategic[i].Code, ["nameAr"] = strategic[i].Name, ["kind"] = strategic[i].Kind, ["parent"] = "SE01",
+                ["viewsWholeUniversity"] = strategic[i].WholeUniversity, ["sortOrder"] = i + 1,
+            });
 
         var data = new JsonObject
         {
