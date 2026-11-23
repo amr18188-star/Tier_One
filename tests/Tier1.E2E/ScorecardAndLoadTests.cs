@@ -131,12 +131,16 @@ public sealed class ScorecardTests(ITestOutputHelper output)
         var pending = review["rows"].Items().Where(r => r["computed"].Num() is not null && r["state"].Str() != "Transferred").Select(r => r["code"].Str()).ToList();
         t.Check(pending.Count == 0, $"Everything ready was transferred ({moved["transferred"].Num()}); still pending: {string.Join(",", pending.Take(5))}");
 
-        t.Step("3c. A college's progress against the university target");
+        t.Step("3c. A college's progress: measured against its own target only, the university target shown beside it (ADR-0017)");
         var prog = (await college.Get("/api/progress"))!;
         t.Check(prog["units"].Items().Count() == 1, $"The college officer sees their college only: {prog["unit"]!["name"].Str()}");
         var p101 = prog["pillars"].Items().SelectMany(p => p["standards"].Items()).SelectMany(s => s["indicators"].Items()).First(i => i["code"].Str() == "1.01");
-        t.Check(p101["latest"].Num() is not null && p101["yearTarget"].Num() is not null && Math.Abs((double)(p101["gap"].Num()! - (p101["latest"].Num()! - p101["yearTarget"].Num()!))) < 0.01,
-            $"1.01 for the college {p101["latest"].Num()} against the university target {p101["yearTarget"].Num()}");
+        // ADR-0017 DEC-1: a college is never measured against the university target. This database has no college targets, so 1.01
+        // has no year target, no gap and no score for the college. DEC-5: the cell beside the value shows the university's instead.
+        t.Check(p101["latest"].Num() is not null && p101["yearTarget"].Num() is null && p101["gap"].Num() is null && p101["score"].Num() is null,
+            $"1.01 for the college {p101["latest"].Num()}: no college target, so it is not measured against the university's");
+        t.Check(p101["universityYearTarget"].Num() == 82 && p101["shownTarget"]!["source"].Str() == "University" && p101["shownTarget"]!["value"].Num() == 82,
+            $"The university's year-1 target ({p101["universityYearTarget"].Num()}) is shown beside the college's value, marked as the university's");
         t.Check(p101["universityQuarters"]![0].Num() is { } uq && Math.Abs((double)uq - 90) < 0.01, "The official university value beside the college's");
         var p106 = prog["pillars"].Items().SelectMany(p => p["standards"].Items()).SelectMany(s => s["indicators"].Items()).First(i => i["code"].Str() == "1.06");
         t.Check(!p106["comparable"].Truthy() && p106["share"].Num() is not null && (p106["ownTarget"].Num() is not null || p106["score"].Num() is null), $"1.06 (sum) for the college: its share {p106["share"].Num()}% of the university number, not compared to the whole-university target");
