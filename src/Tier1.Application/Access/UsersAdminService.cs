@@ -58,7 +58,7 @@ public sealed record AddOverrideRequest(string Feature, string Caps, IReadOnlyLi
 /// permissions. ARCH-2: changes are in <see cref="UserAccountsService"/>, <see cref="RoleAssignmentService"/> and <see cref="UserOverridesService"/>,
 /// under the rules of <see cref="IamPolicy"/>.
 /// </summary>
-public sealed class UsersAdminService(IIdentityStore db, IClock clock, ICurrentUser current, IAccessService access)
+public sealed class UsersAdminService(IIdentityStore db, IClock clock, ICurrentUser current, IAccessService access, INationalIdProtector nationalIds)
 {
     public async Task<IReadOnlyList<UserListItemDto>> ListAsync(string? search, CancellationToken ct)
     {
@@ -99,8 +99,8 @@ public sealed class UsersAdminService(IIdentityStore db, IClock clock, ICurrentU
             overrides.Select(o => new OverrideDto(o.Id, o.Feature, PermissionCatalog.Letters(o.Caps), o.Specials, o.Effect, GrantView.ScopeCode(o.Scope), o.ValidFrom, o.ValidTo,
                 o.GrantedBy is { } g ? people.GetValueOrDefault(g) : null, o.Reason, o.RevokedAt, o.IsActiveAt(now))).ToList(),
             u.Title, u.DisplayName,
-            // ADR-0021: the national ID leaves the server masked only (its last four digits).
-            u.Phone, u.NationalId is { } nid ? NationalIds.Mask(nid) : null, u.MissingData);
+            // ADR-0021: the national ID is decrypted here only to show its last four digits; it leaves the server masked.
+            u.Phone, UserAccountsService.MaskedOnFile(u, nationalIds), u.MissingData);
     }
 
     public async Task<EffectiveDto> EffectiveAsync(Guid userId, CancellationToken ct)

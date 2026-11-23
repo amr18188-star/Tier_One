@@ -56,6 +56,20 @@ public interface ISecretProtector
 }
 
 /// <summary>
+/// ADR-0021 DEC-D5: الرقم القومي لا يحفظ في القاعدة نصًا: يحفظ مشفرًا، ومعه بصمة بمفتاح للفهرس الفريد (التشفير يختلف ناتجه في كل
+/// مرة، والبصمة ثابتة للرقم نفسه ولا تحسب دون المفتاح).
+/// </summary>
+public interface INationalIdProtector
+{
+    string Protect(string nationalId);
+
+    /// <summary>الرقم كاملًا، أو null إن تعذر فكه (مفاتيح الحماية غير المفاتيح التي شفرته).</summary>
+    string? Unprotect(string protectedValue);
+
+    string Fingerprint(string nationalId);
+}
+
+/// <summary>
 /// الصندوق الصادر للبريد: يضاف في معاملة العملية نفسها (فلا يرسل بريد لعملية فشلت)، ويرسله عامل الخلفية بإعادة المحاولة.
 /// </summary>
 public interface IMailOutbox

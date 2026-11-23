@@ -11,6 +11,8 @@ regexTarget = "secret"
 regexes = [
   # Development-only chain key (appsettings.Development.json, docker-compose.dev.yml); production keys come from the vault.
   '''ybMmZEAJWMsrFElpEXuzGX81cfjMp1jnFHpxbzNRqgk=''',
+  # Development-only key of the national ID fingerprint (appsettings.Development.json, docker-compose.dev.yml); production keys come from the vault.
+  '''MsA9ejls1XnhQF5T\+CIEzM3f6F/14Lwq5Ny5e8Cryc4=''',
   # Alphabet for generated temporary passwords (Tokens.cs).
   '''ABCDEFGHJKMNPQRSTVWXYZabcdefghjkmnpqrstvwxyz23456789''',
   # Golden chain hashes in ChainHashTests.

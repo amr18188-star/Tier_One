@@ -18,8 +18,14 @@ public sealed class AppUser
     /// <summary>الاسم كما يعرض: اللقب ثم الاسم ثنائيًا؛ وبلا لقب الاسم الكامل.</summary>
     public string DisplayName => PersonName.Display(Title, FullNameAr, FullNameEn);
 
-    /// <summary>الرقم القومي (14 رقمًا، فريد)، أو فارغ لحساب أنشئ قبل إلزام البيانات (ADR-0021). لا يخرج من الخادم إلا مقنّعًا.</summary>
-    public string? NationalId { get; set; }
+    /// <summary>
+    /// الرقم القومي مشفرًا بمفاتيح خارج القاعدة (ADR-0021 DEC-D5)، أو فارغ لحساب أنشئ قبل إلزام البيانات. لا يحفظ نصًا، ولا يخرج
+    /// من الخادم إلا مقنّعًا.
+    /// </summary>
+    public string? NationalIdProtected { get; set; }
+
+    /// <summary>بصمة الرقم القومي بمفتاح (HMAC-SHA256، 64 خانة)، فريدة: تمنع تكراره دون أن يقرأ الرقم منها.</summary>
+    public string? NationalIdHash { get; set; }
 
     /// <summary>رقم المحمول بشكله المحفوظ (01XXXXXXXXX)، أو فارغ لحساب أنشئ قبل إلزام البيانات (ADR-0021).</summary>
     public string? Phone { get; set; }
@@ -28,7 +34,7 @@ public sealed class AppUser
     public IReadOnlyList<string> MissingData =>
     [
         .. string.IsNullOrWhiteSpace(FullNameEn) ? ["fullNameEn"] : Array.Empty<string>(),
-        .. NationalId is null ? ["nationalId"] : Array.Empty<string>(),
+        .. NationalIdHash is null ? ["nationalId"] : Array.Empty<string>(),
         .. Phone is null ? ["phone"] : Array.Empty<string>(),
     ];
 

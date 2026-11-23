@@ -200,6 +200,14 @@ public sealed class AccessAdminTests(Tier1App app, ITestOutputHelper output)
         t.Check(!detail.ToJsonString().Contains(nationalId, StringComparison.Ordinal) && !listed.ToJsonString().Contains(nationalId, StringComparison.Ordinal),
             "Neither the account nor the list carries the full number");
 
+        t.Step("AC-D9: the database holds the national ID encrypted, never in the clear");
+        t.Check(await app.CountAsync("SELECT count(*) FROM information_schema.columns WHERE table_schema = 'iam' AND table_name = 'users' AND column_name = 'national_id'") == 0,
+            "There is no clear-text national ID column");
+        t.Check(await app.CountAsync("SELECT count(*) FROM iam.users WHERE email = @e AND length(national_id_protected) > 40 AND national_id_hash ~ '^[0-9a-f]{64}$'", ("e", email)) == 1,
+            "The account holds an encrypted value and a 64-digit fingerprint");
+        t.Check(await app.CountAsync("SELECT count(*) FROM iam.users u WHERE u::text LIKE @id", ("id", $"%{nationalId}%")) == 0, "No row of the accounts table holds the number");
+        t.Check(await app.CountAsync("SELECT count(*) FROM logs.outbox WHERE payload::text LIKE @id", ("id", $"%{nationalId}%")) == 0, "Nor does the audit log's outbox");
+
         t.Step("AC-D5: one account per national ID");
         var other = Scenario.With(Calls.Account($"it.{Calls.Tag()}@tier1.local", "حساب آخر"), ("nationalId", nationalId));
         var (status, error) = await sys.Call("POST", "/api/iam/users", other);
@@ -218,6 +226,11 @@ public sealed class AccessAdminTests(Tier1App app, ITestOutputHelper output)
         t.Check(status == 400 && error.Code() == "name_en_required", $"An edit without the English name is refused, got {status} {error.Code()}");
         (status, error) = await sys.Call("PUT", $"/api/iam/users/{otherId}", Scenario.With(update, ("nationalId", nationalId)));
         t.Check(status == 409 && error.Code() == "duplicate_national_id", $"An edit cannot take another account's national ID, got {status} {error.Code()}");
+        var replacement = Calls.Person().NationalId;
+        t.Check((await sys.Call("PUT", $"/api/iam/users/{userId}", Scenario.With(update, ("nationalId", replacement)))).Status == 204, "A new national ID replaces the one on file");
+        t.Check((await sys.Get($"/api/iam/users/{userId}"))!["nationalIdMasked"].Str() == new string('*', 10) + replacement[^4..], "The account shows the new number's last four digits");
+        t.Check((await sys.Call("POST", "/api/iam/users", Scenario.With(Calls.Account($"it.{Calls.Tag()}@tier1.local", "حساب ثالث"), ("nationalId", nationalId)))).Status == 200,
+            "The number it gave up is free for another account");
 
         t.Step("AC-D8: an account from before the rule is marked incomplete until it is edited with full data");
         var old = (await sys.Get("/api/iam/users?q=viewer@tier1.local")).Items().Single();

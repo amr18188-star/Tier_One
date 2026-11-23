@@ -13,7 +13,8 @@ using Tier1.Domain.Identity;
 namespace Tier1.Application.Access;
 
 /// <summary>ARCH-2: staff accounts: create, edit, deactivate and reactivate, unlock, reset two-step verification, set a temporary password.</summary>
-public sealed class UserAccountsService(IIdentityStore db, IClock clock, ICurrentUser current, IAccessService access, IPasswordHasher hasher, ISessionService sessions, IAuditLog audit, IamPolicy policy, IIamLock iamLock, UniversityDomainsService domains)
+public sealed class UserAccountsService(IIdentityStore db, IClock clock, ICurrentUser current, IAccessService access, IPasswordHasher hasher, ISessionService sessions, IAuditLog audit, IamPolicy policy, IIamLock iamLock, UniversityDomainsService domains,
+    INationalIdProtector nationalIds)
 {
     public async Task<TemporaryPasswordDto> CreateAsync(CreateUserRequest req, CancellationToken ct)
     {
@@ -26,7 +27,8 @@ public sealed class UserAccountsService(IIdentityStore db, IClock clock, ICurren
         var title = TitleOf(req.Title);
         // ADR-0021: every account carries its holder's full data: both names, the national ID and the mobile number.
         var nameEn = EnglishNameOf(req.FullNameEn);
-        var nationalId = await NationalIdOfAsync(req.NationalId, null, ct);
+        var nationalId = await NationalIdOfAsync(req.NationalId, null, ct)
+            ?? throw new DomainException("national_id_required", "اكتب الرقم القومي.", "Enter the national ID.", 400) { Field = "nationalId" };
         var phone = PhoneOf(req.Phone);
         var temporary = Tokens.NewTemporaryPassword();
         var user = new AppUser
@@ -35,7 +37,9 @@ public sealed class UserAccountsService(IIdentityStore db, IClock clock, ICurren
             FullNameAr = req.FullNameAr.Trim(),
             FullNameEn = nameEn,
             Title = title,
-            NationalId = nationalId,
+            // DEC-D5: encrypted in the database, with a keyed fingerprint for the unique index.
+            NationalIdProtected = nationalIds.Protect(nationalId),
+            NationalIdHash = nationalIds.Fingerprint(nationalId),
             Phone = phone,
             PasswordHash = hasher.Hash(temporary),
             MustChangePassword = true,
@@ -69,22 +73,31 @@ public sealed class UserAccountsService(IIdentityStore db, IClock clock, ICurren
     }
 
     /// <summary>
-    /// ADR-0021: the Egyptian national ID, 14 digits, on one account only. On an edit an empty value keeps the one on file, because the
-    /// server never sends the full number back for the form to resend it.
+    /// ADR-0021: the Egyptian national ID, 14 digits, on one account only. Returns the number typed, checked; or null when none was
+    /// typed and the account has one on file, which an edit keeps (the server never sends the full number back for the form to resend
+    /// it). The number is compared by its keyed fingerprint: the database holds no national ID in the clear.
     /// </summary>
-    private async Task<string> NationalIdOfAsync(string? value, AppUser? existing, CancellationToken ct)
+    private async Task<string?> NationalIdOfAsync(string? value, AppUser? existing, CancellationToken ct)
     {
         var id = NationalIds.Normalize(value);
         if (id is null)
-            return existing?.NationalId
-                ?? throw new DomainException("national_id_required", "اكتب الرقم القومي.", "Enter the national ID.", 400) { Field = "nationalId" };
+            return existing?.NationalIdHash is not null
+                ? null
+                : throw new DomainException("national_id_required", "اكتب الرقم القومي.", "Enter the national ID.", 400) { Field = "nationalId" };
         if (!NationalIds.IsValid(id, CairoTime.DateOf(clock.UtcNow)))
             throw new DomainException("invalid_national_id", "الرقم القومي غير صحيح. اكتبه 14 رقمًا كما في البطاقة.", "The national ID is not valid. Enter its 14 digits as on the card.", 400) { Field = "nationalId" };
         var mine = existing?.Id;
-        if (await db.Users.AnyAsync(u => u.NationalId == id && u.Id != mine, ct))
+        var hash = nationalIds.Fingerprint(id);
+        if (await db.Users.AnyAsync(u => u.NationalIdHash == hash && u.Id != mine, ct))
             throw new DomainException("duplicate_national_id", "يوجد حساب آخر بهذا الرقم القومي.", "Another account has this national ID.", 409) { Field = "nationalId" };
         return id;
     }
+
+    /// <summary>The national ID on file as the audit log and the screens show it: its last four digits, or all masked when it cannot be read.</summary>
+    internal static string? MaskedOnFile(AppUser user, INationalIdProtector nationalIds) =>
+        user.NationalIdProtected is not { } stored ? null
+        : nationalIds.Unprotect(stored) is { } id ? NationalIds.Mask(id)
+        : new string('*', NationalIds.Length);
 
     /// <summary>ADR-0021: an Egyptian mobile number, kept as 01XXXXXXXXX.</summary>
     private static string PhoneOf(string? value)
@@ -117,8 +130,10 @@ public sealed class UserAccountsService(IIdentityStore db, IClock clock, ICurren
         if (user.FullNameEn != en) changes.Add(new FieldChange("fullNameEn", user.FullNameEn, en));
         var title = TitleOf(req.Title);
         if (user.Title != title) changes.Add(new FieldChange("title", user.Title, title));
+        // A number typed replaces the one on file, unless it is the same number (its fingerprint says so without reading it).
         var nationalId = await NationalIdOfAsync(req.NationalId, user, ct);
-        if (user.NationalId != nationalId) changes.Add(new FieldChange("nationalId", user.NationalId is { } old ? NationalIds.Mask(old) : null, NationalIds.Mask(nationalId)));
+        if (nationalId is not null && nationalIds.Fingerprint(nationalId) == user.NationalIdHash) nationalId = null;
+        if (nationalId is not null) changes.Add(new FieldChange("nationalId", MaskedOnFile(user, nationalIds), NationalIds.Mask(nationalId)));
         var phone = PhoneOf(req.Phone);
         if (user.Phone != phone) changes.Add(new FieldChange("phone", user.Phone, phone));
         // ADR-0016: a new email (the login name) must be at an active approved domain and unused; the old one keeps working until changed.
@@ -134,7 +149,7 @@ public sealed class UserAccountsService(IIdentityStore db, IClock clock, ICurren
         user.FullNameAr = ar;
         user.FullNameEn = en;
         user.Title = title;
-        user.NationalId = nationalId;
+        if (nationalId is not null) (user.NationalIdProtected, user.NationalIdHash) = (nationalIds.Protect(nationalId), nationalIds.Fingerprint(nationalId));
         user.Phone = phone;
         user.Email = email;
         audit.Record(IamPolicy.UserEvent("iam.user_update", "تعديل بيانات حساب", "Updated an account", user, "E") with { Changes = changes });

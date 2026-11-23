@@ -1,4 +1,7 @@
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Options;
 using Tier1.Domain.Identity;
+using Tier1.Infrastructure.Security;
 
 namespace Tier1.Tests;
 
@@ -74,7 +77,59 @@ public class AccountDataTests
     {
         var old = new AppUser { Email = "old@tier1.local", FullNameAr = "حساب قديم" };
         Assert.Equal(["fullNameEn", "nationalId", "phone"], old.MissingData);
-        var complete = new AppUser { Email = "new@tier1.local", FullNameAr = "حساب جديد", FullNameEn = "New Account", NationalId = "28505150112345", Phone = "01012345678" };
+        var complete = new AppUser { Email = "new@tier1.local", FullNameAr = "حساب جديد", FullNameEn = "New Account", NationalIdProtected = "x", NationalIdHash = "y", Phone = "01012345678" };
         Assert.Empty(complete.MissingData);
+    }
+
+    private static NationalIdProtector Protector(byte first = 1) =>
+        new(new EphemeralDataProtectionProvider(), Options.Create(new PersonalDataOptions { IndexKey = Convert.ToBase64String(Enumerable.Range(first, 32).Select(i => (byte)i).ToArray()) }));
+
+    /// <summary>AC-D9: what is stored of a national ID does not hold the number, differs on every save, and is read back by the keys.</summary>
+    [Fact]
+    public void AC_D9_a_national_id_is_stored_encrypted()
+    {
+        var p = Protector();
+        const string id = "28505150112345";
+        var (first, second) = (p.Protect(id), p.Protect(id));
+        Assert.DoesNotContain(id, first, StringComparison.Ordinal);
+        Assert.NotEqual(first, second);
+        Assert.True(first.Length <= 512, $"The stored value fits its column ({first.Length}).");
+        Assert.Equal(id, p.Unprotect(first));
+        Assert.Equal(id, p.Unprotect(second));
+        // Other keys (a lost or replaced key ring) cannot read it, and say so instead of throwing.
+        Assert.Null(Protector().Unprotect(first));
+        Assert.Null(p.Unprotect("not a protected value"));
+    }
+
+    /// <summary>
+    /// AC-D10: the fingerprint is the same for the same number (so the unique index holds), different for another number, and cannot
+    /// be computed without the key: another key gives another fingerprint, and it is not a plain hash of the number.
+    /// </summary>
+    [Fact]
+    public void AC_D10_the_fingerprint_is_stable_and_keyed()
+    {
+        const string id = "28505150112345";
+        var print = Protector().Fingerprint(id);
+        Assert.Equal(print, Protector().Fingerprint(id));
+        Assert.Equal(64, print.Length);
+        Assert.Matches("^[0-9a-f]{64}$", print);
+        Assert.NotEqual(print, Protector().Fingerprint("28505150112346"));
+        Assert.NotEqual(print, Protector(first: 2).Fingerprint(id));
+        var plain = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(id))).ToLowerInvariant();
+        Assert.NotEqual(plain, print);
+        Assert.DoesNotContain(id, print, StringComparison.Ordinal);
+    }
+
+    /// <summary>AC-D10: the fingerprint key is at least 32 bytes of Base64; without one no national ID is saved.</summary>
+    [Fact]
+    public void AC_D10_the_fingerprint_needs_its_key()
+    {
+        Assert.Null(PersonalDataKey.FromConfig(null));
+        Assert.Null(PersonalDataKey.FromConfig("  "));
+        Assert.Null(PersonalDataKey.FromConfig(Convert.ToBase64String(new byte[16])));
+        Assert.Null(PersonalDataKey.FromConfig("not base64 !"));
+        Assert.Equal(32, PersonalDataKey.FromConfig(Convert.ToBase64String(new byte[32]))!.Length);
+        var keyless = new NationalIdProtector(new EphemeralDataProtectionProvider(), Options.Create(new PersonalDataOptions()));
+        Assert.Throws<InvalidOperationException>(() => keyless.Fingerprint("28505150112345"));
     }
 }

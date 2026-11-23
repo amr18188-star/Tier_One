@@ -12,6 +12,7 @@ x-app-env: &app-env
   ConnectionStrings__Tier1: "Host=postgres;Port=5432;Database=tier1;Username=tier1;Password=${POSTGRES_PASSWORD:?}"
   ConnectionStrings__Mongo: "mongodb://tier1_app:${MONGO_APP_PASSWORD:?}@mongo:27017/tier1_logs?authSource=tier1_logs"
   MongoLogs__ChainKey: "${T1_CHAIN_KEY:?}"
+  PersonalData__IndexKey: "${T1_PERSONAL_DATA_KEY:?}"
   MongoLogs__CheckpointDirectory: /data/checkpoints
   MongoLogs__CheckpointEmails__0: "${CHECKPOINT_EMAIL:?}"
   DataProtection__KeysPath: /data/keys

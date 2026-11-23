@@ -67,9 +67,11 @@ public sealed partial class Tier1DbContext(DbContextOptions<Tier1DbContext> opti
             e.Property(u => u.FullNameEn).HasMaxLength(200);
             e.Property(u => u.Title).HasMaxLength(Domain.Identity.PersonTitles.MaxLength);
             e.Ignore(u => u.DisplayName);
-            // ADR-0021: one account per national ID; accounts from before the rule have none (a unique index allows many nulls).
-            e.Property(u => u.NationalId).HasMaxLength(Domain.Identity.NationalIds.Length);
-            e.HasIndex(u => u.NationalId).IsUnique();
+            // ADR-0021: the national ID is stored encrypted; its keyed fingerprint carries the rule "one account per national ID".
+            // Accounts from before the rule have none (a unique index allows many nulls).
+            e.Property(u => u.NationalIdProtected).HasMaxLength(512);
+            e.Property(u => u.NationalIdHash).HasMaxLength(64);
+            e.HasIndex(u => u.NationalIdHash).IsUnique();
             e.Property(u => u.Phone).HasMaxLength(Domain.Identity.MobileNumbers.MaxLength);
             e.Ignore(u => u.MissingData);
             e.Property(u => u.PreferredLanguage).HasMaxLength(5);

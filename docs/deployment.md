@@ -27,6 +27,8 @@ cp deploy/.env.example deploy/.env     # املأ كل القيم (كلمات م
    openssl pkcs12 -export -inkey dp.key -in dp.crt -out /etc/tier1/dp.pfx -passout pass:<DP_CERT_PASSWORD>
    ```
 2. **مفتاح السلسلة**: `openssl rand -base64 32` في `T1_CHAIN_KEY`، واحفظ نسخة منه خارج الخادم (خزنة الجامعة).
+   - **مفتاح بصمة الرقم القومي** بالطريقة نفسها في `T1_PERSONAL_DATA_KEY` ([ADR-0021](adr/0021-account-personal-data.md)). لا يغيَّر بعد إنشاء أول حساب: تغييره يبطل منع تكرار الرقم القومي.
+   - الأرقام القومية نفسها تشفَّر بمفاتيح حماية البيانات (`/data/keys`، بشهادة `DP_CERT_FILE`). ضياع هذه المفاتيح يجعل الأرقام المحفوظة غير مقروءة، فأدخلها في النسخ الاحتياطي مع الشهادة.
 3. **التشغيل الأول**:
    ```bash
    docker compose -f deploy/docker-compose.yml --env-file deploy/.env up -d postgres mongo

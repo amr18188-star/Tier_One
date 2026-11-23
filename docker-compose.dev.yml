@@ -33,6 +33,7 @@ services:
       ConnectionStrings__MongoAdmin: mongodb://mongo:27017/
       MongoLogs__SetupOnStartup: "true"
       MongoLogs__ChainKey: ybMmZEAJWMsrFElpEXuzGX81cfjMp1jnFHpxbzNRqgk=            # dev-only key
+      PersonalData__IndexKey: MsA9ejls1XnhQF5T+CIEzM3f6F/14Lwq5Ny5e8Cryc4=          # dev-only key (national ID fingerprint)
       Seed__Demo: "true"                    # demo accounts *@tier1.local
       Seed__Structure: "true"               # the official university structure for new databases
       Seed__DemoPassword: Tier1-Demo-Pass1

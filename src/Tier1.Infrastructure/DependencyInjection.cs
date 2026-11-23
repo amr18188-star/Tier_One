@@ -46,6 +46,8 @@ public static class DependencyInjection
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<IPasswordHasher, IdentityPasswordHasher>();
         services.AddSingleton<ISecretProtector, DataProtectionSecretProtector>();
+        services.Configure<PersonalDataOptions>(config.GetSection("PersonalData"));
+        services.AddSingleton<INationalIdProtector, NationalIdProtector>();
         services.AddSingleton<IQrCodes, QrCodes>();
         services.AddSingleton<IFileStore, Files.LocalFileStore>();
         services.AddSingleton<ISpreadsheets, Files.ClosedXmlSpreadsheets>();

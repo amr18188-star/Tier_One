@@ -1254,10 +1254,15 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("must_change_password");
 
-                    b.Property<string>("NationalId")
-                        .HasMaxLength(14)
-                        .HasColumnType("character varying(14)")
-                        .HasColumnName("national_id");
+                    b.Property<string>("NationalIdHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("national_id_hash");
+
+                    b.Property<string>("NationalIdProtected")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)")
+                        .HasColumnName("national_id_protected");
 
                     b.Property<string>("PasswordHash")
                         .HasColumnType("text")
@@ -1292,9 +1297,9 @@ namespace Tier1.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_users_email");
 
-                    b.HasIndex("NationalId")
+                    b.HasIndex("NationalIdHash")
                         .IsUnique()
-                        .HasDatabaseName("ix_users_national_id");
+                        .HasDatabaseName("ix_users_national_id_hash");
 
                     b.ToTable("users", "iam");
                 });

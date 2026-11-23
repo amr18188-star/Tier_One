@@ -45,6 +45,8 @@ public static class StartupGuards
             "Files:Root must be an absolute path outside the application folder (evidence files are stored there).");
         // D7: بصمة السلسلة بمفتاح خارج القاعدتين، ونقاط التثبيت تنشر خارج المنظومة.
         Require(ChainKey.FromConfig(c["MongoLogs:ChainKey"]) is not null, "MongoLogs:ChainKey (>= 32 bytes, Base64) is required.");
+        // ADR-0021 DEC-D5: بصمة الرقم القومي بمفتاح خارج القاعدة؛ دونه لا يحفظ رقم قومي.
+        Require(Tier1.Infrastructure.Security.PersonalDataKey.FromConfig(c["PersonalData:IndexKey"]) is not null, "PersonalData:IndexKey (>= 32 bytes, Base64) is required.");
         Require(!string.IsNullOrWhiteSpace(c["MongoLogs:CheckpointDirectory"]) || (c.GetSection("MongoLogs:CheckpointEmails").Get<string[]>() ?? []).Length > 0,
             "MongoLogs:CheckpointDirectory or MongoLogs:CheckpointEmails is required, so checkpoints are published outside the system.");
     }
