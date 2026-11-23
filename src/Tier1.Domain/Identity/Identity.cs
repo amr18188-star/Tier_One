@@ -18,6 +18,20 @@ public sealed class AppUser
     /// <summary>الاسم كما يعرض: اللقب ثم الاسم ثنائيًا؛ وبلا لقب الاسم الكامل.</summary>
     public string DisplayName => PersonName.Display(Title, FullNameAr, FullNameEn);
 
+    /// <summary>الرقم القومي (14 رقمًا، فريد)، أو فارغ لحساب أنشئ قبل إلزام البيانات (ADR-0021). لا يخرج من الخادم إلا مقنّعًا.</summary>
+    public string? NationalId { get; set; }
+
+    /// <summary>رقم المحمول بشكله المحفوظ (01XXXXXXXXX)، أو فارغ لحساب أنشئ قبل إلزام البيانات (ADR-0021).</summary>
+    public string? Phone { get; set; }
+
+    /// <summary>ما ينقص الحساب من البيانات الإلزامية بأسماء حقولها (ADR-0021)؛ فارغة حين تكتمل.</summary>
+    public IReadOnlyList<string> MissingData =>
+    [
+        .. string.IsNullOrWhiteSpace(FullNameEn) ? ["fullNameEn"] : Array.Empty<string>(),
+        .. NationalId is null ? ["nationalId"] : Array.Empty<string>(),
+        .. Phone is null ? ["phone"] : Array.Empty<string>(),
+    ];
+
     public bool Active { get; set; } = true;
 
     public string? PasswordHash { get; set; }

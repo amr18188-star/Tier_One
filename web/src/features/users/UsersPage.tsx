@@ -13,6 +13,7 @@ import { usePermissions } from "../../shared/session";
 import { DataTable, EmptyNote, PageHeader } from "../../shared/ui";
 import { UserDrawer } from "./UserDrawer";
 import { TitleSelect } from "./TitleSelect";
+import { EnglishNameItem, PersonalDataItems } from "./AccountDataFields";
 import { queryKeys } from "../../api/queries";
 
 export default function UsersPage() {
@@ -79,6 +80,7 @@ function UserStatus({ user: u }: { user: UserListItem }) {
       {u.active ? <Tag color="green">{L("نشط", "Active")}</Tag> : <Tag>{L("موقوف", "Deactivated")}</Tag>}
       {u.locked && <Tag color="red" icon={<LockOutlined />}>{L("مقفل", "Locked")}</Tag>}
       {u.mfaEnabled && <Tag icon={<SafetyOutlined />}>{L("خطوتان", "2-step")}</Tag>}
+      {u.incomplete && <Tag color="orange">{L("بيانات ناقصة", "Incomplete data")}</Tag>}
     </Space>
   );
 }
@@ -134,7 +136,8 @@ function CreateUserModal({ open, onClose }: { open: boolean; onClose: () => void
         </Form.Item>
         <Form.Item name="fullNameAr" label={L("الاسم بالعربية", "Arabic name")} rules={[{ required: true }]}
           extra={L("اكتب الاسم كاملًا بلا لقب.", "The full name, without a title.")}><Input /></Form.Item>
-        <Form.Item name="fullNameEn" label={L("الاسم بالإنجليزية", "English name")}><Input dir="ltr" /></Form.Item>
+        <EnglishNameItem />
+        <PersonalDataItems />
       </Form>
     </Modal>
   );

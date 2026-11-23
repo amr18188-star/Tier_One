@@ -6137,6 +6137,8 @@ export interface components {
             fullNameAr: string;
             fullNameEn: null | string;
             title: null | string;
+            nationalId: null | string;
+            phone: null | string;
         };
         CycleDto: {
             /** Format: uuid */
@@ -7973,6 +7975,8 @@ export interface components {
             fullNameEn: null | string;
             email: null | string;
             title: null | string;
+            nationalId: null | string;
+            phone: null | string;
         };
         UserDetailDto: {
             /** Format: uuid */
@@ -7994,6 +7998,9 @@ export interface components {
             overrides: components["schemas"]["OverrideDto"][];
             title: null | string;
             displayName: null | string;
+            phone: null | string;
+            nationalIdMasked: null | string;
+            missingData: null | string[];
         };
         UserListItemDto: {
             /** Format: uuid */
@@ -8006,6 +8013,8 @@ export interface components {
             /** Format: date-time */
             lastLoginAt: null | string;
             roles: string[];
+            /** @default false */
+            incomplete: boolean;
         };
         ValueChangeDto: {
             /** Format: double */

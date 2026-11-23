@@ -114,6 +114,8 @@ export interface UserListItem {
   locked: boolean;
   lastLoginAt: string | null;
   roles: string[];
+  /** ADR-0021: ينقص الحساب شيء من بياناته الإلزامية (الاسم بالإنجليزية أو الرقم القومي أو رقم المحمول). */
+  incomplete?: boolean;
 }
 
 export interface Assignment {
@@ -164,6 +166,12 @@ export interface UserDetail {
   title?: string | null;
   /** الاسم كما يعرض: اللقب ثم الاسم ثنائيًا. */
   displayName?: string | null;
+  /** رقم المحمول بشكله المحفوظ (ADR-0021). */
+  phone?: string | null;
+  /** الرقم القومي مقنّعًا: آخر أربعة أرقام فقط. الرقم الكامل لا يخرج من الخادم. */
+  nationalIdMasked?: string | null;
+  /** ما ينقص الحساب من بياناته الإلزامية بأسماء حقولها؛ فارغة حين تكتمل. */
+  missingData?: string[] | null;
   active: boolean;
   mfaEnabled: boolean;
   mustChangePassword: boolean;

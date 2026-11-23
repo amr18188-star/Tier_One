@@ -147,6 +147,24 @@ internal static class Calls
 
     public static string Tag(int length = 6) => Guid.NewGuid().ToString("N")[..length];
 
+    /// <summary>
+    /// ADR-0021: made-up personal data for a test account, valid by the rules and different on every call: a national ID (a birth
+    /// date between 1970 and 1999, the "born abroad" code 88, a random serial) and a mobile number. No real person's data.
+    /// </summary>
+    public static (string NationalId, string Phone) Person()
+    {
+        var r = Random.Shared;
+        var id = $"2{r.Next(70, 100):00}{r.Next(1, 13):00}{r.Next(1, 29):00}88{r.Next(0, 100000):00000}";
+        return (id, $"010{r.Next(0, 100000000):00000000}");
+    }
+
+    /// <summary>The body of a new test account with complete data (ADR-0021).</summary>
+    public static JsonObject Account(string email, string nameAr, string nameEn = "Test Account")
+    {
+        var (nationalId, phone) = Person();
+        return Scenario.O(("email", email), ("fullNameAr", nameAr), ("fullNameEn", nameEn), ("nationalId", nationalId), ("phone", phone));
+    }
+
     public static IEnumerable<JsonNode> ItemsOf(this JsonNode form) => form["sections"].Items().SelectMany(s => s["items"].Items());
 
     /// <summary>A valid value for an item, by its unit and aggregation rule.</summary>

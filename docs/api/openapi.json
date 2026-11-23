@@ -6371,6 +6371,18 @@
               "null",
               "string"
             ]
+          },
+          "nationalId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "phone": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -14765,6 +14777,18 @@
               "null",
               "string"
             ]
+          },
+          "nationalId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "phone": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -14855,6 +14879,27 @@
               "null",
               "string"
             ]
+          },
+          "phone": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "nationalIdMasked": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "missingData": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -14902,6 +14947,10 @@
             "items": {
               "type": "string"
             }
+          },
+          "incomplete": {
+            "type": "boolean",
+            "default": false
           }
         }
       },

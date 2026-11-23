@@ -23,7 +23,7 @@ public sealed class AccessAdminTests(Tier1App app, ITestOutputHelper output)
         var sa1 = await app.As("sa1");
         var sa2 = await app.As("sa2");
         var email = $"it.{Calls.Tag()}@tier1.local";
-        var body = Scenario.O(("email", email), ("fullNameAr", "حساب اختبار التكامل"), ("fullNameEn", null));
+        var body = Calls.Account(email, "حساب اختبار التكامل");
 
         t.Step("Creating an account");
         t.Check((await (await app.As("viewer")).Call("POST", "/api/iam/users", body)).Status == 403, "A viewer cannot create accounts (403)");
@@ -134,7 +134,7 @@ public sealed class AccessAdminTests(Tier1App app, ITestOutputHelper output)
 
         t.Step("Creating an account with a title");
         var email = $"it.{Calls.Tag()}@tier1.local";
-        var body = Scenario.O(("email", email), ("fullNameAr", "أحمد عبد الرحمن علي حسن"), ("fullNameEn", null), ("title", "أ.د."));
+        var body = Scenario.With(Calls.Account(email, "أحمد عبد الرحمن علي حسن", "Ahmed Abdelrahman Ali Hassan"), ("title", "أ.د."));
         var (status, error) = await sys.Call("POST", "/api/iam/users", Scenario.With(body, ("title", "فخامة")));
         t.Check(status == 400 && error.Code() == "invalid_title", $"A title outside the list is refused (AC-N6), got {status} {error.Code()}");
         var userId = (await sys.Ok("POST", "/api/iam/users", body))["userId"].Str();
@@ -145,12 +145,89 @@ public sealed class AccessAdminTests(Tier1App app, ITestOutputHelper output)
             "The account keeps its full name and its title beside the shown name");
 
         t.Step("Changing and clearing the title");
-        var update = Scenario.O(("fullNameAr", "أحمد عبد الرحمن علي حسن"), ("fullNameEn", null), ("title", "عقيد"));
+        var update = Scenario.O(("fullNameAr", "أحمد عبد الرحمن علي حسن"), ("fullNameEn", "Ahmed Abdelrahman Ali Hassan"), ("title", "عقيد"), ("phone", body["phone"]));
         t.Check((await sys.Call("PUT", $"/api/iam/users/{userId}", Scenario.With(update, ("title", "أستاذ")))).Status == 400, "A free-text title is refused on edit too");
         t.Check((await sys.Call("PUT", $"/api/iam/users/{userId}", update)).Status == 204, "The title is changed");
         t.Check((await sys.Get($"/api/iam/users/{userId}"))!["displayName"].Str() == "عقيد أحمد عبد الرحمن", "The new title is shown");
         t.Check((await sys.Call("PUT", $"/api/iam/users/{userId}", Scenario.With(update, ("title", null)))).Status == 204, "The title is cleared");
         t.Check((await sys.Get($"/api/iam/users/{userId}"))!["displayName"].Str() == "أحمد عبد الرحمن علي حسن", "Without a title the full name is shown as written (AC-N8)");
+        t.Finish();
+    }
+
+    /// <summary>
+    /// ADR-0021: every account carries its holder's full data. AC-D4: an account is not created without the English name, the national
+    /// ID and the mobile number, and each refusal names its field; AC-D5: the national ID is on one account only; AC-D6: it never leaves
+    /// the server in full; AC-D7: an edit keeps the national ID on file when none is sent, and needs the rest; AC-D8: an account from
+    /// before the rule is marked incomplete and is completed the first time it is edited.
+    /// </summary>
+    [Fact]
+    public async Task AC_D4_to_D8_an_account_carries_its_holders_full_data()
+    {
+        static (string? Field, string? Code) First(JsonNode? error) =>
+            error?["errors"]?.AsArray().FirstOrDefault() is { } e ? (e["field"].Str(), e["code"].Str()) : (null, null);
+
+        var t = new Scenario(output);
+        var sys = await app.As("sysadmin");
+        var email = $"it.{Calls.Tag()}@tier1.local";
+        var body = Calls.Account(email, "منى السيد محمود علي", "Mona Elsayed Mahmoud Ali");
+        var nationalId = body["nationalId"].Str()!;
+
+        t.Step("AC-D4: nothing of the required data may be left out or wrong");
+        async Task RefusedAsync(string field, object? value, string code, string what)
+        {
+            var (status, error) = await sys.Call("POST", "/api/iam/users", Scenario.With(body, (field, value)));
+            t.Check(status == 400 && error.Code() == code && First(error) == (field, code), $"{what} ({code}), got {status} {error.Code()} on {First(error).Field}");
+        }
+        await RefusedAsync("fullNameEn", null, "name_en_required", "No English name");
+        await RefusedAsync("fullNameEn", "منى السيد", "invalid_name_en", "An English name in Arabic letters");
+        await RefusedAsync("nationalId", null, "national_id_required", "No national ID");
+        await RefusedAsync("nationalId", nationalId[..13], "invalid_national_id", "A national ID of 13 digits");
+        await RefusedAsync("nationalId", "2" + "991340" + nationalId[7..], "invalid_national_id", "A national ID with month 13");
+        await RefusedAsync("nationalId", nationalId[..7] + "99" + nationalId[9..], "invalid_national_id", "A national ID with an unknown governorate");
+        await RefusedAsync("phone", null, "phone_required", "No mobile number");
+        await RefusedAsync("phone", "0225551234", "invalid_phone", "A landline number");
+
+        t.Step("Created with complete data");
+        var userId = (await sys.Ok("POST", "/api/iam/users", Scenario.With(body, ("phone", "+20 10 1234 5678"))))["userId"].Str();
+        var detail = (await sys.Get($"/api/iam/users/{userId}"))!;
+        t.Check(detail["phone"].Str() == "01012345678", $"The mobile number is kept in one form, got {detail["phone"].Str()}");
+        t.Check(detail["fullNameEn"].Str() == "Mona Elsayed Mahmoud Ali" && !detail["missingData"].Items().Any(), "Both names are kept and nothing is missing");
+        var listed = (await sys.Get($"/api/iam/users?q={Uri.EscapeDataString(email)}")).Items().Single();
+        t.Check(!listed["incomplete"].Truthy(), "The accounts list does not mark it incomplete");
+
+        t.Step("AC-D6: the national ID never leaves the server in full");
+        t.Check(detail["nationalIdMasked"].Str() == new string('*', 10) + nationalId[^4..], $"The account shows the last four digits only, got {detail["nationalIdMasked"].Str()}");
+        t.Check(!detail.ToJsonString().Contains(nationalId, StringComparison.Ordinal) && !listed.ToJsonString().Contains(nationalId, StringComparison.Ordinal),
+            "Neither the account nor the list carries the full number");
+
+        t.Step("AC-D5: one account per national ID");
+        var other = Scenario.With(Calls.Account($"it.{Calls.Tag()}@tier1.local", "حساب آخر"), ("nationalId", nationalId));
+        var (status, error) = await sys.Call("POST", "/api/iam/users", other);
+        t.Check(status == 409 && error.Code() == "duplicate_national_id" && First(error).Field == "nationalId", $"The same national ID on a second account is a conflict (409), got {status} {error.Code()}");
+        var otherId = (await sys.Ok("POST", "/api/iam/users", Scenario.With(other, ("nationalId", Calls.Person().NationalId))))["userId"].Str();
+
+        t.Step("AC-D7: an edit keeps the national ID on file, and needs the rest");
+        var update = Scenario.O(("fullNameAr", "منى السيد محمود علي"), ("fullNameEn", "Mona Elsayed Mahmoud Ali"), ("phone", "٠١١٢٣٤٥٦٧٨٩"));
+        t.Check((await sys.Call("PUT", $"/api/iam/users/{userId}", update)).Status == 204, "An edit without a national ID is saved");
+        detail = (await sys.Get($"/api/iam/users/{userId}"))!;
+        t.Check(detail["nationalIdMasked"].Str()!.EndsWith(nationalId[^4..], StringComparison.Ordinal) && detail["phone"].Str() == "01123456789",
+            $"The national ID on file is kept, and the new number is saved in Latin digits, got {detail["phone"].Str()}");
+        (status, error) = await sys.Call("PUT", $"/api/iam/users/{userId}", Scenario.With(update, ("phone", null)));
+        t.Check(status == 400 && error.Code() == "phone_required", $"An edit without the mobile number is refused, got {status} {error.Code()}");
+        (status, error) = await sys.Call("PUT", $"/api/iam/users/{userId}", Scenario.With(update, ("fullNameEn", null)));
+        t.Check(status == 400 && error.Code() == "name_en_required", $"An edit without the English name is refused, got {status} {error.Code()}");
+        (status, error) = await sys.Call("PUT", $"/api/iam/users/{otherId}", Scenario.With(update, ("nationalId", nationalId)));
+        t.Check(status == 409 && error.Code() == "duplicate_national_id", $"An edit cannot take another account's national ID, got {status} {error.Code()}");
+
+        t.Step("AC-D8: an account from before the rule is marked incomplete until it is edited with full data");
+        var old = (await sys.Get("/api/iam/users?q=viewer@tier1.local")).Items().Single();
+        t.Check(old["incomplete"].Truthy(), "The accounts list marks it incomplete");
+        var oldDetail = (await sys.Get($"/api/iam/users/{old["id"].Str()}"))!;
+        var missing = oldDetail["missingData"].Items().Select(m => m.Str()).ToList();
+        t.Check(missing.Contains("nationalId") && missing.Contains("phone") && oldDetail["nationalIdMasked"].Str() is null, $"Its page names what is missing: {string.Join(", ", missing)}");
+        (status, error) = await sys.Call("PUT", $"/api/iam/users/{old["id"].Str()}",
+            Scenario.O(("fullNameAr", oldDetail["fullNameAr"]), ("fullNameEn", "Viewer Account"), ("title", oldDetail["title"]), ("phone", "01055555555")));
+        t.Check(status == 400 && error.Code() == "national_id_required", $"Editing it without its national ID is refused, got {status} {error.Code()}");
         t.Finish();
     }
 }

@@ -9,6 +9,8 @@ import { markFieldErrors } from "../../shared/useFieldErrors";
 import { IpAllowlistPanel } from "../security/IpAllowlistPanel";
 import { useEmailDomainRule } from "./emailDomainRule";
 import { TitleSelect } from "./TitleSelect";
+import { EnglishNameItem, PersonalDataItems } from "./AccountDataFields";
+import { missingLabels } from "./accountData";
 import { dirArrow, L, useLang } from "../../shared/i18n";
 import { QueryError } from "../../shared/QueryState";
 import { usePermissions, useSession } from "../../shared/session";
@@ -55,9 +57,18 @@ export function UserDrawer({ userId, onClose }: { userId: string; onClose: () =>
             <Alert className="mb" type="info" showIcon message={L("هذا الحساب يحمل دورًا محجوزًا، فلا يديره إلا المدير الأعلى (SOD-9).", "This account holds a reserved role, so only a super administrator can manage it (SOD-9).")} />
           )}
           {error && <Alert className="mb" type="error" showIcon message={error} closable onClose={() => setError(null)} />}
+          {/* ADR-0021: an account from before the rule says what it lacks; it is completed from "edit account data". */}
+          {!!u.missingData?.length && (
+            <Alert className="mb" type="warning" showIcon
+              message={L(`بيانات الحساب ناقصة: ${missingLabels(u.missingData).join("، ")}.`, `This account's data is incomplete: ${missingLabels(u.missingData).join(", ")}.`)}
+              description={locked ? undefined : L("أكملها من «تعديل بيانات الحساب».", "Complete it from “Edit account data”.")} />
+          )}
           <Descriptions size="small" column={{ xs: 1, md: 2 }} bordered className="mb">
             <Descriptions.Item label={L("البريد", "Email")}><span className="ltr">{u.email}</span></Descriptions.Item>
-            <Descriptions.Item label={L("الاسم بالإنجليزية", "English name")}>{u.fullNameEn ?? "—"}</Descriptions.Item>
+            <Descriptions.Item label={L("الاسم بالعربية", "Arabic name")}>{u.fullNameAr}</Descriptions.Item>
+            <Descriptions.Item label={L("الاسم بالإنجليزية", "English name")}>{u.fullNameEn ? <span className="ltr">{u.fullNameEn}</span> : "—"}</Descriptions.Item>
+            <Descriptions.Item label={L("الرقم القومي", "National ID")}>{u.nationalIdMasked ? <span className="ltr">{u.nationalIdMasked}</span> : "—"}</Descriptions.Item>
+            <Descriptions.Item label={L("رقم المحمول", "Mobile number")}>{u.phone ? <span className="ltr">{u.phone}</span> : "—"}</Descriptions.Item>
             <Descriptions.Item label={L("الحالة", "Status")}>
               <Space wrap>
                 {u.active ? <Tag color="green">{L("نشط", "Active")}</Tag> : <Tag>{L("موقوف", "Deactivated")}</Tag>}
@@ -141,11 +152,12 @@ function EditNames({ user, onSaved }: { user: UserDetail; onSaved: () => Promise
   const [error, setError] = useState<string | null>(null);
   return (
     <>
-      <Button onClick={() => setOpen(true)}>{L("تعديل الاسم واللقب", "Edit name and title")}</Button>
-      <Modal open={open} title={L("تعديل الاسم واللقب", "Edit name and title")} onCancel={() => setOpen(false)} destroyOnHidden onOk={async () => {
+      <Button onClick={() => setOpen(true)}>{L("تعديل بيانات الحساب", "Edit account data")}</Button>
+      <Modal open={open} title={L("تعديل بيانات الحساب", "Edit account data")} onCancel={() => setOpen(false)} destroyOnHidden onOk={async () => {
         const v = await form.validateFields();
         try {
-          await api.put(`/api/iam/users/${user.id}`, v);
+          // An empty national ID keeps the one on file (the server never sends it back for the form to resend).
+          await api.put(`/api/iam/users/${user.id}`, { ...v, nationalId: v.nationalId?.trim() ? v.nationalId : null });
           setOpen(false);
           await onSaved();
         } catch (e) {
@@ -153,14 +165,15 @@ function EditNames({ user, onSaved }: { user: UserDetail; onSaved: () => Promise
         }
       }}>
         {error && <Alert type="error" showIcon message={error} className="mb" />}
-        <Form form={form} layout="vertical" initialValues={{ fullNameAr: user.fullNameAr, fullNameEn: user.fullNameEn, email: user.email, title: user.title ?? null }}>
+        <Form form={form} layout="vertical" initialValues={{ fullNameAr: user.fullNameAr, fullNameEn: user.fullNameEn, email: user.email, title: user.title ?? null, phone: user.phone ?? "" }}>
           <Form.Item name="email" label={L("البريد الجامعي (اسم الدخول)", "University email (sign-in name)")} rules={[{ required: true, type: "email" }, emailRule]}><Input dir="ltr" /></Form.Item>
           <Form.Item name="title" label={L("اللقب", "Title")}
             extra={L("يسبق الاسم، ويعرض الاسم بعده ثنائيًا. بلا لقب يعرض الاسم كاملًا كما كتب.", "Shown before the first two names. Without a title the full name is shown as written.")}>
             <TitleSelect allowClear />
           </Form.Item>
           <Form.Item name="fullNameAr" label={L("الاسم بالعربية", "Arabic name")} rules={[{ required: true }]}><Input /></Form.Item>
-          <Form.Item name="fullNameEn" label={L("الاسم بالإنجليزية", "English name")}><Input dir="ltr" /></Form.Item>
+          <EnglishNameItem />
+          <PersonalDataItems nationalIdOnFile={user.nationalIdMasked} />
         </Form>
       </Modal>
     </>

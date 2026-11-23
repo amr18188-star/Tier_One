@@ -60,7 +60,7 @@ public sealed class UniversityAccessTests(Tier1App app)
     private async Task<(int Status, JsonNode? Body)> CreateUserAsync(string email)
     {
         var sys = await app.As("sysadmin");
-        return await sys.Call("POST", "/api/iam/users", Scenario.O(("email", email), ("fullNameAr", "حساب اختبار النطاقات"), ("fullNameEn", null)));
+        return await sys.Call("POST", "/api/iam/users", Calls.Account(email, "حساب اختبار النطاقات"));
     }
 
     private Task<long> OutboxAsync(string action, string like) =>
@@ -113,9 +113,9 @@ public sealed class UniversityAccessTests(Tier1App app)
 
             // An email change follows the same rule.
             var userId = user["userId"].Str();
-            var (bad, badError) = await sys.Call("PUT", $"/api/iam/users/{userId}", Scenario.O(("fullNameAr", "حساب اختبار النطاقات"), ("fullNameEn", null), ("email", $"j{tag}@gmail.com")));
+            var (bad, badError) = await sys.Call("PUT", $"/api/iam/users/{userId}", Scenario.O(("fullNameAr", "حساب اختبار النطاقات"), ("fullNameEn", "Test Account"), ("phone", "01000000001"), ("email", $"j{tag}@gmail.com")));
             Assert.Equal((400, "email"), (bad, FirstError(badError).Field));
-            Assert.Equal(204, (await sys.Call("PUT", $"/api/iam/users/{userId}", Scenario.O(("fullNameAr", "حساب اختبار النطاقات"), ("fullNameEn", null), ("email", $"j{tag}@eng.helwan.edu.eg")))).Status);
+            Assert.Equal(204, (await sys.Call("PUT", $"/api/iam/users/{userId}", Scenario.O(("fullNameAr", "حساب اختبار النطاقات"), ("fullNameEn", "Test Account"), ("phone", "01000000001"), ("email", $"j{tag}@eng.helwan.edu.eg")))).Status);
             Assert.Equal($"j{tag}@eng.helwan.edu.eg", (await sys.Get($"/api/iam/users/{userId}"))!["email"].Str());
 
             // Only the security permission manages domains.

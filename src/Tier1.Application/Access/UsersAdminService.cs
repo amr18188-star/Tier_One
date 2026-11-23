@@ -12,7 +12,9 @@ using Microsoft.Extensions.Options;
 
 namespace Tier1.Application.Access;
 
-public sealed record UserListItemDto(Guid Id, string Email, string Name, bool Active, bool MfaEnabled, bool Locked, DateTimeOffset? LastLoginAt, IReadOnlyList<string> Roles);
+/// <param name="Incomplete">ADR-0021: the account lacks some of its required data (English name, national ID or mobile number).</param>
+public sealed record UserListItemDto(Guid Id, string Email, string Name, bool Active, bool MfaEnabled, bool Locked, DateTimeOffset? LastLoginAt, IReadOnlyList<string> Roles,
+    bool Incomplete = false);
 
 public sealed record AssignmentDto(Guid Id, Guid RoleId, string RoleCode, string RoleName, IReadOnlyList<string> ScopeValues, DateTimeOffset ValidFrom, DateTimeOffset? ValidTo,
     PersonDto? GrantedBy, DateTimeOffset GrantedAt, string? Reason, DateTimeOffset? RevokedAt, string? RevokeReason, bool Active, bool PendingApproval, PersonDto? ApprovedBy, bool CanApprove);
@@ -22,10 +24,13 @@ public sealed record OverrideDto(Guid Id, string Feature, string Caps, IReadOnly
 
 public sealed record UserDetailDto(Guid Id, string Email, string FullNameAr, string? FullNameEn, bool Active, bool MfaEnabled, bool MustChangePassword, DateTimeOffset? LockedUntil,
     DateTimeOffset CreatedAt, DateTimeOffset? LastLoginAt, bool HoldsReservedRole, IReadOnlyList<AssignmentDto> Assignments, IReadOnlyList<OverrideDto> Overrides,
-    string? Title = null, string? DisplayName = null);
+    string? Title = null, string? DisplayName = null, string? Phone = null, string? NationalIdMasked = null, IReadOnlyList<string>? MissingData = null);
 
 /// <param name="Title">The title before the name, one of <see cref="Domain.Identity.PersonTitles"/> (ADR-0019), or null for none.</param>
-public sealed record CreateUserRequest(string Email, string FullNameAr, string? FullNameEn, string? Title = null);
+/// <param name="FullNameEn">Required, in Latin letters (ADR-0021).</param>
+/// <param name="NationalId">Required: the Egyptian national ID, 14 digits, on one account only (ADR-0021).</param>
+/// <param name="Phone">Required: an Egyptian mobile number (ADR-0021).</param>
+public sealed record CreateUserRequest(string Email, string FullNameAr, string? FullNameEn, string? Title = null, string? NationalId = null, string? Phone = null);
 
 /// <summary>
 /// لقب في قائمة الاختيار. <c>Title</c> نصه العربي، وهو القيمة التي ترسل وتحفظ بأي لغة للواجهة؛ <c>Label</c> و<c>Meaning</c> ما يعرض
@@ -35,7 +40,10 @@ public sealed record TitleDto(string Title, string Label, string Meaning, Domain
 
 /// <param name="Email">A new university email (the user's login name), or null to keep it. Checked against the approved domains.</param>
 /// <param name="Title">The title before the name, or null for none; saved with the names (not "keep what is there").</param>
-public sealed record UpdateUserRequest(string FullNameAr, string? FullNameEn, string? Email = null, string? Title = null);
+/// <param name="FullNameEn">Required, in Latin letters (ADR-0021).</param>
+/// <param name="NationalId">A new national ID, or null to keep the one on file (the server never sends it back in full). Required when the account has none.</param>
+/// <param name="Phone">Required: an Egyptian mobile number (ADR-0021).</param>
+public sealed record UpdateUserRequest(string FullNameAr, string? FullNameEn, string? Email = null, string? Title = null, string? NationalId = null, string? Phone = null);
 
 /// <summary>كلمة المرور المؤقتة تعرض مرة واحدة فقط ولا تحفظ إلا بصمتها.</summary>
 public sealed record TemporaryPasswordDto(Guid UserId, string TemporaryPassword);
@@ -68,7 +76,7 @@ public sealed class UsersAdminService(IIdentityStore db, IClock clock, ICurrentU
             .Join(db.Roles, a => a.RoleId, r => r.Id, (a, r) => new { a.UserId, r.Code })
             .ToListAsync(ct);
         return users.Select(u => new UserListItemDto(u.Id, u.Email, u.DisplayName, u.Active, u.MfaEnabled, u.LockedUntil > now, u.LastLoginAt,
-            roles.Where(r => r.UserId == u.Id).Select(r => r.Code).Distinct().Order(StringComparer.Ordinal).ToList())).ToList();
+            roles.Where(r => r.UserId == u.Id).Select(r => r.Code).Distinct().Order(StringComparer.Ordinal).ToList(), u.MissingData.Count > 0)).ToList();
     }
 
     public async Task<UserDetailDto> GetAsync(Guid id, CancellationToken ct)
@@ -90,7 +98,9 @@ public sealed class UsersAdminService(IIdentityStore db, IClock clock, ICurrentU
                 x.A.IsPendingApproval && iAmSa && me != x.A.GrantedBy && me != id)).ToList(),
             overrides.Select(o => new OverrideDto(o.Id, o.Feature, PermissionCatalog.Letters(o.Caps), o.Specials, o.Effect, GrantView.ScopeCode(o.Scope), o.ValidFrom, o.ValidTo,
                 o.GrantedBy is { } g ? people.GetValueOrDefault(g) : null, o.Reason, o.RevokedAt, o.IsActiveAt(now))).ToList(),
-            u.Title, u.DisplayName);
+            u.Title, u.DisplayName,
+            // ADR-0021: the national ID leaves the server masked only (its last four digits).
+            u.Phone, u.NationalId is { } nid ? NationalIds.Mask(nid) : null, u.MissingData);
     }
 
     public async Task<EffectiveDto> EffectiveAsync(Guid userId, CancellationToken ct)
