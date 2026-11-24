@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Tier1.Application.Abstractions;
+using Tier1.Application.Notifications;
 using Tier1.Application.Accounts;
 using Tier1.Application.Auditing;
 using Tier1.Application.Security;
@@ -16,7 +17,8 @@ namespace Tier1.Application.Access;
 /// ARCH-2: role assignments: assign, approve a super administrator assignment, edit scope and end date, revoke.
 /// Changes that can touch the number of super administrators run in a transaction under the IAM lock.
 /// </summary>
-public sealed class RoleAssignmentService(IIdentityStore db, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, IamPolicy policy, IIamLock iamLock, UsersAdminService users)
+public sealed class RoleAssignmentService(IIdentityStore db, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, IamPolicy policy, IIamLock iamLock, UsersAdminService users,
+    Integration.IEventOutbox events)
 {
     public async Task<AssignmentDto> AssignRoleAsync(Guid userId, AssignRoleRequest req, CancellationToken ct)
     {
@@ -60,6 +62,11 @@ public sealed class RoleAssignmentService(IIdentityStore db, IClock clock, ICurr
             Reason = assignment.Reason,
             Details = new { pendingApproval = needsApproval },
         });
+        // G-04: a super-administrator assignment takes effect only when another, independent super administrator approves it.
+        if (needsApproval)
+            events.Notify(new WorkNotice("iam.assignment", $"إسناد دور المدير الأعلى لـ{user.DisplayName} ينتظر اعتمادك",
+                $"طلب {current.DisplayName} إسناد دور المدير الأعلى لـ{user.DisplayName} ({user.Email}) بالسبب:\n{assignment.Reason}\nلا يسري حتى يعتمده مدير أعلى مستقل من صفحة الحساب.",
+                "/users", new WorkAudience(SuperAdmins: true, Except: [current.UserId!.Value, user.Id])), "user_role", assignment.Id);
         await db.SaveChangesAsync(ct);
         if (!needsApproval) await policy.AfterRoleChangeAsync(user.Id, role.Code, ct);
         await tx.CommitAsync(ct);
@@ -89,6 +96,9 @@ public sealed class RoleAssignmentService(IIdentityStore db, IClock clock, ICurr
             Changes = [new FieldChange("approved", "false", "true")],
             Details = new { grantedBy = a.GrantedBy },
         });
+        if (a.GrantedBy is { } requester)
+            events.Notify(new WorkNotice("iam.assignment", $"اعتُمد إسناد دور {role.NameAr} لـ{user.DisplayName}",
+                $"اعتمد {current.DisplayName} إسناد دور {role.NameAr} لـ{user.DisplayName}، وسرى الآن.", "/users", new WorkAudience(Users: [requester])), "user_role", a.Id);
         await db.SaveChangesAsync(ct);
         await policy.AfterRoleChangeAsync(user.Id, role.Code, ct);
         await tx.CommitAsync(ct);

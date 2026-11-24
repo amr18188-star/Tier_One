@@ -6909,6 +6909,12 @@ export interface components {
             /** Format: int32 */
             central: number;
             skipped: string[];
+            unheld: null | string[];
+            /**
+             * Format: int32
+             * @default 0
+             */
+            unheldCount: number;
         };
         OrgUnitChangeDto: {
             kind: components["schemas"]["OrgUnitChangeKind"];

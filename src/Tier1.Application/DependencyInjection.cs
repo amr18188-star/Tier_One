@@ -60,6 +60,8 @@ public static class DependencyInjection
         // جمع البيانات: الدورات والنماذج ومسار الاعتماد والأدلة والنتائج.
         services.AddScoped<Collection.FormNotifier>();
         services.AddScoped<Integration.IEventHandler, Collection.FormMovedNotifications>();
+        services.AddScoped<Notifications.AudienceResolver>();
+        services.AddScoped<Integration.IEventHandler, Notifications.WorkNoticeNotifications>();
         services.AddScoped<Collection.CyclesService>();
         services.AddScoped<Collection.FormReader>();
         services.AddScoped<Collection.FormReader>();

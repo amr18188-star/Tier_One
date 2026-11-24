@@ -275,6 +275,16 @@ function OpenModal({ cycle, onClose }: { cycle: Cycle; onClose: () => void }) {
             <Alert type="warning" showIcon message={L(`${p.skipped.length} مؤشرًا لن يدخل الدورة`, `${p.skipped.length} indicators are skipped`)}
               description={<ul className="mt">{p.skipped.slice(0, 8).map((s) => <li key={s}>{s}</li>)}{p.skipped.length > 8 && <li>…</li>}</ul>} />
           )}
+          {!!p.unheldCount && (
+            <Alert className="mt" type="warning" showIcon
+              message={L(`${p.unheldCount} جهة ينقصها صاحب خطوة: ما لا يمر باعتماد مباشر يقف نموذجه عنده`, `${p.unheldCount} units lack someone for a step; a form stops where no direct approval can pass it`)}
+              description={
+                <>
+                  <ul className="mt">{(p.unheld ?? []).slice(0, 8).map((s) => <li key={s}>{s}</li>)}{p.unheldCount > 8 && <li>…</li>}</ul>
+                  <p>{L("أسند الأدوار الناقصة من «الحسابات والأدوار» قبل الفتح، أو افتح وأسندها بعده؛ ستظهر النماذج المتوقفة في الرئيسية.", "Assign the missing roles before opening, or after; stopped forms show on the home page.")}</p>
+                </>
+              } />
+          )}
           <p className="t1-help mt">{L("تعريفات المؤشرات تثبت في الدورة لحظة فتحها؛ تعديلها لاحقًا لا يغير ما قيس بها.", "Definitions are frozen when the cycle opens.")}</p>
         </>
       )}

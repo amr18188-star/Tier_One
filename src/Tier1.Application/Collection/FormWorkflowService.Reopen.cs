@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Tier1.Application.Access;
 using Tier1.Application.Auditing;
 using Tier1.Application.Kpi;
+using Tier1.Application.Notifications;
 using Tier1.Domain.Access;
 using Tier1.Domain.Collection;
 using Tier1.Domain.Common;
@@ -41,6 +42,11 @@ public sealed partial class FormWorkflowService
             Related = [new AuditTarget("submission", id.ToString(), ctx.Unit.Code)],
             Reason = reason,
         });
+        // G-04: the higher committee decides; it was not told (the requester never decides their own request, SOD-R1).
+        events.Notify(new WorkNotice("dc.reopen", $"طلب إعادة فتح نموذج {ctx.Unit.NameAr} — {ctx.Cycle.Name}",
+            $"طلب {current.DisplayName} إعادة فتح نموذج {ctx.Unit.NameAr} المعتمد في دورة «{ctx.Cycle.Name}» بالسبب:\n{reason}\nاعتمد الطلب برقم المحضر أو ارفضه بسبب.",
+            $"/forms/{id}", new WorkAudience(Feature: Features.Cycles, Special: ApprovalRules.ApproveReopen, UnitId: ctx.Unit.Id, Except: [current.UserId!.Value])),
+            "reopen_request", request.Id);
         await db.SaveChangesAsync(ct);
         return await reader.BuildAsync(ctx, ct);
     }
@@ -76,6 +82,9 @@ public sealed partial class FormWorkflowService
             Details = new { decision, snapshot = ctx.Values.Count },
         });
         RaiseMoved(ctx);
+        events.Notify(new WorkNotice("dc.reopen", $"اعتُمد طلبك إعادة فتح نموذج {ctx.Unit.NameAr} — {ctx.Cycle.Name}",
+            $"اعتمدت اللجنة العليا إعادة فتح نموذج {ctx.Unit.NameAr} بالقرار {decision}. عاد النموذج إلى الجهة للتصحيح.",
+            $"/forms/{id}", new WorkAudience(Users: [request.RequestedBy])), "reopen_request", request.Id);
         await db.SaveChangesAsync(ct);
         return await reader.BuildAsync(ctx, ct);
     }
@@ -97,6 +106,9 @@ public sealed partial class FormWorkflowService
             Related = [new AuditTarget("submission", id.ToString(), ctx.Unit.Code)],
             Reason = request.DecisionNote,
         });
+        events.Notify(new WorkNotice("dc.reopen", $"رُفض طلبك إعادة فتح نموذج {ctx.Unit.NameAr} — {ctx.Cycle.Name}",
+            $"رفضت اللجنة العليا طلب إعادة فتح نموذج {ctx.Unit.NameAr} بالسبب:\n{request.DecisionNote}",
+            $"/forms/{id}", new WorkAudience(Users: [request.RequestedBy])), "reopen_request", request.Id);
         await db.SaveChangesAsync(ct);
         return await reader.BuildAsync(ctx, ct);
     }

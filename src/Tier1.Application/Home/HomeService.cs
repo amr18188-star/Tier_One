@@ -23,7 +23,8 @@ public sealed record HomeDto(
 /// الصفحة الأولى: «مطلوب منك» بحسب صلاحيات المستخدم ونطاقه، ثم الصورة العامة للقاموس والتعارضات والهيكل.
 /// كل مهمة تحمل رابطًا مباشرًا، فيصل المستخدم إلى ما يريده بنقرة.
 /// </summary>
-public sealed class HomeService(IReadModel read, ICurrentUser current, IAccessService access, DictionaryService dictionary, StructureService structure, Collection.FormsService forms)
+public sealed class HomeService(IReadModel read, ICurrentUser current, IAccessService access, DictionaryService dictionary, StructureService structure, Collection.FormsService forms,
+    Scorecard.ReviewService review)
 {
     public async Task<HomeDto> GetAsync(CancellationToken ct)
     {
@@ -77,24 +78,42 @@ public sealed class HomeService(IReadModel read, ICurrentUser current, IAccessSe
         }
         if (me.HasSpecial(Features.Targets, Specials.Approve))
         {
-            var proposed = await read.Query<Domain.Kpi.IndicatorTarget>().CountAsync(t => t.Status == TargetStatus.Proposed && t.Kind != TargetKind.EachCollege && t.UpdatedBy != current.UserId, ct);
+            // G-04: "each college" targets are proposals too; they were left out of the count.
+            var proposed = await read.Query<Domain.Kpi.IndicatorTarget>().CountAsync(t => t.Status == TargetStatus.Proposed && t.UpdatedBy != current.UserId, ct);
             if (proposed > 0)
-                tasks.Add(new("targets_proposed", "مستهدفات مقترحة تنتظر الاعتماد", "تعتمد بعد حسم تعارضاتها.", proposed, "/indicators", "info"));
+                tasks.Add(new("targets_proposed", "مستهدفات مقترحة تنتظر الاعتماد", "اعتمدها من صفحة كل مؤشر برقم المحضر.", proposed, "/indicators", "info"));
+        }
+        // G-04, G-05: values approved by the units wait for the university Tier 1 committee, and changed ones keep the scorecard old.
+        if (me.Has(Features.University, Cap.Edit))
+        {
+            var (ready, changed, cycleId) = await review.PendingTransfersAsync(ct);
+            if (changed > 0)
+                tasks.Add(new("transfers_changed", "قيم تغيّرت بعد نقلها إلى مؤشرات الجامعة", "بطاقة الأداء تعرض القيم القديمة حتى تنقلها من جديد.", changed, $"/review?cycle={cycleId}", "bad"));
+            if (ready > 0)
+                tasks.Add(new("transfers_ready", "مؤشرات جاهزة للنقل إلى مؤشرات الجامعة", "راجع قيم الكليات ثم انقلها.", ready, $"/review?cycle={cycleId}", "brand"));
+        }
+        // G-03: forms that nobody but a super administrator can move; they wait until a role is assigned in their unit.
+        if (me.Has(Features.Cycles, Cap.Edit))
+        {
+            var unheld = await forms.UnheldAsync(ct);
+            if (unheld.Count > 0)
+                tasks.Add(new("forms_unheld", "نماذج عند خطوة لا يملكها أحد", $"أسند دور الخطوة في الجهة، مثل: {unheld[0].Unit} عند «{Collection.ApprovalRules.StepName(unheld[0].Step)}».",
+                    unheld.Count, unheld.Count == 1 ? $"/forms/{unheld[0].FormId}" : "/forms", "bad"));
+        }
+        // G-04: what waits for a second, independent super administrator.
+        if (me.IsSuperAdmin)
+        {
+            var assignments = await read.Query<Domain.Access.UserRole>().CountAsync(a => a.ApprovedAt == null && a.RevokedAt == null && a.GrantedBy != current.UserId && a.UserId != current.UserId, ct);
+            if (assignments > 0)
+                tasks.Add(new("assignments_pending", "إسناد دور المدير الأعلى ينتظر اعتمادك", "اعتمده من صفحة الحساب إن كان الطلب في محله.", assignments, "/users", "warn"));
+            var changes = await read.Query<Domain.Access.RbacChange>().CountAsync(c => c.Status == Domain.Access.RbacChangeStatus.Pending && c.RequestedBy != current.UserId, ct);
+            if (changes > 0)
+                tasks.Add(new("rbac_changes_pending", "طلبات تعديل صلاحيات تنتظر اعتمادك", "اعتمدها أو ارفضها بسبب.", changes, "/changes", "warn"));
         }
 
         var conflicts = await read.Query<Domain.Kpi.DataConflict>().AsNoTracking().Select(c => new { c.Status, c.Severity }).ToListAsync(ct);
-        if (me.Has(Features.Conflicts, Cap.Edit))
-        {
-            var open = conflicts.Count(c => c.Status == ConflictStatus.Open);
-            if (open > 0)
-                tasks.Add(new("conflicts_prepare", "تعارضات تحتاج التجهيز للجنة", "اكتب المعالجة المقترحة لتدخل جدول الأعمال.", open, "/conflicts?status=Open", conflicts.Any(c => c.Status == ConflictStatus.Open && c.Severity == ConflictSeverity.High) ? "bad" : "warn"));
-        }
-        if (me.HasSpecial(Features.Conflicts, Specials.Decide))
-        {
-            var agenda = conflicts.Count(c => c.Status is ConflictStatus.Ready or ConflictStatus.Deferred);
-            if (agenda > 0)
-                tasks.Add(new("conflicts_decide", "تعارضات على جدول أعمال اللجنة العليا", "سجّل قرار الجلسة برقم المحضر.", agenda, "/conflicts/agenda", "brand"));
-        }
+        // G-01: the conflicts register was retired once the framework was approved (docs/kpi-framework.md); its home tasks led to
+        // pages that no longer exist, so none is offered. The counts below still describe the register for those who see it.
 
         int? structurePercent = null;
         var collegeCount = 0;

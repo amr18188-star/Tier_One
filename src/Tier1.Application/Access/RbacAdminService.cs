@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Tier1.Application.Abstractions;
+using Tier1.Application.Notifications;
 using Tier1.Application.Auditing;
 using Tier1.Domain.Access;
 using Tier1.Domain.Common;
@@ -12,7 +13,7 @@ namespace Tier1.Application.Access;
 /// إدارة الأدوار ومصفوفة الصلاحيات. تعديل منح دور لا يسري مباشرة: ينشئ طلبًا بالفرق والسبب،
 /// يعتمده مدير أعلى غير الذي طلبه (SOD-10)، ثم يرتفع رقم إصدار الصلاحيات فيسري خلال دقيقة.
 /// </summary>
-public sealed partial class RbacAdminService(IIdentityStore db, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit)
+public sealed partial class RbacAdminService(IIdentityStore db, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, Integration.IEventOutbox events)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
@@ -104,6 +105,11 @@ public sealed partial class RbacAdminService(IIdentityStore db, IClock clock, IC
             Related = copy is null ? null : [new AuditTarget("RbacChange", copy.Id.ToString())],
             Details = new { copiedFrom, pendingCopy = copy is not null },
         });
+        // G-04: copying a role's permissions is a change request like any other; another super administrator decides it.
+        if (copy is not null)
+            events.Notify(new WorkNotice("iam.change", $"طلب نسخ صلاحيات إلى الدور الجديد {role.NameAr} ينتظر اعتمادك",
+                $"أنشأ {current.DisplayName} الدور {role.NameAr} ({code}) بنسخ صلاحيات دور آخر. لا تسري الصلاحيات حتى يعتمدها مدير أعلى آخر من «طلبات التعديل».",
+                "/changes", new WorkAudience(SuperAdmins: true, Except: [copy.RequestedBy])), "rbac_change", copy.Id);
         await db.SaveChangesAsync(ct);
         return Summary(role, 0, copy?.Id);
     }
@@ -174,6 +180,10 @@ public sealed partial class RbacAdminService(IIdentityStore db, IClock clock, IC
             Changes = DiffChanges(diff),
             Reason = change.Reason,
         });
+        // G-04: the change waits for another super administrator, who was told only by a badge on the changes page.
+        events.Notify(new WorkNotice("iam.change", $"طلب تعديل صلاحيات دور {role.NameAr} ينتظر اعتمادك",
+            $"طلب {current.DisplayName} تعديل صلاحيات دور {role.NameAr} بالسبب:\n{change.Reason}\nاعتمده أو ارفضه من «طلبات التعديل».",
+            "/changes", new WorkAudience(SuperAdmins: true, Except: [me])), "rbac_change", change.Id);
         await db.SaveChangesAsync(ct);
         return (await ListChangesAsync(null, change.Id, ct)).Single();
     }
@@ -263,6 +273,8 @@ public sealed partial class RbacAdminService(IIdentityStore db, IClock clock, IC
             Reason = change.Reason,
             Details = new { note = change.DecisionNote, version = role.GrantsVersion },
         });
+        events.Notify(new WorkNotice("iam.change", $"اعتُمد طلب تعديل صلاحيات دور {role.NameAr}",
+            $"اعتمد {current.DisplayName} طلبك تعديل صلاحيات دور {role.NameAr}، وسرى الآن.", "/changes", new WorkAudience(Users: [change.RequestedBy])), "rbac_change", change.Id);
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
         await access.BumpVersionAsync(ct);
@@ -289,6 +301,8 @@ public sealed partial class RbacAdminService(IIdentityStore db, IClock clock, IC
             Target = new AuditTarget("RbacChange", change.Id.ToString(), OwnerId: change.RequestedBy.ToString()),
             Reason = change.DecisionNote,
         });
+        events.Notify(new WorkNotice("iam.change", "رُفض طلبك تعديل صلاحيات دور",
+            $"رفض {current.DisplayName} طلبك تعديل صلاحيات الدور بالسبب:\n{change.DecisionNote}", "/changes", new WorkAudience(Users: [change.RequestedBy])), "rbac_change", change.Id);
         await db.SaveChangesAsync(ct);
         return (await ListChangesAsync(null, change.Id, ct)).Single();
     }

@@ -28,7 +28,7 @@ public sealed class FormMovedNotifications(FormNotifier notifier) : Integration.
 /// إشعارات مسار النماذج بالبريد: من عليه الإجراء التالي يصله رابط النموذج مباشرة. المستلمون يحسبون من الصلاحيات الفعلية:
 /// مراجع الخطوة (إجراؤها الخاص ونطاقه يغطي الجهة)، أو مدخلو البيانات عند الإعادة. الرسالة تضاف بعد ثبوت الانتقال، من معالج حدث form.moved.
 /// </summary>
-public sealed class FormNotifier(ICollectionStore db, IReadModel read, IAccessService access, INotificationPublisher notifications)
+public sealed class FormNotifier(ICollectionStore db, IReadModel read, IAccessService access, INotificationPublisher notifications, AudienceResolver audience)
 {
     /// <summary>
     /// Runs in the form.moved handler, after the transition committed. The message describes the form as the event saw it (its step
@@ -53,6 +53,20 @@ public sealed class FormNotifier(ICollectionStore db, IReadModel read, IAccessSe
         };
         // Adds the messages only; the event dispatcher saves them together with the record that this handler ran.
         foreach (var to in recipients) notifications.Publish(to, "dc.form", title, body, $"/forms/{s.SubmissionId}");
+
+        // G-04, G-05: a finally approved form gives the university Tier 1 committee values to review and transfer. After a reopen they
+        // changed values it may already have transferred, which stay official (and in the scorecard) until it transfers them again.
+        if (s.Status == SubmissionStatus.Approved && !cycle.Trial && cycle.Quarter is not null)
+        {
+            var reopened = await db.ReopenRequests.AsNoTracking().AnyAsync(r => r.SubmissionId == s.SubmissionId && r.Status == ReopenRequestStatus.Approved, ct);
+            var (t, b) = reopened
+                ? ($"تغيّرت قيم {unit.NameAr} بعد إعادة الفتح — {cycle.Name}",
+                   $"اعتُمد نموذج {unit.NameAr} من جديد بعد إعادة فتحه في دورة «{cycle.Name}». ما نُقل من مؤشراته إلى مؤشرات الجامعة يبقى بقيمته القديمة في بطاقة الأداء حتى تنقله من جديد.")
+                : ($"قيم {unit.NameAr} جاهزة للمراجعة والنقل — {cycle.Name}",
+                   $"اعتُمد نموذج {unit.NameAr} نهائيًا في دورة «{cycle.Name}». راجع مؤشرات الكليات وانقل ما اكتمل إلى مؤشرات الجامعة.");
+            foreach (var to in await audience.ResolveAsync(new WorkAudience(Feature: Features.University, Cap: Cap.Edit), ct))
+                notifications.Publish(to, "dc.review", t, b, $"/review?cycle={s.CycleId}");
+        }
     }
 
     /// <summary>تذكير يومي بالنماذج المتأخرة أو القريبة من موعدها: لمن عليه الإجراء الآن، مرة في اليوم لكل نموذج.</summary>
@@ -87,16 +101,30 @@ public sealed class FormNotifier(ICollectionStore db, IReadModel read, IAccessSe
     internal async Task<List<Recipient>> ReviewersAsync(ApprovalStep step, OrgUnit unit, CancellationToken ct, bool everyone = false)
     {
         if (step is ApprovalStep.Entry or ApprovalStep.Done) return [];
-        return await UsersWhereAsync(Need.Review, a => ApprovalRules.MayReview(a, unit, step, allowDirect: false) && UnitScope.For(a, Features.Forms, Cap.View).Covers(unit), ct, everyone);
+        var regular = await UsersWhereAsync(Need.Review, a => ApprovalRules.MayReview(a, unit, step, allowDirect: false) && UnitScope.For(a, Features.Forms, Cap.View).Covers(unit), ct, everyone);
+        // G-03 (system integration review 2026-11-24): when nobody but a super administrator holds the step itself (a department
+        // with no representative, a dean deactivated or not yet assigned), the people who may approve past it are told instead
+        // of no one: the college committee or the dean, whose direct approval with a written reason moves the form on.
+        if (await HasHolderAsync(step, unit, allowDirect: false, ct)) return regular;
+        var direct = await UsersWhereAsync(Need.Review, a => ApprovalRules.MayReview(a, unit, step, allowDirect: true) && UnitScope.For(a, Features.Forms, Cap.View).Covers(unit), ct, everyone);
+        return [.. regular.Concat(direct).DistinctBy(r => r.UserId)];
     }
+
+    /// <summary>
+    /// G-03: whether an active person other than a super administrator can decide on the form at this step: its own reviewer, or with
+    /// <paramref name="allowDirect"/> one who may approve past it. A step nobody holds stops the form until a role is assigned.
+    /// </summary>
+    internal async Task<bool> HasHolderAsync(ApprovalStep step, OrgUnit unit, bool allowDirect, CancellationToken ct) =>
+        step is not (ApprovalStep.Entry or ApprovalStep.Done)
+        && (await UsersWhereAsync(Need.Review, a => !a.IsSuperAdmin && ApprovalRules.MayReview(a, unit, step, allowDirect) && UnitScope.For(a, Features.Forms, Cap.View).Covers(unit), ct)).Count > 0;
 
     /// <summary>من أدخل قيم النموذج، وإلا كل من يملك الإدخال في نطاق الجهة.</summary>
     private async Task<List<Recipient>> EditorsAsync(Guid submissionId, OrgUnit unit, CancellationToken ct)
     {
         var editors = await db.SubmittedValues.AsNoTracking().Where(v => v.SubmissionId == submissionId).Select(v => v.EditedBy).Distinct().ToListAsync(ct);
-        if (editors.Count > 0)
-            return await read.Query<Domain.Identity.AppUser>().AsNoTracking().Where(u => u.Active && editors.Contains(u.Id)).OrderBy(u => u.Email).Select(u => new Recipient(u.Id, u.Email)).ToListAsync(ct);
-        return await UnitEditorsAsync(unit, ct);
+        var active = editors.Count == 0 ? [] : await read.Query<Domain.Identity.AppUser>().AsNoTracking().Where(u => u.Active && editors.Contains(u.Id)).OrderBy(u => u.Email).Select(u => new Recipient(u.Id, u.Email)).ToListAsync(ct);
+        // G-17: when everyone who entered the values has left (deactivated), whoever may enter them now is told instead of no one.
+        return active.Count > 0 ? active : await UnitEditorsAsync(unit, ct);
     }
 
     /// <summary>Everyone who may enter the unit's values (the editors of a form nobody has touched yet).</summary>
@@ -111,7 +139,44 @@ public sealed class FormNotifier(ICollectionStore db, IReadModel read, IAccessSe
     /// That is tens of accounts instead of every active one, each costing 4-5 queries on a cache miss inside the approval request.
     /// <paramref name="everyone"/> evaluates every active account (the old way), for the equivalence test only.
     /// </summary>
-    private async Task<List<Recipient>> UsersWhereAsync(Need need, Func<EffectiveAccess, bool> predicate, CancellationToken ct, bool everyone = false)
+    private async Task<List<Recipient>> UsersWhereAsync(Need need, Func<EffectiveAccess, bool> predicate, CancellationToken ct, bool everyone = false) =>
+        [.. (await CandidatesAsync(need, ct, everyone)).Where(c => predicate(c.Access)).Select(c => c.Recipient)];
+
+    /// <summary>
+    /// G-03 (system integration review 2026-11-24): for each unit, what nobody but a super administrator holds: entering its data, or
+    /// the reviewer of a step of its approval path. A step that only a direct approval can pass is marked so; one that nobody can take
+    /// stops the form. Shown before a cycle opens. The people are read once for all the units.
+    /// </summary>
+    internal async Task<List<(OrgUnit Unit, List<string> Missing)>> CoverageAsync(IReadOnlyList<OrgUnit> units, CancellationToken ct)
+    {
+        var reviewers = (await CandidatesAsync(Need.Review, ct)).Select(c => c.Access).Where(a => !a.IsSuperAdmin).ToList();
+        var editors = (await CandidatesAsync(Need.Edit, ct)).Select(c => c.Access).Where(a => !a.IsSuperAdmin).ToList();
+        var result = new List<(OrgUnit, List<string>)>();
+        foreach (var unit in units)
+        {
+            var missing = new List<string>();
+            if (!editors.Any(a => a.Has(Features.Forms, Cap.Edit) && UnitScope.For(a, Features.Forms, Cap.Edit).Covers(unit))) missing.Add(ApprovalRules.StepName(ApprovalStep.Entry));
+            foreach (var step in ApprovalRules.PathFor(unit.Kind).Skip(1))
+            {
+                bool Held(bool direct) => reviewers.Any(a => ApprovalRules.MayReview(a, unit, step, direct) && UnitScope.For(a, Features.Forms, Cap.View).Covers(unit));
+                // A step whose own reviewer is missing still moves when someone may approve past it, with a written reason.
+                if (!Held(direct: false)) missing.Add(Held(direct: true) ? $"{ApprovalRules.StepName(step)} (يمر باعتماد مباشر)" : ApprovalRules.StepName(step));
+            }
+            if (missing.Count > 0) result.Add((unit, missing));
+        }
+        return result;
+    }
+
+    /// <summary>G-03: the (unit, step) pairs nobody but a super administrator can decide, even by a direct approval. People are read once.</summary>
+    internal async Task<HashSet<(Guid UnitId, ApprovalStep Step)>> UnheldAsync(IEnumerable<(OrgUnit Unit, ApprovalStep Step)> pairs, CancellationToken ct)
+    {
+        var reviewers = (await CandidatesAsync(Need.Review, ct)).Select(c => c.Access).Where(a => !a.IsSuperAdmin).ToList();
+        return [.. pairs.Where(p => p.Step is not (ApprovalStep.Entry or ApprovalStep.Done)
+                && !reviewers.Any(a => ApprovalRules.MayReview(a, p.Unit, p.Step, allowDirect: true) && UnitScope.For(a, Features.Forms, Cap.View).Covers(p.Unit)))
+            .Select(p => (p.Unit.Id, p.Step))];
+    }
+
+    private async Task<List<(Recipient Recipient, EffectiveAccess Access)>> CandidatesAsync(Need need, CancellationToken ct, bool everyone = false)
     {
         var forms = Features.Forms;
         var roles = need == Need.Review
@@ -125,9 +190,8 @@ public sealed class FormNotifier(ICollectionStore db, IReadModel read, IAccessSe
         var candidates = read.Query<Domain.Identity.AppUser>().AsNoTracking().Where(u => u.Active);
         if (!everyone) candidates = candidates.Where(u => viaRoles.Contains(u.Id) || viaOverrides.Contains(u.Id));
         var users = await candidates.OrderBy(u => u.Email).Select(u => new { u.Id, u.Email }).ToListAsync(ct);
-        var result = new List<Recipient>();
-        foreach (var u in users)
-            if (predicate(await access.GetAsync(u.Id, ct))) result.Add(new Recipient(u.Id, u.Email));
+        var result = new List<(Recipient, EffectiveAccess)>();
+        foreach (var u in users) result.Add((new Recipient(u.Id, u.Email), await access.GetAsync(u.Id, ct)));
         return result;
     }
 }

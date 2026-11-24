@@ -26,7 +26,11 @@ export interface SaveCycle {
   name: string; periodLabel: string | null; targetYear: number; opensOn: string; dueOn: string; trial: boolean; version: number | null; quarter: number | null;
 }
 
-export interface OpenPreview { indicators: number; forms: number; departments: number; colleges: number; central: number; skipped: string[] }
+export interface OpenPreview {
+  indicators: number; forms: number; departments: number; colleges: number; central: number; skipped: string[];
+  /** G-03: units whose form would stop at a step nobody holds (at most 50 lines), and how many there are in all. */
+  unheld?: string[] | null; unheldCount?: number;
+}
 
 export interface FormRow {
   id: string; cycleId: string; cycleName: string; unitId: string; unitName: string; unitKind: OrgUnitKind; parentName: string | null;

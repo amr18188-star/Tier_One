@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Tier1.Application.Abstractions;
+using Tier1.Application.Notifications;
 using Tier1.Application.Access;
 using Tier1.Application.Auditing;
 using Tier1.Application.Common;
@@ -47,7 +48,7 @@ public sealed record DeleteTargetRequest(string? Reason, string? DecisionRef);
 /// وتعديل المعتمد بسبب ورقم قرار مع حفظ القيمة السابقة.
 /// </summary>
 public sealed class TargetsService(IKpiStore db, IReadModel read, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit,
-    Settings.PlanPeriodService planPeriod)
+    Settings.PlanPeriodService planPeriod, Integration.IEventOutbox events)
 {
     private const string Feature = Features.Targets;
 
@@ -128,6 +129,7 @@ public sealed class TargetsService(IKpiStore db, IReadModel read, IClock clock, 
             Changes = changes.ToList(),
             Reason = reason,
         });
+        if (target.Status == TargetStatus.Proposed) NotifyProposed(indicator, $"{unit.NameAr} {req.Year}");
         await db.SaveChangesAsync(ct);
         return ToDto(target, unit);
     }
@@ -197,8 +199,16 @@ public sealed class TargetsService(IKpiStore db, IReadModel read, IClock clock, 
             Changes = changes.ToList(),
             Reason = Require.Optional(req.Reason, 500),
         });
+        if (db.Targets.Local.Any(t => t.IndicatorId == indicator.Id && t.Status == TargetStatus.Proposed)) NotifyProposed(indicator, "خطة المؤشر");
         await db.SaveChangesAsync(ct);
     }
+
+    /// <summary>G-04: a proposed target waits for the higher committee, which was not told. The proposer may not approve it (SOD-K2).</summary>
+    private void NotifyProposed(Indicator indicator, string what) =>
+        events.Notify(new WorkNotice("kpi.target", $"مستهدف مقترح للمؤشر {indicator.Code} ينتظر اعتمادك",
+            $"اقترح {current.DisplayName} مستهدفًا للمؤشر {indicator.Code} ({what}). اعتمده من صفحة المؤشر برقم المحضر.",
+            $"/indicators/{indicator.Code}", new WorkAudience(Feature: Feature, Special: Specials.Approve, Except: [current.UserId!.Value])),
+            "indicator", indicator.Id);
 
     /// <summary>حذف مستهدف: المقترح بصلاحية الحذف، والمعتمد بصلاحية الاعتماد أيضًا وسبب ورقم قرار، وتحفظ قيمته في سجل التعديلات.</summary>
     public async Task DeleteAsync(Guid id, DeleteTargetRequest req, CancellationToken ct)
@@ -283,6 +293,13 @@ public sealed class TargetsService(IKpiStore db, IReadModel read, IClock clock, 
             Target = new AuditTarget("indicator_target", target.Id.ToString(), $"{target.Year}", unit.Code),
             Details = new { target.DecisionRef },
         });
+        if (target.UpdatedBy is { } proposer)
+        {
+            var indicatorCode = await read.Query<Indicator>().AsNoTracking().Where(i => i.Id == target.IndicatorId).Select(i => i.Code).FirstAsync(ct);
+            events.Notify(new WorkNotice("kpi.target", $"اعتُمد مستهدف المؤشر {indicatorCode} — {unit.NameAr} {target.Year}",
+                $"اعتمدت اللجنة العليا مستهدف المؤشر {indicatorCode} لـ{unit.NameAr} عن {target.Year} بالقرار {target.DecisionRef}.",
+                $"/indicators/{indicatorCode}", new WorkAudience(Users: [proposer])), "indicator_target", target.Id);
+        }
         await db.SaveChangesAsync(ct);
         return ToDto(target, unit);
     }

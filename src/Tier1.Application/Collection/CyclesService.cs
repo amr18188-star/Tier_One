@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Tier1.Application.Abstractions;
+using Tier1.Application.Notifications;
 using Tier1.Application.Access;
 using Tier1.Application.Auditing;
 using Tier1.Domain.Access;
@@ -16,13 +17,20 @@ public sealed record CycleDto(
 
 public sealed record SaveCycleRequest(string Name, string? PeriodLabel, int TargetYear, DateOnly OpensOn, DateOnly DueOn, bool Trial, uint? Version, int? Quarter = null);
 
-public sealed record OpenCyclePreview(int Indicators, int Forms, int Departments, int Colleges, int Central, IReadOnlyList<string> Skipped);
+/// <param name="Unheld">
+/// G-03: units where nobody but a super administrator enters the form or reviews one of its steps, with what is missing
+/// ("قسم …: ممثل Tier 1 بالقسم (يمر باعتماد مباشر)"; without the mark the form stops there). At most 50 lines;
+/// <see cref="UnheldCount"/> counts them all.
+/// </param>
+public sealed record OpenCyclePreview(int Indicators, int Forms, int Departments, int Colleges, int Central, IReadOnlyList<string> Skipped,
+    IReadOnlyList<string>? Unheld = null, int UnheldCount = 0);
 
 /// <summary>
 /// دورات جمع البيانات: الإنشاء والفتح والإغلاق. الفتح يأخذ لقطة من التعريفات المعتمدة (أو قيد العمل في الدورة التجريبية)،
 /// وينشئ نموذجًا لكل جهة تنطبق عليها مؤشرات بحسب مستوى جمع بياناتها: القسم، أو الكلية، أو الجهة المالكة للمؤشر المركزي.
 /// </summary>
-public sealed class CyclesService(ICollectionStore db, IReadModel read, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, Settings.PlanPeriodService plan)
+public sealed class CyclesService(ICollectionStore db, IReadModel read, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit, Settings.PlanPeriodService plan,
+    Integration.IEventOutbox events, FormNotifier notifier)
 {
     private const string Feature = Features.Cycles;
 
@@ -108,8 +116,10 @@ public sealed class CyclesService(ICollectionStore db, IReadModel read, IClock c
         await access.RequireAsync(Feature, Cap.Edit, ct);
         var cycle = await db.Cycles.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id, ct) ?? throw DomainException.NotFound();
         var plan = await PlanAsync(cycle, ct);
+        var unheld = await notifier.CoverageAsync(plan.Units, ct);
         return new OpenCyclePreview(plan.Indicators.Count, plan.Units.Count, plan.Units.Count(u => u.Kind == OrgUnitKind.Department),
-            plan.Units.Count(u => u.IsCollegeLevel), plan.Units.Count(u => u.Kind is not OrgUnitKind.Department && !u.IsCollegeLevel), plan.Skipped);
+            plan.Units.Count(u => u.IsCollegeLevel), plan.Units.Count(u => u.Kind is not OrgUnitKind.Department && !u.IsCollegeLevel), plan.Skipped,
+            [.. unheld.OrderBy(u => u.Unit.Path, StringComparer.Ordinal).Take(50).Select(u => $"{u.Unit.NameAr}: {string.Join("، ", u.Missing)}")], unheld.Count);
     }
 
     public async Task<CycleDto> OpenAsync(Guid id, CancellationToken ct)
@@ -133,6 +143,12 @@ public sealed class CyclesService(ICollectionStore db, IReadModel read, IClock c
             Target = new AuditTarget("cycle", cycle.Id.ToString(), cycle.Name),
             Details = new { indicators = plan.Indicators.Count, forms = plan.Units.Count, cycle.Trial },
         });
+        // G-04: the units learn that their forms are waiting (until now only from the home page, or a reminder near the deadline).
+        // A trial cycle is an internal rehearsal: the people running it are told by those who opened it.
+        if (!cycle.Trial)
+            events.Notify(new WorkNotice("dc.cycle", $"فُتحت دورة «{cycle.Name}»: نموذج جهتك ينتظر بياناتك",
+            $"فُتحت دورة جمع البيانات «{cycle.Name}»، والموعد النهائي {cycle.DueOn:yyyy-MM-dd}. أدخل قيم مؤشرات جهتك وأرفق أدلتها ثم أرسل النموذج للمراجعة.",
+            "/forms", new WorkAudience(Feature: Features.Forms, Cap: Cap.Edit)), "cycle", cycle.Id);
         await db.SaveChangesAsync(ct);
         return (await ListAsync(ct)).First(c => c.Id == id);
     }

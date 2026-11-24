@@ -97,9 +97,30 @@ public sealed class ReviewService(IScorecardStore db, IReadModel read, IClock cl
         await access.RequireAsync(Feature, Cap.Edit, ct);
         var cycle = (await QuarterlyCyclesAsync(ct)).FirstOrDefault(c => c.Id == req.CycleId) ?? throw DomainException.NotFound();
         var ready = (await RowsAsync(cycle, ct)).Where(r => r.State is ReviewState.Ready or ReviewState.Changed && r.Reported >= r.Expected && r.Computed is not null).ToList();
-        foreach (var row in ready) await SaveAsync(cycle, row, null, null, null, ct);
+        // A changed row already has an official value: it is replaced from the version just read with the rows, so a transfer
+        // made by someone else since then is still a conflict (409), and a ready row (no official value yet) passes none.
+        foreach (var row in ready) await SaveAsync(cycle, row, null, null, row.Official?.Version, ct);
         await db.SaveChangesAsync(ct);
         return ready.Count;
+    }
+
+    /// <summary>
+    /// G-04, G-05: what waits for the university Tier 1 committee across the official quarters: values ready to transfer, and values
+    /// that changed after their transfer (the scorecard still shows the old ones). The first quarter that has any is the link.
+    /// </summary>
+    public async Task<(int Ready, int Changed, Guid? CycleId)> PendingTransfersAsync(CancellationToken ct)
+    {
+        var (ready, changed) = (0, 0);
+        Guid? first = null;
+        foreach (var cycle in await QuarterlyCyclesAsync(ct))
+        {
+            var rows = await RowsAsync(cycle, ct);
+            var r = rows.Count(x => x.State == ReviewState.Ready);
+            var c = rows.Count(x => x.State == ReviewState.Changed);
+            if (r + c > 0) first ??= cycle.Id;
+            (ready, changed) = (ready + r, changed + c);
+        }
+        return (ready, changed, first);
     }
 
     /// <summary>DB-6: the precision of every value column (numeric(20,4)), rounded half away from zero.</summary>

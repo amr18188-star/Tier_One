@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Tier1.Application.Abstractions;
+using Tier1.Application.Notifications;
 using Tier1.Application.Access;
 using Tier1.Application.Auditing;
 using Tier1.Application.Common;
@@ -52,7 +53,7 @@ public sealed record CommitteeDecisionRequest(string? DecisionRef, string? Note)
 /// من غير من أعدّ التعريف.
 /// </summary>
 public sealed class DictionaryService(IKpiStore db, IReadModel read, IClock clock, ICurrentUser current, IAccessService access, IAuditLog audit,
-    Settings.PlanPeriodService planPeriod)
+    Settings.PlanPeriodService planPeriod, Integration.IEventOutbox events)
 {
     private const string Feature = Features.Dictionary;
 
@@ -240,15 +241,23 @@ public sealed class DictionaryService(IKpiStore db, IReadModel read, IClock cloc
             Target = new AuditTarget("indicator", indicator.Id.ToString(), indicator.Code),
             Details = new { version = v.Number },
         });
+        // G-04: the higher committee approves definitions; neither the editor nor the submitter may (SOD-K1).
+        events.Notify(new WorkNotice("kpi.definition", $"تعريف المؤشر {indicator.Code} ينتظر اعتمادك",
+            $"أرسل {current.DisplayName} تعريف المؤشر {indicator.Code} «{v.NameAr}» (الإصدار {v.Number}) للاعتماد. اعتمده برقم المحضر أو أعده بملاحظات.",
+            $"/indicators/{indicator.Code}", new WorkAudience(Feature: Feature, Special: Specials.Approve, Except: [.. Ids(v.EditedBy, v.SubmittedBy)])),
+            "indicator", indicator.Id);
         await db.SaveChangesAsync(ct);
         return await GetAsync(code, ct);
     }
+
+    private static IEnumerable<Guid> Ids(params Guid?[] ids) => ids.Where(i => i is not null).Select(i => i!.Value).Distinct();
 
     public async Task<IndicatorDetailDto> ApproveAsync(string code, CommitteeDecisionRequest req, CancellationToken ct)
     {
         await access.RequireSpecialAsync(Feature, Specials.Approve, ct);
         var indicator = await LoadAsync(code, tracking: true, ct);
         var v = indicator.Working ?? throw new DomainException("not_under_review", "لا يوجد تعريف ينتظر الاعتماد.", "Nothing is waiting for approval.");
+        var people = Ids(v.EditedBy, v.SubmittedBy).ToList();
         IndicatorRules.Approve(indicator, v, current.UserId!.Value, clock.UtcNow, req.DecisionRef ?? "");
         audit.Record(AuditEvents.Audit("kpi", Feature, "kpi.definition_approved", "اعتماد تعريف مؤشر", "Approved an indicator definition") with
         {
@@ -256,6 +265,9 @@ public sealed class DictionaryService(IKpiStore db, IReadModel read, IClock cloc
             Details = new { version = v.Number, v.DecisionRef },
             Permission = $"{Feature}:{Specials.Approve}",
         });
+        events.Notify(new WorkNotice("kpi.definition", $"اعتُمد تعريف المؤشر {indicator.Code}",
+            $"اعتمدت اللجنة العليا تعريف المؤشر {indicator.Code} «{v.NameAr}» (الإصدار {v.Number}) بالقرار {v.DecisionRef}.",
+            $"/indicators/{indicator.Code}", new WorkAudience(Users: people)), "indicator", indicator.Id);
         await db.SaveChangesAsync(ct);
         return await GetAsync(code, ct);
     }
@@ -266,12 +278,16 @@ public sealed class DictionaryService(IKpiStore db, IReadModel read, IClock cloc
         var note = Require.Reason(req.Note, 5, "note_required", 1000);
         var indicator = await LoadAsync(code, tracking: true, ct);
         var v = indicator.Working ?? throw new DomainException("not_under_review", "لا يوجد تعريف ينتظر الاعتماد.", "Nothing is waiting for approval.");
+        var people = Ids(v.EditedBy, v.SubmittedBy).ToList();
         IndicatorRules.Return(v, note);
         audit.Record(AuditEvents.Audit("kpi", Feature, "kpi.definition_returned", "إعادة تعريف مؤشر بملاحظات", "Returned an indicator definition") with
         {
             Target = new AuditTarget("indicator", indicator.Id.ToString(), indicator.Code),
             Reason = note,
         });
+        events.Notify(new WorkNotice("kpi.definition", $"أعيد تعريف المؤشر {indicator.Code} بملاحظات",
+            $"أعادت اللجنة العليا تعريف المؤشر {indicator.Code} «{v.NameAr}» بالملاحظة:\n{note}\nعدّله ثم أعد إرساله.",
+            $"/indicators/{indicator.Code}", new WorkAudience(Users: people)), "indicator", indicator.Id);
         await db.SaveChangesAsync(ct);
         return await GetAsync(code, ct);
     }

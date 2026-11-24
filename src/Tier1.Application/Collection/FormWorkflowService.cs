@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Tier1.Application.Abstractions;
 using Tier1.Application.Access;
+using Tier1.Application.Notifications;
 using Tier1.Application.Auditing;
 using Tier1.Domain.Access;
 using Tier1.Domain.Collection;
@@ -99,6 +100,10 @@ public sealed partial class FormWorkflowService(ICollectionStore db, IClock cloc
             Reason = reason,
             Changes = new ChangeSet().Add("dueOn", old.ToString("yyyy-MM-dd"), req.DueOn.ToString("yyyy-MM-dd")).ToList(),
         });
+        // G-04: the unit learns its new deadline.
+        events.Notify(new Notifications.WorkNotice("dc.form", $"مُدّد موعد نموذج {ctx.Unit.NameAr} إلى {req.DueOn:yyyy-MM-dd} — {ctx.Cycle.Name}",
+            $"مُدّد الموعد النهائي لنموذج {ctx.Unit.NameAr} في دورة «{ctx.Cycle.Name}» من {old:yyyy-MM-dd} إلى {req.DueOn:yyyy-MM-dd}.",
+            $"/forms/{id}", new Notifications.WorkAudience(Feature: Features.Forms, Cap: Cap.Edit, UnitId: ctx.Unit.Id)), "submission", id);
         await db.SaveChangesAsync(ct);
         return await reader.BuildAsync(ctx, ct);
     }

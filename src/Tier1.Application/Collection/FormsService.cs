@@ -69,8 +69,25 @@ public sealed record ExtendRequest(DateOnly DueOn, string? Reason);
 /// ARCH-1: this class lists forms and shows one. Entry is <see cref="FormEntryService"/>, the path is <see cref="FormWorkflowService"/>,
 /// loading and building a form is <see cref="FormReader"/>, and which indicators a unit enters is <see cref="FormAssignmentRules"/>.
 /// </summary>
-public sealed class FormsService(ICollectionStore db, IReadModel read, IClock clock, ICurrentUser current, IAccessService access, FormReader reader)
+public sealed class FormsService(ICollectionStore db, IReadModel read, IClock clock, ICurrentUser current, IAccessService access, FormReader reader, FormNotifier notifier)
 {
+    /// <summary>
+    /// G-03 (system integration review 2026-11-24): forms in review in an open cycle that nobody but a super administrator can move,
+    /// neither the step's own reviewer nor one who may approve past it (a college with no committee and no dean, an absent dean).
+    /// They wait until a role is assigned. Each (step, unit) pair is checked once.
+    /// </summary>
+    public async Task<List<(Guid FormId, string Unit, ApprovalStep Step)>> UnheldAsync(CancellationToken ct)
+    {
+        var forms = await db.Submissions.AsNoTracking()
+            .Where(s => s.Status == SubmissionStatus.InReview && db.Cycles.Any(c => c.Id == s.CycleId && c.Status == CycleStatus.Open))
+            .Select(s => new { s.Id, s.UnitId, s.Step }).ToListAsync(ct);
+        if (forms.Count == 0) return [];
+        var ids = forms.Select(f => f.UnitId).Distinct().ToList();
+        var units = await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().Where(u => ids.Contains(u.Id)).ToDictionaryAsync(u => u.Id, ct);
+        var unheld = await notifier.UnheldAsync(forms.Select(f => (units[f.UnitId], f.Step)).Distinct(), ct);
+        return [.. forms.Where(f => unheld.Contains((f.UnitId, f.Step))).Select(f => (f.Id, units[f.UnitId].NameAr, f.Step))];
+    }
+
     private const string Feature = Features.Forms;
 
     public async Task<IReadOnlyList<FormRow>> ListAsync(Guid? cycleId, bool awaitingMe, SubmissionStatus? status, string? q, CancellationToken ct)
