@@ -28,7 +28,8 @@ export function ImportModal({ formId, onClose, onApplied }: { formId: string; on
   const [file, setFile] = useState<File | null>(null);
   const preview = useMutation({ mutationFn: (f: File) => uploadFile<ImportPreview>(`/api/forms/${formId}/import`, f) });
   const apply = useMutation({
-    mutationFn: () => uploadFile<ImportPreview>(`/api/forms/${formId}/import?apply=true`, file!),
+    // G-14: applied against the values the preview compared with; a value saved since makes the server ask for a new preview.
+    mutationFn: () => uploadFile<ImportPreview>(`/api/forms/${formId}/import?apply=true${preview.data?.stamp ? `&stamp=${encodeURIComponent(preview.data.stamp)}` : ""}`, file!),
     onSuccess: (p) => {
       message.success(L(`طبق ${p.changes} تغييرًا من الملف`, `${p.changes} changes applied`));
       onApplied();

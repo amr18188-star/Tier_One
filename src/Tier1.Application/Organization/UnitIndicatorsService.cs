@@ -64,8 +64,9 @@ public sealed class UnitIndicatorsService(IOrgStore db, IReadModel read, ITransa
 
     public async Task<UnitIndicatorsDto> SaveAsync(Guid unitId, SaveUnitIndicatorsRequest req, CancellationToken ct)
     {
-        await access.RequireAsync(Feature, Cap.Edit, ct);
+        var me = await access.RequireAsync(Feature, Cap.Edit, ct);
         var unit = await db.OrgUnits.FirstOrDefaultAsync(u => u.Id == unitId, ct) ?? throw DomainException.NotFound();
+        UnitScope.For(me, Feature, Cap.Edit).Require(unit); // G-16 (system integration review 2026-11-24)
         if (unit.Kind == OrgUnitKind.University)
             throw new DomainException("university_form", "نموذج الجامعة يدخل كل مؤشر على مستوى الجامعة لم تكلف به جهة أخرى.", "The university form takes every unassigned university-level indicator.", 400);
         if (!unit.Active) throw new DomainException("unit_closed", "الجهة مغلقة.", "The unit is closed.");

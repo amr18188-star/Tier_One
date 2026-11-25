@@ -19,6 +19,8 @@ public sealed class KpiWorkbook : IKpiWorkbook
     private static readonly XNamespace PkgRel = "http://schemas.openxmlformats.org/package/2006/relationships";
     private static readonly Lazy<IReadOnlyDictionary<string, int>> Rows = new(LoadRows);
 
+    public IReadOnlyCollection<string> Codes => [.. Rows.Value.Keys];
+
     public byte[] Fill(IReadOnlyDictionary<string, KpiRow> rows)
     {
         var buffer = new MemoryStream();

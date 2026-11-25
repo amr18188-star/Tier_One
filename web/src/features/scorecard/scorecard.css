@@ -177,3 +177,6 @@
   .sc-list button { grid-template-columns: 50px minmax(0, 1fr) 56px; }
   .sc-list .sc-bar { display: none; }
 }
+
+/* G-10: indicators the council workbook has no row for, under the export button on the dark header. */
+.sc-omitted { font-size: 12px; color: var(--ds-on-dark-muted, rgba(255, 255, 255, 0.78)); cursor: help; text-decoration: underline dotted; }

@@ -21,6 +21,7 @@ export const queryKeys = {
 
   // Session and home.
   me: ["me"] as const,
+  mySessions: ["me", "sessions"] as const,
   home: ["home"] as const,
   scorecard: ["scorecard"] as const,
   planCalendar: ["plan", "calendar"] as const,

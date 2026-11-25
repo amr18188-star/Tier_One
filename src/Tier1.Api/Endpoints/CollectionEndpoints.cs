@@ -38,6 +38,9 @@ public static class CollectionEndpoints
             .RequirePermission(Features.Cycles, Cap.Edit);
         g.MapPost("/{id:guid}/close", async (Guid id, NoteRequest req, CyclesService svc, CancellationToken ct) => TypedResults.Ok(await svc.CloseAsync(id, req.Note, ct)))
             .RequirePermission(Features.Cycles, Cap.Delete);
+        // G-08: a cycle never opened is deleted (it has no forms yet); an open one is closed.
+        g.MapPost("/{id:guid}/delete", async (Guid id, NoteRequest req, CyclesService svc, CancellationToken ct) => { await svc.DeleteDraftAsync(id, req.Note, ct); return TypedResults.NoContent(); })
+            .RequirePermission(Features.Cycles, Cap.Delete);
     }
 
     private static void MapForms(RouteGroupBuilder g)
@@ -81,13 +84,13 @@ public static class CollectionEndpoints
                 return Results.File(content, Xlsx, name);
             })
             .RequirePermission(Features.Forms, Cap.View);
-        g.MapPost("/{id:guid}/import", async (Guid id, bool? apply, HttpRequest request, FormEntryService svc, ISpreadsheets sheets, CancellationToken ct) =>
+        g.MapPost("/{id:guid}/import", async (Guid id, bool? apply, string? stamp, HttpRequest request, FormEntryService svc, ISpreadsheets sheets, CancellationToken ct) =>
             {
                 const long max = 5 * 1024 * 1024;
                 if (request.HttpContext.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } limit) limit.MaxRequestBodySize = max + 64 * 1024;
                 var file = await SingleFileAsync(request, max, ct);
                 await using var stream = file.OpenReadStream();
-                return TypedResults.Ok(await svc.ImportAsync(id, stream, sheets, apply ?? false, ct));
+                return TypedResults.Ok(await svc.ImportAsync(id, stream, sheets, apply ?? false, ct, stamp));
             })
             // SEC-1: reading a workbook is heavy; repeated uploads are limited like the other sensitive actions.
             .RequirePermission(Features.Forms, Cap.Edit).RequireRateLimiting(ApiSetup.SensitiveLimit);

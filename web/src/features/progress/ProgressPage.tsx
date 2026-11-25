@@ -12,6 +12,7 @@ import { AccordionPanel } from "../../shared/AccordionPanel";
 import { CollegeTarget, UniTarget } from "../../shared/CollegeTarget";
 import { PillarCarousel, type CarouselSlide } from "../strategy/PillarCarousel";
 import { QueryState } from "../../shared/QueryState";
+import { usePermissions } from "../../shared/session";
 import { EmptyNote, FilterMeta, PageHeader } from "../../shared/ui";
 import "../../shared/score.css";
 import "./progress.css";
@@ -32,6 +33,7 @@ type Filter = "all" | Level;
 export default function ProgressPage() {
   const [params, setParams] = useSearchParams();
   const navigate = useNavigate();
+  const perms = usePermissions();
   const unitId = params.get("unit") ?? undefined;
   const progress = useQuery({ queryKey: queryKeys.progress(unitId), queryFn: () => api.get<Progress | null>(`/api/progress${unitId ? `?unitId=${unitId}` : ""}`) });
   const [filter, setFilter] = useState<Filter>("all");
@@ -69,7 +71,7 @@ export default function ProgressPage() {
               <Select value={p.unit.id} showSearch optionFilterProp="label" style={{ minWidth: 240 }} aria-label={L("الكلية", "College")}
                 onChange={(v) => setParams((prev) => { const next = new URLSearchParams(prev); next.set("unit", v); return next; }, { replace: true })} options={p.units.map((u) => ({ value: u.id, label: u.name }))} />
             )}
-            <Button type="primary" icon={<FormOutlined />} onClick={() => navigate("/forms")}>{L("إدخال بيانات المؤشرات", "Enter indicator data")}</Button>
+            {perms.can("dc.forms", "V") && <Button type="primary" icon={<FormOutlined />} onClick={() => navigate("/forms")}>{L("إدخال بيانات المؤشرات", "Enter indicator data")}</Button>}
           </>
         )} />
 

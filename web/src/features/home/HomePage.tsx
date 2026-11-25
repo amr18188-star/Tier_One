@@ -292,7 +292,7 @@ function AdminHome() {
                   </div>
                   <ul className="home-admin-rows">
                     {pageRows.map((row) => {
-                      const action = row.status === "Returned" ? L("تصحيح", "Correct") : row.status === "InReview" ? L("مراجعة", "Review") : row.status === "NotStarted" ? L("بدء الإدخال", "Start entry") : L("استكمال الإدخال", "Continue entry");
+                      const action = row.status === "Returned" ? L("تصحيح", "Correct") : row.status === "Approved" ? L("طلب إعادة فتح", "Reopen request") : row.status === "InReview" ? L("مراجعة", "Review") : row.status === "NotStarted" ? L("بدء الإدخال", "Start entry") : L("استكمال الإدخال", "Continue entry");
                       const days = daysLeft(row.dueOn);
                       return <li key={row.id}>
                         <div className="home-admin-unit"><b title={row.unitName}>{row.unitName}</b><small title={row.parentName ?? undefined}>{row.parentName || L("جهة مركزية", "Central unit")}</small></div>

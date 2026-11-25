@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Alert, App, Button, Checkbox, DatePicker, Descriptions, Drawer, Empty, Form, Input, Modal, Radio, Select, Space, Spin, Table, Tabs, Tag, Typography } from "antd";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Dayjs } from "dayjs";
+import dayjs, { type Dayjs } from "dayjs";
 import { api } from "../../api/client";
 import { CAPS, type Assignment, type Catalog, type Effective, type GrantView, type Override, type RoleSummary, type UserDetail } from "../../api/types";
 import { errorText, formatDate, formatDateTime } from "../../shared/format";
@@ -192,6 +192,11 @@ function Assignments({ user, self, onChanged, setReasonFor, onError }: { user: U
   const [busy, setBusy] = useState(false);
   const canAdd = perms.can("adm.grants", "A") && !self && user.active;
   const canRevoke = perms.can("adm.grants", "D") && !self;
+  // G-09: an assignment's unit scope and end date could be changed only through the API.
+  const canChange = perms.can("adm.grants", "E") && !self;
+  const [changing, setChanging] = useState<Assignment | null>(null);
+  const [changeForm] = Form.useForm<{ scopeValues: string[]; validTo?: Dayjs | null; reason: string }>();
+  const unitOptions = (units.data ?? []).filter((u) => u.kind !== "University").map((u) => ({ value: u.code, label: `${u.nameAr} (${u.code})` }));
   const available = (roles.data ?? []).filter((r) => perms.isSuperAdmin || !RESERVED.includes(r.code));
 
   return (
@@ -233,6 +238,12 @@ function Assignments({ user, self, onChanged, setReasonFor, onError }: { user: U
                     {L("اعتمد", "Approve")}
                   </Button>
                 )}
+                {canChange && !a.revokedAt && (perms.isSuperAdmin || !RESERVED.includes(a.roleCode)) && (
+                  <Button size="small" onClick={() => {
+                    setChanging(a);
+                    changeForm.setFieldsValue({ scopeValues: a.scopeValues, validTo: a.validTo ? dayjs(a.validTo) : null, reason: "" });
+                  }}>{L("تعديل", "Change")}</Button>
+                )}
                 {canRevoke && !a.revokedAt && (perms.isSuperAdmin || !RESERVED.includes(a.roleCode)) && (
                   <Button size="small" danger onClick={() => setReasonFor({ title: L(`سحب الدور ${a.roleCode}`, `Revoke role ${a.roleCode}`), ok: a.pendingApproval ? L("ارفض", "Reject") : L("اسحب", "Revoke"), run: (r) => api.post(`/api/iam/assignments/${a.id}/revoke`, { reason: r }) })}>
                     {a.pendingApproval ? L("ارفض", "Reject") : L("سحب", "Revoke")}
@@ -268,8 +279,7 @@ function Assignments({ user, self, onChanged, setReasonFor, onError }: { user: U
               </Form.Item>
               <Form.Item name="scopeValues" label={L("نطاقه: الجهات", "Unit scope")}
                 extra={L("للأدوار المقيدة بجهة (العميد، لجنة الكلية، ممثل القسم). اختيار الكلية يشمل أقسامها.", "For unit-bound roles. A college covers its departments.")}>
-                <Select mode="multiple" showSearch optionFilterProp="label" loading={units.isLoading}
-                  options={(units.data ?? []).filter((u) => u.kind !== "University").map((u) => ({ value: u.code, label: `${u.nameAr} (${u.code})` }))} />
+                <Select mode="multiple" showSearch optionFilterProp="label" loading={units.isLoading} options={unitOptions} />
               </Form.Item>
               <Form.Item name="validTo" label={L("ينتهي في (اختياري)", "Ends on (optional)")}>
                 <DatePicker showTime style={{ width: "100%" }} />
@@ -279,6 +289,31 @@ function Assignments({ user, self, onChanged, setReasonFor, onError }: { user: U
             <Button type="primary" htmlType="submit" loading={busy}>{L("أسند", "Assign")}</Button>
           </Form>
         </div>
+      )}
+      {changing && (
+        <Modal open title={L(`تعديل إسناد ${changing.roleCode} · ${changing.roleName}`, `Change the ${changing.roleCode} assignment`)} okText={L("حفظ", "Save")} cancelText={L("إلغاء", "Cancel")}
+          confirmLoading={busy} onCancel={() => setChanging(null)} onOk={() => changeForm.submit()} destroyOnHidden>
+          <Form form={changeForm} layout="vertical" onFinish={async (v) => {
+            setBusy(true);
+            try {
+              await api.put(`/api/iam/assignments/${changing.id}`, { scopeValues: v.scopeValues ?? [], validTo: v.validTo?.toISOString() ?? null, reason: v.reason });
+              setChanging(null);
+              await onChanged();
+            } catch (e) {
+              if (!markFieldErrors(changeForm, e)) onError(errorText(e));
+            } finally {
+              setBusy(false);
+            }
+          }}>
+            <Form.Item name="scopeValues" label={L("نطاقه: الجهات", "Unit scope")}>
+              <Select mode="multiple" showSearch optionFilterProp="label" loading={units.isLoading} options={unitOptions} />
+            </Form.Item>
+            <Form.Item name="validTo" label={L("ينتهي في (فارغ: مفتوح)", "Ends on (empty: open)")}>
+              <DatePicker showTime style={{ width: "100%" }} />
+            </Form.Item>
+            <Form.Item name="reason" label={L("السبب", "Reason")} rules={[{ required: true, min: 5 }]}><Input /></Form.Item>
+          </Form>
+        </Modal>
       )}
     </>
   );

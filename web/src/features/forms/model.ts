@@ -59,6 +59,8 @@ export function isCollegeForm(r: FormRow): boolean {
 /** الإجراء الوحيد في بطاقة المهمة، من حالة النموذج. */
 export function taskAction(r: FormRow): string {
   if (r.status === "Returned") return L("صحّح وأعد الإرسال", "Correct and resubmit");
+  // G-15: an approved form waits for its approver only for a pending reopen request.
+  if (r.status === "Approved") return L("قرر طلب إعادة الفتح", "Decide the reopen request");
   if (r.status === "InReview") return L("راجع النموذج", "Review the form");
   if (r.status === "NotStarted") return L("ابدأ الإدخال", "Start entry");
   return L("أكمل الإدخال", "Continue entry");

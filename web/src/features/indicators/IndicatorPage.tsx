@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Alert, App, Button, Tag, Timeline, Tooltip } from "antd";
-import { CheckOutlined, EditOutlined, FileTextOutlined, HistoryOutlined, PartitionOutlined, PrinterOutlined, RollbackOutlined, SendOutlined } from "@ant-design/icons";
+import { CheckOutlined, DeleteOutlined, EditOutlined, FileTextOutlined, HistoryOutlined, PartitionOutlined, PauseCircleOutlined, PlayCircleOutlined, PrinterOutlined, RollbackOutlined, SendOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../../api/client";
@@ -29,6 +29,8 @@ export default function IndicatorPage() {
   // «مؤشر جديد» يفتح الصفحة ومحرر التعريف مباشرة لإكماله.
   const [editing, setEditing] = useState(() => new URLSearchParams(window.location.search).get("edit") === "1");
   const [decision, setDecision] = useState<"approve" | "return" | null>(null);
+  const [discarding, setDiscarding] = useState(false);
+  const [suspending, setSuspending] = useState(false);
   const detail = useQuery({ queryKey: queryKeys.indicator(code), queryFn: () => api.get<IndicatorDetail>(`/api/kpi/indicators/${code}`) });
   const units = useUnits();
   const university = units.data?.find((u) => u.kind === "University");
@@ -71,12 +73,32 @@ export default function IndicatorPage() {
                 {d!.actions.canSubmit && <Button type="primary" icon={<SendOutlined />} loading={submit.isPending} onClick={() => submit.mutate()}>{L("إرسال للاعتماد", "Submit for approval")}</Button>}
                 {d!.actions.canApprove && <Button type="primary" icon={<CheckOutlined />} onClick={() => setDecision("approve")}>{L("اعتماد", "Approve")}</Button>}
                 {d!.actions.canApprove && <Button icon={<RollbackOutlined />} onClick={() => setDecision("return")}>{L("إعادة بملاحظات", "Return")}</Button>}
+                {d!.actions.canDiscard && <Button danger icon={<DeleteOutlined />} onClick={() => setDiscarding(true)}>{L("تجاهل المسودة", "Discard the draft")}</Button>}
+                {d!.actions.canSuspend && (d!.suspended
+                  ? <Button icon={<PlayCircleOutlined />} onClick={() => setSuspending(true)}>{L("إعادة تفعيل المؤشر", "Reactivate")}</Button>
+                  : <Button danger icon={<PauseCircleOutlined />} onClick={() => setSuspending(true)}>{L("إيقاف المؤشر", "Suspend")}</Button>)}
                 <Link to={`/strategy?node=I:${d!.code}`}><Button icon={<PartitionOutlined />}>{L("في الخطة الاستراتيجية", "In the strategic plan")}</Button></Link>
                 <Tooltip title={L("طباعة بطاقة المؤشر", "Print the indicator card")}><Button icon={<PrinterOutlined />} onClick={() => window.print()} aria-label={L("طباعة", "Print")} /></Tooltip>
               </div>
             } />
 
           <NextStep d={d!} />
+          {discarding && (
+            <DecisionModal title={L(`تجاهل مسودة ${d!.code}`, `Discard the draft of ${d!.code}`)} danger field="reason" label={L("السبب", "Reason")} okText={L("تجاهل", "Discard")}
+              explain={L("تُحذف المسودة ويبقى الإصدار المعتمد ساريًا كما هو. يسجل ذلك في السجل.", "The draft is dropped and the approved version stays in force. This is logged.")}
+              onSubmit={async (reason) => { await refresh(await api.post<IndicatorDetail>(`/api/kpi/indicators/${code}/discard-draft`, { reason })); }}
+              onClose={() => setDiscarding(false)} />
+          )}
+          {suspending && (
+            <DecisionModal danger={!d!.suspended} field="reason" label={L("السبب", "Reason")}
+              title={d!.suspended ? L(`إعادة تفعيل ${d!.code}`, `Reactivate ${d!.code}`) : L(`إيقاف ${d!.code}`, `Suspend ${d!.code}`)}
+              okText={d!.suspended ? L("إعادة التفعيل", "Reactivate") : L("إيقاف", "Suspend")}
+              explain={d!.suspended
+                ? L("يعود المؤشر إلى نماذج الدورات التي تفتح بعد الآن.", "The indicator returns to the forms of cycles opened from now on.")
+                : L("لا يدخل المؤشر نماذج الدورات التي تفتح بعد الآن، وتبقى نتائجه السابقة كما هي. يسجل ذلك في السجل.", "The indicator is left out of cycles opened from now on; its past results stay. This is logged.")}
+              onSubmit={async (reason) => { await refresh(await api.post<IndicatorDetail>(`/api/kpi/indicators/${code}/suspend`, { suspended: !d!.suspended, reason })); }}
+              onClose={() => setSuspending(false)} />
+          )}
 
           <Panel title={L("التعريف", "Definition")} icon={<FileTextOutlined aria-hidden />}>
             <DefinitionView v={d!.current} />

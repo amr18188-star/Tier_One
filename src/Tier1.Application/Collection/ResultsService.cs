@@ -469,6 +469,11 @@ public sealed class ResultsService(ICollectionStore db, IReadModel read, IAccess
         if (scope.Covers(s.Root)) list.Add(new ResultUnit(s.Root.Id, s.Root.NameAr, s.Root.Kind));
         list.AddRange(s.Units.Values.Where(u => u.IsCollegeLevel && u.Active && scope.Covers(u)).OrderBy(u => u.SortOrder).ThenBy(u => u.NameAr)
             .Select(u => new ResultUnit(u.Id, u.NameAr, u.Kind)));
+        // G-06 (system integration review 2026-11-24): a scope of departments only (a department representative) covers no college,
+        // and the page answered "not found". Such a user sees the results of their own departments.
+        if (list.Count == 0)
+            list.AddRange(s.Units.Values.Where(u => u.Kind == OrgUnitKind.Department && u.Active && scope.Covers(u)).OrderBy(u => u.SortOrder).ThenBy(u => u.NameAr)
+                .Select(u => new ResultUnit(u.Id, u.NameAr, u.Kind)));
         return list;
     }
 

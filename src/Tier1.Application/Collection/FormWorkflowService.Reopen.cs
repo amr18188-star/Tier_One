@@ -25,8 +25,10 @@ public sealed partial class FormWorkflowService
 {
     public async Task<FormDto> RequestReopenAsync(Guid id, FormTransitionRequest req, CancellationToken ct)
     {
-        await access.RequireSpecialAsync(Features.Cycles, ApprovalRules.Reopen, ct);
+        var me = await access.RequireSpecialAsync(Features.Cycles, ApprovalRules.Reopen, ct);
         var ctx = await reader.LoadAsync(id, Cap.View, tracking: true, ct);
+        // G-16 (system integration review 2026-11-24): the special's own unit scope, not only the view scope of the form.
+        UnitScope.ForSpecial(me, Features.Cycles, ApprovalRules.Reopen).Require(ctx.Unit);
         Concurrency.Transition(ctx.Submission.Version, req.Version);
         var reason = Require.Reason(req.Note, 5, "reason_required", 2000);
         var pending = await db.ReopenRequests.AnyAsync(r => r.SubmissionId == id && r.Status == ReopenRequestStatus.Pending, ct);
@@ -53,8 +55,10 @@ public sealed partial class FormWorkflowService
 
     public async Task<FormDto> ApproveReopenAsync(Guid id, Kpi.CommitteeDecisionRequest req, CancellationToken ct)
     {
-        await access.RequireSpecialAsync(Features.Cycles, ApprovalRules.ApproveReopen, ct);
+        var me = await access.RequireSpecialAsync(Features.Cycles, ApprovalRules.ApproveReopen, ct);
         var ctx = await reader.LoadAsync(id, Cap.View, tracking: true, ct);
+        // G-16 (system integration review 2026-11-24): the special's own unit scope, not only the view scope of the form.
+        UnitScope.ForSpecial(me, Features.Cycles, ApprovalRules.ApproveReopen).Require(ctx.Unit);
         var request = await PendingRequestAsync(id, ct);
         ReopenRules.EnsureCanDecide(request, current.UserId!.Value);
         var decision = Require.Optional(req.DecisionRef, 200)
@@ -91,8 +95,10 @@ public sealed partial class FormWorkflowService
 
     public async Task<FormDto> RejectReopenAsync(Guid id, NoteRequest req, CancellationToken ct)
     {
-        await access.RequireSpecialAsync(Features.Cycles, ApprovalRules.ApproveReopen, ct);
+        var me = await access.RequireSpecialAsync(Features.Cycles, ApprovalRules.ApproveReopen, ct);
         var ctx = await reader.LoadAsync(id, Cap.View, tracking: true, ct);
+        // G-16 (system integration review 2026-11-24): the special's own unit scope, not only the view scope of the form.
+        UnitScope.ForSpecial(me, Features.Cycles, ApprovalRules.ApproveReopen).Require(ctx.Unit);
         var request = await PendingRequestAsync(id, ct);
         ReopenRules.EnsureCanDecide(request, current.UserId!.Value);
         request.Status = ReopenRequestStatus.Rejected;

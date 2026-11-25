@@ -112,7 +112,8 @@ export interface VersionSummary { number: number; status: DefinitionStatus; chan
 export interface IndicatorDetail {
   code: string; standardId: string; standardCode: string; standardName: string; suspended: boolean;
   current: Version; effective: Version | null; history: VersionSummary[]; conflictCodes: string[];
-  actions: { canEdit: boolean; canSubmit: boolean; canApprove: boolean; canSuspend: boolean; editCreatesVersion: boolean };
+  /** canDiscard (G-08): the draft of a new version may be dropped, going back to the approved one. */
+  actions: { canEdit: boolean; canSubmit: boolean; canApprove: boolean; canSuspend: boolean; editCreatesVersion: boolean; canDiscard?: boolean };
   framework: {
     perspectives: number[]; sdgPrimary: number | null; sdgSecondary: number | null; sdgInduced: number | null;
     pssRationale: string | null; sdgRationale: string | null; planNote: string | null;
@@ -133,7 +134,7 @@ export interface TargetRevision {
 export interface IndicatorTargets {
   indicatorCode: string; unit: string; direction: Direction; aggregation: Aggregation; level: CollectionLevel; years: number[];
   university: Target[]; eachCollege: Target | null; colleges: Target[]; revisions: TargetRevision[];
-  actions: { canEditUniversity: boolean; canEditColleges: boolean; canApprove: boolean };
+  actions: { canEditUniversity: boolean; canEditColleges: boolean; canApprove: boolean; canDeleteUniversity?: boolean; canDeleteColleges?: boolean };
 }
 
 export interface CollegeShare { unitId: string; name: string; value: number | null; numerator: number | null; denominator: number | null; text: string | null; fromEachCollegeDefault: boolean }

@@ -260,8 +260,15 @@ public sealed class StrategyService(IKpiStore db, IReadModel read, IClock clock,
         await access.RequireAsync(Feature, Cap.Delete, ct);
         var why = Require.Reason(req.Reason);
         var initiative = await db.Initiatives.FirstOrDefaultAsync(i => i.Id == id, ct) ?? throw DomainException.NotFound();
+        // G-16 (system integration review 2026-11-24): the activities go with the initiative (cascade); the audit named none of them.
+        var activities = await db.InitiativeActivities.AsNoTracking().Where(a => a.InitiativeId == id).OrderBy(a => a.SortOrder).Select(a => a.TitleAr).ToListAsync(ct);
         db.Initiatives.Remove(initiative);
-        Record("kpi.initiative_deleted", "حذف مبادرة", "Deleted an initiative", "initiative", initiative.Id, initiative.Code, why);
+        audit.Record(AuditEvents.Audit("kpi", Feature, "kpi.initiative_deleted", "حذف مبادرة", "Deleted an initiative") with
+        {
+            Target = new AuditTarget("initiative", initiative.Id.ToString(), initiative.Code),
+            Reason = why,
+            Details = activities.Count == 0 ? null : new { activitiesDeleted = activities },
+        });
         await db.SaveChangesAsync(ct);
     }
 

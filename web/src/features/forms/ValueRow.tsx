@@ -1,8 +1,8 @@
 import { useId, useRef, useState } from "react";
-import { App, Button, Checkbox, Input, InputNumber, Popover, Segmented, Tooltip, Upload } from "antd";
+import { App, Button, Checkbox, Input, InputNumber, Popconfirm, Popover, Segmented, Tooltip, Upload } from "antd";
 import {
   CheckCircleOutlined, CloseCircleFilled, ExclamationCircleOutlined, InfoCircleOutlined, LoadingOutlined, MinusCircleOutlined, PaperClipOutlined, QuestionCircleOutlined,
-  StopOutlined, UploadOutlined, WarningFilled,
+  ClearOutlined, StopOutlined, UploadOutlined, WarningFilled,
 } from "@ant-design/icons";
 import { api, uploadFile } from "../../api/client";
 import type { Doc, FormItem, ValueKind } from "../../api/collection";
@@ -27,6 +27,7 @@ export function ValueRow({ formId, item, editable, reviewing, mark, onMark, onSa
   mark?: ReturnMark; onMark?: (m: ReturnMark) => void; onSaved: (item: FormItem) => void;
 }) {
   const auto = useValueAutosave({ formId, item, editable, onSaved });
+  const { message } = App.useApp();
   const draft = auto.draft;
   const uid = useId();
   const ids = { reason: `${uid}-reason`, explanation: `${uid}-explanation`, note: `${uid}-note`, issues: `${uid}-issues`, incomplete: `${uid}-incomplete` };
@@ -150,6 +151,15 @@ export function ValueRow({ formId, item, editable, reviewing, mark, onMark, onSa
         )}
 
         {editable && <SaveStatus state={auto.state} error={auto.error} onRetry={auto.retry} onDiscard={auto.discard} />}
+        {editable && item.value && liveEvidence.length === 0 && auto.state !== "saving" && (
+          <Popconfirm title={L("مسح قيمة هذا المؤشر؟", "Clear this indicator's value?")} okText={L("مسح", "Clear")} cancelText={L("إلغاء", "Cancel")} okButtonProps={{ danger: true }}
+            description={L("يعود الصف فارغًا كأنه لم يدخل. يسجل ذلك في السجل.", "The row goes back to empty. This is logged.")}
+            onConfirm={async () => {
+              try { await auto.clear(); } catch (e) { message.error(errorText(e)); }
+            }}>
+            <Button size="small" type="link" icon={<ClearOutlined />}>{L("مسح القيمة", "Clear the value")}</Button>
+          </Popconfirm>
+        )}
         <span id={ids.issues}>
           {!auto.error && errors.map((i) => <span key={i.code} className="f-issue err"><CloseCircleFilled aria-hidden /> {i.messageAr}</span>)}
           {warnings.map((i) => <span key={i.code} className="f-issue warn"><WarningFilled aria-hidden /> {i.messageAr}</span>)}

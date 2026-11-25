@@ -77,11 +77,20 @@ public static class ScorecardRules
 
     private static Direction Framework(Direction d) => d == Direction.Undefined ? Direction.HigherIsBetter : d;
 
-    /// <summary>«في المستوى» إذا بلغت أحدث قيمة المستهدف النهائي في اتجاه المؤشر، وإلا «دون المستوى».</summary>
+    /// <summary>
+    /// «في المستوى» إذا بلغت أحدث قيمة المستهدف النهائي في اتجاه المؤشر، وإلا «دون المستوى».
+    /// G-12 (system integration review 2026-11-24): «الوصول إلى قيمة» يحكم عليه بقاعدة النتائج نفسها (محقق ضمن نصف هامش القريب)،
+    /// لا كأنه تصاعدي، فلا تتجاوزه القيمة الأعلى من المستهدف بكثير وتعد «في المستوى».
+    /// </summary>
     public static Level LevelOf(decimal? latest, decimal? finalTarget, Direction direction)
     {
         if (latest is not { } v || finalTarget is not { } t) return Level.NoData;
-        var ok = direction == Direction.LowerIsBetter ? v <= t : v >= t;
+        var ok = direction switch
+        {
+            Direction.LowerIsBetter => v <= t,
+            Direction.Range => Collection.ResultsRules.Judge(Direction.Range, v, t) == Collection.Performance.Achieved,
+            _ => v >= t,
+        };
         return ok ? Level.InLevel : Level.Below;
     }
 

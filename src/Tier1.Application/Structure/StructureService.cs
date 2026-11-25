@@ -222,6 +222,11 @@ public sealed class StructureService(IStructureStore db, IReadModel read, IClock
     {
         var (partner, department) = await LoadPartnerForAsync(id, Cap.Delete, ct);
         var reason = Require.Reason(req.Reason);
+        // G-16 (system integration review 2026-11-24): ending an ended partnership rewrote its end date with no trace of the first.
+        if (partner.EndedOn is not null)
+            throw new DomainException("already_ended", "الشراكة منتهية بالفعل.", "The partnership has already ended.");
+        if (partner.AgreementDate is { } from && req.EndDate < from)
+            throw new DomainException("invalid_dates", "تاريخ الإنهاء قبل تاريخ الاتفاقية.", "The end date is before the agreement date.", 400) { Field = "endDate" };
         partner.EndedOn = req.EndDate;
         audit.Record(AuditEvents.Audit("org", Feature, "org.partner_ended", "إنهاء شراكة صناعية لقسم", "Ended an industry partnership") with
         {

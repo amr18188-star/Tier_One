@@ -44,6 +44,8 @@ export interface SdgScore {
 export interface Scorecard {
   years: number[]; quarters: PlanQuarter[]; lastReported: PlanQuarter | null; thresholds: TierThresholds;
   overall: OverallScore; tiers: TierBand[]; pillars: PillarScore[]; perspectives: PerspectiveScore[]; sdgs: SdgScore[]; canExport: boolean;
+  /** G-10: indicators of the scorecard that the council's workbook has no row for (left out of the export). */
+  exportOmitted?: string[] | null;
 }
 
 // ----- مراجعة لجنة Tier 1 بالجامعة ونقل القيم إلى مؤشرات الجامعة -----

@@ -89,7 +89,8 @@ export function TargetsPanel({ code, universityId }: { code: string; universityI
               </ul>
             </details>
           )}
-          {slot && <TargetEditor code={code} unit={t!.unit} slot={slot} onClose={() => setSlot(null)} />}
+          {slot && <TargetEditor code={code} unit={t!.unit} slot={slot} onClose={() => setSlot(null)}
+            canDelete={!!t!.actions.canDeleteUniversity && (slot.existing?.status !== "Approved" || t!.actions.canApprove)} />}
           {approve && (
             <DecisionModal title={L(`اعتماد مستهدف ${approve.year}`, `Approve the ${approve.year} target`)} field="decisionRef"
               label={L("رقم محضر اللجنة العليا", "Committee minutes reference")} okText={L("اعتماد", "Approve")}

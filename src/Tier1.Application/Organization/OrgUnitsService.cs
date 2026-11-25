@@ -87,10 +87,13 @@ public sealed class OrgUnitsService(IOrgStore db, IClock clock, ICurrentUser cur
 
     public async Task<OrgUnitDto> CreateAsync(CreateOrgUnitRequest req, CancellationToken ct)
     {
-        await access.RequireAsync(Feature, Cap.Add, ct);
+        var me = await access.RequireAsync(Feature, Cap.Add, ct);
         var code = OrgRules.NormalizeCode(req.Code);
         var name = RequireName(req.NameAr);
         var parent = req.ParentId is { } pid ? await db.OrgUnits.FirstOrDefaultAsync(u => u.Id == pid, ct) ?? throw DomainException.NotFound() : null;
+        // G-16 (system integration review 2026-11-24): a unit is added under a parent in the user's add scope; a root needs all.
+        var addScope = UnitScope.For(me, Feature, Cap.Add);
+        if (parent is null ? !addScope.All : !addScope.Covers(parent)) throw DomainException.NotFound();
         OrgRules.RequireParent(req.Kind, parent);
         if (await db.OrgUnits.AnyAsync(u => u.Code == code, ct))
             throw new DomainException("duplicate_code", $"الرمز {code} مستخدم لجهة أخرى.", $"The code {code} is already used.", 409);
@@ -126,8 +129,9 @@ public sealed class OrgUnitsService(IOrgStore db, IClock clock, ICurrentUser cur
 
     public async Task<OrgUnitDto> UpdateAsync(Guid id, UpdateOrgUnitRequest req, CancellationToken ct)
     {
-        await access.RequireAsync(Feature, Cap.Edit, ct);
+        var me = await access.RequireAsync(Feature, Cap.Edit, ct);
         var unit = await db.OrgUnits.FirstOrDefaultAsync(u => u.Id == id, ct) ?? throw DomainException.NotFound();
+        UnitScope.For(me, Feature, Cap.Edit).Require(unit); // G-16
         Concurrency.Expect(db, unit, req.Version);
         var name = RequireName(req.NameAr);
         var now = clock.UtcNow;
@@ -172,9 +176,10 @@ public sealed class OrgUnitsService(IOrgStore db, IClock clock, ICurrentUser cur
     /// <summary>الإغلاق أو الدمج بدل الحذف: الجهة تبقى بسجلاتها، ولا تقبل جهة لها فروع نشطة.</summary>
     public async Task<OrgUnitDto> CloseAsync(Guid id, CloseOrgUnitRequest req, CancellationToken ct)
     {
-        await access.RequireAsync(Feature, Cap.Delete, ct);
+        var me = await access.RequireAsync(Feature, Cap.Delete, ct);
         var reason = Require.Reason(req.Reason);
         var unit = await db.OrgUnits.FirstOrDefaultAsync(u => u.Id == id, ct) ?? throw DomainException.NotFound();
+        UnitScope.For(me, Feature, Cap.Delete).Require(unit); // G-16
         if (!unit.Active) throw new DomainException("already_closed", "الجهة مغلقة بالفعل.", "The unit is already closed.");
         if (unit.Kind == OrgUnitKind.University) throw new DomainException("root_unit", "لا تغلق الجامعة نفسها.", "The university cannot be closed.");
         if (await db.OrgUnits.AnyAsync(u => u.ParentId == id && u.Active, ct))

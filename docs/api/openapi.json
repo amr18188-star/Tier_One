@@ -3219,6 +3219,45 @@
         }
       }
     },
+    "/api/kpi/indicators/{code}/discard-draft": {
+      "post": {
+        "tags": [
+          "Tier1.Api"
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IndicatorDetailDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/kpi/indicators/{code}/approve": {
       "post": {
         "tags": [
@@ -4416,6 +4455,39 @@
         }
       }
     },
+    "/api/cycles/{id}/delete": {
+      "post": {
+        "tags": [
+          "Tier1.Api"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NoteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
     "/api/forms": {
       "get": {
         "tags": [
@@ -4884,6 +4956,13 @@
             "in": "query",
             "schema": {
               "type": "boolean"
+            }
+          },
+          {
+            "name": "stamp",
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -7930,6 +8009,12 @@
             "items": {
               "$ref": "#/components/schemas/ImportRow"
             }
+          },
+          "stamp": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -8069,6 +8154,10 @@
           },
           "editCreatesVersion": {
             "type": "boolean"
+          },
+          "canDiscard": {
+            "type": "boolean",
+            "default": false
           }
         }
       },
@@ -13157,6 +13246,15 @@
           },
           "canExport": {
             "type": "boolean"
+          },
+          "exportOmitted": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -13827,6 +13925,14 @@
           },
           "canApprove": {
             "type": "boolean"
+          },
+          "canDeleteUniversity": {
+            "type": "boolean",
+            "default": false
+          },
+          "canDeleteColleges": {
+            "type": "boolean",
+            "default": false
           }
         }
       },

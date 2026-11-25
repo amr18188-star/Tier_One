@@ -85,6 +85,8 @@ public static class Tier1Endpoints
             .RequirePermission(Features.Dictionary, Cap.Edit);
         g.MapPost("/indicators/{code}/submit", async (string code, DictionaryService svc, CancellationToken ct) => TypedResults.Ok(await svc.SubmitAsync(code, ct)))
             .RequirePermission(Features.Dictionary, Cap.Edit);
+        g.MapPost("/indicators/{code}/discard-draft", async (string code, ReasonRequest req, DictionaryService svc, CancellationToken ct) => TypedResults.Ok(await svc.DiscardDraftAsync(code, req.Reason, ct)))
+            .RequirePermission(Features.Dictionary, Cap.Edit);
         g.MapPost("/indicators/{code}/approve", async (string code, CommitteeDecisionRequest req, DictionaryService svc, CancellationToken ct) => TypedResults.Ok(await svc.ApproveAsync(code, req, ct)))
             .RequireSpecial(Features.Dictionary, Specials.Approve);
         g.MapPost("/indicators/{code}/return", async (string code, CommitteeDecisionRequest req, DictionaryService svc, CancellationToken ct) => TypedResults.Ok(await svc.ReturnAsync(code, req, ct)))

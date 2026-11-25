@@ -44,13 +44,14 @@ public sealed record SdgScore(
 public sealed record ScorecardDto(
     IReadOnlyList<int> Years, IReadOnlyList<PlanQuarter> Quarters, PlanQuarter? LastReported, TierThresholds Thresholds,
     OverallScore Overall, IReadOnlyList<TierBand> Tiers, IReadOnlyList<PillarScore> Pillars,
-    IReadOnlyList<PerspectiveScore> Perspectives, IReadOnlyList<SdgScore> Sdgs, bool CanExport);
+    IReadOnlyList<PerspectiveScore> Perspectives, IReadOnlyList<SdgScore> Sdgs, bool CanExport, IReadOnlyList<string>? ExportOmitted = null);
 
 /// <summary>
 /// بطاقة أداء الجامعة وفئتها بمعادلات الإطار الشامل (ScorecardRules)، من القيم الرسمية للجامعة في كل ربع (ينقلها مسئول ملف Tier 1).
 /// تعرض لمن يرى النتائج.
 /// </summary>
-public sealed class ScorecardService(IScorecardStore db, IReadModel read, IAccessService access, IClock clock, IAuditLog audit, Settings.SettingsService settings, Settings.PlanPeriodService planPeriod)
+public sealed class ScorecardService(IScorecardStore db, IReadModel read, IAccessService access, IClock clock, IAuditLog audit, Settings.SettingsService settings, Settings.PlanPeriodService planPeriod,
+    IKpiWorkbook workbook)
 {
     private const string Feature = Features.Results;
 
@@ -59,13 +60,15 @@ public sealed class ScorecardService(IScorecardStore db, IReadModel read, IAcces
         var me = await access.RequireAsync(Feature, Cap.View, ct);
         // بطاقة الجامعة كاملة لمن نطاقه الجامعة؛ مستخدم الكلية أو الإدارة يرى تقدم جهته مقابل مستهدف الجامعة فقط.
         if (!Access.UnitScope.For(me, Feature, Cap.View).All) throw DomainException.Forbidden();
-        return await ComputeAsync(me.HasSpecial(Feature, "export"), ct);
+        return await ComputeAsync(me.HasSpecial(Feature, "export") && Access.UnitScope.ForSpecial(me, Feature, "export").All, ct);
     }
 
     /// <summary>قيم الأرباع لكل مؤشر بكوده، لتعبئة ملف KPI.xlsx نفسه.</summary>
     public async Task<(IReadOnlyDictionary<string, KpiRow> Rows, string Label)> ExportValuesAsync(CancellationToken ct)
     {
-        await access.RequireSpecialAsync(Feature, "export", ct);
+        var me = await access.RequireSpecialAsync(Feature, "export", ct);
+        // G-16 (system integration review 2026-11-24): the council's file is the whole university's card, as the page is.
+        if (!Access.UnitScope.ForSpecial(me, Feature, "export").All) throw DomainException.Forbidden();
         var card = await ComputeAsync(true, ct);
         var map = card.Pillars.SelectMany(p => p.Standards).SelectMany(s => s.Indicators)
             .ToDictionary(i => i.Code, i => new KpiRow(i.Quarters, i.YearTargets, i.Direction == Direction.LowerIsBetter, i.Accumulation == Accumulation.Cumulative, i.Unit));
@@ -204,6 +207,10 @@ public sealed class ScorecardService(IScorecardStore db, IReadModel read, IAcces
                 Enumerable.Range(0, plan.YearCount).Select(y => linked.Any(x => x.YearValues[y] is not null) ? ScorecardRules.Round1(100m * linked.Count(x => x.YearScores[y] >= 100) / linked.Count) : (decimal?)null).ToList());
         }).ToList();
 
-        return new ScorecardDto(Years, quarters, lastSlot >= 0 ? quarters[lastSlot] : null, thresholds, overallDto, bands, pillarScores, perspectives, sdgs, canExport);
+        // G-10 (system integration review 2026-11-24): indicators added in the system have no row in the council's workbook, which the
+        // export left out silently. They are named beside the export button.
+        var rows = workbook.Codes.ToHashSet(StringComparer.Ordinal);
+        var omitted = canExport ? pillarScores.SelectMany(p => p.Standards).SelectMany(s => s.Indicators).Select(i => i.Code).Where(c => !rows.Contains(c)).ToList() : [];
+        return new ScorecardDto(Years, quarters, lastSlot >= 0 ? quarters[lastSlot] : null, thresholds, overallDto, bands, pillarScores, perspectives, sdgs, canExport, omitted);
     }
 }

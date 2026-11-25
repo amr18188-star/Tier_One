@@ -24,7 +24,9 @@ public sealed record IndicatorTargetsDto(
     IReadOnlyList<int> Years, IReadOnlyList<TargetDto> University, TargetDto? EachCollege, IReadOnlyList<TargetDto> Colleges,
     IReadOnlyList<TargetRevisionDto> Revisions, TargetActions Actions);
 
-public sealed record TargetActions(bool CanEditUniversity, bool CanEditColleges, bool CanApprove);
+/// <param name="CanDeleteUniversity">G-09: the delete endpoint had no button. A university target needs a whole-university delete scope.</param>
+/// <param name="CanDeleteColleges">G-09: deleting a college target in the user's delete scope. An approved target also needs the approve special.</param>
+public sealed record TargetActions(bool CanEditUniversity, bool CanEditColleges, bool CanApprove, bool CanDeleteUniversity = false, bool CanDeleteColleges = false);
 
 public sealed record SaveTargetRequest(
     Guid UnitId, int Year, TargetKind Kind, decimal? Value, string? Text, decimal? Numerator, decimal? Denominator,
@@ -77,7 +79,8 @@ public sealed class TargetsService(IKpiStore db, IReadModel read, IClock clock, 
             targets.Where(t => t.UnitId != university.Id && viewScope.Covers(units[t.UnitId])).OrderBy(t => units[t.UnitId].NameAr).ThenBy(t => t.Year).Select(Dto).ToList(),
             revisions.Select(r => new TargetRevisionDto(r.OldValue, r.OldText, r.NewValue, r.NewText, r.Reason, r.DecisionRef, r.ChangedAt,
                 r.Action, r.Year, r.Kind, r.UnitId is { } u ? units[u].NameAr : null, r.ChangedByName)).ToList(),
-            new TargetActions(editScope.All, me.Has(Feature, Cap.Edit), me.HasSpecial(Feature, Specials.Approve)));
+            new TargetActions(editScope.All, me.Has(Feature, Cap.Edit), me.HasSpecial(Feature, Specials.Approve),
+                UnitScope.For(me, Feature, Cap.Delete).All, me.Has(Feature, Cap.Delete)));
     }
 
     public async Task<TargetDto> SaveAsync(string code, SaveTargetRequest req, CancellationToken ct)
@@ -277,8 +280,11 @@ public sealed class TargetsService(IKpiStore db, IReadModel read, IClock clock, 
     /// <summary>اعتماد المستهدف بقرار؛ من أدخله آخر مرة لا يعتمده.</summary>
     public async Task<TargetDto> ApproveAsync(Guid id, CommitteeDecisionRequest req, CancellationToken ct)
     {
-        await access.RequireSpecialAsync(Feature, Specials.Approve, ct);
+        var me = await access.RequireSpecialAsync(Feature, Specials.Approve, ct);
         var target = await db.Targets.FirstOrDefaultAsync(t => t.Id == id, ct) ?? throw DomainException.NotFound();
+        var unit = await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().FirstAsync(u => u.Id == target.UnitId, ct);
+        // G-16 (system integration review 2026-11-24): the approve special has a unit scope like any other permission.
+        UnitScope.ForSpecial(me, Feature, Specials.Approve).Require(unit);
         if (target.Status == TargetStatus.Approved) throw new DomainException("already_approved", "المستهدف معتمد بالفعل.", "The target is already approved.");
         if (target.UpdatedBy == current.UserId)
             throw DomainException.SeparationOfDuties("SOD-K2", "من أدخل المستهدف لا يعتمده.", "Whoever entered the target cannot approve it.");
@@ -287,7 +293,6 @@ public sealed class TargetsService(IKpiStore db, IReadModel read, IClock clock, 
         target.ApprovedAt = clock.UtcNow;
         target.DecisionRef = Require.Optional(req.DecisionRef, 200)
             ?? throw new DomainException("decision_ref_required", "اكتب رقم محضر اللجنة العليا.", "Enter the committee minutes reference.", 400) { Field = "decisionRef" };
-        var unit = await read.Query<Domain.Organization.OrgUnit>().AsNoTracking().FirstAsync(u => u.Id == target.UnitId, ct);
         audit.Record(AuditEvents.Audit("kpi", Feature, "kpi.target_approved", "اعتماد مستهدف مؤشر", "Approved an indicator target") with
         {
             Target = new AuditTarget("indicator_target", target.Id.ToString(), $"{target.Year}", unit.Code),

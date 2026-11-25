@@ -23,4 +23,7 @@ public interface IKpiWorkbook
 {
     /// <summary>rows: كود المؤشر (1.01…) ← صفه.</summary>
     byte[] Fill(IReadOnlyDictionary<string, KpiRow> rows);
+
+    /// <summary>G-10: the indicator codes the council's workbook has a row for. Any other indicator is not in the file.</summary>
+    IReadOnlyCollection<string> Codes { get; }
 }

@@ -1,6 +1,6 @@
 import { useState, type ComponentProps } from "react";
 import { Alert, App, Button, ConfigProvider, DatePicker, Drawer, Form, Input, Modal, Space, Switch, Tag } from "antd";
-import { CalendarOutlined, EditOutlined, LockOutlined, PlayCircleOutlined, PlusOutlined, UnorderedListOutlined } from "@ant-design/icons";
+import { CalendarOutlined, DeleteOutlined, EditOutlined, LockOutlined, PlayCircleOutlined, PlusOutlined, UnorderedListOutlined } from "@ant-design/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs, { type Dayjs } from "dayjs";
 import { Link } from "react-router-dom";
@@ -47,6 +47,7 @@ export default function CyclesPage() {
   const [editing, setEditing] = useState<Cycle | "new" | null>(null);
   const [opening, setOpening] = useState<Cycle | null>(null);
   const [closing, setClosing] = useState<Cycle | null>(null);
+  const [deleting, setDeleting] = useState<Cycle | null>(null);
   const qc = useQueryClient();
 
   return (
@@ -93,6 +94,7 @@ export default function CyclesPage() {
                   {canEdit && c.status !== "Closed" && <Button icon={<EditOutlined />} onClick={() => setEditing(c)}>{L("تعديل", "Edit")}</Button>}
                   {canEdit && c.status === "Draft" && <Button type="primary" icon={<PlayCircleOutlined />} onClick={() => setOpening(c)}>{L("فتح الدورة", "Open the cycle")}</Button>}
                   {canClose && c.status === "Open" && <Button danger icon={<LockOutlined />} onClick={() => setClosing(c)}>{L("إغلاق الدورة", "Close the cycle")}</Button>}
+                  {canClose && c.status === "Draft" && <Button danger icon={<DeleteOutlined />} onClick={() => setDeleting(c)}>{L("حذف", "Delete")}</Button>}
                 </div>
               </article>
             ))}
@@ -102,6 +104,15 @@ export default function CyclesPage() {
 
       {editing && <CycleDrawer cycle={editing === "new" ? null : editing} onClose={() => setEditing(null)} />}
       {opening && <OpenModal cycle={opening} onClose={() => setOpening(null)} />}
+      {deleting && (
+        <DecisionModal title={L(`حذف ${deleting.name}`, `Delete ${deleting.name}`)} danger field="note" label={L("السبب", "Reason")} okText={L("حذف", "Delete")}
+          explain={L("الدورة لم تفتح بعد ولا نماذج لها؛ تحذف ويتحرر ربعها لدورة أخرى. يسجل ذلك في السجل.", "The cycle was never opened and has no forms; deleting it frees its quarter. This is logged.")}
+          onSubmit={async (note) => {
+            await api.post(`/api/cycles/${deleting.id}/delete`, { note });
+            await qc.invalidateQueries({ queryKey: queryKeys.cycles });
+          }}
+          onClose={() => setDeleting(null)} />
+      )}
       {closing && (
         <DecisionModal title={L(`إغلاق ${closing.name}`, `Close ${closing.name}`)} danger field="note" label={L("سبب الإغلاق", "Reason")} okText={L("إغلاق", "Close")}
           explain={L(`بعد الإغلاق لا يدخل ولا يعتمد شيء. النماذج غير المعتمدة (${closing.forms - (closing.formsByStatus.Approved ?? 0)}) تبقى كما هي، والنتائج من المعتمد فقط.`,

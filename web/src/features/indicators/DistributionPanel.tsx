@@ -80,7 +80,8 @@ export function DistributionPanel({ code }: { code: string }) {
               )}
             </>
           )}
-          {slot && <TargetEditor code={code} unit={t!.unit} slot={slot} onClose={() => setSlot(null)} />}
+          {slot && <TargetEditor code={code} unit={t!.unit} slot={slot} onClose={() => setSlot(null)}
+            canDelete={!!t!.actions.canDeleteColleges && (slot.existing?.status !== "Approved" || t!.actions.canApprove)} />}
         </>
       )}
     </Panel>

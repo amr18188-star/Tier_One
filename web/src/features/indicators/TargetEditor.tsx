@@ -1,5 +1,6 @@
-import { useEffect, useMemo } from "react";
-import { Alert, App, Form, Input, InputNumber, Modal, Radio } from "antd";
+import { useEffect, useMemo, useState } from "react";
+import { Alert, App, Button, Form, Input, InputNumber, Modal, Radio } from "antd";
+import { DeleteOutlined } from "@ant-design/icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import type { Target, TargetKind } from "../../api/tier1";
@@ -17,12 +18,14 @@ interface FormValues { mode: "number" | "text"; value?: number; text?: string; n
  * إدخال مستهدف أو تعديله. القيمة رقم، أو وصف حين لم يحسم رقمها بعد. للنسب يكفي إدخال البسط والمقام فتحسب النسبة
  * تلقائيًا ولا تعدل يدويًا. تعديل المعتمد يطلب السبب ورقم القرار، والقيمة السابقة تحفظ.
  */
-export function TargetEditor({ code, unit, slot, onClose }: { code: string; unit: string; slot: TargetSlot; onClose: () => void }) {
+/** canDelete (G-09): the user may delete this target; an approved one also needs the approve special, which the parent checks. */
+export function TargetEditor({ code, unit, slot, onClose, canDelete }: { code: string; unit: string; slot: TargetSlot; onClose: () => void; canDelete?: boolean }) {
   const [form] = Form.useForm<FormValues>();
   const qc = useQueryClient();
   const { message } = App.useApp();
   const percent = unit.trim() === "%";
   const approved = slot.existing?.status === "Approved";
+  const [deleting, setDeleting] = useState(false);
   const mode = Form.useWatch("mode", form);
   const n = Form.useWatch("numerator", form);
   const d = Form.useWatch("denominator", form);
@@ -53,16 +56,44 @@ export function TargetEditor({ code, unit, slot, onClose }: { code: string; unit
     },
   });
 
+  const remove = useMutation({
+    mutationFn: (v: FormValues) => api.post(`/api/kpi/targets/${slot.existing!.id}/delete`, { reason: v.reason, decisionRef: approved ? v.decisionRef : null }),
+    onSuccess: async () => {
+      message.success(L("حُذف المستهدف.", "Target deleted."));
+      await qc.invalidateQueries({ queryKey: queryKeys.targets(code) });
+      await qc.invalidateQueries({ queryKey: queryKeys.distribution(code) });
+      onClose();
+    },
+  });
+  const removeMarked = useFieldErrors(form, remove.error);
   const saveMarked = useFieldErrors(form, save.error);
   return (
-    <Modal open title={`${targetKind[slot.kind]} — ${slot.unitName} — ${slot.year}`} okText={L("حفظ", "Save")} cancelText={L("إلغاء", "Cancel")}
-      onCancel={onClose} onOk={() => form.submit()} confirmLoading={save.isPending} destroyOnHidden>
+    <Modal open title={`${targetKind[slot.kind]} — ${slot.unitName} — ${slot.year}`} okText={deleting ? L("حذف", "Delete") : L("حفظ", "Save")} cancelText={L("إلغاء", "Cancel")}
+      okButtonProps={{ danger: deleting }} onCancel={deleting ? () => setDeleting(false) : onClose} onOk={() => form.submit()}
+      confirmLoading={save.isPending || remove.isPending} destroyOnHidden
+      footer={(origin) => <>{canDelete && slot.existing && !deleting && (
+        <Button danger icon={<DeleteOutlined />} style={{ float: "inline-start" }} onClick={() => setDeleting(true)}>{L("حذف المستهدف", "Delete the target")}</Button>
+      )}{origin}</>}>
       {save.error && !saveMarked && <Alert type="error" showIcon message={errorText(save.error)} className="mb" />}
+      {remove.error && !removeMarked && <Alert type="error" showIcon message={errorText(remove.error)} className="mb" />}
       {approved && (
         <Alert type="warning" showIcon className="mb" message={L("هذا المستهدف معتمد", "This target is approved")}
           description={L("تعديله يحتاج سببًا ورقم قرار اللجنة العليا، وتحفظ القيمة السابقة للمقارنة.", "Changing it needs a reason and the committee decision reference; the previous value is kept.")} />
       )}
-      <Form form={form} layout="vertical" onFinish={(v) => save.mutate(v)} requiredMark="optional">
+      <Form form={form} layout="vertical" onFinish={(v) => (deleting ? remove.mutate(v) : save.mutate(v))} requiredMark="optional">
+        {deleting ? (
+          <>
+            <Alert type="warning" showIcon className="mb" message={L("يحذف المستهدف، وتبقى قيمته في سجل التعديلات.", "The target is deleted; its value stays in the change log.")} />
+            <Form.Item name="reason" label={L("سبب الحذف", "Reason")} rules={[{ required: true, min: 5, message: L("اكتب سببًا واضحًا", "Enter a clear reason") }]}>
+              <Input.TextArea rows={2} maxLength={500} autoFocus />
+            </Form.Item>
+            {approved && (
+              <Form.Item name="decisionRef" label={L("رقم قرار اللجنة العليا", "Committee decision reference")} rules={[{ required: true, message: L("اكتب رقم القرار", "Enter the reference") }]}>
+                <Input maxLength={200} />
+              </Form.Item>
+            )}
+          </>
+        ) : (<>
         <Form.Item name="mode" label={L("نوع القيمة", "Value type")}>
           <Radio.Group optionType="button" options={[
             { value: "number", label: L("رقم", "Number") },
@@ -121,6 +152,7 @@ export function TargetEditor({ code, unit, slot, onClose }: { code: string; unit
             </Form.Item>
           </>
         )}
+        </>)}
       </Form>
     </Modal>
   );

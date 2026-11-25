@@ -3663,6 +3663,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/kpi/indicators/{code}/discard-draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    code: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ReasonRequest"];
+                };
+            };
+            responses: {
+                /** @description OK */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["IndicatorDetailDto"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/kpi/indicators/{code}/approve": {
         parameters: {
             query?: never;
@@ -4987,6 +5028,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/cycles/{id}/delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NoteRequest"];
+                };
+            };
+            responses: {
+                /** @description No Content */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/forms": {
         parameters: {
             query?: never;
@@ -5472,6 +5552,7 @@ export interface paths {
             parameters: {
                 query?: {
                     apply?: boolean;
+                    stamp?: string;
                 };
                 header?: never;
                 path: {
@@ -6491,6 +6572,7 @@ export interface components {
             warnings: number;
             canApply: boolean;
             items: components["schemas"]["ImportRow"][];
+            stamp: null | string;
         };
         ImportRow: {
             /** Format: int32 */
@@ -6524,6 +6606,8 @@ export interface components {
             canApprove: boolean;
             canSuspend: boolean;
             editCreatesVersion: boolean;
+            /** @default false */
+            canDiscard: boolean;
         };
         IndicatorDetailDto: {
             code: string;
@@ -7603,6 +7687,7 @@ export interface components {
             perspectives: components["schemas"]["PerspectiveScore"][];
             sdgs: components["schemas"]["SdgScore"][];
             canExport: boolean;
+            exportOmitted: null | string[];
         };
         SdgScore: {
             /** Format: int32 */
@@ -7753,6 +7838,10 @@ export interface components {
             canEditUniversity: boolean;
             canEditColleges: boolean;
             canApprove: boolean;
+            /** @default false */
+            canDeleteUniversity: boolean;
+            /** @default false */
+            canDeleteColleges: boolean;
         };
         TargetDto: {
             /** Format: uuid */

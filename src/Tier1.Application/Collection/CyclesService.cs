@@ -153,6 +153,25 @@ public sealed class CyclesService(ICollectionStore db, IReadModel read, IClock c
         return (await ListAsync(ct)).First(c => c.Id == id);
     }
 
+    /// <summary>
+    /// G-08: a cycle never opened can be deleted (it had no forms yet). An abandoned draft kept its quarter taken for good.
+    /// </summary>
+    public async Task DeleteDraftAsync(Guid id, string? reason, CancellationToken ct)
+    {
+        await access.RequireAsync(Feature, Cap.Delete, ct);
+        var why = Require.Reason(reason);
+        var cycle = await db.Cycles.FirstOrDefaultAsync(c => c.Id == id, ct) ?? throw DomainException.NotFound();
+        if (cycle.Status != CycleStatus.Draft)
+            throw new DomainException("cycle_not_draft", "تحذف الدورة قيد الإعداد فقط؛ المفتوحة تغلق.", "Only a draft cycle can be deleted; an open one is closed.");
+        db.Cycles.Remove(cycle);
+        audit.Record(AuditEvents.Audit("dc", Feature, "dc.cycle_deleted", "حذف دورة قيد الإعداد", "Deleted a draft cycle") with
+        {
+            Target = new AuditTarget("cycle", cycle.Id.ToString(), cycle.Name),
+            Reason = why,
+        });
+        await db.SaveChangesAsync(ct);
+    }
+
     public async Task<CycleDto> CloseAsync(Guid id, string? reason, CancellationToken ct)
     {
         await access.RequireAsync(Feature, Cap.Delete, ct);

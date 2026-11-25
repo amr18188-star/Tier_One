@@ -9,7 +9,8 @@ namespace Tier1.Application.Collection;
 public sealed record ImportRow(int Row, string Code, string? Name, string Status, string? Display, IReadOnlyList<IssueDto> Issues);
 
 /// <summary>نتيجة المعاينة: لا يطبق شيء إلا إن خلت كل الصفوف من الأخطاء (الكل أو لا شيء).</summary>
-public sealed record ImportPreview(int Rows, int Changes, int Errors, int Warnings, bool CanApply, IReadOnlyList<ImportRow> Items);
+/// <param name="Stamp">G-14: the form's values as the preview saw them. Applying with it is refused if a value changed since.</param>
+public sealed record ImportPreview(int Rows, int Changes, int Errors, int Warnings, bool CanApply, IReadOnlyList<ImportRow> Items, string? Stamp = null);
 
 /// <summary>
 /// إدخال النموذج من Excel: قالب خاص بكل نموذج فيه مؤشراته فقط، ثم معاينة كل صف بقواعد الإدخال نفسها، ثم تطبيق كامل أو لا شيء.
@@ -45,10 +46,15 @@ public sealed partial class FormEntryService
     }
 
     /// <summary>معاينة ملف مرفوع؛ apply=true يطبقه إن خلا من الأخطاء، في حفظ واحد.</summary>
-    public async Task<ImportPreview> ImportAsync(Guid id, Stream content, ISpreadsheets sheets, bool apply, CancellationToken ct)
+    public async Task<ImportPreview> ImportAsync(Guid id, Stream content, ISpreadsheets sheets, bool apply, CancellationToken ct, string? stamp = null)
     {
         var ctx = await reader.LoadAsync(id, Cap.Edit, tracking: apply, ct);
         FormReader.EnsureEditable(ctx);
+        // G-14 (system integration review 2026-11-24): a value saved between the preview and the apply was overwritten by the file
+        // without the user seeing it. The preview's stamp names the versions it compared against.
+        var now = Stamp(ctx);
+        if (apply && stamp is not null && stamp != now)
+            throw new DomainException("import_stale", "تغيرت قيم في النموذج بعد المعاينة؛ أعد رفع الملف لمعاينته من جديد.", "Values changed since the preview; preview the file again.", 409);
         var (headers, rows) = sheets.Read(content, 500);
         var col = Columns.ToDictionary(c => c, c => headers.ToList().FindIndex(h => h.Trim() == c));
         if (col["الرمز"] < 0 || (col["القيمة"] < 0 && col["البسط"] < 0))
@@ -119,7 +125,8 @@ public sealed partial class FormEntryService
             };
             ctx.Values.TryGetValue(ci.Ci.IndicatorId, out var current);
             var same = current is not null && current.Kind == kind && current.Value == (kind == ValueKind.Number ? computed : null)
-                       && current.Numerator == num && current.Denominator == den && current.Explanation == explanation;
+                       && current.Numerator == num && current.Denominator == den && current.Explanation == explanation
+                       && current.Reason == reason; // G-14: a new reason alone is a change too
             var status = issues.Any(i => i.Severity == IssueSeverity.Error) ? "error" : same ? "same" : current is null ? "new" : "changed";
             items.Add(new(line, code, ci.Version.NameAr, status, display, issues));
             if (status is "new" or "changed")
@@ -128,7 +135,7 @@ public sealed partial class FormEntryService
 
         var errors = items.Count(i => i.Status == "error");
         var warnings = items.Count(i => i.Status != "error" && i.Issues.Count > 0);
-        var preview = new ImportPreview(items.Count, pending.Count, errors, warnings, errors == 0 && pending.Count > 0, items);
+        var preview = new ImportPreview(items.Count, pending.Count, errors, warnings, errors == 0 && pending.Count > 0, items, now);
         if (!apply) return preview;
         if (errors > 0)
             throw new DomainException("import_errors", $"في الملف {errors} صف به أخطاء؛ لم يطبق شيء. صححها ثم أعد الرفع.", "The file has errors; nothing was applied.", 400);
@@ -145,6 +152,12 @@ public sealed partial class FormEntryService
     }
 
     private static IssueDto Err(string code, string message) => new(code, IssueSeverity.Error, message);
+
+    private static string Stamp(FormContext ctx)
+    {
+        var text = string.Join(';', ctx.Values.OrderBy(v => v.Key).Select(v => $"{v.Key:N}:{v.Value.Version}"));
+        return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(text)))[..16];
+    }
 
     private static string? Num(decimal? v) => v is { } d ? d.ToString("0.####", CultureInfo.InvariantCulture) : null;
 

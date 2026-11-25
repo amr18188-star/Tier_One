@@ -114,8 +114,13 @@ function PendingBar({ rows, onShow }: { rows: FormRow[]; onShow: () => void }) {
   const mine = rows.filter((r) => r.awaitingMe);
   if (mine.length === 0) return null;
   const reviews = mine.filter((r) => r.status === "InReview").length;
-  const entries = mine.length - reviews;
-  const text = entries === 0
+  // G-15: approved forms awaiting the user are reopen requests to decide, not entries.
+  const reopens = mine.filter((r) => r.status === "Approved").length;
+  const entries = mine.length - reviews - reopens;
+  const text = reopens > 0
+    ? L(`مطلوب منك ${mine.length} نموذج: ${[entries && `${entries} للإدخال`, reviews && `${reviews} للمراجعة`, `${reopens} طلب إعادة فتح`].filter(Boolean).join(" و")}`,
+      `${mine.length} forms are waiting for you: ${[entries && `${entries} to enter`, reviews && `${reviews} to review`, `${reopens} reopen requests`].filter(Boolean).join(", ")}`)
+    : entries === 0
     ? L(`مطلوب منك مراجعة ${reviews} نموذج`, `${reviews} forms are waiting for your review`)
     : reviews === 0
       ? L(`مطلوب منك إدخال ${entries} نموذج`, `${entries} forms are waiting for your entry`)

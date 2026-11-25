@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Button, Drawer, Dropdown, Tooltip } from "antd";
 import {
-  AimOutlined, ApartmentOutlined, AuditOutlined, BankOutlined, BarChartOutlined, BranchesOutlined, CalendarOutlined, ClusterOutlined, ControlOutlined, DatabaseOutlined, DoubleLeftOutlined, DoubleRightOutlined, FileDoneOutlined, FilePdfOutlined, FormOutlined, HomeOutlined, LogoutOutlined, MailOutlined, MenuOutlined, PartitionOutlined, RiseOutlined, SafetyCertificateOutlined, SettingOutlined, TeamOutlined, TrophyOutlined, UnorderedListOutlined,
+  AimOutlined, ApartmentOutlined, AuditOutlined, BankOutlined, BarChartOutlined, BranchesOutlined, CalendarOutlined, ClusterOutlined, ControlOutlined, DatabaseOutlined, DoubleLeftOutlined, DesktopOutlined, DoubleRightOutlined, FileDoneOutlined, FilePdfOutlined, FormOutlined, HomeOutlined, LogoutOutlined, MailOutlined, MenuOutlined, PartitionOutlined, RiseOutlined, SafetyCertificateOutlined, SettingOutlined, TeamOutlined, TrophyOutlined, UnorderedListOutlined,
 } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { Link, NavLink, matchPath, useLocation } from "react-router-dom";
@@ -19,6 +19,7 @@ import logoOnWhite from "../assets/brand/capital-university-logo-light.png";
 import strategyBrandOnNavy from "../assets/brand/strategy-performance-dark.png";
 import sidebarLogo from "../assets/brand/sidebarLogo.png";
 import { GlobalSearch } from "./GlobalSearch";
+import { MySessions } from "./MySessions";
 import { RailTip, SideNav } from "./SideNav";
 import { NavGroup, NavItem, RAIL_MS, TipSide, VisibleGroup, readNavOpen, readRail, writeNavOpen, writeRail } from "./navState";
 import "../shared/ui.css";
@@ -38,6 +39,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const perms = usePermissions();
   const lang = useLang();
   const [drawer, setDrawer] = useState(false);
+  const [sessionsOpen, setSessionsOpen] = useState(false);
 
   // حركة الشريطين الجانبي والعلوي: عند تحميل الصفحة كاملة أو بعد الدخول (Shell يركب حينها فقط)، للمسؤول على «/»؛ لا تعاد عند التنقل الداخلي.
   // محتوى الصفحة الرئيسية يتحرك عند كل تركيب بنفسه (entrance.css).
@@ -212,6 +214,7 @@ export function Shell({ children }: { children: ReactNode }) {
                 ),
               },
               { type: "divider" },
+              { key: "sessions", icon: <DesktopOutlined aria-hidden />, label: L("جلساتي", "My sessions"), onClick: () => setSessionsOpen(true) },
               { key: "logout", icon: <LogoutOutlined aria-hidden />, label: L("تسجيل الخروج", "Sign out"), onClick: logout },
             ],
           }}>
@@ -220,6 +223,7 @@ export function Shell({ children }: { children: ReactNode }) {
               <span className="lcp-user-name">{me?.name || L("حسابي", "My account")}</span>
             </button>
           </Dropdown>
+          {sessionsOpen && <MySessions onClose={() => setSessionsOpen(false)} />}
           <Link to="/" className="lcp-top-university" aria-label={L("جامعة العاصمة — الرئيسية", "Capital University — Home")}>
             <img src={logoOnWhite} alt="" />
           </Link>

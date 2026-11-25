@@ -36,7 +36,8 @@ public sealed record FrameworkLinks(IReadOnlyList<int> Perspectives, int? SdgPri
 public sealed record VersionSummaryDto(int Number, DefinitionStatus Status, string? ChangeReason, DateTimeOffset CreatedAt, DateTimeOffset? ApprovedAt, string? DecisionRef);
 
 /// <summary>ما يستطيعه المستخدم في هذا المؤشر الآن، فتظهر الأزرار المتاحة وحدها.</summary>
-public sealed record IndicatorActions(bool CanEdit, bool CanSubmit, bool CanApprove, bool CanSuspend, bool EditCreatesVersion);
+/// <param name="CanDiscard">G-08: a draft of a new version of an approved definition may be dropped, going back to the approved one.</param>
+public sealed record IndicatorActions(bool CanEdit, bool CanSubmit, bool CanApprove, bool CanSuspend, bool EditCreatesVersion, bool CanDiscard = false);
 
 public sealed record SaveDefinitionRequest(
     string NameAr, string? NameEn, string? Definition, string? Purpose, string? Exclusions, string? Numerator, string? Denominator,
@@ -130,7 +131,8 @@ public sealed class DictionaryService(IKpiStore db, IReadModel read, IClock cloc
             CanApprove: me.HasSpecial(Feature, Specials.Approve) && current.Status == DefinitionStatus.UnderReview
                         && current.SubmittedBy != me.UserId && current.EditedBy != me.UserId,
             CanSuspend: me.Has(Feature, Cap.Delete),
-            EditCreatesVersion: indicator.Working is null);
+            EditCreatesVersion: indicator.Working is null,
+            CanDiscard: canEdit && indicator.Working is { Status: DefinitionStatus.Draft } && indicator.Effective is not null);
 
         return new IndicatorDetailDto(
             indicator.Code, standard.Id, standard.Code, standard.NameAr, indicator.Suspended,
@@ -186,6 +188,7 @@ public sealed class DictionaryService(IKpiStore db, IReadModel read, IClock cloc
         var indicator = await LoadAsync(code, tracking: true, ct);
         var now = clock.UtcNow;
         var createsVersion = indicator.Working is null;
+        var wasUnderReview = indicator.Working?.Status == DefinitionStatus.UnderReview;
         var v = IndicatorRules.EditableVersion(indicator, now, req.ChangeReason);
         if (!createsVersion) Concurrency.Expect(db, v, req.Version);
         if (req.OwnerUnitId is { } owner && !await read.Query<Domain.Organization.OrgUnit>().AnyAsync(u => u.Id == owner && u.Active, ct))
@@ -225,6 +228,35 @@ public sealed class DictionaryService(IKpiStore db, IReadModel read, IClock cloc
             Target = new AuditTarget("indicator", indicator.Id.ToString(), indicator.Code),
             Changes = changes.ToList(),
             Reason = createsVersion ? v.ChangeReason : null,
+        });
+        // G-08 (system integration review 2026-11-24): an edit takes a definition out of review; the approvers were not told.
+        if (wasUnderReview)
+            events.Notify(new WorkNotice("kpi.definition", $"سُحب تعريف المؤشر {indicator.Code} من المراجعة للتعديل",
+                $"عدّل {current.DisplayName} تعريف المؤشر {indicator.Code} وهو قيد المراجعة، فعاد مسودة. يصلك من جديد حين يُرسل.",
+                $"/indicators/{indicator.Code}", new WorkAudience(Feature: Feature, Special: Specials.Approve, Except: [current.UserId!.Value])), "indicator", indicator.Id);
+        await db.SaveChangesAsync(ct);
+        return await GetAsync(code, ct);
+    }
+
+    /// <summary>
+    /// G-08: drops the draft of a new version of an approved definition (it could not be dropped, and stayed the indicator's
+    /// "current" status for good). The approved version stays in force. A first definition never approved is deleted instead.
+    /// </summary>
+    public async Task<IndicatorDetailDto> DiscardDraftAsync(string code, string? reason, CancellationToken ct)
+    {
+        await access.RequireAsync(Feature, Cap.Edit, ct);
+        var why = Require.Reason(reason);
+        var indicator = await LoadAsync(code, tracking: true, ct);
+        if (indicator.Working is not { Status: DefinitionStatus.Draft } draft)
+            throw new DomainException("no_draft", "لا توجد مسودة تُتجاهل؛ التعريف قيد المراجعة أو لا مسودة له.", "There is no draft to discard.");
+        if (indicator.Effective is null)
+            throw new DomainException("first_definition", "هذه أول صيغة للتعريف ولا إصدار معتمد قبلها؛ احذف المؤشر بدل تجاهلها.", "This is the first definition; delete the indicator instead.", 409);
+        db.IndicatorVersions.Remove(draft);
+        audit.Record(AuditEvents.Audit("kpi", Feature, "kpi.definition_draft_discarded", "تجاهل مسودة تعريف مؤشر", "Discarded an indicator definition draft") with
+        {
+            Target = new AuditTarget("indicator", indicator.Id.ToString(), indicator.Code),
+            Details = new { version = draft.Number },
+            Reason = why,
         });
         await db.SaveChangesAsync(ct);
         return await GetAsync(code, ct);
@@ -297,6 +329,9 @@ public sealed class DictionaryService(IKpiStore db, IReadModel read, IClock cloc
         await access.RequireAsync(Feature, Cap.Delete, ct);
         var why = Require.Reason(reason);
         var indicator = await LoadAsync(code, tracking: true, ct);
+        // G-16 (system integration review 2026-11-24): suspending a suspended indicator wrote a second audit entry for nothing.
+        if (indicator.Suspended == suspended)
+            throw new DomainException("no_change", suspended ? "المؤشر موقوف بالفعل." : "المؤشر مفعل بالفعل.", suspended ? "The indicator is already suspended." : "The indicator is already active.", 400);
         indicator.Suspended = suspended;
         audit.Record(AuditEvents.Audit("kpi", Feature, suspended ? "kpi.indicator_suspended" : "kpi.indicator_reactivated",
             suspended ? "إيقاف مؤشر" : "إعادة تفعيل مؤشر", suspended ? "Suspended an indicator" : "Reactivated an indicator") with

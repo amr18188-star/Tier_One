@@ -156,8 +156,9 @@ public sealed class DocumentsService(ICollectionStore db, IReadModel read, ICloc
     {
         var why = Require.Reason(reason, field: "note"); // The endpoint takes it as NoteRequest.Note.
         var doc = await db.Documents.FirstOrDefaultAsync(d => d.Id == id, ct) ?? throw DomainException.NotFound();
-        if (doc.VoidedAt is not null) throw new DomainException("already_voided", "المستند مبطل بالفعل.", "Already voided.");
+        // G-16 (system integration review 2026-11-24): authorize first, so the document's state is told only to who may act on it.
         var unitCode = await AuthorizeAsync(doc, doc.OwnerType == StoredDocument.ValueOwner ? Cap.Edit : Cap.Delete, ct);
+        if (doc.VoidedAt is not null) throw new DomainException("already_voided", "المستند مبطل بالفعل.", "Already voided.");
         if (doc.OwnerType == StoredDocument.PlanOwner)
             audit.Record(AuditEvents.Audit("kpi", Features.Strategy, "kpi.plan_document_voided", "إبطال إصدار من وثيقة الخطة", "Voided a plan document") with
             {
@@ -167,6 +168,9 @@ public sealed class DocumentsService(ICollectionStore db, IReadModel read, ICloc
         if (doc.OwnerType == StoredDocument.ValueOwner)
         {
             var sub = await (from v in db.SubmittedValues join s in db.Submissions on v.SubmissionId equals s.Id where v.Id == doc.OwnerId select s).AsNoTracking().FirstAsync(ct);
+            // G-13 (system integration review 2026-11-24): the evidence of a closed cycle stays as it was, like its values.
+            var cycleOpen = await read.Query<CollectionCycle>().AsNoTracking().AnyAsync(c => c.Id == sub.CycleId && c.Status == CycleStatus.Open, ct);
+            if (!cycleOpen) throw new DomainException("cycle_not_open", "الدورة غير مفتوحة؛ أدلتها تبقى كما هي.", "The cycle is not open.");
             if (!sub.IsEditable) throw new DomainException("form_locked", "النموذج مقفل؛ لا يبطل دليل قيمة أرسلت أو اعتمدت.", "The form is locked.", 409);
         }
         doc.VoidedAt = clock.UtcNow;

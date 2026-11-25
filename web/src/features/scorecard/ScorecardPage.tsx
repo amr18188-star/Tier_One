@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Alert, Button, Tooltip } from "antd";
+import { Alert, Button, Space, Tooltip } from "antd";
 import { ApartmentOutlined, DownloadOutlined, FundOutlined, GlobalOutlined, LineChartOutlined, TrophyOutlined } from "@ant-design/icons";
 import { useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
@@ -57,9 +57,16 @@ export default function ScorecardPage() {
           { label: L("في المستوى", "On target"), value: c.overall.inLevel, tone: "ok" },
         ] : undefined}
         extra={c?.canExport && (
-          <Tooltip title={L("الملف نفسه بقيم الأرباع المعتمدة في خلاياه الزرقاء، لنقلها إلى بوابة المجلس الأعلى للجامعات.", "The same workbook filled with the approved quarterly values.")}>
-            <Button type="primary" icon={<DownloadOutlined />} href="/api/scorecard/kpi.xlsx">{L("ملف المجلس KPI.xlsx", "Council workbook")}</Button>
-          </Tooltip>
+          <Space direction="vertical" size={4}>
+            <Tooltip title={L("الملف نفسه بقيم الأرباع المعتمدة في خلاياه الزرقاء، لنقلها إلى بوابة المجلس الأعلى للجامعات.", "The same workbook filled with the approved quarterly values.")}>
+              <Button type="primary" icon={<DownloadOutlined />} href="/api/scorecard/kpi.xlsx">{L("ملف المجلس KPI.xlsx", "Council workbook")}</Button>
+            </Tooltip>
+            {!!c.exportOmitted?.length && (
+              <Tooltip title={c.exportOmitted.join("، ")}>
+                <span className="sc-omitted">{L(`${c.exportOmitted.length} مؤشرًا أضيفت في المنظومة ليست في ملف المجلس`, `${c.exportOmitted.length} indicators added here are not in the council's workbook`)}</span>
+              </Tooltip>
+            )}
+          </Space>
         )} />
 
       <div className="sp-tabs-row">

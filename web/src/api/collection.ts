@@ -87,7 +87,7 @@ export interface SaveValue {
 }
 
 export interface ImportRow { row: number; code: string; name: string | null; status: "new" | "changed" | "same" | "skip" | "error"; display: string | null; issues: Issue[] }
-export interface ImportPreview { rows: number; changes: number; errors: number; warnings: number; canApply: boolean; items: ImportRow[] }
+export interface ImportPreview { rows: number; changes: number; errors: number; warnings: number; canApply: boolean; items: ImportRow[]; stamp?: string | null }
 
 // ----- النتائج -----
 export interface ResultUnit { id: string; name: string; kind: OrgUnitKind }

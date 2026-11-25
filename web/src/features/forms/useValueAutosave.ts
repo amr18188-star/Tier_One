@@ -276,6 +276,23 @@ export function useValueAutosave({ formId, item, editable, onSaved, delay = 800 
   const retry = () => (error?.conflict ? void resolve(true).catch(fail) : void q.run());
   const discard = () => void resolve(false).catch(fail);
 
+  /** G-09: clears the row's unsent value on the server (the endpoint had no button), then shows the empty row. */
+  const clear = async () => {
+    clearTimeout(timer.current);
+    timer.current = undefined;
+    await api.del(`/api/forms/${formId}/values/${id}`);
+    const form = await api.get<Form>(`/api/forms/${formId}`);
+    const fresh = form.sections.flatMap((s) => s.items).find((i) => i.indicatorId === id);
+    if (!fresh) return;
+    q.version = fresh.value?.version ?? null;
+    q.saved = draftOf(fresh);
+    q.invalidate();
+    q.set(q.saved);
+    setDraft(q.saved);
+    show("idle");
+    onSavedRef.current(fresh);
+  };
+
   // قيمة جديدة من الخادم (حفظ هذا الصف، أو استيراد، أو تحديث الصفحة).
   const serverVersion = item.value?.version ?? null;
   useEffect(() => {
@@ -311,5 +328,5 @@ export function useValueAutosave({ formId, item, editable, onSaved, delay = 800 
     };
   }, []);
 
-  return { draft, change, flush, state, error, retry, discard };
+  return { draft, change, flush, state, error, retry, discard, clear };
 }

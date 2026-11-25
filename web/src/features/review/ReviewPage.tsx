@@ -102,7 +102,8 @@ export default function ReviewPage() {
   const panels = filtering ? groups.filter((g) => g.shown.length > 0) : groups;
   const transferred = count("Transferred");
   const otherCycle = r?.cycles.find((c) => c.id !== r.cycle?.id);
-  const cyclesLink = canCycles ? <Link to="/cycles">{L("دورات جمع البيانات", "Collection cycles")}</Link> : undefined;
+  // G-15: the cycles page opens with dc.cycles:E (routeAccess); a viewer's link ended on "no permission".
+  const cyclesLink = perms.can("dc.cycles", "E") ? <Link to="/cycles">{L("دورات جمع البيانات", "Collection cycles")}</Link> : undefined;
   const purpose = L("راجع تقدم الكليات في كل مؤشر وحساب الجامعة منها، ثم انقل القيمة إلى مؤشر الجامعة؛ المنقول وحده يدخل بطاقة الأداء والفئة وملف المجلس.",
     "Check each college's progress and the computed university value, then transfer it. Only transferred values enter the scorecard, the tier and the board file.");
   // ما دام الشريط ينتظر الدورات والتقويم، المراجعة «تحمل» (الاستعلام لم يبدأ بعد).

@@ -43,6 +43,9 @@ public sealed class ProgressService(IScorecardStore db, IReadModel read, IAccess
         var all = await read.Query<OrgUnit>().AsNoTracking().ToListAsync(ct);
         var root = all.First(u => u.Kind == OrgUnitKind.University);
         var colleges = all.Where(u => u.IsCollegeLevel && u.Active && scope.Covers(u)).OrderBy(u => u.SortOrder).ThenBy(u => u.NameAr).ToList();
+        // G-06: a scope of departments only follows its departments' progress (the page was empty for a department representative).
+        if (colleges.Count == 0)
+            colleges = all.Where(u => u.Kind == OrgUnitKind.Department && u.Active && scope.Covers(u)).OrderBy(u => u.SortOrder).ThenBy(u => u.NameAr).ToList();
         if (colleges.Count == 0) return null;
         var unit = unitId is { } id ? colleges.FirstOrDefault(c => c.Id == id) ?? throw DomainException.NotFound() : colleges[0];
 
